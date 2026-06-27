@@ -1,0 +1,13 @@
+GOAL-044 post-merge validation:
+
+python -m pytest -q
+225 passed
+
+python -m nornyx.cli release-check
+blocked=0 warning=0
+
+python scripts/release/check_stable_language.py
+blocked=0 warning=0
+
+python scripts/dev/audit_pmo_status.py
+blocks=37 completed=36 partial=0 locked=1

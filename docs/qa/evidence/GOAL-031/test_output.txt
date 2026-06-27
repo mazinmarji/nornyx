@@ -1,0 +1,32 @@
+python -m pytest -q tests/test_kpi_metrics.py
+6 passed in 0.30s
+
+python scripts\dev\check_kpi_measurement.py
+repo_readiness=100/100 strong | evidence=100.0% complete
+
+python scripts\dev\run_kpi_benchmark.py --no-write
+repo_kpis.agentic_dev_readiness_score=100
+evidence_score.status=complete
+evidence_score.percent=100.0
+
+python scripts\dev\score_evidence.py docs\qa\evidence\GOAL-031 --fail-under 75
+Score: 100/100 (100.0%)
+Status: complete
+
+python -m ruff check nornyx\kpi_metrics.py scripts\dev\check_kpi_measurement.py tests\test_kpi_metrics.py
+All checks passed!
+
+python -m pytest -q
+183 passed in 13.11s
+
+python -m nornyx.cli check examples\governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples\nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python scripts\dev\run_quality.py --profile standard
+183 passed
+blocks=26 completed=24 partial=1 locked=1
+repo_readiness=100/100 strong | evidence=100.0% complete
+Quality gates passed.

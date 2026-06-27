@@ -1,0 +1,15 @@
+id: "TC-YYYYMMDD-001"
+title: "Short candidate title"
+concept: "short_concept_key"
+source_task: "GOAL-XXX or TASK-ID"
+discovered_by: "codex|claude|human|other"
+description: "What gap or requirement was discovered?"
+classification: "extension_backlog"
+rationale: "Why this classification is correct."
+recommended_action: "Record for later review; continue assigned task."
+blocks_current_goal: false
+risk: "low"
+evidence:
+  - "path/to/evidence-or-note.md"
+owner: "Architect"
+status: "proposed"

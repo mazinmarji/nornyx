@@ -1,0 +1,1930 @@
+{
+  "schema_version": "1.0",
+  "project": "Nornyx",
+  "status": "active",
+  "updated_at": "2026-06-04",
+  "source_of_truth": {
+    "type": "local_repo",
+    "repo": "nornyx",
+    "branch": "main",
+    "status_sync": "local_git_optional_remote"
+  },
+  "summary": {
+    "overall_status": "graph_demo_expansion_completed",
+    "next_recommended_goal": "Proceed to GOAL-064 Adoption Readiness Friction Audit; recommended model level medium",
+    "completed_blocks": 55,
+    "partial_blocks": 0,
+    "locked_blocks": 1,
+    "risk_level": "medium",
+    "roadmap_model": {
+      "v0.2": "Nornyx Graph + stronger generic contract model",
+      "v0.3": "Optional domain profile packs",
+      "v0.4": "Contract-only adapter bridges for Governed Delivery Control Plane, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops",
+      "v0.5-v0.9": "Maturity bands for graph validation, profile conformance, adapter conformance, bounded execution readiness, and release-candidate stabilization",
+      "v1.0": "Stable generalized agentic contract language released as GitHub source release v1.0.0; v1.0.1 hygiene is closed; package publishing and GOAL-100 remain gated"
+    },
+    "roadmap_note": "v1.0.1 hygiene is closed. Next work should be named strategic milestones, not open-ended hygiene follow-ups. GOAL-100 remains locked.",
+    "pmo_readability": {
+      "current_focus": "post-v1.0.1 strategic track",
+      "latest_completed_goal": "GOAL-063 Nornyx Graph Demo Expansion",
+      "history_policy": "Preserve completed goal blocks and evidence links; avoid repeating the full completed-goal chain in summary text.",
+      "portal_guidance": "Read summary for current state, goal ledger for history, and vision maps for roadmap context."
+    },
+    "strategic_next_tracks": [
+      {
+        "id": "graph_demo_expansion",
+        "first_goal": "GOAL-063",
+        "title": "Nornyx Graph Demo Expansion Plan",
+        "model_level": "high",
+        "reason": "Moves from release hygiene into a concrete product capability while staying static, validation-first, and non-runtime."
+      },
+      {
+        "id": "adoption_readiness",
+        "first_goal": "GOAL-064",
+        "title": "Adoption Readiness Friction Audit",
+        "model_level": "medium",
+        "reason": "Improves first-user success without package publication or deployment."
+      },
+      {
+        "id": "profile_conformance",
+        "first_goal": "GOAL-065",
+        "title": "Profile Conformance Hardening Plan",
+        "model_level": "high",
+        "reason": "Prepares stronger optional-domain profile checks without making profiles mandatory core language concepts."
+      }
+    ],
+    "planned_blocks": 0
+  },
+  "blocks": [
+    {
+      "id": "goal_000_green_baseline",
+      "title": "GOAL-000 \u2014 Green Baseline Stabilization",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Clean replacement repo prepared",
+        "Noisy generated/runtime folders removed",
+        "CLI compatibility restored",
+        "PMO status contract normalized",
+        "Active Developer PMO Portal selected",
+        "Local validation completed",
+        "Clean baseline committed to git"
+      ],
+      "pending": [],
+      "risks": [
+        "Local environment may differ from packaged validation environment"
+      ],
+      "evidence": [
+        "docs/qa/evidence/GOAL-000/README.md",
+        "docs/qa/evidence/GOAL-000/VALIDATION.md"
+      ],
+      "next_goal": "GOAL-001 \u2014 Core block spec freeze"
+    },
+    {
+      "id": "goal_001_core_block_spec_freeze",
+      "title": "GOAL-001 \u2014 Core Block Spec Freeze",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Finalized v0.1 block taxonomy",
+        "Locked core vs deferred extension boundary",
+        "Added checker-level tests for the frozen block surface",
+        "Documented the canonical v0.1 top-level blocks"
+      ],
+      "pending": [],
+      "risks": [
+        "Scope creep if advanced extensions are promoted too early"
+      ],
+      "evidence": [
+        "docs/goals/goal-001-core-block-spec-freeze.md",
+        "docs/01_LANGUAGE_SPEC_v0_1.md",
+        "docs/qa/evidence/GOAL-001/README.md"
+      ],
+      "next_goal": "GOAL-002 \u2014 Parser/checker hardening"
+    },
+    {
+      "id": "goal_002_parser_checker_hardening",
+      "title": "GOAL-002 \u2014 Parser/Checker Hardening",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added stable diagnostics for malformed named core block entries",
+        "Added harness context reference checks",
+        "Hardened goal packet diagnostics for phase, scope, validation, evidence, approval, and stop rules",
+        "Updated starter profile output to satisfy the hardened goal contract",
+        "Added focused checker regression tests"
+      ],
+      "pending": [],
+      "risks": [
+        "Weak diagnostics slow authoring assistant and Codex repair loops"
+      ],
+      "evidence": [
+        "tests/test_parser_checker.py",
+        "nornyx/checker.py",
+        "docs/qa/evidence/GOAL-002/README.md"
+      ],
+      "next_goal": "GOAL-003 \u2014 Artifact generator hardening"
+    },
+    {
+      "id": "goal_003_artifact_generator_hardening",
+      "title": "GOAL-003 \u2014 Artifact Generator Hardening",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added deterministic manifest metadata with artifact hashes",
+        "Added generated task packets for roadmap goals",
+        "Exposed the documented goal-plan CLI path",
+        "Added regression tests for generated artifacts and manifest stability"
+      ],
+      "pending": [],
+      "risks": [
+        "Generated artifacts can drift from .nyx source without checks"
+      ],
+      "evidence": [
+        "nornyx/generator.py",
+        "nornyx/cli.py",
+        "tests/test_generator_hardening.py",
+        "docs/qa/evidence/GOAL-003/README.md"
+      ],
+      "next_goal": "GOAL-004 \u2014 Formal grammar and schema model"
+    },
+    {
+      "id": "goal_004_formal_grammar_schema_model",
+      "title": "GOAL-004 \u2014 Formal Grammar and Schema Model",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added EBNF-style grammar summary for the YAML-compatible model",
+        "Added JSON Schema for the frozen v0.1 block surface",
+        "Added schema model module and CLI inspection command",
+        "Added regression tests that keep schema and checker block surfaces aligned"
+      ],
+      "pending": [],
+      "risks": [
+        "Future tooling may depend on the schema, so schema drift must remain tested"
+      ],
+      "evidence": [
+        "docs/goals/goal-004-formal-grammar-and-schema-model.md",
+        "docs/RFCs/RFC-0002-formal-grammar-and-schema-model.md",
+        "schemas/nornyx_v0_1.schema.json",
+        "nornyx/schema_model.py",
+        "tests/test_schema_model.py",
+        "docs/qa/evidence/GOAL-004/README.md"
+      ],
+      "next_goal": "GOAL-005 \u2014 Context provenance and trust boundaries"
+    },
+    {
+      "id": "goal_005_context_provenance_trust_boundaries",
+      "title": "GOAL-005 \u2014 Context Provenance and Trust Boundaries",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added provenance source URIs and hashes to context pack entries",
+        "Added channel, taint, trust level, and may-define-policy metadata",
+        "Added authority ordering and authority ranks for matching repo files",
+        "Documented context trust boundary rules",
+        "Added regression tests for provenance and content handling"
+      ],
+      "pending": [],
+      "risks": [
+        "Future enforcement may depend on trust metadata, so authority drift must remain tested"
+      ],
+      "evidence": [
+        "docs/goals/goal-005-context-provenance-and-trust-boundaries.md",
+        "docs/06_CONTEXT_ENGINEERING.md",
+        "examples/governed_delivery_control_plane.nyx",
+        "nornyx/context_builder.py",
+        "tests/test_context_provenance.py",
+        "docs/qa/evidence/GOAL-005/README.md"
+      ],
+      "next_goal": "GOAL-006 \u2014 Harness runtime MVP"
+    },
+    {
+      "id": "goal_006_harness_runtime_mvp",
+      "title": "GOAL-006 \u2014 Harness Runtime MVP",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added safe local harness run manifest generation",
+        "Added context pack, trace event, approval log, and evidence scaffold outputs",
+        "Recorded validation gates without auto-satisfying evidence or approval",
+        "Bounded repair metadata to a maximum of three attempts",
+        "Added CLI and regression tests for harness-run"
+      ],
+      "pending": [],
+      "risks": [
+        "Runtime execution remains intentionally disabled until policy and capability enforcement mature"
+      ],
+      "evidence": [
+        "docs/goals/goal-006-harness-runtime-mvp.md",
+        "docs/07_HARNESS_ENGINEERING.md",
+        "nornyx/harness_runtime.py",
+        "tests/test_harness_runtime.py",
+        "docs/qa/evidence/GOAL-006/README.md"
+      ],
+      "next_goal": "GOAL-007 \u2014 Evidence and trace runtime"
+    },
+    {
+      "id": "goal_007_evidence_trace_runtime",
+      "title": "GOAL-007 \u2014 Evidence and Trace Runtime",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added local trace bundle output with span-like fields",
+        "Added trace digest generation",
+        "Added evidence manifest artifact hashes",
+        "Linked harness-run manifests, trace digests, and evidence manifests",
+        "Documented local OpenTelemetry-compatible trace shape"
+      ],
+      "pending": [],
+      "risks": [
+        "Evidence and trace artifacts are audit-sensitive and must remain local unless exporter approval is explicit"
+      ],
+      "evidence": [
+        "docs/goals/goal-007-evidence-and-trace-runtime.md",
+        "docs/11_OBSERVABILITY_EVIDENCE.md",
+        "nornyx/trace_runtime.py",
+        "nornyx/evidence.py",
+        "tests/test_evidence_trace_runtime.py",
+        "docs/qa/evidence/GOAL-007/README.md"
+      ],
+      "next_goal": "GOAL-008 \u2014 Policy, guardrail, and capability enforcement"
+    },
+    {
+      "id": "goal_008_policy_guardrail_capability_enforcement",
+      "title": "GOAL-008 \u2014 Policy, Guardrail, and Capability Enforcement",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added local policy report generation for harness planning",
+        "Added default-deny capability checks for tool, connector, and model steps",
+        "Added guardrail requirement for planned model and connector use",
+        "Integrated policy summaries into harness manifests and trace evidence",
+        "Added policy-check CLI command and regression tests"
+      ],
+      "pending": [],
+      "risks": [
+        "Conservative default-deny reports may block older examples until explicit capabilities are declared"
+      ],
+      "evidence": [
+        "docs/goals/goal-008-policy,-guardrail,-and-capability-enforcement.md",
+        "docs/05_SECURITY_MODEL.md",
+        "docs/08_EVALS_AND_GUARDRAILS.md",
+        "docs/07_HARNESS_ENGINEERING.md",
+        "nornyx/policy_runtime.py",
+        "nornyx/harness_runtime.py",
+        "tests/test_policy_runtime.py",
+        "docs/qa/evidence/GOAL-008/README.md"
+      ],
+      "next_goal": "GOAL-009 \u2014 Eval runner and eval integrity"
+    },
+    {
+      "id": "goal_009_eval_runner_integrity",
+      "title": "GOAL-009 \u2014 Eval Runner and Eval Integrity",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added local eval report generation for declared evals",
+        "Added metric threshold parsing and optional local results comparison",
+        "Added holdout dataset hashing and train/holdout overlap detection",
+        "Added integrity warnings for missing holdout, contamination, adversarial rotation, and regression baseline metadata",
+        "Integrated eval summaries into harness manifests and trace evidence",
+        "Added eval-run CLI command and regression tests"
+      ],
+      "pending": [],
+      "risks": [
+        "Existing examples without observed metric results or holdout metadata now surface pending evidence and integrity warnings"
+      ],
+      "evidence": [
+        "docs/goals/goal-009-eval-runner-and-eval-integrity.md",
+        "docs/08_EVALS_AND_GUARDRAILS.md",
+        "docs/07_HARNESS_ENGINEERING.md",
+        "docs/11_OBSERVABILITY_EVIDENCE.md",
+        "nornyx/eval_runtime.py",
+        "nornyx/harness_runtime.py",
+        "tests/test_eval_runtime.py",
+        "docs/qa/evidence/GOAL-009/README.md"
+      ],
+      "next_goal": "GOAL-010 \u2014 Plugin, connector, MCP/A2A adapters"
+    },
+    {
+      "id": "goal_010_plugin_connector_mcp_a2a_adapters",
+      "title": "GOAL-010 \u2014 Plugin, Connector, MCP/A2A Adapters",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added local connector and plugin manifest planning",
+        "Added MCP/A2A adapter decision reports without live execution",
+        "Added blocked-by-default checks for unsafe modes, endpoints, commands, undeclared harness connector references, and sensitive A2A sharing",
+        "Added connector-plan CLI command and connector manifest schema",
+        "Integrated connector summaries into harness manifests and trace evidence",
+        "Added regression tests for connector and plugin adapter boundaries"
+      ],
+      "pending": [],
+      "risks": [
+        "Connector manifests are contract-only; live MCP/A2A execution remains blocked until explicit capability, approval, sandbox, trace, and evidence gates are implemented"
+      ],
+      "evidence": [
+        "docs/goals/goal-010-plugin,-connector,-mcp-a2a-adapters.md",
+        "docs/10_EXTENSION_PROTOCOLS_MCP_A2A.md",
+        "docs/05_SECURITY_MODEL.md",
+        "docs/07_HARNESS_ENGINEERING.md",
+        "docs/11_OBSERVABILITY_EVIDENCE.md",
+        "schemas/connector_manifest.schema.json",
+        "nornyx/connector_runtime.py",
+        "nornyx/harness_runtime.py",
+        "tests/test_connector_runtime.py",
+        "docs/qa/evidence/GOAL-010/README.md"
+      ],
+      "next_goal": "GOAL-011 \u2014 LSP and editor tooling"
+    },
+    {
+      "id": "goal_011_lsp_editor_tooling",
+      "title": "GOAL-011 \u2014 LSP and Editor Tooling",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added local editor manifest metadata",
+        "Added syntax highlighting metadata for Nornyx blocks and references",
+        "Added LSP-shaped diagnostics from parser/checker output",
+        "Added completion items for top-level blocks and document references",
+        "Added document symbol extraction for named Nornyx entries",
+        "Added editor metadata CLI commands and regression tests"
+      ],
+      "pending": [],
+      "risks": [
+        "This is a JSON editor scaffold, not a long-running LSP server or Tree-sitter grammar"
+      ],
+      "evidence": [
+        "docs/goals/goal-011-lsp-and-editor-tooling.md",
+        "docs/tooling/26_TOOLING_ROADMAP_LSP_TREESITTER.md",
+        "docs/25_LLM_NATIVE_LANGUAGE_DX.md",
+        "nornyx/editor_tools.py",
+        "nornyx/cli.py",
+        "tests/test_editor_tools.py",
+        "docs/qa/evidence/GOAL-011/README.md"
+      ],
+      "next_goal": "GOAL-012 \u2014 Stable control-plane release"
+    },
+    {
+      "id": "goal_012_stable_control_plane_release",
+      "title": "GOAL-012 \u2014 Stable Control-Plane Release",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added local release-readiness report generation",
+        "Added release-check CLI command and release readiness script",
+        "Added release candidate notes and no-go conditions",
+        "Verified PMO consistency, core goal evidence coverage, and validation gate declarations",
+        "Recorded mandatory human release approval gate without publishing or tagging"
+      ],
+      "pending": [],
+      "risks": [
+        "Actual public release, tag, package version change, or announcement remains blocked until explicit human approval"
+      ],
+      "evidence": [
+        "docs/goals/goal-012-stable-control-plane-release.md",
+        "docs/releases/RELEASE_CANDIDATE_v1_0.md",
+        "docs/templates/nornyx-release-readiness-template.md",
+        "nornyx/release_readiness.py",
+        "scripts/release/check_release_readiness.py",
+        "tests/test_release_readiness.py",
+        "docs/qa/evidence/GOAL-012/README.md"
+      ],
+      "next_goal": "GOAL-013 \u2014 Full language evolution research"
+    },
+    {
+      "id": "goal_013_full_language_evolution_research",
+      "title": "GOAL-013 \u2014 Full Language Evolution Research",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added research-only language evolution RFC",
+        "Mapped semantic core, type/effect system, workflow constructs, and native backend research tracks",
+        "Added local language-evolution report generation and CLI/script checks",
+        "Recorded approval gates that block public syntax, parser/checker semantics, runtime, backend, dependency, connector, release, and security-model promotion",
+        "Added regression tests that keep research tracks non-promotional"
+      ],
+      "pending": [],
+      "risks": [
+        "Future language expansion can create scope creep if research tracks are promoted without a scoped goal and human approval"
+      ],
+      "evidence": [
+        "docs/goals/goal-013-full-language-evolution-research.md",
+        "docs/RFCs/RFC-0003-full-language-evolution-research.md",
+        "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+        "docs/16_FINAL_LANGUAGE_TARGET.md",
+        "nornyx/language_evolution.py",
+        "scripts/research/check_language_evolution.py",
+        "tests/test_language_evolution.py",
+        "docs/qa/evidence/GOAL-013/README.md"
+      ],
+      "next_goal": "GOAL-014 \u2014 Distinct Language Developer Experience"
+    },
+    {
+      "id": "goal_014_distinct_language_dx",
+      "title": "GOAL-014 \u2014 Distinct Language Developer Experience",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Language differentiation thesis captured",
+        "Developer experience concepts documented",
+        "Profiles and CLI direction introduced",
+        "Documented the stable profiles/init/check/fmt/explain/doctor authoring loop",
+        "Exposed the documented doctor CLI command with text and JSON output",
+        "Made the distinct-language showcase pass the hardened checker",
+        "Added profile metadata coverage for every built-in profile"
+      ],
+      "pending": [],
+      "risks": [
+        "Nornyx may feel like extra YAML unless DX remains lightweight",
+        "Grammar-native parser, real LSP/Tree-sitter support, runtime execution, and connector execution remain future work"
+      ],
+      "evidence": [
+        "docs/23_DISTINCT_LANGUAGE_STRATEGY.md",
+        "docs/24_EASY_INSTALL_USE_ADAPT_INTEGRATE.md",
+        "docs/25_LLM_NATIVE_LANGUAGE_DX.md",
+        "examples/nornyx_distinct_language_showcase.nyx",
+        "profiles/legacy_upgrade.yaml",
+        "nornyx/cli.py",
+        "tests/test_cli_dx.py",
+        "docs/qa/evidence/GOAL-014/README.md"
+      ],
+      "next_goal": "GOAL-016 \u2014 Safe Development Acceleration Tooling"
+    },
+    {
+      "id": "goal_016_safe_development_acceleration_tooling",
+      "title": "GOAL-016 \u2014 Safe Development Acceleration Tooling",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added safe local quality runner profiles",
+        "Added dry-run-first goal packet scaffolder",
+        "Added PMO status consistency auditor",
+        "Added dry-run handoff exporter",
+        "Added manual-only safe development quality workflow",
+        "Added VS Code tasks for local safe commands",
+        "Added regression tests for acceleration helper boundaries"
+      ],
+      "pending": [],
+      "risks": [
+        "Acceleration tooling must remain local and explicit so it does not become autonomous execution, remote writes, connector use, credential handling, or deployment automation"
+      ],
+      "evidence": [
+        "docs/goals/goal-016-development-acceleration-tooling.md",
+        "docs/27_SAFE_DEVELOPMENT_ACCELERATION_OVERLAY.md",
+        "nornyx/dev_quality.py",
+        "nornyx/goal_templates.py",
+        "scripts/dev/run_quality.py",
+        "scripts/dev/audit_pmo_status.py",
+        "scripts/dev/scaffold_goal.py",
+        "scripts/dev/export_handoff.py",
+        ".github/workflows/nornyx-safe-dev-quality.yml",
+        ".vscode/tasks.json",
+        "tests/test_dev_acceleration_overlay.py",
+        "docs/qa/evidence/GOAL-016/README.md"
+      ],
+      "next_goal": "GOAL-021 \u2014 Product-to-Operations Lifecycle Roadmap"
+    },
+    {
+      "id": "goal_021_product_to_operations_lifecycle_roadmap",
+      "title": "GOAL-021 \u2014 Product-to-Operations Lifecycle Roadmap",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Captured lifecycle roadmap and ADR for product-to-operations coverage",
+        "Added lifecycle extension backlog documentation",
+        "Added machine-readable lifecycle backlog data",
+        "Added product lifecycle extension schema and local validator",
+        "Added illustrative product-to-operations lifecycle example",
+        "Added regression tests that keep lifecycle concepts out of the v0.1 core surface"
+      ],
+      "pending": [],
+      "risks": [
+        "Lifecycle concepts must remain roadmap or extension metadata until promoted by a separate scoped goal with tests, evidence, and approval"
+      ],
+      "evidence": [
+        "docs/goals/goal-021-product-to-operations-lifecycle-roadmap.md",
+        "docs/decisions/ADR-0015-product-to-operations-lifecycle-extension.md",
+        "docs/33_PRODUCT_TO_OPERATIONS_LIFECYCLE_ROADMAP.md",
+        "docs/backlog/nornyx-product-to-ops-lifecycle-backlog.md",
+        "docs/backlog/nornyx-product-to-ops-lifecycle.yaml",
+        "examples/nornyx_product_to_ops_lifecycle.nyx",
+        "schemas/product_lifecycle_extension.schema.json",
+        "nornyx/product_lifecycle.py",
+        "scripts/dev/check_product_lifecycle.py",
+        "tests/test_product_lifecycle_extension.py",
+        "docs/qa/evidence/GOAL-021/README.md"
+      ],
+      "next_goal": "GOAL-023 \u2014 Handover and Ambiguity Controls"
+    },
+    {
+      "id": "goal_023_handover_and_ambiguity_controls",
+      "title": "GOAL-023 \u2014 Handover and Ambiguity Controls",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added near-core handover and ambiguity-control design docs",
+        "Added handover and ambiguity-control schemas",
+        "Added local handover contract and ambiguity-control validators",
+        "Added machine-readable handover control pack",
+        "Added cross-reference checks for blocking open questions",
+        "Added illustrative handover and ambiguity-control example",
+        "Added regression tests for handover readiness and ambiguity controls"
+      ],
+      "pending": [],
+      "risks": [
+        "Handover and ambiguity concepts must remain local validation/design scaffolds until promoted by a separate scoped goal with tests, evidence, and approval"
+      ],
+      "evidence": [
+        "docs/goals/goal-023-handover-and-ambiguity-controls.md",
+        "docs/decisions/ADR-0016-handover-and-ambiguity-controls.md",
+        "docs/34_HANDOVER_AND_AMBIGUITY_CONTROLS.md",
+        "docs/backlog/nornyx-handover-and-ambiguity-controls.yaml",
+        "schemas/handover_contract.schema.json",
+        "schemas/ambiguity_control.schema.json",
+        "nornyx/handover.py",
+        "scripts/dev/check_handover_controls.py",
+        "examples/nornyx_handover_and_ambiguity.nyx",
+        "tests/test_handover_contracts.py",
+        "docs/qa/evidence/GOAL-023/README.md"
+      ],
+      "next_goal": "GOAL-025 \u2014 Decision Boundary Evidence Quality"
+    },
+    {
+      "id": "goal_025_decision_boundary_evidence_quality",
+      "title": "GOAL-025 \u2014 Decision Boundary Evidence Quality",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added regulated-system decision boundary and evidence-quality design docs",
+        "Added decision boundary and evidence quality schemas",
+        "Added local validators for decision boundaries and evidence quality contracts",
+        "Added machine-readable regulated control pack",
+        "Added coverage checks from approval-required decision evidence to evidence-quality contracts",
+        "Added illustrative regulated controls example",
+        "Added regression tests for authority boundaries, evidence quality, and unsafe safety flags"
+      ],
+      "pending": [],
+      "risks": [
+        "Decision boundary and evidence quality controls must remain regulated/enterprise candidates until policy, capability, evidence runtime, and approval enforcement mature"
+      ],
+      "evidence": [
+        "docs/goals/goal-025-decision-boundary-evidence-quality.md",
+        "docs/decisions/ADR-0017-decision-boundary-and-evidence-quality.md",
+        "docs/35_DECISION_BOUNDARY_AND_EVIDENCE_QUALITY.md",
+        "docs/backlog/nornyx-decision-boundary-evidence-quality.yaml",
+        "schemas/decision_boundary.schema.json",
+        "schemas/evidence_quality.schema.json",
+        "nornyx/regulated_controls.py",
+        "scripts/dev/check_regulated_controls.py",
+        "examples/nornyx_decision_boundary_evidence_quality.nyx",
+        "tests/test_decision_boundary_evidence_quality.py",
+        "docs/qa/evidence/GOAL-025/README.md"
+      ],
+      "next_goal": "GOAL-026 \u2014 Requirement Triage Matrix"
+    },
+    {
+      "id": "goal_026_requirement_triage_matrix",
+      "title": "GOAL-026 \u2014 Requirement Triage Matrix",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added ADR and human-readable requirement triage matrix",
+        "Added machine-readable YAML triage matrix",
+        "Added schema and local validator for matrix shape",
+        "Added local check script for triage matrix validation",
+        "Locked category actions to prevent silent scope promotion",
+        "Added regression tests for duplicates, required core concepts, schema alignment, real matrix validity, and action locking"
+      ],
+      "pending": [],
+      "risks": [
+        "Matrix category/action semantics must remain stable so backlog, profile-specific, outside, or rejected concepts are not accidentally promoted into core implementation scope"
+      ],
+      "evidence": [
+        "docs/goals/goal-026-requirement-triage-matrix.md",
+        "docs/decisions/ADR-0018-requirement-triage-matrix.md",
+        "docs/36_NORNYX_REQUIREMENT_TRIAGE_MATRIX.md",
+        "docs/backlog/nornyx-requirement-triage-matrix.yaml",
+        "schemas/requirement_triage_matrix.schema.json",
+        "nornyx/requirement_triage.py",
+        "scripts/dev/check_requirement_triage.py",
+        "tests/test_requirement_triage_matrix.py",
+        "docs/qa/evidence/GOAL-026/README.md"
+      ],
+      "next_goal": "GOAL-027 \u2014 Agent Requirement Discovery Workflow"
+    },
+    {
+      "id": "goal_027_agent_requirement_discovery_workflow",
+      "title": "GOAL-027 \u2014 Agent Requirement Discovery Workflow",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added ADR and workflow documentation for agent-discovered requirements",
+        "Added triage candidate template and agent instruction snippet",
+        "Added triage candidate schema, example candidate, local validator, and check script",
+        "Added stable candidate concept keys",
+        "Added matrix-aware classification checks for known concepts",
+        "Added regression tests for candidate shape, duplicate IDs, blocking escalation warnings, matrix mismatches, and real candidate directory validation"
+      ],
+      "pending": [],
+      "risks": [
+        "Agents must record new scope as triage candidates and must not implement discovered scope without explicit approval"
+      ],
+      "evidence": [
+        "docs/goals/goal-027-agent-requirement-discovery-workflow.md",
+        "docs/decisions/ADR-0019-agent-requirement-discovery-workflow.md",
+        "docs/37_AGENT_REQUIREMENT_DISCOVERY_WORKFLOW.md",
+        "docs/templates/triage-candidate-template.yaml",
+        "docs/templates/agent-triage-instruction-snippet.md",
+        "docs/backlog/triage-candidates/TC-EXAMPLE-001-non-blocking-example.yaml",
+        "schemas/triage_candidate.schema.json",
+        "nornyx/triage_candidates.py",
+        "scripts/dev/check_triage_candidates.py",
+        "tests/test_triage_candidates.py",
+        "docs/qa/evidence/GOAL-027/README.md"
+      ],
+      "next_goal": "GOAL-028 \u2014 Authoring Assistant Roadmap"
+    },
+    {
+      "id": "goal_028_authoring_assistant_roadmap",
+      "title": "GOAL-028 \u2014 Authoring Assistant Roadmap",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added ADR and roadmap documentation for guided CLI/UI/LLM-assisted .nyx authoring",
+        "Added machine-readable authoring assistant roadmap data",
+        "Added authoring assistant roadmap schema and local validator",
+        "Added explicit promotion gates and blocked action IDs",
+        "Added regression tests for real roadmap validation, duplicate capabilities, premature promotion, blocked actions, and unsafe safety flags"
+      ],
+      "pending": [],
+      "risks": [
+        "Authoring assistance must remain roadmap/backlog until checker, capability, evidence, and human approval gates are separately implemented"
+      ],
+      "evidence": [
+        "docs/goals/goal-028-authoring-assistant-roadmap.md",
+        "docs/decisions/ADR-0020-nornyx-authoring-assistant-roadmap.md",
+        "docs/38_NORNYX_AUTHORING_ASSISTANT_ROADMAP.md",
+        "docs/backlog/nornyx-authoring-assistant-roadmap.yaml",
+        "schemas/authoring_assistant_roadmap.schema.json",
+        "nornyx/authoring_assistant.py",
+        "scripts/dev/check_authoring_assistant_roadmap.py",
+        "tests/test_authoring_assistant_roadmap.py",
+        "docs/qa/evidence/GOAL-028/README.md"
+      ],
+      "next_goal": "GOAL-029 \u2014 Developer PMO Portal Git/Vision Refresh"
+    },
+    {
+      "id": "goal_029_dev_pmo_portal",
+      "title": "GOAL-029 \u2014 Developer PMO Portal Git/Vision Refresh",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Active lightweight box-based portal selected",
+        "Local Git status endpoint added",
+        "Optional remote Git check added",
+        "Vision map rendering added",
+        "Packet-only goal card display added",
+        "Read-only KPI status endpoint and portal panel added",
+        "Local browser verification completed"
+      ],
+      "pending": [],
+      "risks": [
+        "Portal must remain read-only and not become development control surface"
+      ],
+      "evidence": [
+        "apps/nornyx-dev-pmo-portal/",
+        "tests/test_nornyx_dev_pmo_portal_git_status.py",
+        "tests/test_nornyx_dev_pmo_portal_goal_packets.py",
+        "tests/test_nornyx_dev_pmo_portal_favicon.py",
+        "docs/qa/evidence/GOAL-029/README.md",
+        "docs/qa/evidence/GOAL-029/changed_files.txt",
+        "docs/qa/evidence/GOAL-029/test_output.txt",
+        "docs/qa/evidence/GOAL-029/risk_note.md",
+        "docs/qa/evidence/GOAL-029/handoff.md",
+        "docs/qa/evidence/GOAL-029/kpi_status.json"
+      ],
+      "next_goal": "GOAL-031 \u2014 KPI measurement quality scoring"
+    },
+    {
+      "id": "goal_031_kpi_measurement",
+      "title": "GOAL-031 \u2014 KPI Measurement and Quality Scoring",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "KPI model added",
+        "Evidence scoring helper added",
+        "Quality profile helper added",
+        "KPI benchmark used in a real Codex goal session",
+        "Read-only portal KPI display added in GOAL-029",
+        "Local KPI measurement validation gate added",
+        "GOAL-031 evidence scored complete"
+      ],
+      "pending": [],
+      "risks": [
+        "KPI scores must remain advisory and must not become automatic approval, merge, release, or publication authority"
+      ],
+      "evidence": [
+        "docs/metrics/NORNYX_KPI_MODEL.md",
+        "docs/templates/kpi-result-template.json",
+        "nornyx/kpi_metrics.py",
+        "nornyx/dev_quality.py",
+        "scripts/dev/score_evidence.py",
+        "scripts/dev/run_kpi_benchmark.py",
+        "scripts/dev/check_kpi_measurement.py",
+        "tests/test_kpi_metrics.py",
+        "docs/qa/evidence/GOAL-031/README.md",
+        "docs/qa/evidence/GOAL-031/changed_files.txt",
+        "docs/qa/evidence/GOAL-031/test_output.txt",
+        "docs/qa/evidence/GOAL-031/risk_note.md",
+        "docs/qa/evidence/GOAL-031/handoff.md",
+        "docs/qa/evidence/GOAL-031/kpi_validation.json"
+      ],
+      "next_goal": "GOAL-032 \u2014 Zero-Friction Adoption Pack"
+    },
+    {
+      "id": "goal_032_zero_friction_adoption",
+      "title": "GOAL-032 \u2014 Zero-Friction Adoption Pack",
+      "phase": "v0.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Lite adoption command added",
+        "Adoption roadmap added",
+        "Adoption validator added",
+        "Clean downstream Lite validation added",
+        "Standard quality profile includes adoption check",
+        "Future authoring wizard remains explicitly out of scope"
+      ],
+      "pending": [],
+      "risks": [
+        "Adoption helpers must remain local and deterministic, and must not become portal wizard, remote write, LLM, installer, or production enforcement scope"
+      ],
+      "evidence": [
+        "docs/39_NORNYX_ZERO_FRICTION_ADOPTION_PACK.md",
+        "docs/ADRs/ADR-0021-zero-friction-adoption-ramp.md",
+        "docs/backlog/nornyx-zero-friction-adoption-pack.yaml",
+        "nornyx/adoption.py",
+        "nornyx/cli.py",
+        "nornyx/dev_quality.py",
+        "scripts/dev/check_adoption_pack.py",
+        "tests/test_zero_friction_adoption.py",
+        "docs/qa/evidence/GOAL-032/README.md",
+        "docs/qa/evidence/GOAL-032/changed_files.txt",
+        "docs/qa/evidence/GOAL-032/test_output.txt",
+        "docs/qa/evidence/GOAL-032/risk_note.md",
+        "docs/qa/evidence/GOAL-032/handoff.md",
+        "docs/qa/evidence/GOAL-032/adoption_validation.json"
+      ],
+      "next_goal": "GOAL-100 \u2014 Future Regulated/Enterprise Extensions (locked)"
+    },
+    {
+      "id": "goal_033_v011_cleanup_contract_hardening",
+      "title": "GOAL-033 \u2014 v0.1.1 Cleanup and Contract Hardening",
+      "phase": "v0.1.1",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Mapping block validation added locally for constitution and evidence",
+        "Focused checker regression tests added locally",
+        "Roadmap and PMO wording aligned locally",
+        "PMO next-goal plan updated with GOAL-034 through GOAL-042",
+        "Formal GOAL-033 evidence folder added",
+        "Required local validation passed"
+      ],
+      "pending": [],
+      "risks": [
+        "Do not let v0.1.1 cleanup expand into v0.2 Graph or runtime scope"
+      ],
+      "evidence": [
+        "nornyx/checker.py",
+        "tests/test_parser_checker.py",
+        "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+        "docs/pmo/status/current_status.json",
+        "docs/qa/evidence/GOAL-033/README.md",
+        "docs/qa/evidence/GOAL-033/test_output.txt",
+        "docs/qa/evidence/GOAL-033/risk_note.md",
+        "docs/qa/evidence/GOAL-033/handoff.md"
+      ],
+      "next_goal": "GOAL-034 \u2014 v0.2 Nornyx Graph and Generic Contract Model"
+    },
+    {
+      "id": "goal_034_v02_nornyx_graph_contract_model",
+      "title": "GOAL-034 \u2014 v0.2 Nornyx Graph and Generic Contract Model",
+      "phase": "v0.2",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Declare graph node and edge model",
+        "Define generic contract blocks",
+        "Mature semantic checker and typed schemas",
+        "Strengthen diagnostics, provenance/trust relationships, approval, and budget consistency checks",
+        "Add declarative graph contract example",
+        "Add GOAL-034 evidence",
+        "Clarify v0.2 compatibility schema version story",
+        "Add known core graph ref validation without making domain/profile refs mandatory"
+      ],
+      "pending": [],
+      "risks": [
+        "Do not implement graph runtime, adapters, live connectors, or execution behavior in v0.2"
+      ],
+      "evidence": [
+        "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+        "docs/01_LANGUAGE_SPEC_v0_1.md",
+        "schemas/nornyx_v0_1.schema.json",
+        "nornyx/checker.py",
+        "nornyx/schema_model.py",
+        "tests/test_parser_checker.py",
+        "tests/test_schema_model.py",
+        "docs/qa/evidence/GOAL-034/README.md",
+        "docs/qa/evidence/GOAL-034/test_output.txt",
+        "docs/qa/evidence/GOAL-034/risk_note.md",
+        "docs/qa/evidence/GOAL-034/handoff.md"
+      ],
+      "next_goal": "GOAL-035 \u2014 v0.3 Domain Profiles"
+    },
+    {
+      "id": "goal_035_v03_domain_profiles",
+      "title": "GOAL-035 \u2014 v0.3 Domain Profiles",
+      "phase": "v0.3",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Defined v0.3 optional profile packs for ai_coding, agentic_repo_harness, telecom_ops, business_ops, ai_governance, and finance_ops",
+        "Added domain profile metadata manifests under profiles/",
+        "Added generated starter documents for domain profiles on the v0.2 graph/contract surface",
+        "Added profile pack catalog validation rules",
+        "Added domain profile schema and compatibility tests",
+        "Documented v0.3 profile scope, non-goals, and core generality boundary"
+      ],
+      "pending": [],
+      "risks": [
+        "Profiles must remain optional metadata overlays and must not become domain-specific runtimes or production execution systems"
+      ],
+      "evidence": [
+        "nornyx/profiles.py",
+        "profiles/ai_coding.yaml",
+        "profiles/agentic_repo_harness.yaml",
+        "profiles/telecom_ops.yaml",
+        "profiles/business_ops.yaml",
+        "profiles/ai_governance.yaml",
+        "profiles/finance_ops.yaml",
+        "schemas/domain_profile_pack.schema.json",
+        "tests/test_cli_dx.py",
+        "docs/40_NORNYX_DOMAIN_PROFILES_v0_3.md",
+        "docs/qa/evidence/GOAL-035/README.md",
+        "docs/qa/evidence/GOAL-035/test_output.txt"
+      ],
+      "next_goal": "GOAL-036 \u2014 v0.4 Adapters and Ecosystem Bridges"
+    },
+    {
+      "id": "goal_036_v04_adapters_ecosystem_bridges",
+      "title": "GOAL-036 \u2014 v0.4 Adapters and Ecosystem Bridges",
+      "phase": "v0.4",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Defined contract-only adapter bridge surface for Governed Delivery Control Plane, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops",
+        "Added adapter contract schema with execution disabled, approval required, and live connector execution false",
+        "Added v0.4 adapter example with MCP/A2A connector conformance",
+        "Added policy/eval/evidence integration tests for adapter contracts",
+        "Recognized adapters as a deferred extension block in the compatibility schema and checker surface",
+        "Documented the adapter boundary in roadmap, language spec, extension protocol, and security model docs"
+      ],
+      "pending": [],
+      "risks": [
+        "Adapters must remain contract bridges; no live connector execution by default"
+      ],
+      "evidence": [
+        "docs/41_NORNYX_ADAPTER_CONTRACTS_v0_4.md",
+        "schemas/adapter_contract.schema.json",
+        "examples/nornyx_v04_adapter_contracts.nyx",
+        "tests/test_v04_adapter_contracts.py",
+        "docs/qa/evidence/GOAL-036/README.md",
+        "docs/qa/evidence/GOAL-036/test_output.txt"
+      ],
+      "next_goal": "GOAL-037 \u2014 v0.5 Graph Validation and Semantic Consistency Hardening"
+    },
+    {
+      "id": "goal_037_v05_graph_validation_semantic_consistency",
+      "title": "GOAL-037 \u2014 v0.5 Graph Validation and Semantic Consistency Hardening",
+      "phase": "v0.5",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added static relation source/target consistency checks for recognized graph relations",
+        "Added duplicate edge and self-edge warnings",
+        "Expanded known graph ref targets for intents, adapters, connectors, and evidence",
+        "Added contract auditability warnings for approval, budget, and evidence graph coverage",
+        "Updated canonical graph examples to include approval, budget, and evidence coverage",
+        "Documented v0.5 graph validation as diagnostics-only"
+      ],
+      "pending": [],
+      "risks": [
+        "Graph validation must remain static diagnostics and must not become hidden autonomous execution"
+      ],
+      "evidence": [
+        "nornyx/checker.py",
+        "tests/test_parser_checker.py",
+        "docs/42_NORNYX_GRAPH_VALIDATION_v0_5.md",
+        "examples/nornyx_roadmap_goals.nyx",
+        "examples/nornyx_v04_adapter_contracts.nyx",
+        "docs/qa/evidence/GOAL-037/README.md",
+        "docs/qa/evidence/GOAL-037/test_output.txt"
+      ],
+      "next_goal": "GOAL-038 \u2014 v0.6 Domain-Profile Conformance"
+    },
+    {
+      "id": "goal_038_v06_domain_profile_conformance",
+      "title": "GOAL-038 \u2014 v0.6 Domain-Profile Conformance",
+      "phase": "v0.6",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added static v0.6 profile conformance report",
+        "Added cross-profile compatibility matrix",
+        "Added v1 readiness decisions for every domain profile",
+        "Added migration guidance to profile metadata",
+        "Added conformance tests for metadata parity, compatibility, generated starter checks, and core boundary preservation",
+        "Documented profile conformance and non-goals"
+      ],
+      "pending": [],
+      "risks": [
+        "Profile rules must stay compatible with the generic contract model and must not make domain concepts mandatory core syntax"
+      ],
+      "evidence": [
+        "nornyx/profiles.py",
+        "profiles/*.yaml",
+        "schemas/domain_profile_pack.schema.json",
+        "tests/test_cli_dx.py",
+        "docs/43_NORNYX_PROFILE_CONFORMANCE_v0_6.md",
+        "docs/qa/evidence/GOAL-038/README.md",
+        "docs/qa/evidence/GOAL-038/test_output.txt"
+      ],
+      "next_goal": "GOAL-039 \u2014 v0.7 Adapter Conformance and Connector-Contract Hardening"
+    },
+    {
+      "id": "goal_039_v07_adapter_connector_contract_hardening",
+      "title": "GOAL-039 \u2014 v0.7 Adapter Conformance and Connector-Contract Hardening",
+      "phase": "v0.7",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added static v0.7 adapter conformance report builder",
+        "Added adapter conformance evidence report writer",
+        "Added connector-contract conformance schema",
+        "Added adapter conformance report schema",
+        "Added MCP/A2A contract validation decisions",
+        "Added tests for safe adapter conformance and blocked unsafe contracts",
+        "Documented adapter and connector-contract hardening boundaries"
+      ],
+      "pending": [],
+      "risks": [
+        "Connector contract work must not enable live connectors without explicit gates"
+      ],
+      "evidence": [
+        "nornyx/connector_runtime.py",
+        "schemas/adapter_conformance_report.schema.json",
+        "schemas/connector_contract_conformance.schema.json",
+        "tests/test_v07_adapter_conformance.py",
+        "docs/44_NORNYX_ADAPTER_CONFORMANCE_v0_7.md",
+        "docs/qa/evidence/GOAL-039/README.md",
+        "docs/qa/evidence/GOAL-039/test_output.txt"
+      ],
+      "next_goal": "GOAL-040 \u2014 v0.8 Bounded Execution Readiness"
+    },
+    {
+      "id": "goal_040_v08_bounded_execution_readiness",
+      "title": "GOAL-040 \u2014 v0.8 Bounded Execution Readiness",
+      "phase": "v0.8",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added static bounded execution readiness report builder",
+        "Added bounded execution readiness report writer",
+        "Added bounded execution readiness schema",
+        "Defined sandbox contract requirements",
+        "Added explicit capability, approval-before-action, trace, and evidence readiness checks",
+        "Added tests for safe readiness and unsafe sandbox blocking",
+        "Documented readiness-only boundaries"
+      ],
+      "pending": [],
+      "risks": [
+        "Bounded execution readiness must not become broad runtime autonomy or production deployment"
+      ],
+      "evidence": [
+        "nornyx/bounded_execution.py",
+        "schemas/bounded_execution_readiness.schema.json",
+        "tests/test_v08_bounded_execution_readiness.py",
+        "docs/45_NORNYX_BOUNDED_EXECUTION_READINESS_v0_8.md",
+        "docs/qa/evidence/GOAL-040/README.md",
+        "docs/qa/evidence/GOAL-040/test_output.txt"
+      ],
+      "next_goal": "GOAL-041 \u2014 v0.9 Release-Candidate Stabilization"
+    },
+    {
+      "id": "goal_041_v09_release_candidate_stabilization",
+      "title": "GOAL-041 \u2014 v0.9 Release-Candidate Stabilization",
+      "phase": "v0.9",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Froze v0.9 release-candidate documentation",
+        "Added release-candidate stabilization report builder",
+        "Added release-candidate stabilization schema",
+        "Added local RC stabilization script",
+        "Completed compatibility and migration evidence checks for GOAL-033 through GOAL-040",
+        "Ran quality and validation gates",
+        "Prepared release-candidate evidence while keeping human approval mandatory"
+      ],
+      "pending": [],
+      "risks": [
+        "Do not claim release readiness before quality gates and human approval"
+      ],
+      "evidence": [
+        "nornyx/release_readiness.py",
+        "schemas/release_candidate_stabilization.schema.json",
+        "scripts/release/check_rc_stabilization.py",
+        "tests/test_release_readiness.py",
+        "docs/46_NORNYX_RELEASE_CANDIDATE_STABILIZATION_v0_9.md",
+        "docs/releases/RELEASE_CANDIDATE_v1_0.md",
+        "docs/qa/evidence/GOAL-041/README.md",
+        "docs/qa/evidence/GOAL-041/test_output.txt"
+      ],
+      "next_goal": "GOAL-042 \u2014 v1.0 Stable Generalized Agentic Contract Language"
+    },
+    {
+      "id": "goal_042_v10_stable_generalized_agentic_contract_language",
+      "title": "GOAL-042 \u2014 v1.0 Stable Generalized Agentic Contract Language",
+      "phase": "v1.0",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Stable graph model",
+        "Stable contract schema",
+        "Stable checker",
+        "Stable profiles and adapters",
+        "Stable policy/eval/evidence semantics",
+        "Stable approval gates, artifact generation, and safe interoperability rules",
+        "Local stable-language report, schema, CLI command, and release script added",
+        "GOAL-100 retained as locked regulated/enterprise extension work"
+      ],
+      "pending": [],
+      "risks": [
+        "v1.0 must not be described as full autonomous runtime, general-purpose language, production execution engine, unrestricted connector runtime, or regulated/enterprise GOAL-100 promotion",
+        "Public release, GitHub push, tag, package version change, or announcement still requires separate approval"
+      ],
+      "evidence": [
+        "docs/47_NORNYX_STABLE_GENERALIZED_CONTRACT_LANGUAGE_v1_0.md",
+        "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+        "docs/01_LANGUAGE_SPEC_v0_1.md",
+        "docs/releases/RELEASE_CANDIDATE_v1_0.md",
+        "nornyx/release_readiness.py",
+        "nornyx/cli.py",
+        "schemas/stable_language_report.schema.json",
+        "scripts/release/check_stable_language.py",
+        "tests/test_release_readiness.py",
+        "docs/qa/evidence/GOAL-042/README.md",
+        "docs/qa/evidence/GOAL-042/test_output.txt"
+      ],
+      "next_goal": "GOAL-043 \u2014 v1.0 Public Release Preparation"
+    },
+    {
+      "id": "goal_043_v10_public_release_preparation",
+      "title": "GOAL-043 \u2014 v1.0 Public Release Preparation",
+      "phase": "v1.0 release preparation",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Prepared package metadata at 1.0.0",
+        "Added v1.0 release notes",
+        "Clarified release-candidate notes for prepared metadata state",
+        "Updated release-readiness tests for the prepared target version",
+        "Recorded GOAL-043 evidence",
+        "Kept tag creation, package publication, GitHub release creation, public announcement, and GOAL-100 locked behind separate approval"
+      ],
+      "pending": [],
+      "risks": [
+        "Prepared package metadata must not be mistaken for tag creation, package publication, GitHub release creation, production deployment, or public announcement",
+        "GOAL-100 remains locked until post-v1.0 enterprise maturity is separately approved"
+      ],
+      "evidence": [
+        "pyproject.toml",
+        "nornyx/__init__.py",
+        "manifest.json",
+        "docs/releases/RELEASE_NOTES_v1_0.md",
+        "docs/releases/RELEASE_CANDIDATE_v1_0.md",
+        "docs/goals/goal-043-v10-public-release-preparation.md",
+        "tests/test_release_readiness.py",
+        "docs/qa/evidence/GOAL-043/README.md",
+        "docs/qa/evidence/GOAL-043/test_output.txt"
+      ],
+      "next_goal": "GOAL-044 \u2014 v1.0 Release-Prep GitHub Merge"
+    },
+    {
+      "id": "goal_044_v10_release_prep_github_merge",
+      "title": "GOAL-044 \u2014 v1.0 Release-Prep GitHub Merge",
+      "phase": "v1.0 release preparation",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Created release-prep branch",
+        "Committed GOAL-043 release metadata",
+        "Opened PR #5",
+        "Verified PR was clean and mergeable with no reported GitHub checks",
+        "Merged PR #5 to main",
+        "Cleared local and remote branch"
+      ],
+      "pending": [],
+      "risks": [
+        "Release-prep merge must not be confused with package publication, deployment, or GOAL-100 promotion"
+      ],
+      "evidence": [
+        "docs/goals/goal-044-v10-release-prep-github-merge.md",
+        "docs/qa/evidence/GOAL-044/README.md",
+        "https://github.com/mazinmarji/nornyx/pull/5"
+      ],
+      "next_goal": "GOAL-045 \u2014 v1.0 Tag and GitHub Release"
+    },
+    {
+      "id": "goal_045_v10_tag_github_release",
+      "title": "GOAL-045 \u2014 v1.0 Tag and GitHub Release",
+      "phase": "v1.0 public release",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Ran approved release readiness gates",
+        "Created annotated tag v1.0.0",
+        "Pushed tag v1.0.0 to GitHub",
+        "Created GitHub release Nornyx v1.0.0",
+        "Verified release exists and is not draft or prerelease"
+      ],
+      "pending": [],
+      "risks": [
+        "GitHub source release must not be confused with package publication, production deployment, live connector execution, or GOAL-100 promotion"
+      ],
+      "evidence": [
+        "docs/goals/goal-045-v10-tag-github-release.md",
+        "docs/releases/RELEASE_NOTES_v1_0.md",
+        "docs/qa/evidence/GOAL-045/README.md",
+        "https://github.com/mazinmarji/nornyx/releases/tag/v1.0.0"
+      ],
+      "next_goal": "GOAL-046 \u2014 v1.0 Post-Release PMO and Evidence Record"
+    },
+    {
+      "id": "goal_046_v10_post_release_pmo_evidence_record",
+      "title": "GOAL-046 \u2014 v1.0 Post-Release PMO and Evidence Record",
+      "phase": "v1.0 post-release record",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added release operation goal packets for GOAL-044 through GOAL-046",
+        "Added v1.0 release record",
+        "Recorded GitHub release URL, tag, target commit, and release timestamp",
+        "Updated PMO summary and strategic map for v1.0.0 GitHub source release",
+        "Kept GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Post-release record must not imply package publication, deployment, live connector execution, runtime expansion, or GOAL-100 promotion"
+      ],
+      "evidence": [
+        "docs/goals/goal-046-v10-post-release-pmo-evidence-record.md",
+        "docs/releases/RELEASE_RECORD_v1_0.md",
+        "docs/qa/evidence/GOAL-046/README.md",
+        "docs/qa/evidence/GOAL-046/test_output.txt"
+      ],
+      "next_goal": "GOAL-048 \u2014 v1.0.1 Release Hygiene and Adoption Polish"
+    },
+    {
+      "id": "goal_048_v101_release_hygiene_adoption_polish",
+      "title": "GOAL-048 \u2014 v1.0.1 Release Hygiene and Adoption Polish",
+      "phase": "v1.0.1 hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Aligned release notes with the actual v1.0.0 GitHub source release",
+        "Updated PMO freshness date to 2026-06-03",
+        "Added concise Nornyx positioning guidance",
+        "Added 5-minute local adoption guide",
+        "Linked positioning, adoption, and release record from README",
+        "Kept GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Public positioning must not imply package publication, production deployment, live connector execution, autonomous runtime, general-purpose language scope, or GOAL-100 promotion"
+      ],
+      "evidence": [
+        "docs/goals/goal-048-v101-release-hygiene-adoption-polish.md",
+        "docs/48_NORNYX_POSITIONING.md",
+        "docs/49_NORNYX_5_MINUTE_ADOPTION.md",
+        "docs/releases/RELEASE_NOTES_v1_0.md",
+        "README.md",
+        "docs/qa/evidence/GOAL-048/README.md",
+        "docs/qa/evidence/GOAL-048/test_output.txt"
+      ],
+      "next_goal": "GOAL-049 \u2014 Static Nornyx Graph Demo"
+    },
+    {
+      "id": "goal_049_static_nornyx_graph_demo",
+      "title": "GOAL-049 \u2014 Static Nornyx Graph Demo",
+      "phase": "v1.0.1 graph demo",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added a static Nornyx Graph demo example",
+        "Added a concise graph demo guide",
+        "Added regression coverage for the demo",
+        "Linked the demo from README and manifest metadata",
+        "Recorded GOAL-049 PMO and evidence",
+        "Kept runtime execution, live connectors, package publication, deployment, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Graph demo wording must not imply executable graph runtime, live connector execution, automatic approval, or GOAL-100 promotion"
+      ],
+      "evidence": [
+        "docs/goals/goal-049-static-nornyx-graph-demo.md",
+        "examples/nornyx_graph_demo.nyx",
+        "docs/50_NORNYX_GRAPH_DEMO.md",
+        "docs/qa/evidence/GOAL-049/README.md",
+        "docs/qa/evidence/GOAL-049/test_output.txt"
+      ],
+      "next_goal": "GOAL-050 \u2014 Schema Version Split Planning"
+    },
+    {
+      "id": "goal_050_schema_version_split_planning",
+      "title": "GOAL-050 \u2014 Schema Version Split Planning",
+      "phase": "v1.0.1 schema hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Documented current compatibility schema state",
+        "Defined target v0.1, v0.2, and v1.0 schema file names",
+        "Defined additive migration sequence and acceptance criteria",
+        "Added a regression check for the planning artifact",
+        "Recorded GOAL-050 PMO and evidence",
+        "Kept schema implementation, CLI routing changes, runtime execution, live connectors, package publication, deployment, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Future schema split implementation could break compatibility if default routing changes before registry tests and aliases are in place"
+      ],
+      "evidence": [
+        "docs/goals/goal-050-schema-version-split-planning.md",
+        "docs/51_SCHEMA_VERSION_SPLIT_PLAN.md",
+        "docs/qa/evidence/GOAL-050/README.md",
+        "docs/qa/evidence/GOAL-050/test_output.txt"
+      ],
+      "next_goal": "GOAL-051 \u2014 Schema Version Split Implementation"
+    },
+    {
+      "id": "goal_051_schema_version_split_implementation",
+      "title": "GOAL-051 \u2014 Schema Version Split Implementation",
+      "phase": "v1.0.1 schema hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added explicit v0.2 and v1.0 schema files",
+        "Preserved the historical v0.1 path as the default compatibility schema",
+        "Added schema registry routing for compat, 0.1, 0.2, and 1.0",
+        "Added schema CLI version selection",
+        "Added regression coverage for schema routing and metadata",
+        "Recorded GOAL-051 PMO and evidence",
+        "Kept checker behavior, runtime execution, live connectors, package publication, deployment, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Future migration could break consumers if the compatibility schema route is removed before aliases and documentation are stabilized"
+      ],
+      "evidence": [
+        "docs/goals/goal-051-schema-version-split-implementation.md",
+        "schemas/nornyx_v0_2.schema.json",
+        "schemas/nornyx_v1_0.schema.json",
+        "docs/qa/evidence/GOAL-051/README.md",
+        "docs/qa/evidence/GOAL-051/test_output.txt"
+      ],
+      "next_goal": "GOAL-052 \u2014 Schema Split Documentation and Example Alignment"
+    },
+    {
+      "id": "goal_052_schema_split_documentation_example_alignment",
+      "title": "GOAL-052 \u2014 Schema Split Documentation and Example Alignment",
+      "phase": "v1.0.1 schema hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added a schema targets and examples guide",
+        "Updated language spec schema target wording",
+        "Updated roadmap schema split wording",
+        "Linked the schema target guide from README",
+        "Added regression coverage for the guide",
+        "Recorded GOAL-052 PMO and evidence",
+        "Kept schema behavior, checker behavior, runtime execution, live connectors, package publication, deployment, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Users may confuse schema inspection with document checking unless docs keep those commands separate"
+      ],
+      "evidence": [
+        "docs/goals/goal-052-schema-split-documentation-and-example-alignment.md",
+        "docs/52_SCHEMA_TARGETS_AND_EXAMPLES.md",
+        "docs/qa/evidence/GOAL-052/README.md",
+        "docs/qa/evidence/GOAL-052/test_output.txt"
+      ],
+      "next_goal": "GOAL-053 \u2014 Adoption Guide Schema Target Refresh"
+    },
+    {
+      "id": "goal_053_adoption_guide_schema_target_refresh",
+      "title": "GOAL-053 \u2014 Adoption Guide Schema Target Refresh",
+      "phase": "v1.0.1 adoption polish",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added schema target inspection to the 5-minute adoption path",
+        "Kept the compatibility default explicit",
+        "Clarified schema inspection versus .nyx checking",
+        "Added README quick-start schema target coverage",
+        "Added regression coverage for the adoption guide",
+        "Recorded GOAL-053 PMO and evidence",
+        "Kept schema routing, checker behavior, runtime execution, live connectors, package publication, deployment, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "First-time users may confuse schema inspection with document validation unless adoption docs keep those commands separate"
+      ],
+      "evidence": [
+        "docs/goals/goal-053-adoption-guide-schema-target-refresh.md",
+        "docs/49_NORNYX_5_MINUTE_ADOPTION.md",
+        "docs/qa/evidence/GOAL-053/README.md",
+        "docs/qa/evidence/GOAL-053/test_output.txt"
+      ],
+      "next_goal": "GOAL-054 \u2014 README Command Consistency Audit"
+    },
+    {
+      "id": "goal_054_readme_command_consistency_audit",
+      "title": "GOAL-054 \u2014 README Command Consistency Audit",
+      "phase": "v1.0.1 adoption polish",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Audited README command blocks against manifest and local validation commands",
+        "Aligned README quick-start commands to python -m nornyx.cli form",
+        "Documented the console script as valid after editable install",
+        "Added README command consistency audit note",
+        "Added regression coverage for README command consistency",
+        "Recorded GOAL-054 PMO and evidence",
+        "Kept CLI behavior, parser behavior, checker behavior, runtime execution, live connectors, package publication, deployment, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Users may expect the nornyx console script before their active environment has installed it"
+      ],
+      "evidence": [
+        "docs/goals/goal-054-readme-command-consistency-audit.md",
+        "docs/53_README_COMMAND_CONSISTENCY_AUDIT.md",
+        "docs/qa/evidence/GOAL-054/README.md",
+        "docs/qa/evidence/GOAL-054/test_output.txt"
+      ],
+      "next_goal": "GOAL-055 \u2014 Manifest Metadata Freshness Cleanup"
+    },
+    {
+      "id": "goal_055_manifest_metadata_freshness_cleanup",
+      "title": "GOAL-055 \u2014 Manifest Metadata Freshness Cleanup",
+      "phase": "v1.0.1 repo hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added current validation metadata to manifest.json",
+        "Moved ZIP-era verification data under historical_zip_verification",
+        "Updated manifest schema target wording",
+        "Added manifest metadata freshness documentation",
+        "Added regression coverage for manifest freshness",
+        "Recorded GOAL-055 PMO and evidence",
+        "Kept package version, package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Historical ZIP verification counts can be mistaken for current validation if not clearly labeled"
+      ],
+      "evidence": [
+        "docs/goals/goal-055-manifest-metadata-freshness-cleanup.md",
+        "docs/54_MANIFEST_METADATA_FRESHNESS.md",
+        "docs/qa/evidence/GOAL-055/README.md",
+        "docs/qa/evidence/GOAL-055/test_output.txt"
+      ],
+      "next_goal": "GOAL-056 \u2014 PMO Summary Noise Reduction"
+    },
+    {
+      "id": "goal_056_pmo_summary_noise_reduction",
+      "title": "GOAL-056 \u2014 PMO Summary Noise Reduction",
+      "phase": "v1.0.1 repo hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Shortened top-level PMO summary wording",
+        "Added explicit PMO readability guidance",
+        "Preserved detailed completed-goal ledger history",
+        "Added regression coverage for concise summary metadata",
+        "Recorded GOAL-056 PMO and evidence",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Overly compact summaries can hide history unless the goal ledger and evidence packs remain preserved"
+      ],
+      "evidence": [
+        "docs/goals/goal-056-pmo-summary-noise-reduction.md",
+        "docs/55_PMO_SUMMARY_NOISE_REDUCTION.md",
+        "docs/qa/evidence/GOAL-056/README.md",
+        "docs/qa/evidence/GOAL-056/test_output.txt"
+      ],
+      "next_goal": "GOAL-057 \u2014 Manifest Validation Baseline Refresh"
+    },
+    {
+      "id": "goal_057_manifest_validation_baseline_refresh",
+      "title": "GOAL-057 \u2014 Manifest Validation Baseline Refresh",
+      "phase": "v1.0.1 repo hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Updated manifest current validation metadata to GOAL-057",
+        "Refreshed manifest test result to the current 238-test baseline",
+        "Aligned manifest PMO audit metadata with the GOAL-057 ledger state",
+        "Added regression coverage for the refreshed manifest baseline",
+        "Recorded GOAL-057 PMO and evidence",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Manifest validation metadata can drift after each hygiene goal if it is not refreshed deliberately"
+      ],
+      "evidence": [
+        "docs/goals/goal-057-manifest-validation-baseline-refresh.md",
+        "docs/56_MANIFEST_VALIDATION_BASELINE_REFRESH.md",
+        "docs/qa/evidence/GOAL-057/README.md",
+        "docs/qa/evidence/GOAL-057/test_output.txt"
+      ],
+      "next_goal": "GOAL-058 \u2014 README v1.0.1 Hygiene Index Refresh"
+    },
+    {
+      "id": "goal_058_readme_v101_hygiene_index_refresh",
+      "title": "GOAL-058 \u2014 README v1.0.1 Hygiene Index Refresh",
+      "phase": "v1.0.1 adoption polish",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added README links for v1.0.1 hygiene documents",
+        "Added README hygiene index note",
+        "Added regression coverage for README hygiene links",
+        "Updated manifest validation metadata for GOAL-058",
+        "Recorded GOAL-058 PMO and evidence",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "README can become noisy if key links turn into a full changelog"
+      ],
+      "evidence": [
+        "docs/goals/goal-058-readme-v101-hygiene-index-refresh.md",
+        "docs/57_README_V101_HYGIENE_INDEX_REFRESH.md",
+        "docs/qa/evidence/GOAL-058/README.md",
+        "docs/qa/evidence/GOAL-058/test_output.txt"
+      ],
+      "next_goal": "GOAL-059 \u2014 PMO Next-Goal Label Refinement"
+    },
+    {
+      "id": "goal_059_pmo_next_goal_label_refinement",
+      "title": "GOAL-059 \u2014 PMO Next-Goal Label Refinement",
+      "phase": "v1.0.1 repo hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Replaced generic recent PMO next-goal labels with concrete goal titles",
+        "Added regression coverage for recent PMO next-goal label clarity",
+        "Updated manifest validation metadata for GOAL-059",
+        "Recorded GOAL-059 PMO and evidence",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Generic next-goal labels can make the PMO portal feel ambiguous after follow-up goals are defined"
+      ],
+      "evidence": [
+        "docs/goals/goal-059-pmo-next-goal-label-refinement.md",
+        "docs/58_PMO_NEXT_GOAL_LABEL_REFINEMENT.md",
+        "docs/qa/evidence/GOAL-059/README.md",
+        "docs/qa/evidence/GOAL-059/test_output.txt"
+      ],
+      "next_goal": "GOAL-060 \u2014 README PMO Label Guidance Link Refresh"
+    },
+    {
+      "id": "goal_060_readme_pmo_label_guidance_link_refresh",
+      "title": "GOAL-060 \u2014 README PMO Label Guidance Link Refresh",
+      "phase": "v1.0.1 adoption polish",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added README links for PMO next-goal label guidance",
+        "Added README PMO label guidance link-refresh note",
+        "Added regression coverage for README PMO label guidance links",
+        "Updated manifest validation metadata for GOAL-060",
+        "Recorded GOAL-060 PMO and evidence",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "README can become noisy if PMO guidance links expand into a full changelog"
+      ],
+      "evidence": [
+        "docs/goals/goal-060-readme-pmo-label-guidance-link-refresh.md",
+        "docs/59_README_PMO_LABEL_GUIDANCE_LINK_REFRESH.md",
+        "docs/qa/evidence/GOAL-060/README.md",
+        "docs/qa/evidence/GOAL-060/test_output.txt"
+      ],
+      "next_goal": "GOAL-061 \u2014 Status Date Rollover Refresh"
+    },
+    {
+      "id": "goal_061_status_date_rollover_refresh",
+      "title": "GOAL-061 \u2014 Status Date Rollover Refresh",
+      "phase": "v1.0.1 repo hygiene",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Updated PMO status freshness date to 2026-06-04",
+        "Updated manifest validation date and metadata for GOAL-061",
+        "Added regression coverage for status freshness date",
+        "Recorded GOAL-061 PMO and evidence",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Status freshness dates can become misleading if validation metadata is not refreshed after the calendar rolls forward"
+      ],
+      "evidence": [
+        "docs/goals/goal-061-status-date-rollover-refresh.md",
+        "docs/60_STATUS_DATE_ROLLOVER_REFRESH.md",
+        "docs/qa/evidence/GOAL-061/README.md",
+        "docs/qa/evidence/GOAL-061/test_output.txt"
+      ],
+      "next_goal": "GOAL-062 \u2014 Define Next Strategic Track After v1.0.1 Hygiene"
+    },
+    {
+      "id": "goal_062_define_next_strategic_track_after_v101_hygiene",
+      "title": "GOAL-062 \u2014 Define Next Strategic Track After v1.0.1 Hygiene",
+      "phase": "post-v1.0.1 strategy",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Closed the open-ended v1.0.1 hygiene loop",
+        "Selected Nornyx Graph Demo Expansion Plan as the next strategic milestone",
+        "Recorded named follow-up tracks for adoption readiness and profile conformance",
+        "Updated PMO summary to stop recommending generic hygiene follow-ups",
+        "Added regression coverage for the strategic track transition",
+        "Kept package publication, deployment, runtime execution, live connectors, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Continuing generic hygiene work can create motion without strategic product progress"
+      ],
+      "evidence": [
+        "docs/goals/goal-062-define-next-strategic-track-after-v101-hygiene.md",
+        "docs/61_NEXT_STRATEGIC_TRACK_AFTER_V101.md",
+        "docs/qa/evidence/GOAL-062/README.md",
+        "docs/qa/evidence/GOAL-062/test_output.txt"
+      ],
+      "next_goal": "GOAL-063 \u2014 Nornyx Graph Demo Expansion Plan"
+    },
+    {
+      "id": "goal_063_nornyx_graph_demo_expansion",
+      "title": "GOAL-063 \u2014 Nornyx Graph Demo Expansion",
+      "phase": "post-v1.0.1 strategic track",
+      "status": "completed",
+      "completion_pct": 100,
+      "completed": [
+        "Added an expanded static Nornyx Graph demo example",
+        "Added product-facing expanded graph demo documentation",
+        "Added static semantic relation aliases for product-readable graph edges",
+        "Added regression coverage for required node kinds and relation types",
+        "Recorded approval, evidence, budget, trace, artifact, and module coverage",
+        "Advanced next recommended goal to GOAL-064 Adoption Readiness Friction Audit",
+        "Kept graph execution, tool execution, model calls, live connectors, deployment, package publication, automatic approvals, self-modification, and GOAL-100 locked"
+      ],
+      "pending": [],
+      "risks": [
+        "Users may mistake graph relationships for executable runtime transitions unless docs keep the static-contract boundary explicit"
+      ],
+      "evidence": [
+        "docs/goals/goal-063-nornyx-graph-demo-expansion-plan.md",
+        "examples/nornyx_graph_demo_expanded.nyx",
+        "docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md",
+        "docs/qa/evidence/GOAL-063/README.md",
+        "docs/qa/evidence/GOAL-063/test_output.txt"
+      ],
+      "next_goal": "GOAL-064 \u2014 Adoption Readiness Friction Audit"
+    },
+    {
+      "id": "goal_100_future_regulated_extensions",
+      "title": "GOAL-100 \u2014 Future Regulated/Enterprise Extensions",
+      "phase": "future",
+      "status": "locked",
+      "completion_pct": 0,
+      "completed": [],
+      "pending": [
+        "Data provenance",
+        "Tenant boundary",
+        "Incident response",
+        "Compliance evals",
+        "Audit export"
+      ],
+      "risks": [
+        "Do not promote before core language and runtime enforcement mature"
+      ],
+      "evidence": [
+        "docs/35_DECISION_BOUNDARY_AND_EVIDENCE_QUALITY.md"
+      ],
+      "next_goal": "Unlock only after graph, contract, profile, adapter, bounded execution, and release-candidate maturity bands are complete"
+    }
+  ],
+  "vision_map": {
+    "version": "clean-baseline-1.0",
+    "priority_order": [
+      "north-star-map",
+      "strategic-roadmap-map",
+      "development-flight-plan",
+      "evidence-quality-map",
+      "adoption-ramp-map"
+    ],
+    "maps": [
+      {
+        "id": "north-star-map",
+        "title": "North Star Map",
+        "priority": "P0",
+        "purpose": "Make Nornyx the executable contract layer for human-model software delivery.",
+        "status": "active",
+        "nodes": [
+          {
+            "kind": "vision",
+            "label": "Language core",
+            "status": "partial",
+            "summary": "Freeze stable v0.1 blocks before expanding runtime scope.",
+            "evidence": [
+              "docs/01_LANGUAGE_SPEC_v0_1.md"
+            ]
+          },
+          {
+            "kind": "control",
+            "label": "Governed agents",
+            "status": "active",
+            "summary": "Context, policy, harness, evals, evidence, and approval constrain AI work.",
+            "evidence": [
+              "docs/04_AI_ENGINEERING_REQUIREMENTS_MATRIX.md"
+            ]
+          },
+          {
+            "kind": "outcome",
+            "label": "Measurable delivery",
+            "status": "active",
+            "summary": "KPI scoring and evidence packs now provide local reviewability gates.",
+            "evidence": [
+              "docs/metrics/NORNYX_KPI_MODEL.md",
+              "scripts/dev/check_kpi_measurement.py"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "strategic-roadmap-map",
+        "title": "Strategic Roadmap Map",
+        "priority": "P0",
+        "purpose": "Keep completed v0.1 scaffold work separate from future maturity bands.",
+        "status": "active",
+        "nodes": [
+          {
+            "kind": "baseline",
+            "label": "v0.1",
+            "status": "completed",
+            "summary": "Safe AI-coding / agentic repo control-plane scaffold; all completed PMO goals are recorded as v0.1 work.",
+            "evidence": [
+              "docs/01_LANGUAGE_SPEC_v0_1.md",
+              "docs/pmo/status/current_status.json"
+            ]
+          },
+          {
+            "kind": "cleanup",
+            "label": "v0.1.1",
+            "status": "active",
+            "summary": "Cleanup and contract hardening: mapping block validation, stale metadata cleanup, roadmap alignment, and PMO wording cleanup.",
+            "evidence": [
+              "nornyx/checker.py",
+              "tests/test_parser_checker.py",
+              "docs/03_ROADMAP_TO_v1_AND_BEYOND.md"
+            ]
+          },
+          {
+            "kind": "future",
+            "label": "v0.2",
+            "status": "planned",
+            "summary": "Nornyx Graph + stronger generic contract model.",
+            "evidence": [
+              "docs/03_ROADMAP_TO_v1_AND_BEYOND.md"
+            ]
+          },
+          {
+            "kind": "future",
+            "label": "v0.3",
+            "status": "planned",
+            "summary": "Domain profiles.",
+            "evidence": [
+              "docs/03_ROADMAP_TO_v1_AND_BEYOND.md"
+            ]
+          },
+          {
+            "kind": "future",
+            "label": "v0.4",
+            "status": "planned",
+            "summary": "Adapters for Governed Delivery Control Plane, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops.",
+            "evidence": [
+              "docs/03_ROADMAP_TO_v1_AND_BEYOND.md"
+            ]
+          },
+          {
+            "kind": "future",
+            "label": "v0.5-v0.9",
+            "status": "reserved",
+            "summary": "Maturity bands for graph validation, profile conformance, adapter conformance, bounded execution readiness, and release-candidate stabilization.",
+            "evidence": [
+              "docs/03_ROADMAP_TO_v1_AND_BEYOND.md"
+            ]
+          },
+          {
+            "kind": "future",
+            "label": "v1.0",
+            "status": "completed",
+            "summary": "Stable generalized agentic contract language released as GitHub source release v1.0.0. v1.0.1 hygiene keeps positioning, adoption, graph demo, schema, README, manifest, and PMO summary metadata clear without package publication, production deployment, GOAL-100 promotion, or unrestricted connector execution.",
+            "evidence": [
+              "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+              "docs/47_NORNYX_STABLE_GENERALIZED_CONTRACT_LANGUAGE_v1_0.md",
+              "docs/releases/RELEASE_NOTES_v1_0.md",
+              "docs/releases/RELEASE_RECORD_v1_0.md",
+              "docs/48_NORNYX_POSITIONING.md",
+              "docs/49_NORNYX_5_MINUTE_ADOPTION.md",
+              "docs/50_NORNYX_GRAPH_DEMO.md",
+              "docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md",
+              "docs/51_SCHEMA_VERSION_SPLIT_PLAN.md",
+              "docs/52_SCHEMA_TARGETS_AND_EXAMPLES.md",
+              "docs/53_README_COMMAND_CONSISTENCY_AUDIT.md",
+              "docs/54_MANIFEST_METADATA_FRESHNESS.md",
+              "docs/55_PMO_SUMMARY_NOISE_REDUCTION.md",
+              "docs/56_MANIFEST_VALIDATION_BASELINE_REFRESH.md",
+              "docs/57_README_V101_HYGIENE_INDEX_REFRESH.md",
+              "docs/58_PMO_NEXT_GOAL_LABEL_REFINEMENT.md",
+              "docs/59_README_PMO_LABEL_GUIDANCE_LINK_REFRESH.md",
+              "docs/60_STATUS_DATE_ROLLOVER_REFRESH.md",
+              "docs/61_NEXT_STRATEGIC_TRACK_AFTER_V101.md",
+              "schemas/nornyx_v0_2.schema.json",
+              "schemas/nornyx_v1_0.schema.json",
+              "docs/qa/evidence/GOAL-042/README.md",
+              "docs/qa/evidence/GOAL-043/README.md",
+              "docs/qa/evidence/GOAL-046/README.md",
+              "docs/qa/evidence/GOAL-048/README.md",
+              "docs/qa/evidence/GOAL-049/README.md",
+              "docs/qa/evidence/GOAL-050/README.md",
+              "docs/qa/evidence/GOAL-051/README.md",
+              "docs/qa/evidence/GOAL-052/README.md",
+              "docs/qa/evidence/GOAL-053/README.md",
+              "docs/qa/evidence/GOAL-054/README.md",
+              "docs/qa/evidence/GOAL-055/README.md",
+              "docs/qa/evidence/GOAL-056/README.md",
+              "docs/qa/evidence/GOAL-057/README.md",
+              "docs/qa/evidence/GOAL-058/README.md",
+              "docs/qa/evidence/GOAL-059/README.md",
+              "docs/qa/evidence/GOAL-060/README.md",
+              "docs/qa/evidence/GOAL-061/README.md",
+              "docs/qa/evidence/GOAL-062/README.md",
+              "docs/qa/evidence/GOAL-063/README.md"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "development-flight-plan",
+        "title": "Development Flight Plan",
+        "priority": "P0",
+        "purpose": "Guide Codex/Claude through a narrow green lane from task packet to evidence.",
+        "status": "active",
+        "nodes": [
+          {
+            "kind": "gate",
+            "label": "GOAL-000",
+            "status": "completed",
+            "summary": "Clean green baseline before core development.",
+            "evidence": [
+              "docs/goals/goal-000-green-baseline-stabilization.md"
+            ]
+          },
+          {
+            "kind": "gate",
+            "label": "GOAL-001",
+            "status": "completed",
+            "summary": "Freeze core block spec.",
+            "evidence": [
+              "docs/01_LANGUAGE_SPEC_v0_1.md"
+            ]
+          },
+          {
+            "kind": "gate",
+            "label": "GOAL-002",
+            "status": "completed",
+            "summary": "Harden parser/checker diagnostics.",
+            "evidence": [
+              "tests/test_parser_checker.py"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "evidence-quality-map",
+        "title": "Evidence Quality Map",
+        "priority": "P1",
+        "purpose": "Stop false completion by requiring tests, risks, diffs, and handoff notes.",
+        "status": "active",
+        "nodes": [
+          {
+            "kind": "evidence",
+            "label": "Patch evidence",
+            "status": "completed",
+            "summary": "Evidence scoring is used before review for GOAL-031.",
+            "evidence": [
+              "scripts/dev/score_evidence.py",
+              "docs/qa/evidence/GOAL-031/README.md"
+            ]
+          },
+          {
+            "kind": "quality",
+            "label": "Quality profiles",
+            "status": "completed",
+            "summary": "Standard quality now includes the KPI measurement gate.",
+            "evidence": [
+              "scripts/dev/run_quality.py",
+              "scripts/dev/check_kpi_measurement.py"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "adoption-ramp-map",
+        "title": "Adoption Ramp Map",
+        "priority": "P1",
+        "purpose": "Let users start with Nornyx Lite and grow into governance progressively.",
+        "status": "active",
+        "nodes": [
+          {
+            "kind": "adoption",
+            "label": "Lite mode",
+            "status": "completed",
+            "summary": "Generate and validate a minimal Lite .nyx draft in a clean downstream repo shape.",
+            "evidence": [
+              "nornyx/adoption.py",
+              "scripts/dev/check_adoption_pack.py"
+            ]
+          },
+          {
+            "kind": "future",
+            "label": "Authoring assistant",
+            "status": "completed",
+            "summary": "Roadmap/backlog complete; implementation remains gated by checker, capability, evidence, and human approval controls.",
+            "evidence": [
+              "docs/38_NORNYX_AUTHORING_ASSISTANT_ROADMAP.md",
+              "docs/backlog/nornyx-authoring-assistant-roadmap.yaml"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

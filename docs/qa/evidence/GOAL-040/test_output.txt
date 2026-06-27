@@ -1,0 +1,30 @@
+Command: python -m pytest -q
+Result: PASS
+Output:
+218 passed in 6.05s
+
+Command: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: build_bounded_execution_readiness_report examples/nornyx_v04_adapter_contracts.nyx
+Result: PASS
+Output:
+requires_human_approval
+{'blocked': 0, 'requires_human_approval': 4, 'warnings': 0, 'ready': 11}
+
+Command: python scripts/dev/audit_pmo_status.py
+Result: PASS
+Output:
+blocks=36 completed=33 partial=0 locked=2

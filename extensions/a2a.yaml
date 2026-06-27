@@ -1,0 +1,11 @@
+name: A2A
+status: planned
+purpose: Model peer-agent communication contracts across agent runtimes and vendors.
+provided_blocks:
+  - peer_agent
+  - agent_identity
+  - handoff_contract
+safety_defaults:
+  - share_summaries_not_private_memory
+  - require_trust_level
+  - preserve_handoff_trace

@@ -1,0 +1,9 @@
+docs/55_PMO_SUMMARY_NOISE_REDUCTION.md
+docs/goals/goal-056-pmo-summary-noise-reduction.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-056/README.md
+docs/qa/evidence/GOAL-056/changed_files.txt
+docs/qa/evidence/GOAL-056/risk_note.md
+docs/qa/evidence/GOAL-056/handoff.md
+docs/qa/evidence/GOAL-056/test_output.txt
+tests/test_pmo_summary_readability.py

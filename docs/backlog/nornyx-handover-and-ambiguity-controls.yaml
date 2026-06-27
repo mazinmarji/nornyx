@@ -1,0 +1,56 @@
+name: NornyxHandoverAndAmbiguityControls
+status: near_core_candidate
+handovers:
+  - name: ProductToNornyx
+    from_state: product_discovery
+    to_state: governed_development
+    required:
+      - problem_statement
+      - personas
+      - user_journeys
+      - prototype_screens
+      - acceptance_criteria
+      - constraints
+      - risks
+      - success_metrics
+    acceptance:
+      - all required artifacts present
+      - blocking open questions resolved or explicitly deferred by owner
+      - evidence path prepared
+    approval: ProductOwner
+    evidence: docs/qa/evidence/GOAL-023/
+    blocking_open_questions:
+      - CitizenPhoneNumber
+ambiguity_controls:
+  - kind: assumption
+    id: WebFirstMVP
+    text: MVP supports web app only, not native mobile apps.
+    owner: ProductOwner
+    risk: low
+    can_proceed: true
+  - kind: open_question
+    id: CitizenPhoneNumber
+    text: Should user phone number be mandatory or optional?
+    owner: ProductOwner
+    risk: medium
+    blocks:
+      - notification_flow
+  - kind: decision_needed
+    id: AIVisibility
+    text: Should AI category suggestions be visible to external users?
+    owner: ProductOwner
+    risk: medium
+    required_before:
+      - public_beta
+promotion:
+  handover: candidate_after_core_checker_maturity
+  assumption: near_core_design_candidate
+  open_question: near_core_design_candidate
+  decision_needed: near_core_design_candidate
+safety:
+  local_validation_only: true
+  automatic_approval: false
+  connector_calls: false
+  llm_calls: false
+  deployment_actions: false
+  ticketing_integration: false

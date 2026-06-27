@@ -1,0 +1,15 @@
+id: "TC-EXAMPLE-001"
+title: "Example non-blocking requirement candidate"
+concept: "operations"
+source_task: "GOAL-EXAMPLE"
+discovered_by: "human"
+description: "Example candidate showing how agents should record future requirements without expanding current scope."
+classification: "extension_backlog"
+rationale: "Useful later, but not required for the current goal."
+recommended_action: "Record for later review; continue assigned task."
+blocks_current_goal: false
+risk: "low"
+evidence:
+  - "docs/37_AGENT_REQUIREMENT_DISCOVERY_WORKFLOW.md"
+owner: "Architect"
+status: "proposed"

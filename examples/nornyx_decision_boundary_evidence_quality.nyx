@@ -1,0 +1,38 @@
+project RegulatedControlsExample:
+    profile: regulated
+
+decision_boundary ShipmentDisposition:
+    ai_allowed:
+        - propose_risk_score
+        - explain_temperature_anomaly
+        - suggest_manual_check
+    ai_denied:
+        - approve_disposal
+        - release_blocked_shipment
+        - notify_customer_without_policy
+        - override_compliance_hold
+    human_owner: ComplianceOwner
+    approval_required: true
+    evidence_required:
+        - ai_recommendation
+        - human_approval
+        - reason_code
+        - timestamp
+
+evidence_quality ColdGuardAuditEvidence:
+    required:
+        - telemetry_snapshot
+        - anomaly_reason
+        - ai_recommendation
+        - human_approval
+        - customer_notification_record
+    quality:
+        - immutable_timestamp
+        - source_hash
+        - source_provenance
+        - approver_identity
+        - tenant_id
+        - exportable_report
+        - retention_policy
+        - decision_reason
+    retention: "2 years"

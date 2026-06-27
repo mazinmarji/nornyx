@@ -1,0 +1,12 @@
+README.md
+docs/48_NORNYX_POSITIONING.md
+docs/49_NORNYX_5_MINUTE_ADOPTION.md
+docs/goals/goal-048-v101-release-hygiene-adoption-polish.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-048/README.md
+docs/qa/evidence/GOAL-048/changed_files.txt
+docs/qa/evidence/GOAL-048/handoff.md
+docs/qa/evidence/GOAL-048/risk_note.md
+docs/qa/evidence/GOAL-048/test_output.txt
+docs/releases/RELEASE_NOTES_v1_0.md
+manifest.json

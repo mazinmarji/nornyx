@@ -1,0 +1,17 @@
+README.md
+docs/01_LANGUAGE_SPEC_v0_1.md
+docs/03_ROADMAP_TO_v1_AND_BEYOND.md
+docs/05_SECURITY_MODEL.md
+docs/45_NORNYX_BOUNDED_EXECUTION_READINESS_v0_8.md
+docs/goals/goal-040-v08-bounded-execution-readiness.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-040/README.md
+docs/qa/evidence/GOAL-040/changed_files.txt
+docs/qa/evidence/GOAL-040/handoff.md
+docs/qa/evidence/GOAL-040/risk_note.md
+docs/qa/evidence/GOAL-040/test_output.txt
+examples/nornyx_v04_adapter_contracts.nyx
+manifest.json
+nornyx/bounded_execution.py
+schemas/bounded_execution_readiness.schema.json
+tests/test_v08_bounded_execution_readiness.py

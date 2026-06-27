@@ -1,0 +1,16 @@
+README.md
+manifest.json
+docs/61_NEXT_STRATEGIC_TRACK_AFTER_V101.md
+docs/goals/goal-062-define-next-strategic-track-after-v101-hygiene.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-062/README.md
+docs/qa/evidence/GOAL-062/changed_files.txt
+docs/qa/evidence/GOAL-062/risk_note.md
+docs/qa/evidence/GOAL-062/handoff.md
+docs/qa/evidence/GOAL-062/test_output.txt
+tests/test_manifest_metadata.py
+tests/test_next_strategic_track.py
+tests/test_pmo_next_goal_labels.py
+tests/test_pmo_summary_readability.py
+tests/test_readme_v101_hygiene_index.py
+tests/test_status_date_freshness.py

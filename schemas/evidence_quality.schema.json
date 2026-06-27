@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/evidence_quality.schema.json",
+  "title": "Nornyx Evidence Quality",
+  "type": "object",
+  "required": [
+    "name",
+    "required",
+    "quality"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "quality": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "immutable_timestamp",
+          "source_hash",
+          "source_provenance",
+          "approver_identity",
+          "tenant_id",
+          "exportable_report",
+          "tamper_resistant_storage",
+          "retention_policy",
+          "decision_reason"
+        ]
+      }
+    },
+    "retention": {
+      "type": "string"
+    },
+    "export": {
+      "type": "object",
+      "properties": {
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "json",
+              "pdf",
+              "markdown",
+              "csv"
+            ]
+          }
+        },
+        "redaction_required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

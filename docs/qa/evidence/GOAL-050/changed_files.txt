@@ -1,0 +1,11 @@
+docs/51_SCHEMA_VERSION_SPLIT_PLAN.md
+docs/goals/goal-050-schema-version-split-planning.md
+docs/qa/evidence/GOAL-050/README.md
+docs/qa/evidence/GOAL-050/changed_files.txt
+docs/qa/evidence/GOAL-050/risk_note.md
+docs/qa/evidence/GOAL-050/handoff.md
+docs/qa/evidence/GOAL-050/test_output.txt
+tests/test_schema_model.py
+README.md
+manifest.json
+docs/pmo/status/current_status.json

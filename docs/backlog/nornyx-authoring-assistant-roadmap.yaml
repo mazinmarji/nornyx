@@ -1,0 +1,78 @@
+schema_version: "1.0"
+status: roadmap
+name: "Nornyx Authoring Assistant Roadmap"
+purpose: "Make .nyx source easy to create through CLI/UI/LLM-assisted drafting while preserving checker and human approval authority."
+
+capabilities:
+  - id: cli_wizard
+    status: roadmap
+    description: "Interactive CLI flow that asks guided questions and drafts .nyx."
+    priority: high
+    safe_now: true
+
+  - id: ui_authoring_portal
+    status: roadmap
+    description: "Local UI/portal flow for guided input, .nyx preview, explain/check/fmt, and approval."
+    priority: medium
+    safe_now: false
+
+  - id: llm_authoring_pack
+    status: roadmap
+    description: "Mini-spec, examples, templates, and repair protocol for normal LLMs to draft .nyx."
+    priority: high
+    safe_now: true
+
+  - id: formatted_preview
+    status: roadmap
+    description: "Readable formatted display for normal users and developers to approve/reject/modify."
+    priority: high
+    safe_now: true
+
+  - id: repair_loop
+    status: roadmap
+    description: "Use nornyx check/fmt errors to repair invalid drafts."
+    priority: high
+    safe_now: true
+
+  - id: specialized_small_model
+    status: research
+    description: "Optional future small or fine-tuned model specialized for Nornyx drafting, repair, and explanation."
+    priority: medium
+    safe_now: false
+
+authority_rules:
+  - "LLM may draft .nyx."
+  - "Nornyx checker validates .nyx."
+  - "Human approves authoritative .nyx."
+  - "Unknowns must become assumption/open_question/decision_needed."
+  - "Authoring assistant must not approve its own output."
+
+promotion_gates:
+  - "Parser/checker diagnostics are stable enough to guide authoring repairs."
+  - "Human approval remains required before any authored .nyx becomes authoritative."
+  - "Capability design exists before live LLM calls, portal actions, connector calls, or repo writes."
+  - "Evidence is recorded for generated drafts, checker output, assumptions, and approvals."
+
+blocked_actions:
+  - live_llm_calls
+  - fine_tuning_pipeline
+  - model_hosting
+  - portal_implementation
+  - automatic_approval
+  - automatic_repo_writes
+  - production_config_writes
+  - external_tool_calls_by_default
+  - checker_bypass
+
+non_goals:
+  - "live LLM integration now"
+  - "fine-tuning pipeline now"
+  - "model hosting now"
+  - "full portal implementation now"
+  - "automatic production writes"
+  - "automatic approval"
+
+next_focus:
+  - "Keep this as roadmap/backlog."
+  - "Do not interrupt GOAL-001 core spec freeze."
+  - "Implement CLI authoring only after parser/checker are stable enough."

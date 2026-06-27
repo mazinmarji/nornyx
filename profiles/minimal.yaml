@@ -1,0 +1,8 @@
+name: minimal
+purpose: Small repo, spike, or quick prototype.
+includes:
+  - project
+  - goal
+  - context
+  - policy
+  - evidence

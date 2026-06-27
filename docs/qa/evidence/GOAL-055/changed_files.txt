@@ -1,0 +1,10 @@
+manifest.json
+docs/54_MANIFEST_METADATA_FRESHNESS.md
+docs/goals/goal-055-manifest-metadata-freshness-cleanup.md
+docs/qa/evidence/GOAL-055/README.md
+docs/qa/evidence/GOAL-055/changed_files.txt
+docs/qa/evidence/GOAL-055/risk_note.md
+docs/qa/evidence/GOAL-055/handoff.md
+docs/qa/evidence/GOAL-055/test_output.txt
+tests/test_manifest_metadata.py
+docs/pmo/status/current_status.json

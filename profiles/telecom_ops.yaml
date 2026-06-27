@@ -1,0 +1,57 @@
+name: telecom_ops
+version: v0.3
+core_surface: v0.2
+status: optional_profile
+purpose: Represent telecom operations governance as optional profile metadata.
+domain: telecom_operations
+required_blocks:
+  - project
+  - intents
+  - contexts
+  - policies
+  - approvals
+  - evidence
+  - goals
+recommended_blocks:
+  - graph
+  - contracts
+  - budgets
+  - traces
+  - evals
+graph_node_kinds:
+  - profile
+  - context
+  - policy
+  - approval
+  - budget
+  - goal
+validation_rules:
+  - telecom concepts stay under optional profile metadata
+  - no telecom adapter or production network action is enabled
+  - profile contracts still require approval, budget, and evidence references
+conformance:
+  v1_readiness: profile_candidate
+  migration: Keep telecom concepts in profile metadata until adapter conformance matures.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - MCP/A2A live connectors
+  - LLM/model calls
+  - automatic approvals
+  - self-modification
+  - production deployment
+  - enterprise/regulated GOAL-100 promotion
+  - general-purpose programming language features
+core_concepts:
+  - Intent
+  - Agent
+  - Policy
+  - Eval
+  - Approval
+  - Evidence
+  - Context
+  - Artifact
+  - Graph
+  - Goal
+  - Budget
+  - Trace

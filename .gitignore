@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+generated/
+.DS_Store
+.env
+.env.*
+# AI/dev generated noise
+node_modules/
+apps/**/node_modules/
+*.egg-info/
+generated/
+coverage/
+*.log

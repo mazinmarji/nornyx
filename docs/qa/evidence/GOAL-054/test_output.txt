@@ -1,0 +1,93 @@
+GOAL-054 validation run on 2026-06-03.
+
+Command:
+python -m pytest tests\test_readme_commands.py -q
+
+Result:
+2 passed in 0.08s
+
+Command:
+python -m pytest -q
+
+Result:
+233 passed in 6.65s
+
+Command:
+python -m nornyx.cli check examples\governed_delivery_control_plane.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli check examples\nornyx_graph_demo.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli schema
+
+Result:
+compat schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli schema --version 0.2
+
+Result:
+v0.2 schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli schema --version 1.0
+
+Result:
+v1.0 schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli generate examples\governed_delivery_control_plane.nyx --out generated\governed_delivery_control_plane
+
+Result:
+Generated 12 artifacts in generated\governed_delivery_control_plane
+
+Command:
+python -m nornyx.cli context-build examples\governed_delivery_control_plane.nyx --repo . --out generated\context_pack.json
+
+Result:
+Context pack written to generated\context_pack.json with 324 entries
+
+Command:
+python -m nornyx.cli evidence-pack --out generated\evidence
+
+Result:
+Evidence scaffold written to generated\evidence
+
+Command:
+python -m nornyx.cli release-check --approved
+
+Result:
+status=ready_for_release
+passed=9 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\release\check_stable_language.py --approved
+
+Result:
+status=stable_language_approved_local
+passed=24 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\dev\audit_pmo_status.py
+
+Result:
+blocks=47 completed=46 partial=0 locked=1
+
+Command:
+git diff --check
+
+Result:
+No whitespace errors. Git reported CRLF working-copy normalization warnings for existing text files only.
+
+Command:
+nornyx --help
+
+Result:
+Not on PATH in this shell before editable-install script activation. README now uses `python -m nornyx.cli` for first-use reliability and documents the console script as available after install.

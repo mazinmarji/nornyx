@@ -1,0 +1,7 @@
+docs/goals/goal-045-v10-tag-github-release.md
+docs/qa/evidence/GOAL-045/README.md
+docs/qa/evidence/GOAL-045/changed_files.txt
+docs/qa/evidence/GOAL-045/handoff.md
+docs/qa/evidence/GOAL-045/risk_note.md
+docs/qa/evidence/GOAL-045/test_output.txt
+docs/releases/RELEASE_RECORD_v1_0.md

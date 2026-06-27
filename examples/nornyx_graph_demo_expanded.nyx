@@ -1,0 +1,275 @@
+nornyx: "0.2"
+project:
+  name: NornyxGraphDemoExpanded
+  category: generalized_agentic_contract_control_plane_language
+  purpose: "Demonstrate Nornyx Graph as a static control-plane contract for governed AI/software delivery."
+
+constitution:
+  principles:
+    - graph_is_declared_contract_not_runtime
+    - edges_are_semantic_control_relationships
+    - evidence_required_for_agentic_delivery
+    - human_approval_gates_public_promotion
+    - no_live_connectors_or_model_calls
+
+intents:
+  - name: GovernedAgenticDelivery
+    goal: "Make AI-assisted software delivery checkable through declared intent, context, agents, policy, evals, approvals, evidence, budgets, traces, and artifacts."
+
+contexts:
+  - name: RepoControlPlaneContext
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "examples/**/*.nyx"
+      - "schemas/**/*.json"
+    exclude:
+      - ".venv/**"
+      - "generated/**"
+      - "**/.env"
+      - "secrets/**"
+
+skills:
+  - name: GraphModeling
+    purpose: "Model governed delivery as declared graph nodes and edges."
+    input: [IntentContract, RepoControlPlaneContext]
+    output: [GraphContract]
+  - name: StaticGraphReview
+    purpose: "Review graph coverage for policy, eval, approval, evidence, budget, trace, and artifact links."
+    input: [GraphContract]
+    output: [ReviewFinding, ExpandedGraphDemoEvidence]
+
+policies:
+  - name: StaticGraphContractPolicy
+    rules:
+      - "deny graph_execution"
+      - "deny tool_execution"
+      - "deny live_connector_execution"
+      - "deny model_calls"
+      - "deny production_deployment"
+      - "deny automatic_approval"
+      - "deny self_modification"
+      - "require evidence_for_demo_changes"
+      - "require human_approval_for_public_promotion"
+
+agents:
+  - name: GraphPlanner
+    role: "Plan the static graph contract and artifact relationships."
+    skills: [GraphModeling]
+    policy: StaticGraphContractPolicy
+  - name: GraphReviewer
+    role: "Review the graph contract for control-plane coverage and safety boundaries."
+    skills: [StaticGraphReview]
+    policy: StaticGraphContractPolicy
+
+harnesses:
+  - name: StaticExpandedGraphReviewHarness
+    context: RepoControlPlaneContext
+    flow:
+      - agent: GraphPlanner
+        action: draft_static_graph_contract
+      - eval: ExpandedGraphCoverageEval
+        action: verify_node_and_relation_coverage
+      - evidence: ExpandedGraphDemoEvidence
+        action: collect
+      - approval: ProductOwnerApproval
+        action: approve_product_facing_demo
+    repair:
+      max_attempts: 2
+      stop_on_security_ambiguity: true
+    gates:
+      - graph.static_only
+      - relation.coverage_present
+      - policy.pass
+      - eval.pass
+      - evidence.present
+      - approval.before_public_claim
+
+traces:
+  - name: ExpandedGraphTrace
+    purpose: "Record static validation and review evidence for the expanded graph demo."
+
+evals:
+  - name: ExpandedGraphCoverageEval
+    metrics:
+      - required_node_kinds_present
+      - required_relation_types_present
+      - approval_evidence_budget_trace_covered
+      - artifact_relationships_declared
+      - no_runtime_execution_claim
+
+approvals:
+  - name: ProductOwnerApproval
+    required_for:
+      - product_facing_demo_promotion
+      - public_graph_capability_claim
+
+budgets:
+  - name: ExpandedGraphDemoBudget
+    limits:
+      max_tokens: 24000
+      max_tool_calls: 12
+      max_runtime_minutes: 12
+
+evidence:
+  required:
+    - ExpandedGraphDemoEvidence
+    - expanded_graph_contract_report.json
+    - expanded_graph_review.md
+
+graph:
+  nodes:
+    - id: intent.governed_delivery
+      kind: intent
+      ref: GovernedAgenticDelivery
+    - id: context.repo_control_plane
+      kind: context
+      ref: RepoControlPlaneContext
+    - id: agent.graph_planner
+      kind: agent
+      ref: GraphPlanner
+    - id: agent.graph_reviewer
+      kind: agent
+      ref: GraphReviewer
+    - id: skill.graph_modeling
+      kind: skill
+      ref: GraphModeling
+    - id: skill.static_graph_review
+      kind: skill
+      ref: StaticGraphReview
+    - id: policy.static_contract
+      kind: policy
+      ref: StaticGraphContractPolicy
+    - id: eval.expanded_graph
+      kind: eval
+      ref: ExpandedGraphCoverageEval
+    - id: approval.product_owner
+      kind: approval
+      ref: ProductOwnerApproval
+    - id: evidence.expanded_graph_demo
+      kind: evidence
+      ref: ExpandedGraphDemoEvidence
+    - id: budget.expanded_graph_demo
+      kind: budget
+      ref: ExpandedGraphDemoBudget
+    - id: trace.expanded_graph
+      kind: trace
+      ref: ExpandedGraphTrace
+    - id: goal.graph_demo_expansion
+      kind: goal
+      ref: GOAL-063
+    - id: artifact.expanded_graph_example
+      kind: artifact
+      ref: examples/nornyx_graph_demo_expanded.nyx
+    - id: module.graph_demo_guide
+      kind: module
+      ref: docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md
+  edges:
+    - from: agent.graph_planner
+      to: context.repo_control_plane
+      relation: uses_context
+    - from: agent.graph_reviewer
+      to: context.repo_control_plane
+      relation: uses_context
+    - from: agent.graph_planner
+      to: skill.graph_modeling
+      relation: has_skill
+    - from: agent.graph_reviewer
+      to: skill.static_graph_review
+      relation: has_skill
+    - from: agent.graph_planner
+      to: policy.static_contract
+      relation: governed_by
+    - from: goal.graph_demo_expansion
+      to: policy.static_contract
+      relation: governed_by
+    - from: goal.graph_demo_expansion
+      to: eval.expanded_graph
+      relation: validated_by
+    - from: artifact.expanded_graph_example
+      to: eval.expanded_graph
+      relation: validated_by
+    - from: goal.graph_demo_expansion
+      to: approval.product_owner
+      relation: gated_by
+    - from: goal.graph_demo_expansion
+      to: budget.expanded_graph_demo
+      relation: bounded_by
+    - from: agent.graph_planner
+      to: evidence.expanded_graph_demo
+      relation: produces_evidence
+    - from: eval.expanded_graph
+      to: evidence.expanded_graph_demo
+      relation: produces_evidence
+    - from: goal.graph_demo_expansion
+      to: trace.expanded_graph
+      relation: records_trace
+    - from: artifact.expanded_graph_example
+      to: intent.governed_delivery
+      relation: satisfies_intent
+    - from: module.graph_demo_guide
+      to: intent.governed_delivery
+      relation: satisfies_intent
+    - from: goal.graph_demo_expansion
+      to: artifact.expanded_graph_example
+      relation: produces_artifact
+    - from: goal.graph_demo_expansion
+      to: module.graph_demo_guide
+      relation: produces_artifact
+
+contracts:
+  - name: ExpandedStaticGraphDemoContract
+    nodes:
+      - intent.governed_delivery
+      - context.repo_control_plane
+      - agent.graph_planner
+      - agent.graph_reviewer
+      - skill.graph_modeling
+      - skill.static_graph_review
+      - policy.static_contract
+      - eval.expanded_graph
+      - approval.product_owner
+      - evidence.expanded_graph_demo
+      - budget.expanded_graph_demo
+      - trace.expanded_graph
+      - goal.graph_demo_expansion
+      - artifact.expanded_graph_example
+      - module.graph_demo_guide
+    approval: ProductOwnerApproval
+    budget: ExpandedGraphDemoBudget
+
+goals:
+  - id: GOAL-063
+    phase: post-v1.0.1-strategic-track
+    title: Nornyx Graph Demo Expansion Plan
+    goal: "Plan and implement a richer static Nornyx Graph demo expansion as a product-facing contract/control-plane example."
+    scope:
+      - examples/nornyx_graph_demo_expanded.nyx
+      - docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md
+      - tests/test_graph_demo_expansion.py
+      - docs/pmo/status/current_status.json
+    non_goals:
+      - graph_runtime_execution
+      - tool_execution
+      - live_connector_execution
+      - model_calls
+      - package_publication
+      - production_deployment
+      - automatic_approval
+      - self_modification
+      - GOAL-100_promotion
+    validation:
+      - "python -m nornyx.cli check examples/nornyx_graph_demo.nyx"
+      - "python -m nornyx.cli check examples/nornyx_graph_demo_expanded.nyx"
+      - "python -m nornyx.cli schema --version 0.2"
+      - "python -m nornyx.cli schema --version 1.0"
+      - "python -m pytest -q"
+      - "python scripts/dev/audit_pmo_status.py"
+      - "git diff --check"
+    evidence: "docs/qa/evidence/GOAL-063/"
+    approval: "required before claiming runtime behavior, live connector execution, package publication, deployment, or GOAL-100 promotion"
+    stop_rules:
+      - stop_if_graph_edges_are_described_as_executable_transitions
+      - stop_if_live_connectors_or_model_calls_are_enabled
+      - stop_if_automatic_approval_is_implied
+      - stop_if_GOAL-100_is_unlocked

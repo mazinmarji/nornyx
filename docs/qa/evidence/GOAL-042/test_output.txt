@@ -1,0 +1,32 @@
+GOAL-042 local validation results:
+
+python -m pytest -q
+225 passed in 8.14s
+
+python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+Nornyx check passed
+
+python scripts/release/check_rc_stabilization.py
+status=release_candidate_stabilized_pending_approval
+summary: passed=12 warning=1 blocked=0 requires_human_approval=2
+
+python scripts/release/check_stable_language.py
+status=stable_language_completed_local_pending_release_approval
+summary: passed=20 warning=1 blocked=0 requires_human_approval=3
+
+python scripts/dev/audit_pmo_status.py
+blocks=36 completed=35 partial=0 locked=1
+
+python -m nornyx.cli release-check --out generated/release_readiness_goal_042.json
+status=release_candidate_ready_pending_approval
+summary: passed=7 warning=1 blocked=0 requires_human_approval=1
+Temporary generated report removed after recording evidence.
+
+git diff --check
+exit=0; Windows line-ending warnings only.

@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Nornyx: quality fast",
+      "type": "shell",
+      "command": "python",
+      "args": ["scripts/dev/run_quality.py", "--profile", "fast"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nornyx: audit PMO status",
+      "type": "shell",
+      "command": "python",
+      "args": ["scripts/dev/audit_pmo_status.py"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nornyx: check mission example",
+      "type": "shell",
+      "command": "python",
+      "args": ["-m", "nornyx.cli", "check", "examples/governed_delivery_control_plane.nyx"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Nornyx: scaffold goal dry-run",
+      "type": "shell",
+      "command": "python",
+      "args": ["scripts/dev/scaffold_goal.py", "GOAL-099", "Example goal", "--dry-run"],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

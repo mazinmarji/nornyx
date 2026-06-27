@@ -1,0 +1,57 @@
+name: ai_governance
+version: v0.3
+core_surface: v0.2
+status: optional_profile
+purpose: Represent AI governance policy, eval, approval, and evidence requirements.
+domain: ai_governance
+required_blocks:
+  - project
+  - intents
+  - policies
+  - evals
+  - approvals
+  - evidence
+  - goals
+recommended_blocks:
+  - graph
+  - contracts
+  - budgets
+  - traces
+  - contexts
+graph_node_kinds:
+  - profile
+  - policy
+  - eval
+  - approval
+  - budget
+  - goal
+validation_rules:
+  - governance rules remain explicit policy/eval/evidence declarations
+  - no automatic approval or compliance certification is implied
+  - profile contracts still require approval, budget, and evidence references
+conformance:
+  v1_readiness: stable_candidate
+  migration: Use when policy, eval, approval, and evidence are the primary adoption path.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - MCP/A2A live connectors
+  - LLM/model calls
+  - automatic approvals
+  - self-modification
+  - production deployment
+  - enterprise/regulated GOAL-100 promotion
+  - general-purpose programming language features
+core_concepts:
+  - Intent
+  - Agent
+  - Policy
+  - Eval
+  - Approval
+  - Evidence
+  - Context
+  - Artifact
+  - Graph
+  - Goal
+  - Budget
+  - Trace

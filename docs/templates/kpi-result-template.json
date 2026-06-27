@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "generated_at_epoch": 0,
+  "repo_root": "/path/to/repo",
+  "repo_kpis": {
+    "goals_count": 0,
+    "evidence_goal_dirs_count": 0,
+    "triage_candidate_count": 0,
+    "nyx_example_count": 0,
+    "test_file_count": 0,
+    "dev_check_script_count": 0,
+    "has_run_quality": true,
+    "agentic_dev_readiness_score": 0,
+    "agentic_dev_readiness_max": 100,
+    "agentic_dev_readiness_status": "immature"
+  },
+  "evidence_score": {
+    "evidence_dir": "docs/qa/evidence/GOAL-XXX",
+    "exists": true,
+    "score": 0,
+    "max_score": 100,
+    "percent": 0.0,
+    "status": "incomplete",
+    "files": [],
+    "present": [],
+    "missing": []
+  }
+}

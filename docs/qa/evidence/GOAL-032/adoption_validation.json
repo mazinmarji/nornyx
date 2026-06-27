@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "goal": "GOAL-032",
+  "validation": "clean_downstream_lite",
+  "checks": [
+    "temporary clean downstream repo created",
+    "nornyx.project.nyx generated",
+    "generated draft passed current Nornyx checker",
+    "existing output refused without --force",
+    "standard quality profile includes adoption check"
+  ],
+  "blocked_scope": [
+    "live_llm_calls",
+    "portal_wizard_implementation",
+    "fine_tuned_model_pipeline",
+    "automatic_remote_git_writes",
+    "automatic_approval",
+    "production_enforcement"
+  ]
+}

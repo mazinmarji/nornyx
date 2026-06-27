@@ -1,0 +1,13 @@
+docs/metrics/NORNYX_KPI_MODEL.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-031/README.md
+docs/qa/evidence/GOAL-031/changed_files.txt
+docs/qa/evidence/GOAL-031/handoff.md
+docs/qa/evidence/GOAL-031/kpi_validation.json
+docs/qa/evidence/GOAL-031/patch.diff
+docs/qa/evidence/GOAL-031/risk_note.md
+docs/qa/evidence/GOAL-031/test_output.txt
+nornyx/dev_quality.py
+nornyx/kpi_metrics.py
+scripts/dev/check_kpi_measurement.py
+tests/test_kpi_metrics.py

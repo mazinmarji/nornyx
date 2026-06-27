@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/portal_contract.schema.json",
+  "title": "Nornyx Portal Contract",
+  "type": "object",
+  "required": [
+    "name",
+    "source",
+    "role_views",
+    "render_targets"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "delivery_state",
+        "goal_state",
+        "pmo_status"
+      ]
+    },
+    "role_views": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "sees"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sees": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "render_targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "shell",
+          "markdown",
+          "json",
+          "developer_pmo_portal",
+          "ide_panel",
+          "html_static",
+          "ci_summary"
+        ]
+      }
+    },
+    "integration_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "github",
+          "jira",
+          "azure_devops",
+          "servicenow",
+          "company_portal",
+          "none"
+        ]
+      }
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "read_only": {
+          "type": "boolean"
+        },
+        "no_shell_execution": {
+          "type": "boolean"
+        },
+        "no_external_calls": {
+          "type": "boolean"
+        },
+        "no_secret_exposure": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

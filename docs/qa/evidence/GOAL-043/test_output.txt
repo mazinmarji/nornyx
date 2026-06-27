@@ -1,0 +1,34 @@
+GOAL-043 local validation results:
+
+python -m pytest tests/test_release_readiness.py -q
+11 passed in 0.43s
+
+python -m pytest -q
+225 passed in 5.17s
+
+python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+Nornyx check passed
+
+python -m nornyx.cli release-check
+status=release_candidate_ready_pending_approval
+summary: passed=8 warning=0 blocked=0 requires_human_approval=1
+
+python scripts/release/check_rc_stabilization.py
+status=release_candidate_stabilized_pending_approval
+summary: passed=13 warning=0 blocked=0 requires_human_approval=2
+
+python scripts/release/check_stable_language.py
+status=stable_language_completed_local_pending_release_approval
+summary: passed=21 warning=0 blocked=0 requires_human_approval=3
+
+python scripts/dev/audit_pmo_status.py
+blocks=37 completed=36 partial=0 locked=1
+
+git diff --check
+exit=0; Windows line-ending warnings only.

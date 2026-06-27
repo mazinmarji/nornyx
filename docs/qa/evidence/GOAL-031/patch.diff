@@ -1,0 +1,7 @@
+diff --git a/nornyx/kpi_metrics.py b/nornyx/kpi_metrics.py
+--- a/nornyx/kpi_metrics.py
++++ b/nornyx/kpi_metrics.py
+@@
++Added KPI result validation for repo readiness and evidence reviewability.
++Added a local check script and standard quality-profile hook.
++Recorded GOAL-031 as a real implementation evidence packet.

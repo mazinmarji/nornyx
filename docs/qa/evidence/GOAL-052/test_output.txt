@@ -1,0 +1,87 @@
+GOAL-052 validation run on 2026-06-03.
+
+Command:
+python -m pytest tests\test_schema_model.py -q
+
+Result:
+8 passed in 0.36s
+
+Command:
+python -m pytest -q
+
+Result:
+230 passed in 6.27s
+
+Command:
+python -m nornyx.cli schema
+
+Result:
+compat schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli schema --version 0.2
+
+Result:
+v0.2 schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli schema --version 1.0
+
+Result:
+v1.0 schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli check examples\governed_delivery_control_plane.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli check examples\nornyx_roadmap_goals.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli check examples\nornyx_graph_demo.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli check examples\nornyx_v04_adapter_contracts.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli release-check --approved
+
+Result:
+status=ready_for_release
+passed=9 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\release\check_stable_language.py --approved
+
+Result:
+status=stable_language_approved_local
+passed=24 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\dev\audit_pmo_status.py
+
+Result:
+blocks=45 completed=44 partial=0 locked=1
+
+Command:
+python -m json.tool docs\pmo\status\current_status.json > $null
+
+Result:
+PMO JSON parsed successfully.
+
+Command:
+git diff --check
+
+Result:
+No whitespace errors. Git reported CRLF working-copy normalization warnings for existing text files only.

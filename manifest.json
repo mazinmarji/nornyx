@@ -1,0 +1,66 @@
+{
+  "project": "Nornyx",
+  "category": "Context-Native Agentic Engineering Language",
+  "version": "1.0.0",
+  "status": "v1.0.0 GitHub source release recorded; package publish, deployment, and GOAL-100 remain approval-gated",
+  "source_of_truth": [
+    "README.md",
+    "docs/01_LANGUAGE_SPEC_v0_1.md",
+    "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+    "examples/governed_delivery_control_plane.nyx"
+  ],
+  "commands": {
+    "check": "python -m nornyx.cli check examples/governed_delivery_control_plane.nyx",
+    "graph_demo_check": "python -m nornyx.cli check examples/nornyx_graph_demo.nyx",
+    "schema_compat": "python -m nornyx.cli schema",
+    "schema_v02": "python -m nornyx.cli schema --version 0.2",
+    "schema_v1": "python -m nornyx.cli schema --version 1.0",
+    "roadmap_check": "python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx",
+    "generate": "python -m nornyx.cli generate examples/governed_delivery_control_plane.nyx --out generated/governed_delivery_control_plane",
+    "context_build": "python -m nornyx.cli context-build examples/governed_delivery_control_plane.nyx --repo . --out generated/context_pack.json",
+    "evidence_pack": "python -m nornyx.cli evidence-pack --out generated/evidence",
+    "test": "python -m pytest -q"
+  },
+  "roadmap_model": {
+    "v0.2": "Nornyx Graph + stronger generic contract model; current local surface is static graph/contract validation with explicit schema targets for compat, 0.2, and 1.0",
+    "v0.3": "Optional domain profile packs for ai_coding, agentic_repo_harness, telecom_ops, business_ops, ai_governance, and finance_ops; current local surface is metadata, generated starters, validation rules, schema, and tests only",
+    "v0.4": "Contract-only adapter bridges for Governed Delivery Control Plane, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops with MCP/A2A connector conformance and policy/eval/evidence integration tests",
+    "v0.5-v0.9": "Maturity bands for graph validation, profile conformance, adapter conformance, bounded execution readiness, and release-candidate stabilization",
+    "v1.0": "Stable generalized agentic contract language released as GitHub source release v1.0.0; package publication and GOAL-100 remain approval-gated"
+  },
+  "safety_boundaries": [
+    "No arbitrary shell execution by default",
+    "No live LLM calls in v0.1 scaffold",
+    "No production deployment",
+    "No credential storage",
+    "No autonomous self-modification"
+  ],
+  "updated_for": "GOAL-063-nornyx-graph-demo-expansion",
+  "added": [
+    "templates/nornyx-agentic-repo-harness",
+    "docs/goals",
+    "examples/nornyx_roadmap_goals.nyx",
+    "nornyx/goals.py",
+    "scripts/agent/run-nornyx-validation-gates.sh"
+  ],
+  "current_validation": {
+    "goal": "GOAL-063",
+    "date": "2026-06-04",
+    "test_command": "python -m pytest -q",
+    "test_result": "253 passed",
+    "release_check": {
+      "command": "python -m nornyx.cli release-check --approved",
+      "blocked": 0,
+      "warning": 0
+    },
+    "stable_language_check": {
+      "command": "python scripts/release/check_stable_language.py --approved",
+      "blocked": 0,
+      "warning": 0
+    },
+    "pmo_audit": "blocks=56 completed=55 partial=0 locked=1",
+    "package_publication": "not_published",
+    "deployment": "not_deployed",
+    "goal_100": "locked"
+  }
+}

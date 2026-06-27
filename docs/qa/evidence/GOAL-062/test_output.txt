@@ -1,0 +1,26 @@
+python -m pytest tests\test_next_strategic_track.py tests\test_pmo_next_goal_labels.py tests\test_manifest_metadata.py tests\test_pmo_summary_readability.py tests\test_readme_v101_hygiene_index.py tests\test_status_date_freshness.py -q
+12 passed in 0.66s
+
+python -m pytest -q
+247 passed in 23.83s
+
+python -m nornyx.cli check examples\governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples\nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples\nornyx_v04_adapter_contracts.nyx
+Nornyx check passed
+
+python -m nornyx.cli release-check --approved
+status=ready_for_release passed=9 warning=0 blocked=0
+
+python scripts\release\check_stable_language.py --approved
+status=stable_language_approved_local passed=24 warning=0 blocked=0
+
+python scripts\dev\audit_pmo_status.py
+blocks=55 completed=54 partial=0 locked=1
+
+git diff --check
+clean

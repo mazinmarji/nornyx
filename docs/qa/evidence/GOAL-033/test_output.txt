@@ -1,0 +1,14 @@
+python -m pytest -q
+189 passed in 14.59s
+
+python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python scripts/dev/audit_pmo_status.py
+blocks=36 completed=26 partial=0 locked=2
+
+PMO portal API check:
+next=GOAL-034 — v0.2 Nornyx Graph and Generic Contract Model; completed=26; partial=0; blocks=36; goals=36

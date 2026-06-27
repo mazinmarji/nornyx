@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "goal": "GOAL-029",
+  "kpi_panel": "read_only_local_metrics",
+  "expected_status": "reviewable",
+  "safety": {
+    "writes": "disabled",
+    "network": "disabled",
+    "shell_execution": "disabled"
+  }
+}

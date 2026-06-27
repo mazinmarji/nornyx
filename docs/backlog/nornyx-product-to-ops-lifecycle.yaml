@@ -1,0 +1,65 @@
+name: ProductToOperationsLifecycle
+status: roadmap
+concepts:
+  - name: intake
+    purpose: Capture product problem, users, hypotheses, constraints, success metrics, and non-goals.
+    placement: roadmap
+    risk: Can become product-management scope if promoted before checker support.
+  - name: persona
+    purpose: Capture user roles, needs, pains, and responsibilities.
+    placement: roadmap
+    risk: Can duplicate design tools unless treated as contract metadata.
+  - name: journey
+    purpose: Capture user workflow and handoff-relevant steps.
+    placement: roadmap
+    risk: Can become design-tool scope if expanded beyond references and evidence.
+  - name: prototype
+    purpose: Reference mockups, wireframes, UX assumptions, and acceptance behavior.
+    placement: roadmap
+    risk: Must reference artifacts rather than store design files directly.
+  - name: assumption
+    purpose: Record assumptions explicitly so LLMs do not silently invent blocked details.
+    placement: near_term_design
+    risk: Needs clear ownership and expiration before promotion.
+  - name: open_question
+    purpose: Record unresolved questions that can block handoff or implementation readiness.
+    placement: near_term_design
+    risk: Must not become a ticketing system.
+  - name: decision_needed
+    purpose: Request an owner-bound decision before a goal, release, or handoff proceeds.
+    placement: near_term_design
+    risk: Must preserve human authority over high-impact decisions.
+  - name: handover
+    purpose: Define a boundary contract between lifecycle phases.
+    placement: candidate
+    risk: Candidate only; promotion requires a separate goal and checker tests.
+  - name: operations
+    purpose: Capture runbook, SLO, monitoring, rollback, support, and known limitation contracts.
+    placement: roadmap
+    risk: Must not become production monitoring or operations automation.
+  - name: product_eval
+    purpose: Capture product and business outcome validation separate from software and AI evals.
+    placement: roadmap
+    risk: Requires evidence quality rules before promotion.
+  - name: lifecycle_state
+    purpose: Track idea, discovery, development, release, operations, and improvement stage.
+    placement: roadmap
+    risk: Must remain status metadata, not a project-management suite.
+promotion_order:
+  - handover
+  - assumption
+  - open_question
+  - decision_needed
+  - intake
+  - prototype
+  - operations
+  - product_eval
+  - lifecycle_state
+non_goals:
+  - product management suite
+  - design tool integration
+  - ticketing integration
+  - operations console
+  - live deployment
+  - production monitoring
+  - connector automation

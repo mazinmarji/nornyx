@@ -1,0 +1,12 @@
+manifest.json
+docs/58_PMO_NEXT_GOAL_LABEL_REFINEMENT.md
+docs/goals/goal-059-pmo-next-goal-label-refinement.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-059/README.md
+docs/qa/evidence/GOAL-059/changed_files.txt
+docs/qa/evidence/GOAL-059/risk_note.md
+docs/qa/evidence/GOAL-059/handoff.md
+docs/qa/evidence/GOAL-059/test_output.txt
+tests/test_manifest_metadata.py
+tests/test_pmo_next_goal_labels.py
+tests/test_pmo_summary_readability.py

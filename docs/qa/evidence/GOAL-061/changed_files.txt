@@ -1,0 +1,13 @@
+manifest.json
+docs/60_STATUS_DATE_ROLLOVER_REFRESH.md
+docs/goals/goal-061-status-date-rollover-refresh.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-061/README.md
+docs/qa/evidence/GOAL-061/changed_files.txt
+docs/qa/evidence/GOAL-061/risk_note.md
+docs/qa/evidence/GOAL-061/handoff.md
+docs/qa/evidence/GOAL-061/test_output.txt
+tests/test_manifest_metadata.py
+tests/test_pmo_next_goal_labels.py
+tests/test_pmo_summary_readability.py
+tests/test_status_date_freshness.py

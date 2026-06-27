@@ -1,0 +1,28 @@
+name: Nornyx Safe Dev Quality
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+      - name: Run safe local checks
+        run: |
+          python -m pytest -q
+          python scripts/dev/audit_pmo_status.py
+          python scripts/dev/scaffold_goal.py GOAL-099 "Example goal" --dry-run
+          python scripts/dev/export_handoff.py --dry-run
+          python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+          python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx

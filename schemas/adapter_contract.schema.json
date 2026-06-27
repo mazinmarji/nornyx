@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/adapter_contract.schema.json",
+  "title": "Nornyx v0.4 Adapter Contract",
+  "type": "object",
+  "required": [
+    "name",
+    "kind",
+    "target_profile",
+    "execution_mode",
+    "live_connector_execution",
+    "connector_refs",
+    "policy_refs",
+    "eval_refs",
+    "evidence_refs",
+    "non_goals"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "governed_delivery_control_plane",
+        "agentic_development_harness",
+        "governance_adapter",
+        "telecom_ops",
+        "business_ops"
+      ]
+    },
+    "target_profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "execution_mode": {
+      "const": "contract_only"
+    },
+    "live_connector_execution": {
+      "const": false
+    },
+    "connector_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "eval_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "connector_conformance": {
+      "type": "object",
+      "required": ["protocols", "default_mode", "approval_required"],
+      "properties": {
+        "protocols": {
+          "type": "array",
+          "items": {
+            "enum": ["mcp", "a2a"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "default_mode": {
+          "enum": ["disabled", "read_only", "read-only", "metadata_only", "manifest_only", "contract_only"]
+        },
+        "approval_required": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "live connector execution",
+          "production deployment",
+          "unrestricted adapter execution",
+          "credential loading",
+          "network calls",
+          "automatic approvals"
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": true
+}

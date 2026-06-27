@@ -1,0 +1,23 @@
+python -m pytest tests\test_pmo_summary_readability.py -q
+3 passed in 0.11s
+
+python -m pytest -q
+238 passed in 8.83s
+
+python -m nornyx.cli check examples\governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples\nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples\nornyx_v04_adapter_contracts.nyx
+Nornyx check passed
+
+python -m nornyx.cli release-check --approved
+status=ready_for_release passed=9 warning=0 blocked=0
+
+python scripts\release\check_stable_language.py --approved
+status=stable_language_approved_local passed=24 warning=0 blocked=0
+
+python scripts\dev\audit_pmo_status.py
+blocks=49 completed=48 partial=0 locked=1

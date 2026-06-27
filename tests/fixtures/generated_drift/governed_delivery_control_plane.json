@@ -1,0 +1,87 @@
+{
+  "generator_manifest": {
+    "artifact_count": 11,
+    "artifact_hashes": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "ebf474f5d2fd530398cd1c85a885c8085c891654efe4e6e8de3e7f16c081d603"
+      },
+      {
+        "path": "context.yaml",
+        "sha256": "e67d6a89b0766d3889ba6f6aba0671ce87f064761a671f0c509b3672d10f27af"
+      },
+      {
+        "path": "evals.yaml",
+        "sha256": "11aab6635389373672a863d5b3127b723d8467858151928716aab6c89ee9417f"
+      },
+      {
+        "path": "evidence_contract.md",
+        "sha256": "24fee6989872c6c64cb21d9afcf35174fa38ca937b56c539956e30b941bf3a54"
+      },
+      {
+        "path": "goals.yaml",
+        "sha256": "9ef144be492e2a81b75135cfbb4d9a200cf17c933b29beea2de56a3454d87eaf"
+      },
+      {
+        "path": "harness.yaml",
+        "sha256": "f0ccc89c9519c2ec7c1075acbbbe9babae59ca84df492be3e70f6501b8f770af"
+      },
+      {
+        "path": "policy.yaml",
+        "sha256": "4b403a65d9a9f531e4ffed7530737c59623b19d19f37e446b4d18cfb528c0901"
+      },
+      {
+        "path": "skills/EvidencePack/README.md",
+        "sha256": "56198a1347cdd91fd62d02eb2186e68fc0fdf989bb42065dc29211f67b90aed3"
+      },
+      {
+        "path": "skills/PatchBuilder/README.md",
+        "sha256": "7bfad8adc217b7fd432155bc2c5b44560d2f92f59de227b3f54794963ebd7031"
+      },
+      {
+        "path": "skills/TestRepair/README.md",
+        "sha256": "5f4721358ea9713d10a9103cfbc8a8bbc1aa57b9359bf7422645bb7772e06626"
+      },
+      {
+        "path": "trace.yaml",
+        "sha256": "2249d183ec7291889187fa47c5ed0b1f4d70adb33c0846f2629bb950529a7fa9"
+      }
+    ],
+    "artifacts": [
+      "AGENTS.md",
+      "context.yaml",
+      "evals.yaml",
+      "evidence_contract.md",
+      "goals.yaml",
+      "harness.yaml",
+      "policy.yaml",
+      "skills/EvidencePack/README.md",
+      "skills/PatchBuilder/README.md",
+      "skills/TestRepair/README.md",
+      "trace.yaml"
+    ],
+    "generated_by": "nornyx v0.1 scaffold",
+    "project": "GovernedDeliveryControlPlane",
+    "schema": "nornyx.generation_manifest.v0.1",
+    "source_blocks": [
+      "agents",
+      "approvals",
+      "budgets",
+      "constitution",
+      "contexts",
+      "evals",
+      "evidence",
+      "experimental",
+      "harnesses",
+      "intents",
+      "nornyx",
+      "policies",
+      "project",
+      "skills",
+      "traces"
+    ]
+  },
+  "label": "governed_delivery_control_plane",
+  "schema": "nornyx.generated_drift_baseline.v0.1",
+  "source": "examples/governed_delivery_control_plane.nyx"
+}

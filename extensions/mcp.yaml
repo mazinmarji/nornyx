@@ -1,0 +1,12 @@
+name: MCP
+status: planned
+purpose: Connect Nornyx-governed agents to tools and data servers through explicit capability policy.
+provided_blocks:
+  - connector
+  - tool_manifest
+  - connector_policy
+safety_defaults:
+  - read_only_first
+  - explicit_user_consent
+  - trace_every_tool_call
+  - deny_untrusted_write_tools

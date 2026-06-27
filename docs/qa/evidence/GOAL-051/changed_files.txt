@@ -1,0 +1,15 @@
+schemas/nornyx_v0_1.schema.json
+schemas/nornyx_v0_2.schema.json
+schemas/nornyx_v1_0.schema.json
+nornyx/schema_model.py
+nornyx/cli.py
+tests/test_schema_model.py
+docs/goals/goal-051-schema-version-split-implementation.md
+docs/qa/evidence/GOAL-051/README.md
+docs/qa/evidence/GOAL-051/changed_files.txt
+docs/qa/evidence/GOAL-051/risk_note.md
+docs/qa/evidence/GOAL-051/handoff.md
+docs/qa/evidence/GOAL-051/test_output.txt
+README.md
+manifest.json
+docs/pmo/status/current_status.json

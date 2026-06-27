@@ -1,0 +1,57 @@
+GOAL-049 validation run on 2026-06-03.
+
+Command:
+python -m nornyx.cli check examples\nornyx_graph_demo.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m pytest -q
+
+Result:
+226 passed in 5.73s
+
+Command:
+python -m nornyx.cli check examples\governed_delivery_control_plane.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli check examples\nornyx_roadmap_goals.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli check examples\nornyx_v04_adapter_contracts.nyx
+
+Result:
+Nornyx check passed
+
+Command:
+python -m nornyx.cli release-check --approved
+
+Result:
+status=ready_for_release
+passed=9 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\release\check_stable_language.py --approved
+
+Result:
+status=stable_language_approved_local
+passed=24 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\dev\audit_pmo_status.py
+
+Result:
+blocks=42 completed=41 partial=0 locked=1
+
+Command:
+git diff --check
+
+Result:
+No whitespace errors. Git reported CRLF working-copy normalization warnings for existing text files only.

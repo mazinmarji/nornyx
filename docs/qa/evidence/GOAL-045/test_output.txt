@@ -1,0 +1,19 @@
+GOAL-045 release validation:
+
+python -m pytest -q
+225 passed
+
+python -m nornyx.cli release-check --approved
+status=ready_for_release
+blocked=0 warning=0 requires_human_approval=0
+
+python scripts/release/check_rc_stabilization.py --approved
+status=release_candidate_stabilized_approved
+blocked=0 warning=0 requires_human_approval=0
+
+python scripts/release/check_stable_language.py --approved
+status=stable_language_approved_local
+blocked=0 warning=0 requires_human_approval=0
+
+GitHub release:
+https://github.com/mazinmarji/nornyx/releases/tag/v1.0.0

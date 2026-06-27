@@ -1,0 +1,60 @@
+name: ai_coding
+version: v0.3
+core_surface: v0.2
+status: optional_profile
+purpose: Govern AI-assisted software engineering in a repository.
+domain: ai_engineering
+required_blocks:
+  - project
+  - intents
+  - contexts
+  - agents
+  - policies
+  - evidence
+  - goals
+recommended_blocks:
+  - graph
+  - contracts
+  - approvals
+  - budgets
+  - traces
+  - evals
+graph_node_kinds:
+  - profile
+  - context
+  - agent
+  - policy
+  - approval
+  - budget
+  - goal
+validation_rules:
+  - profile metadata remains optional
+  - generated starter document passes nornyx check
+  - contract references declared graph nodes, approvals, and budgets
+  - evidence and approval semantics remain required for goals
+conformance:
+  v1_readiness: stable_candidate
+  migration: Existing ai_coding starters remain compatible; add profile_pack metadata when upgrading.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - MCP/A2A live connectors
+  - LLM/model calls
+  - automatic approvals
+  - self-modification
+  - production deployment
+  - enterprise/regulated GOAL-100 promotion
+  - general-purpose programming language features
+core_concepts:
+  - Intent
+  - Agent
+  - Policy
+  - Eval
+  - Approval
+  - Evidence
+  - Context
+  - Artifact
+  - Graph
+  - Goal
+  - Budget
+  - Trace

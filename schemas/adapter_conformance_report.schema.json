@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/adapter_conformance_report.schema.json",
+  "title": "Nornyx v0.7 Adapter Conformance Report",
+  "type": "object",
+  "required": ["schema", "mode", "status", "summary", "safety", "adapters", "connector_report"],
+  "properties": {
+    "schema": {
+      "const": "nornyx.adapter_conformance.v0.7"
+    },
+    "mode": {
+      "const": "static_adapter_connector_contract_conformance"
+    },
+    "status": {
+      "enum": ["blocked", "requires_human_approval", "conformant", "conformant_with_warnings"]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["adapters", "connectors", "harness_connector_refs", "blocked", "requires_human_approval", "warnings", "ready_decisions"],
+      "additionalProperties": false,
+      "properties": {
+        "adapters": {"type": "integer", "minimum": 0},
+        "connectors": {"type": "integer", "minimum": 0},
+        "harness_connector_refs": {"type": "integer", "minimum": 0},
+        "blocked": {"type": "integer", "minimum": 0},
+        "requires_human_approval": {"type": "integer", "minimum": 0},
+        "warnings": {"type": "integer", "minimum": 0},
+        "ready_decisions": {"type": "integer", "minimum": 0}
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "connectors_enabled",
+        "adapters_executed",
+        "network_used",
+        "commands_executed",
+        "credentials_loaded",
+        "default_execution_mode",
+        "adapter_contracts_executed",
+        "live_connector_execution_allowed"
+      ],
+      "properties": {
+        "connectors_enabled": {"const": false},
+        "adapters_executed": {"const": false},
+        "network_used": {"const": false},
+        "commands_executed": {"const": false},
+        "credentials_loaded": {"const": false},
+        "default_execution_mode": {"const": "disabled"},
+        "adapter_contracts_executed": {"const": false},
+        "live_connector_execution_allowed": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "execution_mode", "live_connector_execution", "status", "execution", "decisions"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "execution_mode": {"const": "contract_only"},
+          "live_connector_execution": {"const": false},
+          "status": {"enum": ["blocked", "requires_human_approval", "manifest_ready", "manifest_ready_with_warnings"]},
+          "execution": {"const": "not_executed"},
+          "decisions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["status", "code", "reason"],
+              "properties": {
+                "status": {"enum": ["blocked", "requires_human_approval", "warning", "ready"]},
+                "code": {"type": "string", "minLength": 1},
+                "reason": {"type": "string", "minLength": 1}
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "connector_report": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

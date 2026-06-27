@@ -1,0 +1,17 @@
+python -m pytest -q
+193 passed in 5.69s
+
+python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python scripts/dev/audit_pmo_status.py
+blocks=36 completed=27 partial=0 locked=2
+
+python -m nornyx.cli schema
+Schema summary reports version 0.2, compatibility_schema role, supported_versions [0.1, 0.2], and no issues.
+
+PMO portal API check:
+next=GOAL-035 — v0.3 Domain Profiles; completed=27; planned=7; blocks=36; goals=36

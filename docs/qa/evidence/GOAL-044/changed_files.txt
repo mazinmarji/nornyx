@@ -1,0 +1,6 @@
+docs/goals/goal-044-v10-release-prep-github-merge.md
+docs/qa/evidence/GOAL-044/README.md
+docs/qa/evidence/GOAL-044/changed_files.txt
+docs/qa/evidence/GOAL-044/handoff.md
+docs/qa/evidence/GOAL-044/risk_note.md
+docs/qa/evidence/GOAL-044/test_output.txt

@@ -1,0 +1,13 @@
+apps/nornyx-dev-pmo-portal/server.py
+apps/nornyx-dev-pmo-portal/app.js
+apps/nornyx-dev-pmo-portal/styles.css
+apps/nornyx-dev-pmo-portal/README.md
+tests/test_nornyx_dev_pmo_portal_git_status.py
+tests/test_nornyx_dev_pmo_portal_goal_packets.py
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-029/README.md
+docs/qa/evidence/GOAL-029/changed_files.txt
+docs/qa/evidence/GOAL-029/test_output.txt
+docs/qa/evidence/GOAL-029/risk_note.md
+docs/qa/evidence/GOAL-029/handoff.md
+docs/qa/evidence/GOAL-029/kpi_status.json

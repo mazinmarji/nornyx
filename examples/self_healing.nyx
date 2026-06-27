@@ -1,0 +1,94 @@
+nornyx: "0.1"
+project:
+  name: SelfHealingService
+  category: experimental_governed_self_healing
+
+constitution:
+  principles:
+    - healing_is_proposal_first
+    - production_change_requires_approval
+    - rollback_must_be_available
+
+intents:
+  - name: SafeSelfHealing
+    goal: "Detect service failures, propose fixes, validate them, and require approval before production impact."
+
+contexts:
+  - name: IncidentContext
+    include:
+      - "logs/**/*.txt"
+      - "traces/**/*.json"
+      - "src/**/*.py"
+      - "tests/**/*.py"
+    exclude:
+      - "secrets/**"
+
+skills:
+  - name: DiagnoseFailure
+    purpose: "Identify likely root cause from logs, traces, and tests."
+    input: [IncidentContext]
+    output: [Diagnosis]
+  - name: ProposeRepair
+    purpose: "Propose minimal repair patch."
+    input: [Diagnosis, ContextPack]
+    output: [PatchDiff]
+  - name: EvidencePack
+    purpose: "Collect repair evidence."
+    input: [PatchDiff, TestReport]
+    output: [EvidenceManifest]
+
+policies:
+  - name: HealingPolicy
+    rules:
+      - deny direct_production_mutation
+      - require tests_before_merge
+      - require rollback_plan
+      - require approval_if_production_change
+
+agents:
+  - name: DiagnoseAgent
+    role: "Diagnose incident root cause."
+    skills: [DiagnoseFailure]
+    policy: HealingPolicy
+  - name: RepairAgent
+    role: "Propose minimal repair."
+    skills: [ProposeRepair, EvidencePack]
+    policy: HealingPolicy
+
+harnesses:
+  - name: HealingHarness
+    context: IncidentContext
+    flow:
+      - agent: DiagnoseAgent
+        action: diagnose
+      - agent: RepairAgent
+        action: propose_repair
+      - tool: tests
+        action: run
+      - evidence: HealingEvidence
+        action: pack
+    gate:
+      - require: tests.pass
+      - require: rollback_plan.exists
+      - require: human_approval_before_production
+
+evals:
+  - name: HealingEval
+    metrics:
+      - tests_pass == true
+      - no_policy_regression == true
+      - rollback_available == true
+
+evidence:
+  required:
+    - diagnosis.md
+    - proposed_patch.diff
+    - test_report.json
+    - rollback_plan.md
+    - approval_log.json
+
+experimental:
+  healing:
+    observe: [logs, traces, metrics, failing_tests]
+    repair_mode: propose_only
+    max_attempts: 3

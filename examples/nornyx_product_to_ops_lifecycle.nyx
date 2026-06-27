@@ -1,0 +1,61 @@
+project FreshCartReturns:
+    profile: ai_coding
+
+# Fictional example: a returns-management service for small online stores.
+# This file is illustrative roadmap syntax, not yet full v0.1 parser scope.
+
+intake FreshCartReturnsIntake:
+    problem: "Small online stores lose money because returns are handled manually and inconsistently."
+    users:
+        - store_owner
+        - customer_support_agent
+        - warehouse_operator
+        - customer
+    hypotheses:
+        - "Automated return eligibility checks reduce support time."
+        - "Clear return status reduces customer messages."
+    constraints:
+        - mobile_friendly_admin
+        - no complex ERP dependency
+        - manual override required
+
+prototype ReturnRequestFlow:
+    source: "docs/ux/return-request-flow.md"
+    journey: "Customer submits return request and support approves or rejects it."
+    acceptance:
+        - customer can submit return in less than 2 minutes
+        - support can approve or reject with reason
+        - warehouse can mark item received
+
+handover ProductToNornyx:
+    from: product_discovery
+    to: governed_development
+    required:
+        - problem_statement
+        - personas
+        - prototype_flow
+        - acceptance_criteria
+        - constraints
+        - risks
+
+goal GOAL_001_ReturnEligibilityMVP:
+    intent: "Build return eligibility and approval MVP"
+    context: ProductToNornyx
+    agent: Builder
+    policy: SafeDevelopment
+    harness: StandardDevHarness
+    evidence: MVPDevelopmentEvidence
+
+operations FreshCartOps:
+    slo:
+        admin_availability: "99.5%"
+        return_status_update_delay: "< 5 minutes"
+    runbook: "docs/ops/runbook.md"
+    rollback: "docs/ops/rollback.md"
+    support: "docs/support/returns-playbook.md"
+
+product_eval FreshCartPilotEval:
+    metrics:
+        support_time_reduction: ">= 20%"
+        return_status_inquiries_reduction: ">= 15%"
+        critical_incidents: "0"

@@ -1,0 +1,9 @@
+name: nornyx_language
+purpose: Nornyx language/compiler/runtime development itself.
+includes:
+  - formal_spec
+  - parser_checker_tests
+  - language_dx
+  - tooling_roadmap
+  - pmo_status
+  - evidence_pack

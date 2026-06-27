@@ -1,0 +1,42 @@
+schema_version: "1.0"
+status: candidate
+name: "Nornyx Zero-Friction Adoption Pack"
+purpose: "Reduce first-use overhead by generating a minimal Nornyx Lite setup from local repo signals."
+
+adoption_levels:
+  - observe
+  - lite
+  - standard
+  - team
+  - regulated
+  - enterprise
+
+capabilities:
+  - id: repo_status
+    status: candidate
+    description: "Detect local repo signals and recommend adoption level."
+    safe_now: true
+  - id: init_lite
+    status: candidate
+    description: "Generate minimal nornyx.project.nyx draft without overwriting by default."
+    safe_now: true
+  - id: fast_quality_hint
+    status: candidate
+    description: "Recommend the smallest safe quality command for the repo."
+    safe_now: true
+  - id: upgrade_preview
+    status: roadmap
+    description: "Preview standard/team/regulated upgrades before applying."
+    safe_now: false
+
+non_goals:
+  - "live LLM calls"
+  - "portal wizard implementation"
+  - "fine-tuned model pipeline"
+  - "automatic remote Git writes"
+  - "automatic approval"
+  - "production enforcement"
+
+first_commands:
+  - "python -m nornyx.cli adopt status --repo ."
+  - "python -m nornyx.cli adopt init-lite --project MyRepo --out nornyx.project.nyx"

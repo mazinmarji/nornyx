@@ -1,0 +1,46 @@
+Command: python -m pytest -q
+Result: PASS
+Output:
+214 passed in 6.95s
+
+Command: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli connector-plan examples/nornyx_v04_adapter_contracts.nyx
+Result: PASS
+Output:
+{
+  "status": "requires_human_approval",
+  "summary": {
+    "plugins": 0,
+    "connectors": 2,
+    "harness_connector_refs": 2,
+    "blocked": 0,
+    "requires_human_approval": 2,
+    "warnings": 0,
+    "ready_decisions": 10
+  }
+}
+
+Command: build_adapter_conformance_report examples/nornyx_v04_adapter_contracts.nyx
+Result: PASS
+Output:
+requires_human_approval
+{'adapters': 5, 'connectors': 2, 'harness_connector_refs': 2, 'blocked': 0, 'requires_human_approval': 7, 'warnings': 0, 'ready_decisions': 55}
+
+Command: python scripts/dev/audit_pmo_status.py
+Result: PASS
+Output:
+blocks=36 completed=32 partial=0 locked=2

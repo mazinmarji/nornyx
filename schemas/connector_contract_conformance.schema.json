@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/connector_contract_conformance.schema.json",
+  "title": "Nornyx v0.7 MCP/A2A Connector Contract Conformance",
+  "type": "object",
+  "required": ["protocols", "default_mode", "approval_required", "live_targets_allowed", "sensitive_sharing_allowed"],
+  "properties": {
+    "protocols": {
+      "type": "array",
+      "items": {
+        "enum": ["mcp", "a2a"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "default_mode": {
+      "enum": ["disabled", "read_only", "read-only", "metadata_only", "manifest_only", "contract_only"]
+    },
+    "approval_required": {
+      "const": true
+    },
+    "live_targets_allowed": {
+      "const": false
+    },
+    "sensitive_sharing_allowed": {
+      "const": false
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": ["connector_report.json", "adapter_conformance_report.json"]
+    }
+  },
+  "additionalProperties": false
+}

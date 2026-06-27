@@ -1,0 +1,10 @@
+name: standard
+purpose: Normal maintained product repository.
+includes:
+  - intents
+  - contexts
+  - agents
+  - policies
+  - harnesses
+  - evals
+  - evidence

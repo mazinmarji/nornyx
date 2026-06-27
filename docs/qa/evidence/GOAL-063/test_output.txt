@@ -1,0 +1,29 @@
+python -m pytest tests\test_graph_demo_expansion.py tests\test_next_strategic_track.py tests\test_pmo_next_goal_labels.py tests\test_manifest_metadata.py tests\test_pmo_summary_readability.py tests\test_readme_commands.py tests\test_status_date_freshness.py -q
+18 passed in 1.43s
+
+python -m nornyx.cli check examples\nornyx_graph_demo.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples\nornyx_graph_demo_expanded.nyx
+Nornyx check passed
+
+python -m nornyx.cli schema --version 0.2
+issues=[]
+
+python -m nornyx.cli schema --version 1.0
+issues=[]
+
+python -m pytest -q
+253 passed in 12.33s
+
+python scripts\dev\audit_pmo_status.py
+blocks=56 completed=55 partial=0 locked=1
+
+python -m nornyx.cli release-check --approved
+status=ready_for_release passed=9 warning=0 blocked=0
+
+python scripts\release\check_stable_language.py --approved
+status=stable_language_approved_local passed=24 warning=0 blocked=0
+
+git diff --check
+clean

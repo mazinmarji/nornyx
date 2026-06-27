@@ -1,0 +1,30 @@
+Command: python -m pytest -q
+Result: PASS
+Output:
+210 passed in 10.03s
+
+Command: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli init --profile ai_coding --name Demo --out generated/profile_conformance_probe.nyx --force; python -m nornyx.cli check generated/profile_conformance_probe.nyx
+Result: PASS
+Output:
+Nornyx project draft written to generated\profile_conformance_probe.nyx
+Nornyx check passed
+
+Command: python scripts/dev/audit_pmo_status.py
+Result: PASS
+Output:
+blocks=36 completed=31 partial=0 locked=2

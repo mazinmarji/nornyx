@@ -1,0 +1,37 @@
+project NornyxPatternLifecycleExample:
+    profile: nornyx_language
+
+pattern ContextAuthorityOrder:
+    type: context
+    status: candidate
+    problem: "Agents may treat chat notes as more authoritative than approved architecture docs."
+    solution: "Declare explicit source authority order and fail on unresolved conflicts."
+
+    applies_when:
+        - repo has multiple context sources
+        - architecture docs or manifest exist
+        - AI agents build from context packs
+
+    non_goals:
+        - guarantee that authoritative docs are factually correct
+        - replace human architecture review
+
+    validation:
+        - nornyx check
+        - context authority conflict test
+        - PMO status audit
+
+    evidence:
+        - docs/qa/evidence/GOAL-005/
+
+    risks:
+        - stale authoritative documents may still mislead agents
+
+    failure_modes:
+        - source ordering is declared but not enforced
+        - generated context pack ignores authority metadata
+
+    promotion:
+        require eval_pass
+        require human_review
+        require evidence_pack

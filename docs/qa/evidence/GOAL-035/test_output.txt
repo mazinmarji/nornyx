@@ -1,0 +1,34 @@
+Command: python -m pytest -q
+Result: PASS
+Output:
+197 passed in 14.91s
+
+Command: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Result: PASS
+Output:
+Nornyx check passed
+
+Command: python -m nornyx.cli profiles
+Result: PASS
+Output:
+minimal
+standard
+ai_coding
+regulated
+legacy_upgrade
+nornyx_language
+agentic_repo_harness
+telecom_ops
+business_ops
+ai_governance
+finance_ops
+
+Command: python scripts/dev/audit_pmo_status.py
+Result: PASS
+Output:
+blocks=36 completed=28 partial=0 locked=2

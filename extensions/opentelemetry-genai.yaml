@@ -1,0 +1,11 @@
+name: OpenTelemetryGenAI
+status: planned
+purpose: Export Nornyx agent, model, tool, policy, and evidence events into standard observability pipelines.
+provided_blocks:
+  - trace_export
+  - span_schema
+  - metric_schema
+safety_defaults:
+  - redact_prompts_by_default
+  - redact_sensitive_outputs_by_default
+  - link_trace_to_evidence_pack

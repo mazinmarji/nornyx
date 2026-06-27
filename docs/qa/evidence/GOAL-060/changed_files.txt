@@ -1,0 +1,15 @@
+README.md
+manifest.json
+docs/59_README_PMO_LABEL_GUIDANCE_LINK_REFRESH.md
+docs/goals/goal-060-readme-pmo-label-guidance-link-refresh.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-060/README.md
+docs/qa/evidence/GOAL-060/changed_files.txt
+docs/qa/evidence/GOAL-060/risk_note.md
+docs/qa/evidence/GOAL-060/handoff.md
+docs/qa/evidence/GOAL-060/test_output.txt
+tests/test_manifest_metadata.py
+tests/test_pmo_next_goal_labels.py
+tests/test_pmo_summary_readability.py
+tests/test_readme_pmo_label_guidance.py
+tests/test_readme_v101_hygiene_index.py

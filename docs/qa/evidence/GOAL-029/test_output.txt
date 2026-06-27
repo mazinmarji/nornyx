@@ -1,0 +1,8 @@
+python -m pytest tests\test_nornyx_dev_pmo_portal_git_status.py tests\test_nornyx_dev_pmo_portal_goal_packets.py tests\test_nornyx_dev_pmo_portal_favicon.py -q
+13 passed in 0.85s
+
+python -m ruff check apps\nornyx-dev-pmo-portal\server.py tests\test_nornyx_dev_pmo_portal_git_status.py tests\test_nornyx_dev_pmo_portal_goal_packets.py
+All checks passed!
+
+Browser verification:
+http://127.0.0.1:5175 loaded with the Git panel, KPI panel, vision map, GOAL-029 card, and no horizontal overflow on the checked viewport.

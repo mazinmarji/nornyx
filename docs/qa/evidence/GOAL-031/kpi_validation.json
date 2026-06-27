@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "goal": "GOAL-031",
+  "gate": "local_kpi_measurement",
+  "minimum_repo_readiness_score": 85,
+  "minimum_evidence_percent": 75.0,
+  "authority": "advisory_only",
+  "blocked_uses": [
+    "automatic_approval",
+    "automatic_merge",
+    "automatic_release",
+    "external_telemetry",
+    "remote_benchmark_service"
+  ]
+}

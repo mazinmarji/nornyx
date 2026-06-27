@@ -1,0 +1,145 @@
+{
+  "generator_manifest": {
+    "artifact_count": 22,
+    "artifact_hashes": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "fae3e4a6bbd08bb188431dde1f13cbac15a1add521c5f6fb63a051307d97dd16"
+      },
+      {
+        "path": "context.yaml",
+        "sha256": "2fd7050fb96dd690c6ae5b4fed5edc0b680d3e3f02e365a4ae5dc4428fd41cfd"
+      },
+      {
+        "path": "evals.yaml",
+        "sha256": "31a8aef0c3c5669eabf1500a3cb7baf5b8d93019fa1475bea4e133fdae0a0220"
+      },
+      {
+        "path": "evidence_contract.md",
+        "sha256": "d7ae79be74392830b30aaf29c35781c0d10ad5511efb7e4faebbf465fa9e84fb"
+      },
+      {
+        "path": "goal_ledger.md",
+        "sha256": "b41de0708a2ec9f209198aa4f76f10ccbcfe9862e28ee624614cd673fa71ce73"
+      },
+      {
+        "path": "goals.yaml",
+        "sha256": "478b6b3b4a560890f8ef3561f8a10c111c88d605045958284672c6e24c710f56"
+      },
+      {
+        "path": "harness.yaml",
+        "sha256": "fcc03e15d3f3e393239869e09cfea6315f908dcbcb6d988db0dde7a9dbc4b7b0"
+      },
+      {
+        "path": "policy.yaml",
+        "sha256": "3b8cfa04aff1353152a2bdca31cf79ec35340caeb789e608cab8e00a090de887"
+      },
+      {
+        "path": "skills/ArtifactGenerator/README.md",
+        "sha256": "6168e89c768541a36b37f1decdaa06c588d1824c276a54244bfadd693ab6b40f"
+      },
+      {
+        "path": "skills/EvidencePack/README.md",
+        "sha256": "36066d337286e2c89de2f8697ab58781114b6f49e2030baa3c3dc63d0606a85b"
+      },
+      {
+        "path": "skills/ParserChecker/README.md",
+        "sha256": "606c460cc7f3e4fdec18633cfd73d206c76192862be94bd4cf7b150a9185f2c4"
+      },
+      {
+        "path": "task_packets/GOAL-000.md",
+        "sha256": "eab8b2421df63df34eb04a04d438ecc27060ecf77276e3ba3bb2873ec1e16b7b"
+      },
+      {
+        "path": "task_packets/GOAL-001.md",
+        "sha256": "c2072237a45462998ad8f75b92ec6f0b2722e7d09ee7016306d57a8b44e1a689"
+      },
+      {
+        "path": "task_packets/GOAL-002.md",
+        "sha256": "0b0d3a13f3b0a73610e0da215fd702bfdc6bdb08adabaab911da9be357b31833"
+      },
+      {
+        "path": "task_packets/GOAL-003.md",
+        "sha256": "ec8fc9dec957b8921023c5b4a9eade75df792e5a54bedfac4419f94af9c4c60b"
+      },
+      {
+        "path": "task_packets/GOAL-004.md",
+        "sha256": "208f598ad20ce1a7f346ff6d2dc6d855a38b8185a7a880db761ce729c996334e"
+      },
+      {
+        "path": "task_packets/GOAL-005.md",
+        "sha256": "71c91ded80f0f75be7f90e0ee5d929398de8ad70ca6f0c98ec9912333df018e6"
+      },
+      {
+        "path": "task_packets/GOAL-006.md",
+        "sha256": "bd751ef5c82371b883e8216a5b705da220551e0f970b59a11ae8a5a7cdf42a51"
+      },
+      {
+        "path": "task_packets/GOAL-007.md",
+        "sha256": "b7362910e389cfb85402af5c64fd4adb081c55d8fce1441d68cac6d42a00babb"
+      },
+      {
+        "path": "task_packets/GOAL-008.md",
+        "sha256": "27c8ed31a866dc645d981f55df87a35a2324124de88670e0e5d20e8c00a044ac"
+      },
+      {
+        "path": "task_packets/GOAL-009.md",
+        "sha256": "43b35ad6b5ace56b8d0d1a990f9fe788f738aa42a55117fc5b69cdb65bc75b47"
+      },
+      {
+        "path": "trace.yaml",
+        "sha256": "ea58679b596e2e8e012baf45851b4dce027fd6c6addd8fc80d04151048ffebba"
+      }
+    ],
+    "artifacts": [
+      "AGENTS.md",
+      "context.yaml",
+      "evals.yaml",
+      "evidence_contract.md",
+      "goal_ledger.md",
+      "goals.yaml",
+      "harness.yaml",
+      "policy.yaml",
+      "skills/ArtifactGenerator/README.md",
+      "skills/EvidencePack/README.md",
+      "skills/ParserChecker/README.md",
+      "task_packets/GOAL-000.md",
+      "task_packets/GOAL-001.md",
+      "task_packets/GOAL-002.md",
+      "task_packets/GOAL-003.md",
+      "task_packets/GOAL-004.md",
+      "task_packets/GOAL-005.md",
+      "task_packets/GOAL-006.md",
+      "task_packets/GOAL-007.md",
+      "task_packets/GOAL-008.md",
+      "task_packets/GOAL-009.md",
+      "trace.yaml"
+    ],
+    "generated_by": "nornyx v0.1 scaffold",
+    "project": "NornyxLanguage",
+    "schema": "nornyx.generation_manifest.v0.1",
+    "source_blocks": [
+      "agents",
+      "approvals",
+      "budgets",
+      "constitution",
+      "contexts",
+      "contracts",
+      "evals",
+      "evidence",
+      "experimental",
+      "goals",
+      "graph",
+      "harnesses",
+      "intents",
+      "nornyx",
+      "policies",
+      "project",
+      "skills",
+      "traces"
+    ]
+  },
+  "label": "nornyx_roadmap_goals",
+  "schema": "nornyx.generated_drift_baseline.v0.1",
+  "source": "examples/nornyx_roadmap_goals.nyx"
+}

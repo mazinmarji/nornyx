@@ -1,0 +1,277 @@
+nornyx: "0.1"
+project:
+  name: NornyxLanguage
+  category: context_native_agentic_engineering_language
+
+constitution:
+  principles:
+    - human_approval_for_high_impact_changes
+    - evidence_required_for_code_changes
+    - no_secret_handling
+    - no_unapproved_external_connectors
+    - no_autonomous_deployments
+
+intents:
+  - name: BuildNornyxSafely
+    goal: "Develop Nornyx through bounded, evidence-backed, approval-gated phase goals."
+
+contexts:
+  - name: NornyxRepoContext
+    include:
+      - "docs/**/*.md"
+      - "examples/**/*.nyx"
+      - "nornyx/**/*.py"
+      - "tests/**/*.py"
+    exclude:
+      - ".venv/**"
+      - "generated/**"
+      - "**/.env"
+
+policies:
+  - name: SafeNornyxDevPolicy
+    rules:
+      - "deny secrets_to_repo"
+      - "deny destructive_commands"
+      - "deny external_connectors_without_approval"
+      - "require tests_if_code_changed"
+      - "require evidence_if_goal_completed"
+
+skills:
+  - name: ParserChecker
+    purpose: "Implement parser/checker changes with tests and clear diagnostics."
+    input: [GoalPacket, NornyxSource]
+    output: [PatchDiff, TestEvidence]
+  - name: ArtifactGenerator
+    purpose: "Generate compatibility artifacts from .nyx source."
+    input: [NornyxSource]
+    output: [GeneratedArtifacts]
+  - name: EvidencePack
+    purpose: "Collect validation, risk, approval, and trace evidence."
+    input: [GoalResult]
+    output: [EvidencePack]
+
+agents:
+  - name: Builder
+    role: "Implement scoped Nornyx goal packets."
+    skills: [ParserChecker, ArtifactGenerator, EvidencePack]
+    policy: SafeNornyxDevPolicy
+  - name: Reviewer
+    role: "Review syntax, safety, evidence, and architecture drift."
+    skills: [EvidencePack]
+    policy: SafeNornyxDevPolicy
+
+harnesses:
+  - name: NornyxGoalHarness
+    flow:
+      - agent: Builder
+        action: implement_scoped_goal
+      - tool: tests
+        action: run
+      - eval: GoalQualityEval
+        action: evaluate
+      - agent: Reviewer
+        action: review
+      - evidence: DevEvidence
+        action: pack
+    repair:
+      max_attempts: 3
+      stop_on_security_ambiguity: true
+    gates:
+      - tests.pass
+      - evidence.present
+      - human_approval_before_merge
+
+evals:
+  - name: GoalQualityEval
+    metrics:
+      - "validation_passed"
+      - "scope_respected"
+      - "evidence_complete"
+      - "no_security_regression"
+
+traces:
+  - name: NornyxGoalTrace
+    capture:
+      - goal_id
+      - branch
+      - model_routing
+      - files_inspected
+      - files_changed
+      - commands_run
+      - validation_result
+      - retries
+      - final_result
+
+approvals:
+  - name: RoadmapHumanApproval
+    required_for:
+      - syntax_promotion
+      - graph_contract_promotion
+
+budgets:
+  - name: RoadmapDevBudget
+    limits:
+      max_goal_scope: bounded_patch
+      max_runtime_mode: static_contract_only
+
+evidence:
+  required:
+    - patch.diff
+    - changed_files.zip
+    - test_report.json
+    - goal_result.md
+    - risk_update.md
+    - approval_log.json
+
+graph:
+  nodes:
+    - id: context.repo
+      kind: context
+      ref: NornyxRepoContext
+    - id: agent.builder
+      kind: agent
+      ref: Builder
+    - id: evidence.dev
+      kind: evidence
+      ref: DevEvidence
+    - id: approval.roadmap_human
+      kind: approval
+      ref: RoadmapHumanApproval
+    - id: budget.roadmap_dev
+      kind: budget
+      ref: RoadmapDevBudget
+  edges:
+    - from: context.repo
+      to: agent.builder
+      relation: authorizes_context_for
+    - from: agent.builder
+      to: evidence.dev
+      relation: must_produce
+    - from: approval.roadmap_human
+      to: agent.builder
+      relation: gates
+    - from: budget.roadmap_dev
+      to: agent.builder
+      relation: bounds
+
+contracts:
+  - name: RoadmapGraphContract
+    nodes:
+      - context.repo
+      - agent.builder
+      - evidence.dev
+      - approval.roadmap_human
+      - budget.roadmap_dev
+    approval: RoadmapHumanApproval
+    budget: RoadmapDevBudget
+
+experimental:
+  strategic_roadmap:
+    note: "Historical goals below are scaffold/sub-workstream packets; docs/03_ROADMAP_TO_v1_AND_BEYOND.md is the strategic version source of truth."
+    v0.2: "Nornyx Graph + stronger generic contract model."
+    v0.3: "Domain profiles."
+    v0.4: "Adapters for Governed Delivery Control Plane, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops."
+    v0.5-v0.9: "Reserved maturity bands for graph validation, profile conformance, adapter conformance, bounded execution readiness, and release-candidate stabilization."
+    v1.0: "Stable generalized agentic contract language."
+
+goals:
+  - id: GOAL-000
+    phase: v0.1
+    title: Positioning and product boundary freeze
+    goal: "Freeze Nornyx as a control-plane language, not a general-purpose replacement language."
+    scope: [README.md, docs]
+    non_goals: ["native compiler", "runtime execution", "external connectors"]
+    validation: ["python -m pytest -q", "python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx"]
+    evidence: "docs/qa/evidence/GOAL-000/"
+    approval: "required before public positioning change"
+    stop_rules: ["stop on brand/legal uncertainty", "stop on scope expansion"]
+  - id: GOAL-001
+    phase: v0.1
+    title: Core block spec freeze
+    goal: "Freeze v0.1 core blocks and example syntax."
+    scope: [docs, examples]
+    non_goals: ["formal grammar rewrite"]
+    validation: ["python -m nornyx.cli check examples/governed_delivery_control_plane.nyx"]
+    evidence: "docs/qa/evidence/GOAL-001/"
+    approval: "required for syntax change"
+    stop_rules: ["stop if block semantics are ambiguous"]
+  - id: GOAL-002
+    phase: v0.1
+    title: Parser and checker hardening
+    goal: "Improve parser/checker diagnostics for core blocks and goals."
+    scope: [nornyx/parser.py, nornyx/checker.py, tests]
+    non_goals: ["native parser rewrite", "runtime execution"]
+    validation: ["python -m pytest -q"]
+    evidence: "docs/qa/evidence/GOAL-002/"
+    approval: "recommended"
+    stop_rules: ["stop after 3 failed attempts"]
+  - id: GOAL-003
+    phase: v0.1
+    title: Artifact generator hardening
+    goal: "Generate compatibility artifacts and goal ledger from .nyx source."
+    scope: [nornyx/generator.py, nornyx/goals.py, generated]
+    non_goals: ["CI deployment", "external writes"]
+    validation: ["python -m nornyx.cli generate examples/nornyx_roadmap_goals.nyx --out generated/nornyx_goal_plan", "python -m nornyx.cli goal-plan examples/nornyx_roadmap_goals.nyx --out generated/nornyx_goal_plan"]
+    evidence: "docs/qa/evidence/GOAL-003/"
+    approval: "recommended"
+    stop_rules: ["stop on artifact compatibility ambiguity"]
+  - id: GOAL-004
+    phase: v0.2
+    title: Formal grammar and schema model
+    goal: "Introduce formal grammar/schema model with migration path from YAML-compatible v0.1."
+    scope: [docs/RFCs, nornyx]
+    non_goals: ["breaking v0.1 examples without migration"]
+    validation: ["python -m pytest -q"]
+    evidence: "docs/qa/evidence/GOAL-004/"
+    approval: "required"
+    stop_rules: ["stop if migration path is unclear"]
+  - id: GOAL-005
+    phase: v0.2
+    title: Context provenance and trust boundaries
+    goal: "Add provenance, taint, channel separation, and authority ordering to context engineering."
+    scope: [nornyx/context_builder.py, docs]
+    non_goals: ["live external retrieval"]
+    validation: ["python -m pytest -q"]
+    evidence: "docs/qa/evidence/GOAL-005/"
+    approval: "required for security semantics"
+    stop_rules: ["stop on untrusted-context override ambiguity"]
+  - id: GOAL-006
+    phase: v0.3
+    title: Harness runtime MVP
+    goal: "Implement local, safe harness runtime with validation gates and bounded repair-loop metadata."
+    scope: [nornyx, scripts, tests]
+    non_goals: ["arbitrary shell autonomy", "deployment", "external connectors"]
+    validation: ["python -m pytest -q", "bash scripts/agent/run-nornyx-validation-gates.sh"]
+    evidence: "docs/qa/evidence/GOAL-006/"
+    approval: "required"
+    stop_rules: ["stop on unsafe command execution risk"]
+  - id: GOAL-007
+    phase: v0.5
+    title: Policy, guardrail, and capability enforcement
+    goal: "Implement static and runtime-enforceable policy/guardrail/capability checks."
+    scope: [nornyx, docs/security]
+    non_goals: ["production-grade compliance certification"]
+    validation: ["python -m pytest -q"]
+    evidence: "docs/qa/evidence/GOAL-007/"
+    approval: "mandatory"
+    stop_rules: ["stop on security ambiguity"]
+  - id: GOAL-008
+    phase: v0.7
+    title: Plugin and connector model
+    goal: "Design safe extension/plugin model and MCP/A2A adapter interfaces."
+    scope: [docs/RFCs, docs, nornyx]
+    non_goals: ["enable live private connectors by default"]
+    validation: ["python -m pytest -q"]
+    evidence: "docs/qa/evidence/GOAL-008/"
+    approval: "mandatory before connector execution"
+    stop_rules: ["stop on egress risk"]
+  - id: GOAL-009
+    phase: v1.0
+    title: Stable control-plane release
+    goal: "Release Nornyx v1.0 as a stable LLM-native engineering control-plane language."
+    scope: [all]
+    non_goals: ["general-purpose replacement language claim", "native compiler backend"]
+    validation: ["full test suite", "example generation", "evidence pack", "security review"]
+    evidence: "docs/qa/evidence/GOAL-009/"
+    approval: "mandatory release approval"
+    stop_rules: ["stop if legal/name clearance unresolved", "stop if safety model incomplete"]

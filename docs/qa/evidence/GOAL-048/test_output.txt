@@ -1,0 +1,30 @@
+GOAL-048 validation results:
+
+python -m pytest -q
+225 passed in 3.63s
+
+python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx
+Nornyx check passed
+
+python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+Nornyx check passed
+
+python -m nornyx.cli release-check --approved
+status=ready_for_release
+summary: passed=9 warning=0 blocked=0 requires_human_approval=0
+
+python scripts/release/check_stable_language.py --approved
+status=stable_language_approved_local
+summary: passed=24 warning=0 blocked=0 requires_human_approval=0
+
+python scripts/dev/audit_pmo_status.py
+blocks=41 completed=40 partial=0 locked=1
+
+git diff --check
+exit=0; Windows line-ending warnings only.
+
+stale release wording search
+no matches for future/local-only v1.0 release phrasing.

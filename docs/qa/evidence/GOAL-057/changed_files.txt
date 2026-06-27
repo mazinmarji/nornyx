@@ -1,0 +1,11 @@
+manifest.json
+docs/56_MANIFEST_VALIDATION_BASELINE_REFRESH.md
+docs/goals/goal-057-manifest-validation-baseline-refresh.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-057/README.md
+docs/qa/evidence/GOAL-057/changed_files.txt
+docs/qa/evidence/GOAL-057/risk_note.md
+docs/qa/evidence/GOAL-057/handoff.md
+docs/qa/evidence/GOAL-057/test_output.txt
+tests/test_manifest_metadata.py
+tests/test_pmo_summary_readability.py

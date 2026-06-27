@@ -1,0 +1,14 @@
+README.md
+docs/goals/goal-043-v10-public-release-preparation.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-043/README.md
+docs/qa/evidence/GOAL-043/changed_files.txt
+docs/qa/evidence/GOAL-043/handoff.md
+docs/qa/evidence/GOAL-043/risk_note.md
+docs/qa/evidence/GOAL-043/test_output.txt
+docs/releases/RELEASE_CANDIDATE_v1_0.md
+docs/releases/RELEASE_NOTES_v1_0.md
+manifest.json
+nornyx/__init__.py
+pyproject.toml
+tests/test_release_readiness.py

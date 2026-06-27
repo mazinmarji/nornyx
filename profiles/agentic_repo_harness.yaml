@@ -1,0 +1,60 @@
+name: agentic_repo_harness
+version: v0.3
+core_surface: v0.2
+status: optional_profile
+purpose: Describe repo harness governance, local quality gates, and evidence collection.
+domain: agentic_repo_control_plane
+required_blocks:
+  - project
+  - contexts
+  - agents
+  - harnesses
+  - policies
+  - evidence
+  - goals
+recommended_blocks:
+  - graph
+  - contracts
+  - approvals
+  - budgets
+  - traces
+  - evals
+graph_node_kinds:
+  - profile
+  - context
+  - agent
+  - policy
+  - harness
+  - approval
+  - budget
+  - goal
+validation_rules:
+  - harnesses are plans and gates, not arbitrary command execution
+  - contract references declared graph nodes, approvals, and budgets
+  - profile-specific harness defaults do not weaken core policy checks
+conformance:
+  v1_readiness: stable_candidate
+  migration: Use when harness gates and local evidence flows are first-class.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - MCP/A2A live connectors
+  - LLM/model calls
+  - automatic approvals
+  - self-modification
+  - production deployment
+  - enterprise/regulated GOAL-100 promotion
+  - general-purpose programming language features
+core_concepts:
+  - Intent
+  - Agent
+  - Policy
+  - Eval
+  - Approval
+  - Evidence
+  - Context
+  - Artifact
+  - Graph
+  - Goal
+  - Budget
+  - Trace

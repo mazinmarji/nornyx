@@ -1,0 +1,13 @@
+docs/39_NORNYX_ZERO_FRICTION_ADOPTION_PACK.md
+docs/ADRs/ADR-0021-zero-friction-adoption-ramp.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-032/README.md
+docs/qa/evidence/GOAL-032/adoption_validation.json
+docs/qa/evidence/GOAL-032/changed_files.txt
+docs/qa/evidence/GOAL-032/handoff.md
+docs/qa/evidence/GOAL-032/risk_note.md
+docs/qa/evidence/GOAL-032/test_output.txt
+nornyx/adoption.py
+nornyx/dev_quality.py
+scripts/dev/check_adoption_pack.py
+tests/test_zero_friction_adoption.py

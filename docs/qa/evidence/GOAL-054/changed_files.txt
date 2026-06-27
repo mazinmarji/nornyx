@@ -1,0 +1,11 @@
+README.md
+docs/53_README_COMMAND_CONSISTENCY_AUDIT.md
+docs/goals/goal-054-readme-command-consistency-audit.md
+docs/qa/evidence/GOAL-054/README.md
+docs/qa/evidence/GOAL-054/changed_files.txt
+docs/qa/evidence/GOAL-054/risk_note.md
+docs/qa/evidence/GOAL-054/handoff.md
+docs/qa/evidence/GOAL-054/test_output.txt
+tests/test_readme_commands.py
+manifest.json
+docs/pmo/status/current_status.json

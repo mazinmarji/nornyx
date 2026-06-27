@@ -1,0 +1,60 @@
+name: NornyxDecisionBoundaryEvidenceQuality
+status: regulated_candidate
+decision_boundaries:
+  - name: ShipmentDisposition
+    ai_allowed:
+      - propose_risk_score
+      - explain_temperature_anomaly
+      - suggest_manual_check
+    ai_denied:
+      - approve_disposal
+      - release_blocked_shipment
+      - notify_customer_without_policy
+      - override_compliance_hold
+    human_owner: ComplianceOwner
+    approval_required: true
+    evidence_required:
+      - ai_recommendation
+      - human_approval
+      - reason_code
+      - timestamp
+    blocked_until:
+      - human_approval_recorded
+      - audit_evidence_complete
+evidence_quality:
+  - name: ColdGuardAuditEvidence
+    required:
+      - telemetry_snapshot
+      - anomaly_reason
+      - ai_recommendation
+      - human_approval
+      - reason_code
+      - timestamp
+      - customer_notification_record
+    quality:
+      - immutable_timestamp
+      - source_hash
+      - source_provenance
+      - approver_identity
+      - tenant_id
+      - exportable_report
+      - retention_policy
+      - decision_reason
+    retention: 2 years
+    export:
+      formats:
+        - json
+        - pdf
+      redaction_required: true
+promotion:
+  decision_boundary: regulated_enterprise_candidate
+  evidence_quality: regulated_enterprise_candidate
+safety:
+  local_validation_only: true
+  automatic_approval: false
+  connector_calls: false
+  llm_calls: false
+  deployment_actions: false
+  production_writes: false
+  audit_database: false
+  identity_provider: false

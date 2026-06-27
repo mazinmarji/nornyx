@@ -1,0 +1,47 @@
+project NornyxPortalContractExample:
+    profile: ai_coding
+
+portal_contract NornyxPortal:
+    source: delivery_state
+
+    role_view Developer:
+        sees:
+            - assigned_goals
+            - validation_commands
+            - pending_evidence
+            - failing_checks
+
+    role_view Architect:
+        sees:
+            - architecture_decisions
+            - design_risks
+            - dependency_boundaries
+            - pending_reviews
+
+    role_view PMO:
+        sees:
+            - roadmap
+            - goal_completion
+            - risks
+            - evidence
+            - next_actions
+
+    role_view Security:
+        sees:
+            - policy_violations
+            - risky_capabilities
+            - connector_risks
+            - approval_gates
+
+    render_targets:
+        - shell
+        - markdown
+        - json
+        - developer_pmo_portal
+        - ide_panel
+
+    safety:
+        read_only: true
+        no_shell_execution: true
+        no_external_calls: true
+        no_secret_exposure: true

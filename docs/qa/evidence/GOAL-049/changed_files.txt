@@ -1,0 +1,12 @@
+examples/nornyx_graph_demo.nyx
+docs/50_NORNYX_GRAPH_DEMO.md
+docs/goals/goal-049-static-nornyx-graph-demo.md
+docs/qa/evidence/GOAL-049/README.md
+docs/qa/evidence/GOAL-049/changed_files.txt
+docs/qa/evidence/GOAL-049/risk_note.md
+docs/qa/evidence/GOAL-049/handoff.md
+docs/qa/evidence/GOAL-049/test_output.txt
+tests/test_parser_checker.py
+README.md
+manifest.json
+docs/pmo/status/current_status.json

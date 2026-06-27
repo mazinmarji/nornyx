@@ -1,0 +1,8 @@
+name: legacy_upgrade
+purpose: Existing software repo adopting Nornyx incrementally without forcing runtime migration.
+includes:
+  - current_system_inventory
+  - migration_goals
+  - compatibility_policy
+  - regression_evidence
+  - staged_adoption_plan

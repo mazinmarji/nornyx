@@ -1,0 +1,39 @@
+project NornyxHandoverExample:
+    profile: nornyx_language
+
+handover ProductToNornyx:
+    from: product_discovery
+    to: governed_development
+    required:
+        - problem_statement
+        - personas
+        - user_journeys
+        - prototype_screens
+        - acceptance_criteria
+        - constraints
+        - risks
+        - success_metrics
+    approval: ProductOwner
+    evidence: "docs/qa/evidence/GOAL-023/"
+    blocking_open_questions:
+        - CitizenPhoneNumber
+
+assumption WebFirstMVP:
+    text: "MVP supports web app only, not native mobile apps."
+    owner: ProductOwner
+    risk: low
+    can_proceed: true
+
+open_question CitizenPhoneNumber:
+    text: "Should user phone number be mandatory or optional?"
+    owner: ProductOwner
+    risk: medium
+    blocks:
+        - notification_flow
+
+decision_needed AIVisibility:
+    text: "Should AI category suggestions be visible to external users?"
+    owner: ProductOwner
+    risk: medium
+    required_before:
+        - public_beta

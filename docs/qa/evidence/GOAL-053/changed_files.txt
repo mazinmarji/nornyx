@@ -1,0 +1,11 @@
+docs/49_NORNYX_5_MINUTE_ADOPTION.md
+docs/goals/goal-053-adoption-guide-schema-target-refresh.md
+docs/qa/evidence/GOAL-053/README.md
+docs/qa/evidence/GOAL-053/changed_files.txt
+docs/qa/evidence/GOAL-053/risk_note.md
+docs/qa/evidence/GOAL-053/handoff.md
+docs/qa/evidence/GOAL-053/test_output.txt
+tests/test_schema_model.py
+README.md
+manifest.json
+docs/pmo/status/current_status.json

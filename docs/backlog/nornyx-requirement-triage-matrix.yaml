@@ -1,0 +1,98 @@
+schema_version: "1.0"
+status: proposed
+purpose: "Classify Nornyx concepts to prevent scope creep and guide implementation."
+
+categories:
+  core_now:
+    action: "implement_or_harden"
+    concepts:
+      - project
+      - goal
+      - intent
+      - context
+      - agent
+      - policy
+      - harness
+      - eval
+      - evidence
+      - approval
+      - trace
+      - budget
+      - delivery_state
+
+  near_core_candidate:
+    action: "docs_schema_local_validator_only"
+    concepts:
+      - handover
+      - assumption
+      - open_question
+      - decision_needed
+      - decision_boundary
+      - evidence_quality
+      - authority_order
+      - provenance
+
+  extension_backlog:
+    action: "roadmap_backlog"
+    concepts:
+      - intake
+      - persona
+      - journey
+      - prototype
+      - operations
+      - product_eval
+      - lifecycle_state
+      - data_source
+      - data_provenance
+      - uncertainty_policy
+      - tenant_boundary
+      - incident_response
+      - operations_eval
+      - compliance_eval
+      - data_quality_eval
+      - customer_safe_view
+      - safe_mode
+      - audit_export
+
+  profile_specific:
+    action: "future_profile"
+    concepts:
+      - ai_coding_profile
+      - regulated_profile
+      - legacy_upgrade_profile
+      - telecom_ops_profile
+      - cold_chain_profile
+      - civic_services_profile
+      - enterprise_portal_profile
+
+  outside_nornyx:
+    action: "define_contract_only"
+    concepts:
+      - product_management_suite
+      - design_tool
+      - ticketing_system
+      - monitoring_platform
+      - bi_dashboard
+      - identity_provider
+      - audit_database
+      - iot_stream_processor
+      - compliance_management_system
+      - customer_support_platform
+      - production_operations_console
+
+  rejected:
+    action: "do_not_add"
+    concepts:
+      - full_nornyx_portal_engine
+      - autonomous_production_self_healing
+      - live_connector_execution_by_default
+      - automatic_github_writes
+      - general_purpose_language_replacement_now
+      - vendor_specific_command_language
+      - prompt_trick_catalog
+      - unlimited_examples
+
+next_focus:
+  - GOAL-001 Core block spec freeze
+  - GOAL-002 Parser/checker hardening
+  - GOAL-003 Artifact generator hardening

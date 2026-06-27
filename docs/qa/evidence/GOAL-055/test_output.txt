@@ -1,0 +1,52 @@
+GOAL-055 validation run on 2026-06-03.
+
+Command:
+python -m pytest tests\test_manifest_metadata.py -q
+
+Result:
+2 passed in 0.08s
+
+Command:
+python -m pytest -q
+
+Result:
+235 passed in 6.76s
+
+Command:
+python -m json.tool manifest.json > $null
+python -m json.tool docs\pmo\status\current_status.json > $null
+
+Result:
+Both JSON files parsed successfully.
+
+Command:
+python -m nornyx.cli schema --version 1.0
+
+Result:
+v1.0 schema route resolved with issues=[]
+
+Command:
+python -m nornyx.cli release-check --approved
+
+Result:
+status=ready_for_release
+passed=9 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\release\check_stable_language.py --approved
+
+Result:
+status=stable_language_approved_local
+passed=24 warning=0 blocked=0 requires_human_approval=0
+
+Command:
+python scripts\dev\audit_pmo_status.py
+
+Result:
+blocks=48 completed=47 partial=0 locked=1
+
+Command:
+git diff --check
+
+Result:
+No whitespace errors. Git reported CRLF working-copy normalization warnings for existing text files only.

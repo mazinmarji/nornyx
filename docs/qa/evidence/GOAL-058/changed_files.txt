@@ -1,0 +1,13 @@
+README.md
+manifest.json
+docs/57_README_V101_HYGIENE_INDEX_REFRESH.md
+docs/goals/goal-058-readme-v101-hygiene-index-refresh.md
+docs/pmo/status/current_status.json
+docs/qa/evidence/GOAL-058/README.md
+docs/qa/evidence/GOAL-058/changed_files.txt
+docs/qa/evidence/GOAL-058/risk_note.md
+docs/qa/evidence/GOAL-058/handoff.md
+docs/qa/evidence/GOAL-058/test_output.txt
+tests/test_manifest_metadata.py
+tests/test_pmo_summary_readability.py
+tests/test_readme_v101_hygiene_index.py

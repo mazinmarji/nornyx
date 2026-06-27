@@ -1,0 +1,9 @@
+docs/goals/goal-044-v10-release-prep-github-merge.md
+docs/goals/goal-045-v10-tag-github-release.md
+docs/goals/goal-046-v10-post-release-pmo-evidence-record.md
+docs/pmo/status/current_status.json
+docs/releases/RELEASE_RECORD_v1_0.md
+docs/qa/evidence/GOAL-044/
+docs/qa/evidence/GOAL-045/
+docs/qa/evidence/GOAL-046/
+manifest.json

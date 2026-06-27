@@ -1,0 +1,24 @@
+GOAL-046 local validation results:
+
+python -m pytest -q
+225 passed in 4.84s
+
+python -m nornyx.cli release-check --approved
+status=ready_for_release
+summary: passed=9 warning=0 blocked=0 requires_human_approval=0
+
+python scripts/release/check_stable_language.py --approved
+status=stable_language_approved_local
+summary: passed=24 warning=0 blocked=0 requires_human_approval=0
+
+python scripts/dev/audit_pmo_status.py
+blocks=40 completed=39 partial=0 locked=1
+
+gh release view v1.0.0 --json url,name,tagName,isDraft,isPrerelease,publishedAt,targetCommitish
+url=https://github.com/mazinmarji/nornyx/releases/tag/v1.0.0
+name=Nornyx v1.0.0
+tagName=v1.0.0
+isDraft=false
+isPrerelease=false
+publishedAt=2026-06-03T10:33:15Z
+targetCommitish=main

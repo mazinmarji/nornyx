@@ -1,0 +1,74 @@
+nornyx_version: "0.1"
+
+kernel:
+  stable_blocks:
+    - project
+    - goal
+    - intent
+    - context
+    - agent
+    - policy
+    - harness
+    - eval
+    - evidence
+    - approval
+    - trace
+    - budget
+    - delivery_state
+
+extensions:
+  - name: mcp
+    status: candidate
+    version: "manifest-validation-only"
+    provides:
+      - connector_manifest
+      - tool_permission_contract
+    conformance:
+      - schemas/connector_manifest.schema.json
+    security:
+      requires_approval: true
+      default_mode: read_only
+
+  - name: a2a
+    status: experimental
+    version: "contract-only"
+    provides:
+      - peer_agent_contract
+      - agent_message_contract
+    conformance:
+      - schemas/portal_contract.schema.json
+    security:
+      requires_approval: true
+      default_mode: read_only
+
+  - name: opentelemetry_genai
+    status: experimental
+    version: "trace-contract-only"
+    provides:
+      - trace_export_contract
+    conformance:
+      - tests/test_delivery_state_renderers.py
+    security:
+      requires_approval: false
+      default_mode: export_only
+
+compatibility:
+  python:
+    - "3.11"
+    - "3.12"
+    - "3.13"
+  profiles:
+    - minimal
+    - standard
+    - ai_coding
+    - regulated
+    - legacy_upgrade
+    - nornyx_language
+  operating_systems:
+    - windows
+    - linux
+    - macos
+
+maturity:
+  level: 2
+  name: checked_contracts
