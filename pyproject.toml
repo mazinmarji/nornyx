@@ -9,7 +9,7 @@ description = "Nornyx: a context-native agentic engineering language scaffold"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "Nornyx Contributors"}]
+authors = [{name = "Mazin Marji and Nornyx Contributors"}]
 dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
