@@ -21,10 +21,9 @@ def test_manifest_current_validation_is_fresh() -> None:
     assert validation["pmo_audit"] == "blocks=56 completed=55 partial=0 locked=1"
 
 
-def test_manifest_has_no_zip_provenance() -> None:
-    # ZIP build-provenance (uploaded ZIPs / /mnt/data) was removed for public release.
+def test_manifest_has_no_build_provenance() -> None:
+    # The manifest carries only current metadata; internal build-provenance
+    # blocks must not be present.
     manifest = load_manifest()
-    assert "historical_zip_verification" not in manifest
-    raw = Path("manifest.json").read_text(encoding="utf-8")
-    assert "/mnt/data" not in raw
-    assert "uploaded" not in raw.lower()
+    for key in ("historical_zip_verification", "verification", "final_recheck"):
+        assert key not in manifest
