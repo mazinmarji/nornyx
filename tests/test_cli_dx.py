@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
+from nornyx import __version__
 from nornyx.checker import check_document, has_errors
 from nornyx.cli import main
 from nornyx.doctor import run_doctor
@@ -28,6 +30,14 @@ def test_profiles_command_lists_expected_profiles(capsys) -> None:
     assert "nornyx_language" in out
     assert "agentic_repo_harness" in out
     assert "telecom_ops" in out
+
+
+def test_version_flag_reports_package_version(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version"])
+
+    assert exc_info.value.code == 0
+    assert f"nornyx {__version__}" in capsys.readouterr().out
 
 
 def test_init_check_fmt_explain_roundtrip(tmp_path: Path, capsys) -> None:

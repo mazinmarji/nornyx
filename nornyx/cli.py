@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from . import __version__
 from .adoption import adoption_status, write_lite_nyx
 from .checker import check_document, has_errors
 from .connector_runtime import (
@@ -491,6 +492,7 @@ def cmd_adopt_init_lite(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="nornyx", description="Nornyx v0.1 CLI scaffold")
+    parser.add_argument("--version", action="version", version=f"nornyx {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("check", help="Validate a .nyx file")
