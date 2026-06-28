@@ -5,12 +5,31 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nornyx"
 version = "1.1.1"
-description = "Nornyx: a context-native agentic engineering language scaffold"
+description = "A generalized agentic contract/control-plane language for governed AI software delivery."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "Mazin Marji and Nornyx Contributors"}]
+keywords = ["agentic", "ai-governance", "control-plane", "contract", "schema", "ai-safety", "developer-tools"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Code Generators",
+  "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = ["PyYAML>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/mazinmarji/nornyx"
+Repository = "https://github.com/mazinmarji/nornyx"
+Issues = "https://github.com/mazinmarji/nornyx/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.4"]
