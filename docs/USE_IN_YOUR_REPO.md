@@ -60,13 +60,16 @@ is a reliable drift gate.
 
 ```bash
 #!/bin/sh
-nornyx check nornyx.nyx || exit 1
+nornyx check nornyx.nyx >/dev/null || exit 1
 nornyx generate nornyx.nyx --out .nornyx-check >/dev/null
 if ! diff -q AGENTS.md .nornyx-check/AGENTS.md >/dev/null; then
-  echo "AGENTS.md is out of sync with nornyx.nyx — run: nornyx generate nornyx.nyx --out . " >&2
+  echo "AGENTS.md is out of sync with nornyx.nyx." >&2
+  echo "Fix: nornyx generate nornyx.nyx --out .nornyx && cp .nornyx/AGENTS.md AGENTS.md" >&2
   exit 1
 fi
 ```
+
+Add `.nornyx-check/` (and your generate output dir) to `.gitignore`.
 
 ### GitHub Actions
 
