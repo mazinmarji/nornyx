@@ -85,12 +85,17 @@ def sync_policy_in_contract(contract: Path, policy_name: str, ordered_rules: lis
     )
     if pi is None:
         return False
+    base = _indent(lines[pi])
+    # The block ends at the next sibling *key* — a non-deeper line that is not a
+    # list item. List items may sit at the key's own indent (YAML block sequence
+    # at key indent, which is what `nornyx init` emits), so `- ` lines at `base`
+    # are still inside the block.
     end = n
     for j in range(pi + 1, n):
         ln = lines[j]
         if ln.strip() == "" or ln.lstrip().startswith("#"):
             continue
-        if _indent(ln) == 0:
+        if _indent(ln) <= base and not ln.lstrip().startswith("- "):
             end = j
             break
 
@@ -131,12 +136,29 @@ def sync_policy_in_contract(contract: Path, policy_name: str, ordered_rules: lis
         if _indent(ln) == content_indent and key in _RULE_KEYS:
             if insert_index is None:
                 insert_index = len(kept)
-            k += 1  # skip the key line and its deeper-indented children
-            trailing_blanks: list[str] = []
-            while k < len(body) and (body[k].strip() == "" or _indent(body[k]) > content_indent):
-                trailing_blanks = trailing_blanks + [body[k]] if body[k].strip() == "" else []
-                k += 1
-            kept.extend(trailing_blanks)  # keep separator blanks after the block
+            k += 1  # skip the rule key line, then its sequence items
+            block: list[str] = []
+            while k < len(body):
+                cur = body[k]
+                ind = _indent(cur)
+                # A block sequence's items may sit at the key's own indent
+                # (`deny:` then `- x` both at content_indent) or deeper. Both,
+                # plus blank lines, belong to this rule block.
+                if cur.strip() == "" or ind > content_indent or (
+                    ind == content_indent and cur.lstrip().startswith("- ")
+                ):
+                    block.append(cur)
+                    k += 1
+                    continue
+                break
+            # Drop the rule content but keep any trailing separator blank lines.
+            trailing: list[str] = []
+            for cur in reversed(block):
+                if cur.strip() == "":
+                    trailing.insert(0, cur)
+                else:
+                    break
+            kept.extend(trailing)
             continue
         kept.append(ln)
         k += 1

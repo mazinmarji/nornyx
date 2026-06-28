@@ -4,6 +4,16 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.9] - 2026-06-28
+
+### Fixed
+- `workspace-check --write` silently did nothing (1.1.7/1.1.8) on contracts whose
+  policy list is a YAML block sequence at the key's own indent — which is exactly
+  what `nornyx init` and `yaml.safe_dump` emit (`policies:` then `- name:` at
+  column 0, and `deny:`/`- x` at the same indent). Block-boundary detection now
+  treats `- ` items at the key indent as inside the block, and rule-item
+  consumption handles same-indent sequence items. Found by a cold-start trial.
+
 ## [1.1.8] - 2026-06-28
 
 ### Added

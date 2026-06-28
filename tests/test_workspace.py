@@ -185,6 +185,37 @@ def test_sync_only_touches_named_policy(tmp_path):
     assert _member_ruleset(f, "Another") == {"deny keep_me_too"}
 
 
+def test_sync_handles_init_style_indent_zero_block(tmp_path):
+    # `nornyx init` emits the policy list at the key's own indent (column 0) in
+    # deny:/require: form. Sync must still find and rewrite it.
+    src = (
+        'nornyx: "0.1"\nproject:\n  name: I\npolicies:\n'
+        "- name: P\n  deny:\n    - secrets_to_llm\n    - production_write_without_approval\n"
+        "  require:\n    - old_rule\n"
+        "agents:\n- name: B\n  role: build\n  policy: P\n"
+    )
+    f, rules = _sync_one(tmp_path, src, CANON)
+    assert rules == WANT
+    # The sibling block survived the rewrite.
+    from nornyx.parser import load_nyx
+
+    assert any(a.get("name") == "B" for a in load_nyx(f).get("agents", []))
+
+
+def test_sync_handles_same_indent_block_sequence(tmp_path):
+    # yaml.safe_dump puts list items at the key's own indent (deny: and - x both
+    # at the same column). Sync must consume those, not leak them.
+    src = (
+        'nornyx: "0.1"\nproject:\n  name: S\npolicies:\n'
+        "- name: P\n  deny:\n  - secrets_to_llm\n  - production_write_without_approval\n"
+        "  require:\n  - old_rule\n"
+        "agents:\n- name: B\n  role: build\n  policy: P\n"
+    )
+    f, rules = _sync_one(tmp_path, src, CANON)
+    assert rules == WANT
+    assert "production_write_without_approval" not in f.read_text(encoding="utf-8")
+
+
 def test_workspace_check_nudges_to_write_on_syncable_drift(tmp_path):
     from nornyx.workspace import format_workspace
 
