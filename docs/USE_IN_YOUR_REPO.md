@@ -115,8 +115,21 @@ nornyx workspace-check --manifest nornyx.workspace.yaml   # exit 1 if any member
 ```
 
 This verifies every member's named policy matches the canonical rule set, so a
-change to the org standard can't silently leave some repos behind. Like the rest
-of Nornyx it's a checker, not a runtime: it reads local files only.
+change to the org standard can't silently leave some repos behind.
+
+**Edit once, propagate (sync mode).** Add `--write` to push the canonical policy
+*down* into each member, so you maintain the org policy in exactly one place (the
+manifest) instead of hand-copying it:
+
+```bash
+nornyx workspace-check --manifest nornyx.workspace.yaml --write
+```
+
+The rewrite is surgical — it replaces only the matched policy's rule block and
+leaves the rest of each contract (comments, other blocks) untouched, so members
+stay self-contained and auditable. A member that doesn't declare the policy at
+all (or a missing file) is left for a human rather than invented. Run it in a
+pre-commit hook or a scheduled job, and commit the propagated changes.
 
 ## Scope reminder
 

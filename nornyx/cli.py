@@ -92,7 +92,7 @@ def cmd_drift(args: argparse.Namespace) -> int:
 
 def cmd_workspace_check(args: argparse.Namespace) -> int:
     try:
-        report = check_workspace(args.manifest)
+        report = check_workspace(args.manifest, write=args.write)
     except (WorkspaceError, NornyxParseError) as exc:
         print(json.dumps({"level": "error", "code": "WORKSPACE_ERROR", "message": str(exc)}, indent=2))
         return 2
@@ -100,7 +100,8 @@ def cmd_workspace_check(args: argparse.Namespace) -> int:
         print(json.dumps(report, indent=2))
     else:
         print(format_workspace(report))
-    return 0 if report["status"] == "pass" else 1
+    # `synced` means we fixed divergence on disk: success for `--write`.
+    return 0 if report["status"] in ("pass", "synced") else 1
 
 
 def cmd_goal_plan(args: argparse.Namespace) -> int:
@@ -519,6 +520,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify member repos' policies match a workspace's canonical standard",
     )
     p.add_argument("--manifest", default="nornyx.workspace.yaml")
+    p.add_argument(
+        "--write",
+        action="store_true",
+        help="Sync mode: rewrite each member's diverging policy to the canonical rules",
+    )
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_workspace_check)
 

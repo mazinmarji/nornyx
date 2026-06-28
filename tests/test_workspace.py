@@ -92,3 +92,61 @@ def test_workspace_rejects_malformed_manifest(tmp_path):
     m.write_text("workspace: X\nmembers: []\n", encoding="utf-8")  # no policies
     with pytest.raises(WorkspaceError):
         check_workspace(m)
+
+
+# --- sync mode (write=True) -------------------------------------------------
+
+COMMENTED_MEMBER = """\
+nornyx: "0.1"
+project:
+  name: A
+policies:
+  # keep this comment
+  - name: SafeDeliveryPolicy
+    rules:
+      - deny secrets_to_llm
+      - require extra_local_rule
+
+agents:
+  - name: Builder
+    role: build
+    policy: SafeDeliveryPolicy
+"""
+
+
+def test_workspace_write_syncs_divergent_member(tmp_path):
+    from nornyx.parser import load_nyx
+
+    _member(tmp_path, "a", "A", ALIGNED)
+    d = tmp_path / "b"
+    d.mkdir()
+    (d / "b.nyx").write_text(COMMENTED_MEMBER, encoding="utf-8")
+
+    report = check_workspace(_manifest(tmp_path), write=True)
+    assert report["status"] == "synced"
+    b = next(m for m in report["members"] if m["path"] == "b/b.nyx")
+    assert b["policies"][0]["status"] == "synced"
+
+    # File now matches the canonical set, keeps its comment, and is still valid.
+    text = (d / "b.nyx").read_text(encoding="utf-8")
+    assert "# keep this comment" in text
+    assert "extra_local_rule" not in text
+    assert "require human_approval_before_merge" in text
+    doc = load_nyx(d / "b.nyx")
+    assert doc["project"]["name"] == "A"  # untouched
+
+    # Idempotent: a second pass is a clean pass.
+    again = check_workspace(_manifest(tmp_path))
+    assert again["status"] == "pass"
+
+
+def test_workspace_write_does_not_invent_missing_policy(tmp_path):
+    _member(tmp_path, "a", "A", ALIGNED)
+    d = tmp_path / "b"
+    d.mkdir()
+    (d / "b.nyx").write_text('nornyx: "0.1"\nproject:\n  name: B\n', encoding="utf-8")
+    report = check_workspace(_manifest(tmp_path), write=True)
+    # Missing policy is left for a human; sync edits existing blocks only.
+    assert report["status"] == "drift"
+    b = next(m for m in report["members"] if m["path"] == "b/b.nyx")
+    assert b["policies"][0]["status"] == "missing"

@@ -4,6 +4,16 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.7] - 2026-06-28
+
+### Added
+- `nornyx workspace-check --write` (sync mode): propagates each canonical policy
+  from the workspace manifest *into* every member contract, so the org policy is
+  maintained in one place instead of hand-copied. The rewrite is surgical — it
+  replaces only the matched policy's rule block and preserves comments and other
+  blocks, keeping members self-contained. Members that don't declare the policy
+  (or missing files) are left for a human, not invented.
+
 ## [1.1.6] - 2026-06-28
 
 ### Added
