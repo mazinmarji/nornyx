@@ -420,7 +420,8 @@ def cmd_examples(args: argparse.Namespace) -> int:
     print(f"Wrote {len(written)} example(s) to {dest.as_posix()}/:")
     for w in written:
         print(f"  {w.as_posix()}")
-    print(f"Next: nornyx check {written[0].as_posix()}")
+    nudge = next((w for w in written if "governed_delivery" in w.name), written[0])
+    print(f"Next: nornyx check {nudge.as_posix()}")
     return 0
 
 

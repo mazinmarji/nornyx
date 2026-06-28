@@ -88,6 +88,36 @@ harnesses:
       - require: human_approval_before_merge
 ```
 
+## Use it in your repo
+
+Going from the demo to your own project is four steps:
+
+```bash
+# 1. scaffold a .nyx for your repo (pick a profile, default ai_coding)
+nornyx init --name YourRepo --out nornyx.nyx
+
+# 2. edit nornyx.nyx — your contexts, policies, agents, harness — then check it
+nornyx check nornyx.nyx
+
+# 3. generate the artifacts and put AGENTS.md where your agent reads it
+nornyx generate nornyx.nyx --out .nornyx/
+cp .nornyx/AGENTS.md AGENTS.md          # the file Claude Code / Cursor / Copilot read
+
+# 4. commit nornyx.nyx (the source) and the artifacts you use
+```
+
+**Keep them from drifting.** Add a check that the committed artifacts still match
+the contract — in CI or a pre-commit hook:
+
+```bash
+nornyx generate nornyx.nyx --out .nornyx-check
+diff AGENTS.md .nornyx-check/AGENTS.md   # nonzero exit = drift; regenerate & recommit
+```
+
+Now the `.nyx` is the single source of truth: edit it, regenerate, and the check
+fails loudly if `AGENTS.md` (or any artifact) ever drifts out of sync. Full
+walkthrough: [docs/USE_IN_YOUR_REPO.md](docs/USE_IN_YOUR_REPO.md).
+
 ## Why Nornyx
 
 - **One source of truth** for agent/skill/harness/policy/eval/evidence artifacts — no more drift.

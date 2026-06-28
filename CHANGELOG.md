@@ -4,6 +4,16 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.4] - 2026-06-27
+
+### Added
+- "Use it in your repo" onboarding: README section + `docs/USE_IN_YOUR_REPO.md`
+  showing `nornyx init` -> edit -> generate -> place `AGENTS.md` -> a CI /
+  pre-commit **drift check** (regenerate and diff) so artifacts can't drift.
+
+### Changed
+- `nornyx examples` now nudges toward the example the quickstart leads with.
+
 ## [1.1.3] - 2026-06-27
 
 ### Fixed
