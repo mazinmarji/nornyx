@@ -1,0 +1,40 @@
+name: release
+
+# Publishes Nornyx to PyPI via Trusted Publishing (OIDC) — no API token stored
+# anywhere. Fires when a GitHub Release is published, or on manual dispatch.
+# The artifact is built from the tagged source, so what lands on PyPI is provably
+# what is in the repo.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install . pytest
+      - run: pytest -q
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        # No token needed: PyPI verifies the OIDC identity of this workflow.
