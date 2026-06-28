@@ -40,6 +40,9 @@ def load_nyx(path: str | Path) -> dict[str, Any]:
     A future parser can replace this without changing the high-level model.
     """
     p = Path(path)
+    if not p.exists():
+        raise NornyxParseError(f"contract file not found: {p}")
+
     try:
         raw = p.read_text(encoding="utf-8")
     except OSError as exc:
