@@ -24,6 +24,9 @@ Requires Python 3.10+. The only runtime dependency is PyYAML.
 ## Quick start (5 minutes)
 
 ```bash
+# 0. drop the bundled example contracts into ./examples/
+nornyx examples
+
 # 1. check a contract
 nornyx check examples/governed_delivery_control_plane.nyx
 

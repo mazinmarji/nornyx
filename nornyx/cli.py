@@ -401,6 +401,29 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_examples(args: argparse.Namespace) -> int:
+    from importlib import resources
+
+    dest = Path(args.out)
+    dest.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    src = resources.files("nornyx") / "examples"
+    for entry in sorted(src.iterdir(), key=lambda e: e.name):
+        if entry.name.endswith(".nyx"):
+            target = dest / entry.name
+            target.write_text(entry.read_text(encoding="utf-8"), encoding="utf-8")
+            written.append(target)
+    if not written:
+        print(json.dumps({"level": "error", "code": "NO_EXAMPLES",
+                          "message": "no bundled examples found"}, indent=2))
+        return 1
+    print(f"Wrote {len(written)} example(s) to {dest.as_posix()}/:")
+    for w in written:
+        print(f"  {w.as_posix()}")
+    print(f"Next: nornyx check {written[0].as_posix()}")
+    return 0
+
+
 def cmd_fmt(args: argparse.Namespace) -> int:
     rendered = format_file(args.file, write=args.write)
     current = Path(args.file).read_text(encoding="utf-8")
@@ -447,6 +470,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("check", help="Validate a .nyx file")
     p.add_argument("file")
     p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("examples", help="Copy bundled .nyx examples into a directory")
+    p.add_argument("--out", default="examples")
+    p.set_defaults(func=cmd_examples)
 
     p = sub.add_parser("generate", help="Generate AGENTS.md, skills, harness, policy, evals, evidence contract")
     p.add_argument("file")

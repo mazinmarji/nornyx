@@ -1,0 +1,77 @@
+nornyx: "0.1"
+project:
+  name: EmailTriageAI
+  category: governed_ai_service
+
+constitution:
+  principles:
+    - no_pii_to_external_model
+    - approval_before_customer_impact
+    - evidence_required_for_ai_decisions
+
+intents:
+  - name: SafeEmailTriage
+    goal: "Classify operational emails into tickets safely and audibly."
+    success:
+      - "PII leakage is zero."
+      - "Critical tickets require human confirmation."
+
+contexts:
+  - name: MailOpsContext
+    include:
+      - "docs/email_ops/**/*.md"
+      - "evals/email_triage.jsonl"
+    exclude:
+      - "secrets/**"
+    budget:
+      max_tokens: 16000
+
+skills:
+  - name: TriageClassifier
+    purpose: "Classify email into action, category, priority, and confidence."
+    input: [RedactedEmail, MailOpsContext]
+    output: [TicketDecision]
+  - name: EvidencePack
+    purpose: "Create decision evidence."
+    input: [TicketDecision]
+    output: [EvidenceManifest]
+
+policies:
+  - name: SafeEmailPolicy
+    rules:
+      - require pii_redaction_before_external_model
+      - reject_if_confidence_below_0_75
+      - require approval_if_priority_critical
+
+agents:
+  - name: TriageAgent
+    role: "Classify incoming operational emails."
+    skills: [TriageClassifier, EvidencePack]
+    policy: SafeEmailPolicy
+
+harnesses:
+  - name: EmailTriageHarness
+    context: MailOpsContext
+    flow:
+      - agent: TriageAgent
+        action: classify
+      - eval: EmailTriageEval
+        action: run
+      - evidence: TriageEvidence
+        action: pack
+    gate:
+      - require: no_pii_leakage
+      - require: human_approval_if_critical
+
+evals:
+  - name: EmailTriageEval
+    metrics:
+      - accuracy >= 0.92
+      - pii_leakage == 0
+      - false_critical_rate <= 0.03
+
+evidence:
+  required:
+    - triage_decision.json
+    - eval_report.json
+    - approval_log.json

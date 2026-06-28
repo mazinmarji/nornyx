@@ -1,0 +1,162 @@
+nornyx: "0.1"
+project:
+  name: GovernedDeliveryControlPlane
+  category: context_native_agentic_engineering_language
+  description: "Governed Delivery Control Plane governed AI delivery scaffold."
+
+constitution:
+  principles:
+    - human_authority_over_high_impact_actions
+    - evidence_required_for_code_changes
+    - no_secret_exposure
+    - context_provenance_required
+    - no_unapproved_self_modification
+
+intents:
+  - name: GovernedAIDelivery
+    goal: "Govern AI-assisted software delivery with context, policies, evals, approvals, and evidence."
+    success:
+      - "Every code change produces evidence."
+      - "Every risky action has an approval gate."
+      - "Untrusted context cannot define policy."
+
+contexts:
+  - name: RepoContext
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "nornyx/**/*.py"
+      - "tests/**/*.py"
+      - "examples/**/*.nyx"
+    exclude:
+      - "generated/**"
+      - "**/.env"
+    authority:
+      - "docs/01_LANGUAGE_SPEC_v0_1.md"
+      - "docs/05_SECURITY_MODEL.md"
+      - "docs/agent/SAFE_COMMANDS.md"
+      - "tests/**/*.py"
+    budget:
+      max_tokens: 32000
+      reserve_output_tokens: 6000
+    taint:
+      repo: trusted_repo_file
+      authoritative_repo: authoritative_repo_file
+      user_prompt: untrusted
+      external_web: untrusted
+
+skills:
+  - name: PatchBuilder
+    purpose: "Produce small scoped patches."
+    input: [TaskSpec, ContextPack]
+    output: [PatchDiff]
+  - name: TestRepair
+    purpose: "Repair failing tests with minimal changes."
+    input: [TestFailure, ContextPack]
+    output: [PatchDiff, TestReport]
+  - name: EvidencePack
+    purpose: "Collect delivery evidence."
+    input: [PatchDiff, TestReport, EvalReport]
+    output: [EvidenceManifest]
+
+policies:
+  - name: SafeEditPolicy
+    rules:
+      - deny secrets_to_llm
+      - deny production_write_without_approval
+      - require tests_if_code_changed
+      - require evidence_if_harness_completed
+      - require supply_chain_check_if_dependency_added
+
+agents:
+  - name: Architect
+    role: "Plan architecture-aligned work."
+    skills: [PatchBuilder]
+    policy: SafeEditPolicy
+  - name: Builder
+    role: "Implement small scoped patches."
+    skills: [PatchBuilder, TestRepair, EvidencePack]
+    policy: SafeEditPolicy
+  - name: Reviewer
+    role: "Review correctness, maintainability, and architecture fit."
+    skills: [EvidencePack]
+    policy: SafeEditPolicy
+  - name: Security
+    role: "Review security, policy, and supply-chain risk."
+    skills: [EvidencePack]
+    policy: SafeEditPolicy
+
+harnesses:
+  - name: DevHarness
+    context: RepoContext
+    flow:
+      - agent: Architect
+        action: plan
+      - agent: Builder
+        action: implement
+      - tool: tests
+        action: run
+      - eval: RegressionEval
+        action: run
+      - agent: Reviewer
+        action: review
+      - agent: Security
+        action: audit
+      - evidence: DevEvidence
+        action: pack
+    repair:
+      - on: test_failure
+        agent: Builder
+        action: repair
+        max_attempts: 3
+    gate:
+      - require: tests.pass
+      - require: security.pass
+      - require: human_approval_before_merge
+
+traces:
+  - name: AgentTrace
+    standard: OpenTelemetry.GenAI
+    capture:
+      - llm_call
+      - tool_call
+      - policy_decision
+      - approval_event
+      - file_change
+      - evidence_created
+
+evals:
+  - name: RegressionEval
+    metrics:
+      - tests_pass == true
+      - no_policy_regression == true
+      - no_secret_exposure == true
+
+evidence:
+  required:
+    - patch.diff
+    - changed_files.zip
+    - test_report.json
+    - eval_report.json
+    - security_report.md
+    - risk_update.md
+    - approval_log.json
+
+approvals:
+  - name: HumanMergeApproval
+    required_for:
+      - production_deploy
+      - policy_change
+      - self_modification
+
+budgets:
+  - name: StandardDevBudget
+    max_tokens: 100000
+    max_cost_usd: 15
+    max_runtime_minutes: 30
+
+experimental:
+  healing:
+    enabled: proposal_only
+  improvement_loop:
+    enabled: proposal_only

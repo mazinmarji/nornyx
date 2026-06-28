@@ -4,6 +4,14 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.3] - 2026-06-27
+
+### Fixed
+- First-run for pip users: example contracts are now shipped inside the package
+  and a new `nornyx examples` command copies them into `./examples/`, so the
+  README/quickstart `nornyx check examples/...` works after a plain
+  `pip install nornyx` (previously the examples weren't in the wheel).
+
 ## [1.1.2] - 2026-06-27
 
 First PyPI-publishable release (no code behavior change).
