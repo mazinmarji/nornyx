@@ -43,7 +43,12 @@ from .release_readiness import (
     write_release_readiness_report,
 )
 from .repo_drift import check_repo_drift, format_repo_drift
-from .workspace import WorkspaceError, check_workspace, format_workspace
+from .workspace import (
+    WorkspaceError,
+    check_workspace,
+    format_workspace,
+    format_workspace_failures,
+)
 from .schema_model import (
     FORMAL_GRAMMAR_V0_1,
     SCHEMA_REGISTRY,
@@ -98,6 +103,11 @@ def cmd_workspace_check(args: argparse.Namespace) -> int:
         return 2
     if args.json:
         print(json.dumps(report, indent=2))
+    elif args.quiet:
+        if report["status"] not in ("pass", "synced"):
+            failures = format_workspace_failures(report)
+            if failures:
+                print(failures)
     else:
         print(format_workspace(report))
     # `synced` means we fixed divergence on disk: success for `--write`.
@@ -524,6 +534,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--write",
         action="store_true",
         help="Sync mode: rewrite each member's diverging policy to the canonical rules",
+    )
+    p.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Only print failing members when drift is found",
     )
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_workspace_check)
