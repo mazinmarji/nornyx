@@ -53,6 +53,27 @@ nornyx schema --version 1.0
 
 `nornyx generate` writes `AGENTS.md`, `skills/`, `harness.yaml`, `policy.yaml`, `evals.yaml`, `context.yaml`, and `evidence_contract.md` into the output folder — regenerate any time the `.nyx` changes, and `nornyx check` keeps them honest.
 
+## Shell/editor completion
+
+`nornyx complete` emits JSON completion items for `.nyx` documents. Nornyx does
+not install a shell hook by default; this command is the completion data source
+to wire into shell functions, editor adapters, or small helper scripts.
+
+Top-level block suggestions:
+
+```bash
+nornyx complete --prefix con
+```
+
+Reference-aware suggestions:
+
+```bash
+nornyx complete examples/governed_delivery_control_plane.nyx --path agent.policy --prefix Safe
+```
+
+The command prints LSP-shaped objects with `label`, `kind`, `detail`, and
+`insertText`, so wrappers can parse the labels and present them as candidates.
+
 ## A contract looks like this
 
 ```yaml

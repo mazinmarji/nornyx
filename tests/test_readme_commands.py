@@ -15,6 +15,12 @@ def test_readme_quick_start_commands_are_valid() -> None:
     assert "nornyx check examples/governed_delivery_control_plane.nyx" in readme
     assert "nornyx generate examples/governed_delivery_control_plane.nyx" in readme
     assert "nornyx schema --version 1.0" in readme
+    assert "nornyx complete --prefix con" in readme
+    assert (
+        "nornyx complete examples/governed_delivery_control_plane.nyx "
+        "--path agent.policy --prefix Safe"
+    ) in readme
+    assert "Shell/editor completion" in readme
     assert "python -m nornyx.cli" in readme
 
 
