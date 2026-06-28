@@ -42,6 +42,8 @@ from .release_readiness import (
     build_stable_language_report,
     write_release_readiness_report,
 )
+from .repo_drift import check_repo_drift, format_repo_drift
+from .workspace import WorkspaceError, check_workspace, format_workspace
 from .schema_model import (
     FORMAL_GRAMMAR_V0_1,
     SCHEMA_REGISTRY,
@@ -77,6 +79,28 @@ def cmd_generate(args: argparse.Namespace) -> int:
     for path in paths:
         print(path)
     return 0
+
+
+def cmd_drift(args: argparse.Namespace) -> int:
+    report = check_repo_drift(args.file, args.out)
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print(format_repo_drift(report))
+    return 0 if report["status"] == "pass" else 1
+
+
+def cmd_workspace_check(args: argparse.Namespace) -> int:
+    try:
+        report = check_workspace(args.manifest)
+    except (WorkspaceError, NornyxParseError) as exc:
+        print(json.dumps({"level": "error", "code": "WORKSPACE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print(format_workspace(report))
+    return 0 if report["status"] == "pass" else 1
 
 
 def cmd_goal_plan(args: argparse.Namespace) -> int:
@@ -480,6 +504,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("file")
     p.add_argument("--out", default="generated")
     p.set_defaults(func=cmd_generate)
+
+    p = sub.add_parser(
+        "drift",
+        help="Full-output drift gate: compare a committed generated dir to a fresh generate",
+    )
+    p.add_argument("file")
+    p.add_argument("--out", default="generated", help="Committed generated-artifact directory")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_drift)
+
+    p = sub.add_parser(
+        "workspace-check",
+        help="Verify member repos' policies match a workspace's canonical standard",
+    )
+    p.add_argument("--manifest", default="nornyx.workspace.yaml")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_workspace_check)
 
     p = sub.add_parser("goal-plan", help="Generate a bounded goal plan from .nyx source")
     p.add_argument("file")

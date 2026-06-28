@@ -4,6 +4,24 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.6] - 2026-06-28
+
+### Added
+- `nornyx drift <contract> --out <dir>`: a **full-output** drift gate that
+  compares every generated artifact by hash against a committed directory. The
+  previous "diff `AGENTS.md`" guidance was blind to `policy.yaml` changes
+  (`AGENTS.md` doesn't render policy rules), so a policy edit could pass a green
+  gate. `nornyx drift` catches added, removed, and changed artifacts.
+- `nornyx workspace-check --manifest nornyx.workspace.yaml`: cross-repo policy
+  consistency. A workspace manifest declares canonical policies once and lists
+  member contracts; the check fails if any member's named policy diverges from
+  the org standard. Closes the gap where two repos could carry divergent copies
+  of the "same" policy and each still pass its own gate.
+
+### Changed
+- `docs/USE_IN_YOUR_REPO.md` and README now recommend `nornyx drift` (whole-set)
+  instead of diffing only `AGENTS.md`, and document the workspace check.
+
 ## [1.1.5] - 2026-06-27
 
 ### Fixed

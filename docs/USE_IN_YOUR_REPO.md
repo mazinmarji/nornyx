@@ -56,33 +56,67 @@ on (e.g. `AGENTS.md`).
 `nornyx generate` is deterministic (stable LF output), so a regenerate-and-diff
 is a reliable drift gate.
 
+> **Diff the whole generated set, not just `AGENTS.md`.** `AGENTS.md` does not
+> render policy rules — those go to `policy.yaml`. A gate that only diffs
+> `AGENTS.md` stays green when your *policy* changes. Commit the whole generated
+> directory and use `nornyx drift`, which compares every artifact by hash.
+
+Commit the generated directory (e.g. `.nornyx/`) alongside `nornyx.nyx`, then:
+
+```bash
+nornyx drift nornyx.nyx --out .nornyx   # exit 1 on any added/removed/changed artifact
+```
+
 ### Pre-commit hook (`.git/hooks/pre-commit`)
 
 ```bash
 #!/bin/sh
 nornyx check nornyx.nyx >/dev/null || exit 1
-nornyx generate nornyx.nyx --out .nornyx-check >/dev/null
-if ! diff -q AGENTS.md .nornyx-check/AGENTS.md >/dev/null; then
-  echo "AGENTS.md is out of sync with nornyx.nyx." >&2
-  echo "Fix: nornyx generate nornyx.nyx --out .nornyx && cp .nornyx/AGENTS.md AGENTS.md" >&2
+nornyx drift nornyx.nyx --out .nornyx || {
+  echo "Generated artifacts are out of sync. Fix: nornyx generate nornyx.nyx --out .nornyx" >&2
   exit 1
-fi
+}
 ```
-
-Add `.nornyx-check/` (and your generate output dir) to `.gitignore`.
 
 ### GitHub Actions
 
 ```yaml
 - run: pip install nornyx
 - run: nornyx check nornyx.nyx
-- run: nornyx generate nornyx.nyx --out .nornyx-check
-- run: diff AGENTS.md .nornyx-check/AGENTS.md   # fails the build on drift
+- run: nornyx drift nornyx.nyx --out .nornyx   # fails the build on any drift
 ```
 
 Now the `.nyx` is the single source of truth: edit it, regenerate, and CI fails
 loudly if any committed artifact drifts. That's the whole point — one checked
 source instead of a dozen hand-maintained files going stale.
+
+## Keep policy consistent across many repos
+
+A single `.nyx` is the source of truth *within* one repo. It says nothing about
+whether two repos share the same policy — each can carry a divergent copy of the
+"same" org policy and still pass its own drift gate. For an org standard that
+lives **above** repos, declare it once in a workspace manifest:
+
+```yaml
+# nornyx.workspace.yaml
+workspace: AcmeOrg
+policies:
+  SafeDeliveryPolicy:
+    - deny secrets_to_llm
+    - require tests_if_code_changed
+    - require human_approval_before_merge
+members:
+  - path: service-a/nornyx.nyx
+  - path: service-b/nornyx.nyx
+```
+
+```bash
+nornyx workspace-check --manifest nornyx.workspace.yaml   # exit 1 if any member diverges
+```
+
+This verifies every member's named policy matches the canonical rule set, so a
+change to the org standard can't silently leave some repos behind. Like the rest
+of Nornyx it's a checker, not a runtime: it reads local files only.
 
 ## Scope reminder
 

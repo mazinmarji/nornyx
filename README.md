@@ -106,17 +106,24 @@ cp .nornyx/AGENTS.md AGENTS.md          # the file Claude Code / Cursor / Copilo
 # 4. commit nornyx.nyx (the source) and the artifacts you use
 ```
 
-**Keep them from drifting.** Add a check that the committed artifacts still match
-the contract — in CI or a pre-commit hook:
+**Keep them from drifting.** Commit the generated directory and add a check that
+it still matches the contract — in CI or a pre-commit hook:
 
 ```bash
-nornyx generate nornyx.nyx --out .nornyx-check
-diff AGENTS.md .nornyx-check/AGENTS.md   # nonzero exit = drift; regenerate & recommit
+nornyx drift nornyx.nyx --out .nornyx   # nonzero exit if ANY artifact drifts
+```
+
+`nornyx drift` compares every generated artifact by hash (not just `AGENTS.md`),
+so a change to `policy.yaml` is caught too. Across **many repos**, declare your
+org policy once in a workspace manifest and verify each repo matches it:
+
+```bash
+nornyx workspace-check --manifest nornyx.workspace.yaml
 ```
 
 Now the `.nyx` is the single source of truth: edit it, regenerate, and the check
-fails loudly if `AGENTS.md` (or any artifact) ever drifts out of sync. Full
-walkthrough: [docs/USE_IN_YOUR_REPO.md](docs/USE_IN_YOUR_REPO.md).
+fails loudly if any artifact drifts. Full walkthrough:
+[docs/USE_IN_YOUR_REPO.md](docs/USE_IN_YOUR_REPO.md).
 
 ## Why Nornyx
 
