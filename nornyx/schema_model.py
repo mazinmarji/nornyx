@@ -6,13 +6,24 @@ from typing import Any
 
 from .checker import CORE_TOP_LEVEL_BLOCKS, EXTENSION_TOP_LEVEL_BLOCKS
 
-ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = ROOT / "schemas" / "nornyx_v0_1.schema.json"
+_PKG = Path(__file__).resolve().parent  # the nornyx package directory
+ROOT = _PKG.parent                      # repo root in a source checkout
+
+
+def _schema_dir() -> Path:
+    """Schemas shipped inside the package (wheel installs); fall back to the
+    repo-root schemas/ for a source checkout."""
+    bundled = _PKG / "schemas"
+    return bundled if bundled.is_dir() else ROOT / "schemas"
+
+
+_SCHEMAS = _schema_dir()
+SCHEMA_PATH = _SCHEMAS / "nornyx_v0_1.schema.json"
 SCHEMA_REGISTRY = {
     "compat": SCHEMA_PATH,
     "0.1": SCHEMA_PATH,
-    "0.2": ROOT / "schemas" / "nornyx_v0_2.schema.json",
-    "1.0": ROOT / "schemas" / "nornyx_v1_0.schema.json",
+    "0.2": _SCHEMAS / "nornyx_v0_2.schema.json",
+    "1.0": _SCHEMAS / "nornyx_v1_0.schema.json",
 }
 
 FORMAL_GRAMMAR_V0_1 = """\
@@ -63,9 +74,16 @@ def schema_path_for_version(version: str | float | int | None = "compat") -> Pat
         raise ValueError(f"Unknown Nornyx schema version {version!r}; expected one of: {choices}") from exc
 
 
+def _canonical_schema_ref(path: Path) -> str:
+    """Stable, location-independent label for a schema file (`schemas/<name>`),
+    so summaries read the same from a wheel (nornyx/schemas/) or a source
+    checkout (schemas/)."""
+    return f"schemas/{path.name}"
+
+
 def schema_registry_summary() -> dict[str, str]:
     return {
-        version: path.relative_to(ROOT).as_posix()
+        version: _canonical_schema_ref(path)
         for version, path in SCHEMA_REGISTRY.items()
     }
 
@@ -98,7 +116,7 @@ def schema_model_summary(version: str | float | int | None = "compat") -> dict[s
     )
     return {
         "schema": schema.get("$id"),
-        "schema_path": schema_path_for_version(normalized_version).relative_to(ROOT).as_posix(),
+        "schema_path": _canonical_schema_ref(schema_path_for_version(normalized_version)),
         "requested_version": normalized_version,
         "version": summary_version,
         "syntax": "yaml-compatible",

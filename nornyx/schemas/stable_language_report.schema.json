@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/stable_language_report.schema.json",
+  "title": "Nornyx v1.0 Stable Generalized Agentic Contract Language Report",
+  "type": "object",
+  "required": [
+    "schema",
+    "target_version",
+    "status",
+    "summary",
+    "checks",
+    "stable_core_concepts",
+    "stable_v1_non_goals",
+    "required_validation",
+    "safety"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nornyx.stable_language.v1.0"
+    },
+    "target_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "blocked",
+        "stable_language_completed_local_pending_release_approval",
+        "stable_language_approved_local"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["passed", "warning", "blocked", "requires_human_approval"],
+      "properties": {
+        "passed": {"type": "integer", "minimum": 0},
+        "warning": {"type": "integer", "minimum": 0},
+        "blocked": {"type": "integer", "minimum": 0},
+        "requires_human_approval": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "message"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["passed", "warning", "blocked", "requires_human_approval"]},
+          "message": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": true
+      }
+    },
+    "stable_core_concepts": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    },
+    "stable_v1_non_goals": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    },
+    "required_validation": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "published",
+        "tag_created",
+        "pushed_to_remote",
+        "package_version_changed",
+        "connectors_enabled",
+        "network_used",
+        "production_deployment",
+        "general_purpose_language_claim",
+        "full_autonomous_runtime_claim",
+        "unrestricted_connector_runtime_claim",
+        "goal_042_completed_local",
+        "goal_100_unlocked",
+        "requires_human_release_approval"
+      ],
+      "properties": {
+        "published": {"const": false},
+        "tag_created": {"const": false},
+        "pushed_to_remote": {"const": false},
+        "package_version_changed": {"const": false},
+        "connectors_enabled": {"const": false},
+        "network_used": {"const": false},
+        "production_deployment": {"const": false},
+        "general_purpose_language_claim": {"const": false},
+        "full_autonomous_runtime_claim": {"const": false},
+        "unrestricted_connector_runtime_claim": {"const": false},
+        "goal_042_completed_local": {"type": "boolean"},
+        "goal_100_unlocked": {"const": false},
+        "requires_human_release_approval": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

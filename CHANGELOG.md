@@ -4,6 +4,14 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.5] - 2026-06-27
+
+### Fixed
+- `nornyx schema --version 0.2|1.0` crashed for pip-installed users — the JSON
+  schemas weren't shipped in the wheel and were resolved relative to the package
+  parent. Schemas are now bundled in the package and resolved from there (with a
+  repo-root fallback for source checkouts).
+
 ## [1.1.4] - 2026-06-27
 
 ### Added

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nornyx"
-version = "1.1.4"
+version = "1.1.5"
 description = "A generalized agentic contract/control-plane language for governed AI software delivery."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,7 +42,7 @@ where = ["."]
 include = ["nornyx*"]
 
 [tool.setuptools.package-data]
-nornyx = ["examples/*.nyx"]
+nornyx = ["examples/*.nyx", "schemas/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

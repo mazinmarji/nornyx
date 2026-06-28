@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/requirement_triage_matrix.schema.json",
+  "title": "Nornyx Requirement Triage Matrix",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "purpose",
+    "categories",
+    "next_focus"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "accepted",
+        "deprecated"
+      ]
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "categories": {
+      "type": "object",
+      "required": [
+        "core_now",
+        "near_core_candidate",
+        "extension_backlog",
+        "profile_specific",
+        "outside_nornyx",
+        "rejected"
+      ],
+      "properties": {
+        "core_now": {
+          "type": "object",
+          "required": [
+            "action",
+            "concepts"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "near_core_candidate": {
+          "type": "object",
+          "required": [
+            "action",
+            "concepts"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "extension_backlog": {
+          "type": "object",
+          "required": [
+            "action",
+            "concepts"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "profile_specific": {
+          "type": "object",
+          "required": [
+            "action",
+            "concepts"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "outside_nornyx": {
+          "type": "object",
+          "required": [
+            "action",
+            "concepts"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "rejected": {
+          "type": "object",
+          "required": [
+            "action",
+            "concepts"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "concepts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "next_focus": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

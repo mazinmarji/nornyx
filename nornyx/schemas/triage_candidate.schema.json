@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/triage_candidate.schema.json",
+  "title": "Nornyx Triage Candidate",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "concept",
+    "source_task",
+    "discovered_by",
+    "description",
+    "classification",
+    "rationale",
+    "recommended_action",
+    "blocks_current_goal",
+    "risk",
+    "evidence",
+    "owner",
+    "status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TC-[A-Z0-9\\-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "concept": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "discovered_by": {
+      "type": "string",
+      "enum": [
+        "codex",
+        "claude",
+        "human",
+        "other"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "core_now",
+        "near_core_candidate",
+        "extension_backlog",
+        "profile_specific",
+        "outside_nornyx",
+        "rejected"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recommended_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "blocks_current_goal": {
+      "type": "boolean"
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "accepted",
+        "rejected",
+        "deferred"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

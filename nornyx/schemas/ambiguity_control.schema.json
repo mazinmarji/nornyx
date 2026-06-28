@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/ambiguity_control.schema.json",
+  "title": "Nornyx Ambiguity Control",
+  "type": "object",
+  "required": [
+    "kind",
+    "id",
+    "text",
+    "owner"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "assumption",
+        "open_question",
+        "decision_needed"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_\\-]+$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "can_proceed": {
+      "type": "boolean"
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required_before": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

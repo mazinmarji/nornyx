@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/bounded_execution_readiness.schema.json",
+  "title": "Nornyx v0.8 Bounded Execution Readiness Report",
+  "type": "object",
+  "required": ["schema", "mode", "status", "summary", "sandbox", "safety", "decisions"],
+  "properties": {
+    "schema": {
+      "const": "nornyx.bounded_execution_readiness.v0.8"
+    },
+    "mode": {
+      "const": "static_bounded_execution_readiness"
+    },
+    "status": {
+      "enum": ["blocked", "requires_human_approval", "ready_with_warnings", "ready"]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["blocked", "requires_human_approval", "warnings", "ready"],
+      "properties": {
+        "blocked": {"type": "integer", "minimum": 0},
+        "requires_human_approval": {"type": "integer", "minimum": 0},
+        "warnings": {"type": "integer", "minimum": 0},
+        "ready": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "sandbox": {
+      "type": "object",
+      "required": ["filesystem", "network", "credentials", "production", "shell", "approval_required", "trace_required", "evidence_required"],
+      "properties": {
+        "filesystem": {"enum": ["read_only", "workspace_only", "disabled"]},
+        "network": {"const": "disabled"},
+        "credentials": {"const": "disabled"},
+        "production": {"const": "disabled"},
+        "shell": {"enum": ["disabled", "allowlisted"]},
+        "approval_required": {"const": true},
+        "trace_required": {"const": true},
+        "evidence_required": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "execution_enabled",
+        "tools_executed",
+        "agents_executed",
+        "connectors_enabled",
+        "models_called",
+        "network_used",
+        "credentials_loaded",
+        "production_deployments",
+        "approvals_granted",
+        "self_modification",
+        "arbitrary_commands_allowed"
+      ],
+      "properties": {
+        "execution_enabled": {"const": false},
+        "tools_executed": {"const": false},
+        "agents_executed": {"const": false},
+        "connectors_enabled": {"const": false},
+        "models_called": {"const": false},
+        "network_used": {"const": false},
+        "credentials_loaded": {"const": false},
+        "production_deployments": {"const": false},
+        "approvals_granted": {"const": false},
+        "self_modification": {"const": false},
+        "arbitrary_commands_allowed": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["status", "code", "reason"],
+        "properties": {
+          "status": {"enum": ["blocked", "requires_human_approval", "warning", "ready"]},
+          "code": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

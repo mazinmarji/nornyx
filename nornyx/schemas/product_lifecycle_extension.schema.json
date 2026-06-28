@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/product_lifecycle_extension.schema.json",
+  "title": "Nornyx Product-to-Operations Lifecycle Extension",
+  "type": "object",
+  "required": [
+    "name",
+    "status",
+    "concepts",
+    "promotion_order"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "roadmap",
+        "experimental",
+        "candidate",
+        "stable"
+      ]
+    },
+    "concepts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "purpose",
+          "placement"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          },
+          "placement": {
+            "type": "string",
+            "enum": [
+              "roadmap",
+              "near_term_design",
+              "candidate",
+              "core"
+            ]
+          },
+          "risk": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "promotion_order": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

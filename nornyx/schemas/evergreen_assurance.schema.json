@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.local/schemas/evergreen_assurance.schema.json",
+  "title": "Nornyx Evergreen Assurance",
+  "type": "object",
+  "required": [
+    "nornyx_version",
+    "kernel",
+    "extensions",
+    "compatibility",
+    "maturity"
+  ],
+  "properties": {
+    "nornyx_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kernel": {
+      "type": "object",
+      "required": [
+        "stable_blocks"
+      ],
+      "properties": {
+        "stable_blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "status",
+          "provides"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "experimental",
+              "candidate",
+              "stable",
+              "deprecated"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "provides": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "conformance": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "security": {
+            "type": "object",
+            "properties": {
+              "requires_approval": {
+                "type": "boolean"
+              },
+              "default_mode": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "properties": {
+        "python": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operating_systems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "maturity": {
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

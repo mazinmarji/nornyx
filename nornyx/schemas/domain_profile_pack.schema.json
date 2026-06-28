@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/domain_profile_pack.schema.json",
+  "title": "Nornyx v0.3 Domain Profile Pack",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "core_surface",
+    "status",
+    "purpose",
+    "domain",
+    "required_blocks",
+    "recommended_blocks",
+    "graph_node_kinds",
+    "validation_rules",
+    "conformance",
+    "non_goals",
+    "core_concepts"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "const": "v0.3"
+    },
+    "core_surface": {
+      "const": "v0.2"
+    },
+    "status": {
+      "const": "optional_profile"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required_blocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "recommended_blocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "graph_node_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "validation_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "conformance": {
+      "type": "object",
+      "required": ["v1_readiness", "migration"],
+      "properties": {
+        "v1_readiness": {
+          "enum": ["stable_candidate", "profile_candidate", "optional_candidate"]
+        },
+        "migration": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "core_concepts": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "Intent",
+          "Agent",
+          "Policy",
+          "Eval",
+          "Approval",
+          "Evidence",
+          "Context",
+          "Artifact",
+          "Graph",
+          "Goal",
+          "Budget",
+          "Trace"
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
