@@ -4,6 +4,16 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.2] - 2026-06-27
+
+First PyPI-publishable release (no code behavior change).
+
+### Changed
+- Adoption-grade README: value prop, install, 5-minute quickstart, contract
+  example, and scope/safety.
+- PyPI metadata in `pyproject.toml`: description, keywords, classifiers, and
+  project URLs. `twine check` passes on the wheel and sdist.
+
 ## [1.1.1] - 2026-06-27
 
 ### Added
