@@ -257,4 +257,10 @@ def format_workspace(report: dict[str, Any]) -> str:
                     lines.append(f"            - {p['policy']} missing: {r}")
                 for r in p.get("extra", []):
                     lines.append(f"            + {p['policy']} extra:   {r}")
+    syncable = any(
+        p["status"] == "drift" for m in report["members"] for p in m["policies"]
+    )
+    if syncable:
+        lines.append("")
+        lines.append("Run with --write to propagate the canonical policy into diverging members.")
     return "\n".join(lines)

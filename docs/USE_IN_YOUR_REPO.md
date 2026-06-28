@@ -128,8 +128,33 @@ nornyx workspace-check --manifest nornyx.workspace.yaml --write
 The rewrite is surgical — it replaces only the matched policy's rule block and
 leaves the rest of each contract (comments, other blocks) untouched, so members
 stay self-contained and auditable. A member that doesn't declare the policy at
-all (or a missing file) is left for a human rather than invented. Run it in a
-pre-commit hook or a scheduled job, and commit the propagated changes.
+all (or a missing file) is left for a human rather than invented.
+
+Run `workspace-check` (read-only) in CI to *block* drift; run `--write` on a
+schedule to *propagate* the standard and open a PR with the changes:
+
+```yaml
+# .github/workflows/policy-sync.yml
+on:
+  schedule: [{cron: "0 6 * * 1"}]   # weekly
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install nornyx
+      - run: nornyx workspace-check --manifest nornyx.workspace.yaml --write
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          title: "Propagate canonical workspace policy"
+          commit-message: "chore: sync workspace policy from manifest"
+```
+
+Edit the policy once in the manifest; the job pushes it to every member and a
+human approves the PR — keeping approval in the loop.
 
 ## Scope reminder
 

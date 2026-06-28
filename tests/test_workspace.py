@@ -140,6 +140,63 @@ def test_workspace_write_syncs_divergent_member(tmp_path):
     assert again["status"] == "pass"
 
 
+def _sync_one(tmp_path, src: str, canon: list[str]):
+    from nornyx.parser import load_nyx
+    from nornyx.workspace import _member_ruleset, sync_policy_in_contract
+
+    f = tmp_path / "c.nyx"
+    f.write_text(src, encoding="utf-8")
+    assert sync_policy_in_contract(f, "P", canon) is True
+    load_nyx(f)  # still valid
+    return f, _member_ruleset(f, "P")
+
+
+CANON = ["deny secrets_to_llm", "require tests_if_code_changed", "require human_approval_before_merge"]
+WANT = set(CANON)
+
+
+def test_sync_handles_flow_style_rules(tmp_path):
+    src = 'nornyx: "0.1"\nproject:\n  name: F\npolicies:\n  - name: P\n    rules: [deny secrets_to_llm, require old_rule]\n'
+    _, rules = _sync_one(tmp_path, src, CANON)
+    assert rules == WANT
+
+
+def test_sync_handles_deny_require_form(tmp_path):
+    src = (
+        'nornyx: "0.1"\nproject:\n  name: D\npolicies:\n  - name: P\n'
+        "    deny:\n      - secrets_to_llm\n    require:\n      - old_rule\n"
+    )
+    _, rules = _sync_one(tmp_path, src, CANON)
+    assert rules == WANT
+
+
+def test_sync_only_touches_named_policy(tmp_path):
+    from nornyx.workspace import _member_ruleset
+
+    src = (
+        'nornyx: "0.1"\nproject:\n  name: M\npolicies:\n'
+        "  - name: Other\n    rules:\n      - require keep_me\n"
+        "  - name: P\n    rules:\n      - require old_rule\n"
+        "  - name: Another\n    rules:\n      - deny keep_me_too\n"
+    )
+    f, rules = _sync_one(tmp_path, src, CANON)
+    assert rules == WANT
+    assert _member_ruleset(f, "Other") == {"require keep_me"}
+    assert _member_ruleset(f, "Another") == {"deny keep_me_too"}
+
+
+def test_workspace_check_nudges_to_write_on_syncable_drift(tmp_path):
+    from nornyx.workspace import format_workspace
+
+    _member(tmp_path, "a", "A", ALIGNED)
+    _member(
+        tmp_path, "b", "B",
+        "      - deny secrets_to_llm\n      - require tests_if_code_changed\n",  # missing one rule
+    )
+    report = check_workspace(_manifest(tmp_path))
+    assert "--write" in format_workspace(report)
+
+
 def test_workspace_write_does_not_invent_missing_policy(tmp_path):
     _member(tmp_path, "a", "A", ALIGNED)
     d = tmp_path / "b"

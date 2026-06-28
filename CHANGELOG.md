@@ -4,6 +4,14 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.8] - 2026-06-28
+
+### Added
+- Workspace sync robustness: regression coverage for flow-style `rules: [..]`,
+  `deny:`/`require:`-form members, and files with multiple policies (only the
+  named policy is rewritten). `workspace-check` now nudges to `--write` when a
+  drift is syncable, and `docs/USE_IN_YOUR_REPO.md` shows a scheduled sync job.
+
 ## [1.1.7] - 2026-06-28
 
 ### Added
