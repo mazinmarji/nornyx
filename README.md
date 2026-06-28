@@ -1,6 +1,15 @@
 # Nornyx
 
+[![PyPI](https://img.shields.io/pypi/v/nornyx.svg)](https://pypi.org/project/nornyx/)
+[![Python](https://img.shields.io/pypi/pyversions/nornyx.svg)](https://pypi.org/project/nornyx/)
+[![CI](https://github.com/mazinmarji/nornyx/actions/workflows/nornyx-safe-dev-quality.yml/badge.svg)](https://github.com/mazinmarji/nornyx/actions/workflows/nornyx-safe-dev-quality.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **A generalized agentic contract/control-plane language for governed AI software delivery.**
+
+```bash
+pip install nornyx
+```
 
 Your AI-engineering rules live scattered across `AGENTS.md`, a skills folder, prompt/context packs, a harness script, an eval config, policy docs, evidence templates, and approval checklists — and they **drift** out of sync. Nornyx makes them one **checked source of truth**: write a single `.nyx` file, then **generate** and **validate** all those artifacts from it.
 

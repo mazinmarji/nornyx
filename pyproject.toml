@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nornyx"
-version = "1.1.9"
+version = "1.1.10"
 description = "A generalized agentic contract/control-plane language for governed AI software delivery."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,6 +29,9 @@ dependencies = ["PyYAML>=6.0"]
 [project.urls]
 Homepage = "https://github.com/mazinmarji/nornyx"
 Repository = "https://github.com/mazinmarji/nornyx"
+Documentation = "https://github.com/mazinmarji/nornyx/blob/main/docs/USE_IN_YOUR_REPO.md"
+Changelog = "https://github.com/mazinmarji/nornyx/blob/main/CHANGELOG.md"
+"Case study" = "https://github.com/mazinmarji/nornyx/blob/main/docs/CASE_STUDY_multi_repo_governance.md"
 Issues = "https://github.com/mazinmarji/nornyx/issues"
 
 [project.optional-dependencies]

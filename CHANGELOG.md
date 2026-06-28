@@ -4,6 +4,13 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.1.10] - 2026-06-29
+
+### Changed
+- Adoption polish (no code change): README badges (PyPI, Python, CI, license) and
+  a top-line `pip install nornyx`; expanded PyPI project links (Documentation,
+  Changelog, Case study).
+
 ## [1.1.9] - 2026-06-28
 
 ### Fixed
