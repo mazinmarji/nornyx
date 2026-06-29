@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/nornyx.svg)](https://pypi.org/project/nornyx/)
 [![Python](https://img.shields.io/pypi/pyversions/nornyx.svg)](https://pypi.org/project/nornyx/)
-[![CI](https://github.com/mazinmarji/nornyx/actions/workflows/nornyx-safe-dev-quality.yml/badge.svg)](https://github.com/mazinmarji/nornyx/actions/workflows/nornyx-safe-dev-quality.yml)
+[![CI](https://github.com/mazinmarji/nornyx/actions/workflows/ci.yml/badge.svg)](https://github.com/mazinmarji/nornyx/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A generalized agentic contract/control-plane language for governed AI software delivery.**

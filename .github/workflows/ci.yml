@@ -1,0 +1,30 @@
+name: CI
+
+# Automated checks for pull requests and main. This is intentionally separate
+# from `nornyx-safe-dev-quality.yml`, which is a maintainer-run, manual-only
+# (`workflow_dispatch`) quality pass and must stay that way.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+      - name: Run tests
+        run: python -m pytest -q
+      - name: Check a bundled example contract
+        run: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
