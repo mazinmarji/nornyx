@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import yaml
@@ -28,6 +29,16 @@ def test_profiles_command_lists_expected_profiles(capsys) -> None:
     assert "nornyx_language" in out
     assert "agentic_repo_harness" in out
     assert "telecom_ops" in out
+
+
+def test_check_missing_file_reports_clear_error(tmp_path: Path, capsys) -> None:
+    missing = tmp_path / "does-not-exist.nyx"
+
+    assert main(["check", str(missing)]) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert "contract file not found" in payload["message"]
+    assert str(missing) in payload["message"]
 
 
 def test_init_check_fmt_explain_roundtrip(tmp_path: Path, capsys) -> None:
