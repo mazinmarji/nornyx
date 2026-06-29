@@ -228,6 +228,40 @@ def test_workspace_check_nudges_to_write_on_syncable_drift(tmp_path):
     assert "--write" in format_workspace(report)
 
 
+def test_workspace_check_quiet_is_silent_on_pass(tmp_path, capsys):
+    from nornyx.cli import main
+
+    _member(tmp_path, "a", "A", ALIGNED)
+    _member(tmp_path, "b", "B", ALIGNED)
+
+    assert main(
+        ["workspace-check", "--manifest", str(_manifest(tmp_path)), "--quiet"]
+    ) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_workspace_check_quiet_prints_only_failing_members_on_drift(tmp_path, capsys):
+    from nornyx.cli import main
+
+    _member(tmp_path, "a", "A", ALIGNED)
+    _member(
+        tmp_path,
+        "b",
+        "B",
+        "      - deny secrets_to_llm\n      - require tests_if_code_changed\n",
+    )
+
+    assert main(
+        ["workspace-check", "--manifest", str(_manifest(tmp_path)), "--quiet"]
+    ) == 1
+    out = capsys.readouterr().out
+    assert "b/b.nyx" in out
+    assert "a/a.nyx" not in out
+    assert "SafeDeliveryPolicy missing: require human_approval_before_merge" in out
+
+
 def test_workspace_write_does_not_invent_missing_policy(tmp_path):
     _member(tmp_path, "a", "A", ALIGNED)
     d = tmp_path / "b"

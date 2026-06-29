@@ -286,3 +286,25 @@ def format_workspace(report: dict[str, Any]) -> str:
         lines.append("")
         lines.append("Run with --write to propagate the canonical policy into diverging members.")
     return "\n".join(lines)
+
+
+def format_workspace_failures(report: dict[str, Any]) -> str:
+    lines: list[str] = []
+    for member in report["members"]:
+        failures = [
+            p for p in member["policies"] if p["status"] not in ("ok", "synced")
+        ]
+        if not failures:
+            continue
+        lines.append(f"  [DRIFT] {member['path']}")
+        for p in failures:
+            if p["status"] == "contract_missing":
+                lines.append("            - contract file not found")
+            elif p["status"] == "missing":
+                lines.append(f"            - missing policy: {p['policy']} (add it by hand)")
+            else:
+                for r in p.get("missing", []):
+                    lines.append(f"            - {p['policy']} missing: {r}")
+                for r in p.get("extra", []):
+                    lines.append(f"            + {p['policy']} extra:   {r}")
+    return "\n".join(lines)
