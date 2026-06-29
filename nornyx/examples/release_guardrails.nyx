@@ -1,0 +1,105 @@
+nornyx: "0.1"
+project:
+  name: ReleaseGuardrails
+  category: ci_release_governance
+  description: "CI and release guardrails for an AI-assisted software project."
+
+constitution:
+  principles:
+    - releases_require_green_ci
+    - production_changes_need_human_approval
+    - rollback_plan_required
+    - evidence_required_for_release_decisions
+
+intents:
+  - name: SafeRelease
+    goal: "Ship verified releases with clear evidence, approval, and rollback paths."
+    success:
+      - "Every release candidate has passing tests and security checks."
+      - "Risky changes are reviewed before deployment."
+      - "Rollback instructions are published with release evidence."
+
+contexts:
+  - name: ReleaseContext
+    include:
+      - "CHANGELOG.md"
+      - ".github/workflows/**/*.yml"
+      - "docs/release/**/*.md"
+      - "tests/**/*.py"
+    exclude:
+      - "dist/**"
+      - "build/**"
+      - "**/.env"
+    authority:
+      - "docs/release/POLICY.md"
+      - ".github/workflows/release.yml"
+    budget:
+      max_tokens: 24000
+      reserve_output_tokens: 4000
+
+skills:
+  - name: ReleaseReadiness
+    purpose: "Check release notes, test results, and deployment readiness."
+    input: [ReleaseCandidate, ReleaseContext]
+    output: [ReadinessReport]
+  - name: RiskReview
+    purpose: "Identify risky changes and required approvals."
+    input: [PatchDiff, ReleaseContext]
+    output: [RiskReport]
+  - name: EvidencePack
+    purpose: "Collect release evidence for audit and handoff."
+    input: [ReadinessReport, RiskReport]
+    output: [EvidenceManifest]
+
+policies:
+  - name: ReleasePolicy
+    rules:
+      - require ci_passed_before_release
+      - require changelog_updated
+      - require rollback_plan_for_deploy
+      - require human_approval_for_production
+      - deny release_if_secrets_detected
+
+agents:
+  - name: ReleaseCoordinator
+    role: "Prepare release candidates and gather readiness evidence."
+    skills: [ReleaseReadiness, EvidencePack]
+    policy: ReleasePolicy
+  - name: RiskReviewer
+    role: "Review risky changes before deployment."
+    skills: [RiskReview, EvidencePack]
+    policy: ReleasePolicy
+
+harnesses:
+  - name: ReleaseHarness
+    context: ReleaseContext
+    flow:
+      - agent: ReleaseCoordinator
+        action: prepare_candidate
+      - tool: ci
+        action: verify
+      - agent: RiskReviewer
+        action: review
+      - evidence: ReleaseEvidence
+        action: pack
+    gate:
+      - require: ci.pass
+      - require: changelog.updated
+      - require: rollback_plan.present
+      - require: human_approval_before_production
+
+evals:
+  - name: ReleaseReadinessEval
+    metrics:
+      - ci_passed == true
+      - changelog_complete == true
+      - rollback_plan_present == true
+      - unresolved_critical_risks == 0
+
+evidence:
+  required:
+    - release_notes.md
+    - ci_report.json
+    - risk_report.md
+    - rollback_plan.md
+    - approval_log.json
