@@ -4,6 +4,26 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.2.0] - 2026-06-29
+
+### Added
+- `nornyx --version`: top-level flag that prints the installed package version.
+  Thanks @hass-nation (#7 → #13).
+- `nornyx workspace-check --quiet`: print only the failing members on drift,
+  staying silent on a clean pass — handy for CI logs. Thanks @hass-nation (#10).
+- A third bundled example contract, `release_guardrails.nyx` (CI/release
+  governance), shipped with the package and covered by the example checks.
+  Thanks @hass-nation (#11).
+
+### Changed
+- Clearer error when a contract file does not exist: `check` now reports
+  "contract file not found: <path>" instead of a generic read error.
+  Thanks @hass-nation (#8).
+- Documented `nornyx complete` (shell/editor completion) in the README.
+  Thanks @hass-nation (#9).
+- CI now runs the test suite on every push and pull request (new `ci.yml`);
+  the manual-only `nornyx-safe-dev-quality.yml` is unchanged.
+
 ## [1.1.10] - 2026-06-29
 
 ### Changed
