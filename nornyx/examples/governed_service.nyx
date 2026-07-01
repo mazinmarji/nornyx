@@ -1,0 +1,29 @@
+nornyx: "0.1"
+project:
+  name: GovernedService
+  description: "A service that references the org SafeDeliveryPolicy instead of copying its rules."
+
+# `ref` points at a canonical policy defined elsewhere (a .nyx contract or a
+# workspace manifest), as `<path>#<PolicyName>`. The rules are resolved from that
+# one source at load time — so this contract carries no copy of the policy and
+# cannot drift from the org standard. Edit the policy once (in org_policies.nyx)
+# and every service that references it is updated.
+policies:
+  - name: SafeDeliveryPolicy
+    ref: org_policies.nyx#SafeDeliveryPolicy
+
+agents:
+  - name: Builder
+    role: "Implement small scoped patches under the org policy."
+    policy: SafeDeliveryPolicy
+
+harnesses:
+  - name: DeliveryHarness
+    flow:
+      - agent: Builder
+        action: implement
+      - tool: tests
+        action: run
+    gate:
+      - require: tests.pass
+      - require: human_approval_before_merge

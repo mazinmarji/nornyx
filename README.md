@@ -155,6 +155,24 @@ Now the `.nyx` is the single source of truth: edit it, regenerate, and the check
 fails loudly if any artifact drifts. Full walkthrough:
 [docs/USE_IN_YOUR_REPO.md](docs/USE_IN_YOUR_REPO.md).
 
+### Reference a shared policy instead of copying it
+
+A policy can **reference** a canonical definition rather than copy its rules, so
+there is nothing to drift in the first place:
+
+```yaml
+policies:
+  - name: SafeDeliveryPolicy
+    ref: ../governance/nornyx.workspace.yaml#SafeDeliveryPolicy   # single source
+```
+
+`ref` is `<path>#<PolicyName>`, resolved from a local `.nyx` contract **or** a
+workspace manifest. The canonical rules live in one place; edit them there and
+every referencing contract is updated. `nornyx check` and `nornyx generate`
+resolve the reference and inline the real rules into `policy.yaml`. See the
+bundled [`org_policies.nyx`](nornyx/examples/org_policies.nyx) and
+[`governed_service.nyx`](nornyx/examples/governed_service.nyx) examples.
+
 ## Why Nornyx
 
 - **One source of truth** for agent/skill/harness/policy/eval/evidence artifacts — no more drift.

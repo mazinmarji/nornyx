@@ -57,4 +57,90 @@ def load_nyx(path: str | Path) -> dict[str, Any]:
         return {}
     if not isinstance(data, dict):
         raise NornyxParseError("Top-level Nornyx document must be a mapping/object")
+    return _resolve_policy_refs(data, p.parent)
+
+
+def _extract_policy_rules(source_doc: dict[str, Any], policy_name: str) -> list[Any] | None:
+    """Find a policy's rules in a referenced source, accepting both shapes:
+
+    - a `.nyx` contract:        ``policies: [{name: X, rules: [...]}]``
+    - a workspace manifest:     ``policies: {X: [...]}``
+    """
+    policies = source_doc.get("policies")
+    if isinstance(policies, dict):  # workspace-manifest shape
+        rules = policies.get(policy_name)
+        return list(rules) if isinstance(rules, list) else None
+    if isinstance(policies, list):  # .nyx shape
+        for item in policies:
+            if isinstance(item, dict) and item.get("name") == policy_name:
+                rules = item.get("rules")
+                return list(rules) if isinstance(rules, list) else None
+    return None
+
+
+def _resolve_policy_refs(data: dict[str, Any], base_dir: Path) -> dict[str, Any]:
+    """Resolve `ref`-based policies into inline rules from a referenced source.
+
+    Instead of copying an org policy's rules into every contract, a policy may
+    reference the one canonical definition:
+
+        policies:
+          - name: SafeDeliveryPolicy
+            ref: ../governance/nornyx.workspace.yaml#SafeDeliveryPolicy
+
+    `ref` is ``<path>#<PolicyName>`` where the path is a local file (a `.nyx`
+    contract or a workspace manifest) relative to this contract. The canonical
+    rules live in exactly one place, so there is nothing to drift. Resolution is
+    offline and compiles the `ref` into inline `rules` (dropping the `ref` key), so
+    every downstream consumer — checker, generator, drift gate — sees a normal
+    policy. Backward compatible: contracts without any `ref` are untouched.
+    """
+    policies = data.get("policies")
+    if not isinstance(policies, list):
+        return data
+    if not any(isinstance(p, dict) and "ref" in p for p in policies):
+        return data
+
+    source_cache: dict[str, dict[str, Any]] = {}
+    for policy in policies:
+        if not isinstance(policy, dict) or "ref" not in policy:
+            continue
+        name = policy.get("name", "<unnamed>")
+        if "rules" in policy:
+            raise NornyxParseError(f"policy {name!r}: set either 'ref' or 'rules', not both")
+        ref = policy["ref"]
+        rel_path, _, ref_policy = ref.rpartition("#") if isinstance(ref, str) else ("", "", "")
+        if not rel_path or not ref_policy:
+            raise NornyxParseError(
+                f"policy {name!r}: 'ref' must be '<path>#<PolicyName>', got {ref!r}"
+            )
+        source_doc = source_cache.get(rel_path)
+        if source_doc is None:
+            source_path = base_dir / rel_path
+            if not source_path.is_file():
+                raise NornyxParseError(
+                    f"policy {name!r}: ref source not found: {source_path}"
+                )
+            try:
+                source_doc = yaml.load(
+                    source_path.read_text(encoding="utf-8"), Loader=NornyxSafeLoader
+                ) or {}
+            except yaml.YAMLError as exc:
+                raise NornyxParseError(
+                    f"policy {name!r}: ref source {rel_path!r} is invalid YAML: {exc}"
+                ) from exc
+            if not isinstance(source_doc, dict):
+                raise NornyxParseError(
+                    f"policy {name!r}: ref source {rel_path!r} is not a mapping"
+                )
+            source_cache[rel_path] = source_doc
+        rules = _extract_policy_rules(source_doc, ref_policy)
+        if rules is None:
+            raise NornyxParseError(
+                f"policy {name!r}: policy {ref_policy!r} not found in {rel_path}"
+            )
+        resolved = {key: value for key, value in policy.items() if key != "ref"}
+        resolved["rules"] = rules
+        policy.clear()
+        policy.update(resolved)
     return data

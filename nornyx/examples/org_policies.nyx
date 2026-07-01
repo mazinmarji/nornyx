@@ -1,0 +1,16 @@
+nornyx: "0.1"
+project:
+  name: OrgPolicies
+  description: "Canonical org policies, referenced by service contracts as the single source of truth."
+
+# This contract exists only to hold the org-standard policies in ONE place.
+# Service contracts reference these with `ref:` instead of copying the rules,
+# so there is nothing to drift. See governed_service.nyx.
+policies:
+  - name: SafeDeliveryPolicy
+    rules:
+      - deny secrets_to_llm
+      - require tests_if_code_changed
+      - deny nondeterministic_evaluation
+      - require evidence_if_harness_completed
+      - require human_approval_before_merge
