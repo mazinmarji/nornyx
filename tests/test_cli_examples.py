@@ -12,10 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_examples_are_bundled_in_package() -> None:
     pkg_examples = ROOT / "nornyx" / "examples"
     files = sorted(p.name for p in pkg_examples.glob("*.nyx"))
-    assert len(files) >= 3
+    assert len(files) >= 5
     assert "email_triage.nyx" in files
     assert "governed_delivery_control_plane.nyx" in files
     assert "release_guardrails.nyx" in files
+    assert "org_policies.nyx" in files
+    assert "governed_service.nyx" in files
 
 
 def test_examples_command_writes_files(tmp_path) -> None:
@@ -27,8 +29,8 @@ def test_examples_command_writes_files(tmp_path) -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
-    assert "Wrote 3 example(s)" in result.stdout
-    assert len(list(out.glob("*.nyx"))) == 3
+    assert "Wrote 5 example(s)" in result.stdout
+    assert len(list(out.glob("*.nyx"))) == 5
     assert (out / "governed_delivery_control_plane.nyx").is_file()
 
 
