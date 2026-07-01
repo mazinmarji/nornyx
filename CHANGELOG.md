@@ -4,6 +4,17 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.3.0] - 2026-07-01
+
+### Added
+- **Policy `ref`** — a policy can reference a canonical definition instead of
+  copying its rules: `ref: <path>#<PolicyName>`, resolved at load time from a
+  local `.nyx` contract or a workspace manifest. The canonical rules live in one
+  place, so there is nothing to drift; the ref compiles into inline `rules`, so
+  the checker, generator, and drift gate see a normal policy. Fully backward
+  compatible; the frozen v0.1 language surface is unchanged. Two bundled examples
+  (`org_policies.nyx`, `governed_service.nyx`).
+
 ## [1.2.0] - 2026-06-29
 
 ### Added
