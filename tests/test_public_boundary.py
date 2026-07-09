@@ -54,4 +54,22 @@ def test_public_boundary_script_uses_ignored_local_terms_without_echoing_values(
     assert result == 1
     assert "term_fingerprint=" in output
     assert "notes.md:1" in output
+    assert ".private-boundary-terms.txt" not in output
+    assert local_marker not in output
+
+
+def test_public_boundary_script_ignores_local_term_file_itself(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    module = _load_public_boundary_module()
+    local_marker = "LOCAL_PRIVATE_BOUNDARY_MARKER"
+    (tmp_path / ".private-boundary-terms.txt").write_text(local_marker, encoding="utf-8")
+    (tmp_path / "README.md").write_text("# Clean public tree\n", encoding="utf-8")
+
+    result = module.main(["--repo", str(tmp_path)])
+    output = capsys.readouterr().out
+
+    assert result == 0
+    assert "public boundary check passed" in output
     assert local_marker not in output

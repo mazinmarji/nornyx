@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import nornyx.governed_package as governed_package
 from nornyx.cli import main
 from nornyx.checker import CORE_TOP_LEVEL_BLOCKS, EXTENSION_TOP_LEVEL_BLOCKS
 from nornyx.schema_model import (
@@ -15,6 +17,34 @@ from nornyx.schema_model import (
     schema_top_level_blocks,
     validate_schema_model,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
+VERSIONED_SCHEMA_FILES = [
+    "nornyx_v0_1.schema.json",
+    "nornyx_v0_2.schema.json",
+    "nornyx_v1_0.schema.json",
+]
+
+
+def test_root_and_bundled_versioned_schemas_stay_in_sync() -> None:
+    for name in VERSIONED_SCHEMA_FILES:
+        root_schema = ROOT / "schemas" / name
+        bundled_schema = ROOT / "nornyx" / "schemas" / name
+
+        assert root_schema.read_text(encoding="utf-8") == bundled_schema.read_text(encoding="utf-8")
+
+
+def test_governed_package_schema_tracks_validator_contract() -> None:
+    schema = json.loads((ROOT / "nornyx" / "schemas" / "governed_package.schema.json").read_text(encoding="utf-8"))
+
+    assert set(schema["required"]) == governed_package.REQUIRED_PACKAGE_FIELDS
+    assert schema["properties"]["profile"]["const"] == governed_package.PROFILE_NAME
+    assert set(schema["properties"]["risk_tier"]["enum"]) == governed_package.RISK_TIERS
+    for field, expected in governed_package.SAFE_INSTALLATION_POLICY.items():
+        assert schema["properties"]["installation_policy"]["properties"][field]["const"] is expected
+    for field, expected in governed_package.SAFE_BOUNDARY.items():
+        assert schema["properties"]["safety_boundary"]["properties"][field]["const"] is expected
 
 
 def test_schema_model_matches_frozen_checker_surface() -> None:

@@ -115,6 +115,10 @@
       "type": "array",
       "items": {"$ref": "#/$defs/contract"}
     },
+    "governed_package": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "adapters": {
       "type": "array",
       "items": {"$ref": "#/$defs/adapter"}

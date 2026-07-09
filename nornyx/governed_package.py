@@ -674,6 +674,52 @@ def verify_package_lock(package_dir: str | Path) -> list[Diagnostic]:
     return diagnostics
 
 
+def verify_registered_artifact_hashes(
+    package: dict[str, Any],
+    package_dir: str | Path,
+) -> list[Diagnostic]:
+    if package.get("registration_mode") != "existing":
+        return []
+    source_path = package.get("source_path")
+    if not _non_empty_string(source_path):
+        return [_diag("MISSING_REGISTERED_SOURCE_PATH", "registered packages require source_path", "source_path")]
+
+    raw_source = Path(str(source_path))
+    candidates = [raw_source]
+    if not raw_source.is_absolute():
+        candidates.append(Path(package_dir) / raw_source)
+    source = next((candidate for candidate in candidates if candidate.is_dir()), None)
+    if source is None:
+        return []
+
+    diagnostics: list[Diagnostic] = []
+    for item in _as_list(package.get("artifacts")):
+        if not isinstance(item, dict):
+            continue
+        rel = item.get("path")
+        expected = item.get("sha256")
+        if not _non_empty_string(rel) or not _non_empty_string(expected):
+            continue
+        path = source / str(rel)
+        if not path.exists():
+            diagnostics.append(
+                _diag(
+                    "REGISTERED_ARTIFACT_MISSING",
+                    f"registered artifact missing from source: {rel}",
+                    path.as_posix(),
+                )
+            )
+        elif _sha256_file(path) != expected:
+            diagnostics.append(
+                _diag(
+                    "REGISTERED_ARTIFACT_HASH_MISMATCH",
+                    f"registered artifact hash mismatch for {rel}",
+                    path.as_posix(),
+                )
+            )
+    return diagnostics
+
+
 def _inventory_existing(source_dir: Path) -> list[dict[str, Any]]:
     artifacts: list[dict[str, Any]] = []
     for path in sorted(source_dir.rglob("*")):
@@ -978,6 +1024,10 @@ def radar_governed_packages(
     if suggest_contract:
         contract_path = out_path
         report_path = contract_path.parent / "radar_report.json"
+        if contract_path.resolve() == report_path.resolve():
+            raise ValueError(
+                "suggested contract output path collides with radar report path; use a .nyx output path"
+            )
         contract = _radar_contract(report)
         _write_text(contract_path, yaml.safe_dump(contract, sort_keys=False, width=100))
         report["suggested_contract_ref"] = contract_path.as_posix()
@@ -1000,10 +1050,12 @@ def validate_governed_package_source(path: str | Path) -> list[Diagnostic]:
         package = load_governed_package_source(manifest)
         diagnostics = validate_governed_package(package, base_dir=source)
         diagnostics.extend(verify_package_lock(source))
+        diagnostics.extend(verify_registered_artifact_hashes(package, source))
         return diagnostics
     package = load_governed_package_source(source)
     base_dir = source.parent if source.suffix.lower() == ".json" else None
     diagnostics = validate_governed_package(package, base_dir=base_dir)
     if source.name == "package_manifest.json" and (source.parent / "package_lock.json").exists():
         diagnostics.extend(verify_package_lock(source.parent))
+        diagnostics.extend(verify_registered_artifact_hashes(package, source.parent))
     return diagnostics
