@@ -34,6 +34,7 @@ SKIP_DIR_NAMES = {
 
 ALLOWED_SYNTHETIC_MARKER_FILES = {
     Path("tests/test_governed_package_profile.py"),
+    Path("tests/test_public_boundary.py"),
     Path("scripts/check-public-boundary.py"),
 }
 
