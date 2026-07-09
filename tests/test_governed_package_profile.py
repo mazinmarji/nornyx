@@ -17,6 +17,18 @@ from nornyx.parser import load_nyx
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples" / "governed_package"
+PUBLIC_BOUNDARY_MARKERS = [
+    "PRIVATE_DOWNSTREAM_PLATFORM",
+    "PRIVATE_REPO_MARKER",
+    "PRIVATE_PRODUCT_MARKER",
+    "INTERNAL_LAB_MARKER",
+    "DOWNSTREAM_SYSTEM_MARKER",
+    "INTERNAL_CODEBASE_MARKER",
+]
+PRIVATE_BOUNDARY_MARKER_FIXTURE = """
+This synthetic fixture contains PRIVATE_DOWNSTREAM_PLATFORM and PRIVATE_REPO_MARKER.
+It must never appear in generated public artifacts.
+"""
 
 
 def _codes(path: Path) -> set[str]:
@@ -28,16 +40,16 @@ def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _banned_terms() -> list[str]:
-    return [
-        "Mission " + "Control OS",
-        "M" + "CO",
-        "Ops" + "Guard",
-        "Agentic " + "Dev OS",
-        "Agentic" + "Networks",
-        "mco-realistic-external-" + "lab",
-        "mission-control-" + "os",
-    ]
+def _marker_pattern() -> re.Pattern[str]:
+    return re.compile("|".join(re.escape(term) for term in PUBLIC_BOUNDARY_MARKERS))
+
+
+def test_public_boundary_markers_are_neutral_synthetic_names() -> None:
+    marker_shape = re.compile(r"^(PRIVATE|INTERNAL|DOWNSTREAM)_[A-Z_]+(_MARKER|_PLATFORM)$")
+
+    assert PUBLIC_BOUNDARY_MARKERS
+    assert all(marker_shape.fullmatch(marker) for marker in PUBLIC_BOUNDARY_MARKERS)
+    assert "PRIVATE_DOWNSTREAM_PLATFORM" in PRIVATE_BOUNDARY_MARKER_FIXTURE
 
 
 def test_parses_valid_governed_package_example() -> None:
@@ -161,6 +173,21 @@ def test_radar_mode_does_not_copy_secret_like_values(tmp_path: Path) -> None:
     assert "possible_secret" in text
 
 
+def test_radar_mode_does_not_copy_private_boundary_marker_values(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "README.md").write_text("# Candidate\n", encoding="utf-8")
+    marker = PUBLIC_BOUNDARY_MARKERS[0]
+    (source / "notes.txt").write_text(f"API_TOKEN={marker}\n", encoding="utf-8")
+    report_path = tmp_path / "radar_report.json"
+
+    radar_governed_packages(source, report_path)
+    text = report_path.read_text(encoding="utf-8")
+
+    assert not _marker_pattern().search(text)
+    assert "possible_secret" in text
+
+
 def test_radar_suggest_contract_writes_contract_and_report(tmp_path: Path) -> None:
     contract_path = tmp_path / "radar_suggested.nyx"
     report = radar_governed_packages(
@@ -215,24 +242,23 @@ def test_all_three_modes_reject_or_avoid_execution_surface_approvers(tmp_path: P
     assert radar["suggested_approval_gates"][0]["eligible_approver_roles"] == ["reviewer"]
 
 
-def test_generated_package_artifacts_do_not_contain_private_names(tmp_path: Path) -> None:
+def test_generated_package_artifacts_do_not_contain_public_boundary_markers(tmp_path: Path) -> None:
     generate_governed_package(EXAMPLES / "basic.nyx", tmp_path)
-    pattern = re.compile("|".join(re.escape(term) for term in _banned_terms()))
+    pattern = _marker_pattern()
 
     for path in tmp_path.rglob("*"):
         if path.is_file():
             assert not pattern.search(path.read_text(encoding="utf-8"))
 
 
-def test_governed_package_docs_examples_source_and_tests_do_not_contain_private_names() -> None:
+def test_public_docs_examples_and_source_do_not_contain_public_boundary_markers() -> None:
     roots = [
         ROOT / "docs" / "governed-package-profile.md",
         ROOT / "examples" / "governed_package",
         ROOT / "nornyx" / "governed_package.py",
         ROOT / "nornyx" / "schemas" / "governed_package.schema.json",
-        Path(__file__),
     ]
-    pattern = re.compile("|".join(re.escape(term) for term in _banned_terms()))
+    pattern = _marker_pattern()
 
     for root in roots:
         paths = [root] if root.is_file() else [item for item in root.rglob("*") if item.is_file()]
