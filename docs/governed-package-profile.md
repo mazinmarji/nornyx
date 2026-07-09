@@ -90,6 +90,10 @@ a package lock.
 
 Register existing mode is artifact-first. Existing files are described,
 validated, hash-locked, and made governable without becoming executable.
+When the registered source directory is still available, validation re-checks
+registered artifact hashes; if that source directory has been moved or deleted,
+the portable generated package metadata is still validated but source drift
+cannot be re-checked.
 
 ### Radar mode
 
