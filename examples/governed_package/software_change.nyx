@@ -1,0 +1,87 @@
+nornyx: "0.1"
+project:
+  name: GenericSoftwareChange
+
+governed_package:
+  profile: governed_package
+  schema_version: "1.0"
+  package_id: gp-software-change-001
+  name: Generic software change package
+  risk_tier: medium
+  mission:
+    id: mission-software-change-001
+    objective: "Prepare a bounded source change with test and review evidence."
+    scope:
+      includes:
+        - "src/example.py"
+        - "tests/test_example.py"
+      excludes:
+        - "secrets"
+        - "deployment targets"
+  tasks:
+    - id: task-prepare-patch
+      title: "Prepare source patch"
+      assigned_to: implementation_author
+      required_evidence:
+        - patch_diff
+        - test_report
+  changes:
+    - id: change-source-update
+      type: software
+      expected_artifacts:
+        - artifact-source-patch
+  evidence:
+    requirements:
+      - id: patch_diff
+        type: diff
+        required: true
+      - id: test_report
+        type: test_report
+        required: true
+      - id: review_record
+        type: review
+        required: true
+  approval_gates:
+    - id: gate-review
+      required_evidence:
+        - patch_diff
+        - test_report
+        - review_record
+      eligible_approver_roles:
+        - reviewer
+      denied_approver_types:
+        - execution_surface
+        - ai_tool
+  agent_assignments:
+    - id: implementation_author
+      role: author
+      accountable_actor_type: human_or_service
+  execution_surfaces:
+    - id: ci-runner
+      type: ci_runner
+      can_approve: false
+      produces_evidence:
+        - test_report
+  artifacts:
+    - id: artifact-source-patch
+      path: artifacts/source.patch
+      type: patch
+    - id: artifact-test-report
+      path: artifacts/test-report.json
+      type: test_report
+  installation_policy:
+    installed: false
+    executable_by_default: false
+    requires_explicit_install: true
+  safety_boundary:
+    secrets_allowed: false
+    production_data_allowed: false
+    autonomous_execution_allowed: false
+    external_writes_allowed: false
+    deployment_allowed: false
+    approval_required: true
+  provenance:
+    source_contract: examples/governed_package/software_change.nyx
+    source_sha256: pending-generation
+    generator_version: "1.3.0"
+    profile_version: "1.0"

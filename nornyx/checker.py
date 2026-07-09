@@ -51,6 +51,7 @@ EXTENSION_TOP_LEVEL_BLOCKS = [
     "experimental",
     "graph",
     "contracts",
+    "governed_package",
     "adapters",
     "connectors",
     "guardrails",
@@ -740,6 +741,22 @@ def check_document(doc: dict[str, Any]) -> list[Diagnostic]:
 
 
     _validate_graph_contract_model(diagnostics, doc)
+
+    if "governed_package" in doc:
+        from .governed_package import validate_governed_package
+
+        package = doc.get("governed_package")
+        if isinstance(package, dict):
+            diagnostics.extend(validate_governed_package(package))
+        else:
+            diagnostics.append(
+                Diagnostic(
+                    "error",
+                    "INVALID_GOVERNED_PACKAGE",
+                    "governed_package must be a mapping",
+                    "governed_package",
+                )
+            )
 
     for goal in doc.get("goals", []) or []:
         if not isinstance(goal, dict):

@@ -6,7 +6,7 @@ restricts implicit bool resolution to true/false only.
 """
 import textwrap
 
-from nornyx.parser import NornyxParseError, load_nyx
+from nornyx.parser import load_nyx
 
 
 def _write(tmp_path, body: str):

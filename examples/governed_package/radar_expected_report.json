@@ -1,0 +1,31 @@
+{
+  "profile": "governed_package",
+  "mode": "radar",
+  "proposal_only": true,
+  "candidate_packages": [
+    {
+      "candidate_id": "radar-radar_sample_repo",
+      "name": "radar_sample_repo governed package candidate",
+      "reason_detected": "Folder contains files that can be described as governed artifacts.",
+      "suggested_risk_tier": "medium",
+      "confidence": 0.74,
+      "limitations": [
+        "Radar output is advisory and does not approve, install, execute, or deploy.",
+        "Secret-like files are flagged by path only."
+      ]
+    }
+  ],
+  "installation_policy": {
+    "installed": false,
+    "executable_by_default": false,
+    "requires_explicit_install": true
+  },
+  "safety_boundary": {
+    "secrets_allowed": false,
+    "production_data_allowed": false,
+    "autonomous_execution_allowed": false,
+    "external_writes_allowed": false,
+    "deployment_allowed": false,
+    "approval_required": true
+  }
+}
