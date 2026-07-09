@@ -10,6 +10,9 @@ generated/
 .DS_Store
 .env
 .env.*
+.private-boundary-terms
+.private-boundary-terms.txt
+private-boundary-terms.txt
 # AI/dev generated noise
 node_modules/
 apps/**/node_modules/
