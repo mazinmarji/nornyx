@@ -4,6 +4,40 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.4.0] - 2026-07-09
+
+### Added
+- **Governed Package Profile**: a standalone, product-neutral profile for
+  declaring, validating, generating, locking, registering, and discovering inert
+  governed package contracts.
+- `nornyx package generate`: contract-first generation of inert governed package
+  artifacts, including manifest, lock, provenance, safety, evidence, approval,
+  and agent-assignment documentation.
+- `nornyx package register`: artifact-first registration for existing artifact
+  directories, with manifest, provenance, registration report, and hash lock.
+- `nornyx package radar`: proposal-only discovery that scans a folder and
+  suggests governable package candidates without executing, approving,
+  installing, deploying, uploading, or copying secret-like values.
+- Public-boundary policy documentation and a local scan helper for keeping
+  public repository content product-neutral.
+
+### Fixed
+- Published root schemas now stay synchronized with bundled package schemas for
+  governed package top-level contracts.
+- Public-boundary local term files are ignored by the boundary scan itself while
+  still contributing local-only scan terms.
+- Radar suggested-contract output no longer collides with the radar report path.
+- Registered existing packages re-check source artifact hashes during validation
+  when the registered source directory is available.
+- The governed package JSON schema is pinned to the Python validator contract in
+  tests so shipped schema metadata cannot silently drift.
+
+### Notes
+- Generated governed packages remain inert by default. Nornyx does not execute,
+  install, approve, deploy, store secrets, or operate runtime systems.
+- The Nornyx **language/schema** version is unchanged (still 1.0); this is a
+  package release.
+
 ## [1.3.0] - 2026-07-01
 
 ### Added
