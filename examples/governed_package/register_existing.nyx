@@ -1,0 +1,80 @@
+nornyx: "0.1"
+project:
+  name: RegisterExistingArtifacts
+
+governed_package:
+  profile: governed_package
+  schema_version: "1.0"
+  package_id: gp-register-existing-001
+  name: Registered documentation artifact set
+  risk_tier: low
+  mission:
+    id: mission-register-existing-001
+    objective: "Describe, validate, and hash-lock an existing documentation artifact set."
+    scope:
+      includes:
+        - "README.md"
+        - "docs/summary.md"
+      excludes:
+        - "secrets"
+        - "runtime credentials"
+  tasks:
+    - id: task-inventory-existing
+      title: "Review existing artifact inventory"
+      assigned_to: reviewer
+      required_evidence:
+        - inventory_report
+  changes:
+    - id: change-adopt-existing
+      type: artifact_registration
+      expected_artifacts:
+        - README.md
+        - docs-summary.md
+  evidence:
+    requirements:
+      - id: inventory_report
+        type: inventory
+        required: true
+      - id: review_record
+        type: review
+        required: true
+  approval_gates:
+    - id: gate-register-review
+      required_evidence:
+        - inventory_report
+        - review_record
+      eligible_approver_roles:
+        - reviewer
+      denied_approver_types:
+        - execution_surface
+        - ai_tool
+  agent_assignments:
+    - id: reviewer
+      role: reviewer
+      accountable_actor_type: human_or_service
+  execution_surfaces:
+    - id: inventory-tool
+      type: cli
+      can_approve: false
+      produces_evidence:
+        - inventory_report
+  artifacts:
+    - id: placeholder-inventory
+      path: README.md
+      type: documentation
+  installation_policy:
+    installed: false
+    executable_by_default: false
+    requires_explicit_install: true
+  safety_boundary:
+    secrets_allowed: false
+    production_data_allowed: false
+    autonomous_execution_allowed: false
+    external_writes_allowed: false
+    deployment_allowed: false
+    approval_required: true
+  provenance:
+    source_contract: examples/governed_package/register_existing.nyx
+    source_sha256: pending-generation
+    generator_version: "1.3.0"
+    profile_version: "1.0"

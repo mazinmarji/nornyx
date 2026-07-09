@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from nornyx import __version__
-from nornyx.checker import check_document, has_errors
+from nornyx.checker import check_document
 from nornyx.cli import main
 from nornyx.doctor import run_doctor
 from nornyx.fmt import format_file

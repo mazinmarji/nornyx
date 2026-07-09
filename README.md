@@ -189,6 +189,7 @@ Nornyx v0.1 is an **executable specification layer**, not a runtime. It does **n
 
 - [Positioning](docs/48_NORNYX_POSITIONING.md)
 - [5-minute adoption](docs/49_NORNYX_5_MINUTE_ADOPTION.md)
+- [Governed Package Profile](docs/governed-package-profile.md)
 - [Nornyx Graph demo](docs/50_NORNYX_GRAPH_DEMO.md) · [expanded](docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md)
 - [Schema targets and examples](docs/52_SCHEMA_TARGETS_AND_EXAMPLES.md)
 - Roadmap toward a stable generalized contract language: see [`docs/03_ROADMAP_TO_v1_AND_BEYOND.md`](docs/03_ROADMAP_TO_v1_AND_BEYOND.md).

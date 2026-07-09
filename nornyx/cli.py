@@ -33,6 +33,12 @@ from .explain import explain_document
 from .fmt import format_file
 from .generator import generate_artifacts
 from .goals import write_goal_plan
+from .governed_package import (
+    generate_governed_package,
+    radar_governed_packages,
+    register_existing_package,
+    validate_governed_package_source,
+)
 from .harness_runtime import HarnessRuntimeError, run_harness
 from .language_evolution import build_language_evolution_report, write_language_evolution_report
 from .parser import NornyxParseError, load_nyx
@@ -84,6 +90,57 @@ def cmd_generate(args: argparse.Namespace) -> int:
     print(f"Generated {len(paths)} artifacts in {args.out}")
     for path in paths:
         print(path)
+    return 0
+
+
+def cmd_package_generate(args: argparse.Namespace) -> int:
+    try:
+        paths = generate_governed_package(args.file, args.out)
+    except (ValueError, NornyxParseError) as exc:
+        print(json.dumps({"level": "error", "code": "PACKAGE_GENERATE_ERROR", "message": str(exc)}, indent=2))
+        return 1
+    print(f"Generated inert governed package with {len(paths)} artifacts in {args.out}")
+    for path in paths:
+        print(path)
+    return 0
+
+
+def cmd_package_validate(args: argparse.Namespace) -> int:
+    try:
+        diagnostics = validate_governed_package_source(args.path)
+    except (ValueError, NornyxParseError, json.JSONDecodeError) as exc:
+        print(json.dumps({"level": "error", "code": "PACKAGE_VALIDATE_ERROR", "message": str(exc)}, indent=2))
+        return 1
+    if args.json:
+        payload = {"status": "fail" if has_errors(diagnostics) else "pass", "diagnostics": [d.to_dict() for d in diagnostics]}
+        print(json.dumps(payload, indent=2))
+    else:
+        for diag in diagnostics:
+            print(json.dumps(diag.to_dict(), indent=2))
+        if not has_errors(diagnostics):
+            print("Nornyx governed package validation passed")
+    return 1 if has_errors(diagnostics) else 0
+
+
+def cmd_package_register(args: argparse.Namespace) -> int:
+    try:
+        paths = register_existing_package(args.source, args.out, contract=args.contract)
+    except (ValueError, NornyxParseError) as exc:
+        print(json.dumps({"level": "error", "code": "PACKAGE_REGISTER_ERROR", "message": str(exc)}, indent=2))
+        return 1
+    print(f"Registered existing artifact set with {len(paths)} outputs in {args.out}")
+    for path in paths:
+        print(path)
+    return 0
+
+
+def cmd_package_radar(args: argparse.Namespace) -> int:
+    try:
+        report = radar_governed_packages(args.source, args.out, suggest_contract=args.suggest_contract)
+    except ValueError as exc:
+        print(json.dumps({"level": "error", "code": "PACKAGE_RADAR_ERROR", "message": str(exc)}, indent=2))
+        return 1
+    print(json.dumps({"status": "pass", "report_path": report["report_path"], "candidate_count": len(report["candidate_packages"])}, indent=2))
     return 0
 
 
@@ -517,6 +574,31 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("file")
     p.add_argument("--out", default="generated")
     p.set_defaults(func=cmd_generate)
+
+    package = sub.add_parser("package", help="Governed package profile commands")
+    package_sub = package.add_subparsers(dest="package_command", required=True)
+
+    p = package_sub.add_parser("generate", help="Generate an inert governed package from a .nyx contract")
+    p.add_argument("file")
+    p.add_argument("--out", default="dist/governed-package")
+    p.set_defaults(func=cmd_package_generate)
+
+    p = package_sub.add_parser("validate", help="Validate a governed package contract, manifest, or directory")
+    p.add_argument("path")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_package_validate)
+
+    p = package_sub.add_parser("register", help="Hash-lock and describe an existing artifact directory")
+    p.add_argument("source")
+    p.add_argument("--contract")
+    p.add_argument("--out", default="dist/registered-package")
+    p.set_defaults(func=cmd_package_register)
+
+    p = package_sub.add_parser("radar", help="Propose governed package candidates from a folder")
+    p.add_argument("source")
+    p.add_argument("--out", default="dist/radar_report.json")
+    p.add_argument("--suggest-contract", action="store_true")
+    p.set_defaults(func=cmd_package_radar)
 
     p = sub.add_parser(
         "drift",

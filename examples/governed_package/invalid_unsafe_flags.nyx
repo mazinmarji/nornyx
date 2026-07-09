@@ -1,0 +1,53 @@
+nornyx: "0.1"
+project:
+  name: InvalidUnsafeFlagsExample
+
+governed_package:
+  profile: governed_package
+  schema_version: "1.0"
+  package_id: gp-invalid-unsafe-001
+  name: Invalid unsafe package
+  risk_tier: high
+  mission:
+    id: mission-invalid-unsafe
+    objective: "Show that unsafe installation and safety flags fail validation."
+  tasks:
+    - id: task-invalid-unsafe
+      title: "Prepare unsafe declaration"
+  changes:
+    - id: change-invalid-unsafe
+      type: documentation
+  evidence:
+    requirements:
+      - id: review_record
+        type: review
+        required: true
+  approval_gates:
+    - id: gate-review
+      required_evidence:
+        - review_record
+      eligible_approver_roles:
+        - reviewer
+      denied_approver_types:
+        - execution_surface
+        - ai_tool
+  artifacts:
+    - id: artifact-report
+      path: artifacts/report.md
+      type: report
+  installation_policy:
+    installed: true
+    executable_by_default: true
+    requires_explicit_install: false
+  safety_boundary:
+    secrets_allowed: true
+    production_data_allowed: true
+    autonomous_execution_allowed: true
+    external_writes_allowed: true
+    deployment_allowed: true
+    approval_required: false
+  provenance:
+    source_contract: examples/governed_package/invalid_unsafe_flags.nyx
+    source_sha256: pending-generation
+    generator_version: "1.3.0"
+    profile_version: "1.0"

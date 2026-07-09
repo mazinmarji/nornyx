@@ -1,0 +1,59 @@
+nornyx: "0.1"
+project:
+  name: InvalidApproverExample
+
+governed_package:
+  profile: governed_package
+  schema_version: "1.0"
+  package_id: gp-invalid-approver-001
+  name: Invalid approver package
+  risk_tier: low
+  mission:
+    id: mission-invalid-approver
+    objective: "Show that tools cannot approve a package."
+  tasks:
+    - id: task-invalid-approver
+      title: "Prepare evidence"
+  changes:
+    - id: change-invalid-approver
+      type: documentation
+  evidence:
+    requirements:
+      - id: doc_diff
+        type: diff
+        required: true
+  approval_gates:
+    - id: gate-invalid
+      required_evidence:
+        - doc_diff
+      eligible_approver_roles:
+        - editor-local
+      denied_approver_types:
+        - execution_surface
+        - ai_tool
+  execution_surfaces:
+    - id: editor-local
+      type: ai_tool
+      can_approve: false
+      produces_evidence:
+        - doc_diff
+  artifacts:
+    - id: artifact-doc-diff
+      path: artifacts/doc.diff
+      type: diff
+  installation_policy:
+    installed: false
+    executable_by_default: false
+    requires_explicit_install: true
+  safety_boundary:
+    secrets_allowed: false
+    production_data_allowed: false
+    autonomous_execution_allowed: false
+    external_writes_allowed: false
+    deployment_allowed: false
+    approval_required: true
+  provenance:
+    source_contract: examples/governed_package/invalid_ai_tool_approver.nyx
+    source_sha256: pending-generation
+    generator_version: "1.3.0"
+    profile_version: "1.0"
