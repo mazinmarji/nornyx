@@ -37,6 +37,7 @@ ALLOWED_SYNTHETIC_MARKER_FILES = {
     Path("tests/test_public_boundary.py"),
     Path("scripts/check-public-boundary.py"),
 }
+LOCAL_TERM_PATHS = {Path(filename) for filename in LOCAL_TERM_FILES}
 
 
 def _fingerprint(term: str) -> str:
@@ -62,6 +63,8 @@ def _iter_files(repo: Path) -> list[Path]:
         if not path.is_file():
             continue
         rel = path.relative_to(repo)
+        if rel in LOCAL_TERM_PATHS:
+            continue
         if rel in ALLOWED_SYNTHETIC_MARKER_FILES:
             continue
         if any(part in SKIP_DIR_NAMES or part.endswith(".egg-info") for part in rel.parts):

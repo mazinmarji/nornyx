@@ -64,6 +64,10 @@ from .schema_model import (
 )
 
 
+PACKAGE_RADAR_REPORT_DEFAULT = "dist/radar_report.json"
+PACKAGE_RADAR_CONTRACT_DEFAULT = "dist/radar_suggested.nyx"
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     try:
         doc = load_nyx(args.file)
@@ -136,7 +140,10 @@ def cmd_package_register(args: argparse.Namespace) -> int:
 
 def cmd_package_radar(args: argparse.Namespace) -> int:
     try:
-        report = radar_governed_packages(args.source, args.out, suggest_contract=args.suggest_contract)
+        out = args.out
+        if args.suggest_contract and out == PACKAGE_RADAR_REPORT_DEFAULT:
+            out = PACKAGE_RADAR_CONTRACT_DEFAULT
+        report = radar_governed_packages(args.source, out, suggest_contract=args.suggest_contract)
     except ValueError as exc:
         print(json.dumps({"level": "error", "code": "PACKAGE_RADAR_ERROR", "message": str(exc)}, indent=2))
         return 1
@@ -596,7 +603,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = package_sub.add_parser("radar", help="Propose governed package candidates from a folder")
     p.add_argument("source")
-    p.add_argument("--out", default="dist/radar_report.json")
+    p.add_argument("--out", default=PACKAGE_RADAR_REPORT_DEFAULT)
     p.add_argument("--suggest-contract", action="store_true")
     p.set_defaults(func=cmd_package_radar)
 

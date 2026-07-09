@@ -4,6 +4,7 @@ import json
 import re
 from pathlib import Path
 
+from nornyx.cli import main
 from nornyx.checker import check_document, has_errors
 from nornyx.governed_package import (
     generate_governed_package,
@@ -131,6 +132,25 @@ def test_register_existing_mode_locks_existing_artifact_directory(tmp_path: Path
     assert not validate_governed_package_source(out)
 
 
+def test_register_existing_mode_detects_source_artifact_hash_mismatch(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "existing"
+    source.mkdir()
+    artifact = source / "README.md"
+    artifact.write_text("# Existing\n", encoding="utf-8")
+    out = tmp_path / "registered"
+
+    register_existing_package(source, out, contract=EXAMPLES / "register_existing.nyx")
+    artifact.write_text("# Modified\n", encoding="utf-8")
+
+    diagnostics = validate_governed_package_source(out)
+
+    assert any(item.code == "REGISTERED_ARTIFACT_HASH_MISMATCH" for item in diagnostics)
+
+
 def test_register_existing_mode_rejects_unsafe_manifest(tmp_path: Path) -> None:
     out = tmp_path / "unsafe"
     generate_governed_package(EXAMPLES / "basic.nyx", out)
@@ -199,6 +219,36 @@ def test_radar_suggest_contract_writes_contract_and_report(tmp_path: Path) -> No
     assert contract_path.exists()
     assert Path(report["report_path"]).exists()
     assert report["suggested_contract_ref"] == contract_path.as_posix()
+
+
+def test_radar_suggest_contract_rejects_report_path_collision(tmp_path: Path) -> None:
+    report_path = tmp_path / "radar_report.json"
+
+    try:
+        radar_governed_packages(EXAMPLES / "radar_sample_repo", report_path, suggest_contract=True)
+    except ValueError as exc:
+        assert "collides with radar report path" in str(exc)
+    else:
+        raise AssertionError("radar accepted a suggested contract path that collides with the report")
+
+
+def test_package_radar_cli_suggest_contract_default_writes_contract_and_report(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["package", "radar", str(EXAMPLES / "radar_sample_repo"), "--suggest-contract"]) == 0
+
+    contract_path = tmp_path / "dist" / "radar_suggested.nyx"
+    report_path = tmp_path / "dist" / "radar_report.json"
+    report = _read_json(report_path)
+
+    assert contract_path.exists()
+    assert report_path.exists()
+    assert report["suggested_contract_ref"].endswith("radar_suggested.nyx")
+    assert main(["package", "validate", str(contract_path)]) == 0
+    assert main(["check", str(contract_path)]) == 0
 
 
 def test_all_three_modes_produce_provenance_and_remain_inert(tmp_path: Path) -> None:
