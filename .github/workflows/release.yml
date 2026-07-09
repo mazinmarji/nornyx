@@ -1,9 +1,8 @@
 name: release
 
 # Publishes Nornyx to PyPI via Trusted Publishing (OIDC) — no API token stored
-# anywhere. Fires when a GitHub Release is published, or on manual dispatch.
-# The artifact is built from the tagged source, so what lands on PyPI is provably
-# what is in the repo.
+# anywhere. Publishing fires only when a GitHub Release is published. Manual
+# dispatch runs the test job without deploying to PyPI.
 on:
   release:
     types: [published]
@@ -24,6 +23,7 @@ jobs:
       - run: pytest -q
 
   publish:
+    if: github.event_name == 'release'
     needs: test
     runs-on: ubuntu-latest
     environment: pypi
