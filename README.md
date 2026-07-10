@@ -173,6 +173,30 @@ resolve the reference and inline the real rules into `policy.yaml`. See the
 bundled [`org_policies.nyx`](nornyx/examples/org_policies.nyx) and
 [`governed_service.nyx`](nornyx/examples/governed_service.nyx) examples.
 
+## Govern packages as untrusted input
+
+Governed package commands treat folders, repos, plugins, agent kits, and MCP
+bundles as inert inputs. The scanner inventories files, hashes contents, detects
+risk surfaces, redacts secret-like values, and emits evidence reports:
+
+```bash
+nornyx package scan ./some-package --out dist/package-scan
+nornyx package radar ./some-package --out dist/radar_report.json
+nornyx package register ./some-package --contract examples/governed_package/register_existing.nyx --out dist/registered-package
+```
+
+External evidence can be imported from existing reports without making those
+tools mandatory:
+
+```bash
+nornyx package evidence import syft syft-report.json --out dist/external-evidence
+nornyx package evidence import gitleaks gitleaks-report.json --out dist/external-evidence
+```
+
+Nornyx does not install, execute, start MCP servers, activate hooks, upload data,
+approve, or claim a package is safe. It can say that a package was inventoried,
+risk-surfaced, evidence-bound, hash-locked, and approval-gated.
+
 ## Why Nornyx
 
 - **One source of truth** for agent/skill/harness/policy/eval/evidence artifacts — no more drift.

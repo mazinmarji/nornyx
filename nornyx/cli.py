@@ -41,6 +41,7 @@ from .governed_package import (
 )
 from .harness_runtime import HarnessRuntimeError, run_harness
 from .language_evolution import build_language_evolution_report, write_language_evolution_report
+from .package_scanner import parse_gitleaks_report, parse_syft_report, scan_package, write_json
 from .parser import NornyxParseError, load_nyx
 from .policy_runtime import PolicyRuntimeError, evaluate_harness_policy, write_policy_report
 from .profiles import PROFILE_NAMES, write_profile
@@ -148,6 +149,64 @@ def cmd_package_radar(args: argparse.Namespace) -> int:
         print(json.dumps({"level": "error", "code": "PACKAGE_RADAR_ERROR", "message": str(exc)}, indent=2))
         return 1
     print(json.dumps({"status": "pass", "report_path": report["report_path"], "candidate_count": len(report["candidate_packages"])}, indent=2))
+    return 0
+
+
+def cmd_package_scan(args: argparse.Namespace) -> int:
+    try:
+        report = scan_package(args.source, out_dir=args.out, package_id=args.package_id)
+    except ValueError as exc:
+        print(json.dumps({"level": "error", "code": "PACKAGE_SCAN_ERROR", "message": str(exc)}, indent=2))
+        return 1
+    print(
+        json.dumps(
+            {
+                "status": "pass",
+                "out": str(Path(args.out)),
+                "package_id": report["package_id"],
+                "risk_tier": report["risk_surface"]["risk_tier"],
+                "total_files_scanned": report["summary"]["total_files_scanned"],
+                "package_payload_executed": False,
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def cmd_package_evidence_import(args: argparse.Namespace) -> int:
+    tool = args.tool.lower()
+    parsers = {"syft": parse_syft_report, "gitleaks": parse_gitleaks_report}
+    parser = parsers.get(tool)
+    if parser is None:
+        print(
+            json.dumps(
+                {
+                    "level": "error",
+                    "code": "UNSUPPORTED_EVIDENCE_TOOL",
+                    "message": f"unsupported evidence tool: {args.tool}",
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        records = parser(Path(args.report_path), args.package_id)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(json.dumps({"level": "error", "code": "EVIDENCE_IMPORT_ERROR", "message": str(exc)}, indent=2))
+        return 1
+    payload = {
+        "status": "pass",
+        "tool": tool,
+        "package_id": args.package_id,
+        "evidence_count": len(records),
+        "evidence": records,
+    }
+    out_path = Path(args.out)
+    if out_path.suffix.lower() != ".json":
+        out_path = out_path / f"{tool}_normalized_evidence.json"
+    write_json(out_path, payload)
+    print(json.dumps({"status": "pass", "out": out_path.as_posix(), "evidence_count": len(records)}, indent=2))
     return 0
 
 
@@ -585,6 +644,12 @@ def build_parser() -> argparse.ArgumentParser:
     package = sub.add_parser("package", help="Governed package profile commands")
     package_sub = package.add_subparsers(dest="package_command", required=True)
 
+    p = package_sub.add_parser("scan", help="Run the built-in deterministic package scanner")
+    p.add_argument("source")
+    p.add_argument("--out", default="dist/package-scan")
+    p.add_argument("--package-id", default="package")
+    p.set_defaults(func=cmd_package_scan)
+
     p = package_sub.add_parser("generate", help="Generate an inert governed package from a .nyx contract")
     p.add_argument("file")
     p.add_argument("--out", default="dist/governed-package")
@@ -606,6 +671,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=PACKAGE_RADAR_REPORT_DEFAULT)
     p.add_argument("--suggest-contract", action="store_true")
     p.set_defaults(func=cmd_package_radar)
+
+    evidence = package_sub.add_parser("evidence", help="Import external package evidence reports")
+    evidence_sub = evidence.add_subparsers(dest="evidence_command", required=True)
+
+    p = evidence_sub.add_parser("import", help="Normalize an external evidence report")
+    p.add_argument("tool", choices=["syft", "gitleaks"])
+    p.add_argument("report_path")
+    p.add_argument("--package-id", default="package")
+    p.add_argument("--out", default="dist/external-evidence")
+    p.set_defaults(func=cmd_package_evidence_import)
 
     p = sub.add_parser(
         "drift",

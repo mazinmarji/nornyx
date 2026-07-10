@@ -37,6 +37,57 @@
     "registration_mode": {
       "enum": ["generated", "existing"]
     },
+    "source_path": {
+      "type": "string"
+    },
+    "acquisition_mode": {
+      "type": "string"
+    },
+    "copied_payload": {
+      "type": "boolean"
+    },
+    "scanner": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "scan_timestamp": {"type": "string"},
+        "deterministic": {"type": "boolean"},
+        "network_used": {"type": "boolean"},
+        "package_payload_executed": {"const": false}
+      },
+      "additionalProperties": true
+    },
+    "scan_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "evidence_adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string"},
+          "mode": {"enum": ["local_cli", "api"]},
+          "enabled": {"type": "boolean"},
+          "required": {"type": "boolean"},
+          "failure_policy": {"enum": ["warn", "fail"]},
+          "network_required": {"type": "boolean"},
+          "report_path": {"type": "string"},
+          "command": {"type": "string"},
+          "timeout": {"type": "number"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "blocked_by_default": {
+      "const": true
+    },
+    "approval_required": {
+      "const": true
+    },
     "mission": {
       "type": "object",
       "required": ["id", "objective"],

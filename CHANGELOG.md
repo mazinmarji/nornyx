@@ -4,6 +4,26 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## Unreleased
+
+### Added
+- Governed package hardening: built-in deterministic package scanner, normalized
+  evidence records, claim-vs-evidence reports, risk scoring, scanner-backed
+  manifest/lock metadata, and portal-ready JSON/Markdown reports.
+- `nornyx package scan`: inventories package contents, hashes files, detects
+  hooks, MCP configs, secret-like patterns, endpoints, dangerous commands,
+  scripts, and claim mismatches without executing package payloads.
+- External evidence adapter import framework with Syft-like SBOM and
+  Gitleaks-like secret report parsers. External tools remain optional and are
+  not executed by default.
+- Governed-package validation rules for scanner-observed hooks, MCP configs,
+  secret-like content, claim mismatches, required adapter failures, and critical
+  external evidence.
+
+### Notes
+- Nornyx still does not claim packages are safe. It inventories, risk-surfaces,
+  evidence-binds, hash-locks, and approval-gates untrusted packages.
+
 ## [1.4.0] - 2026-07-09
 
 ### Added

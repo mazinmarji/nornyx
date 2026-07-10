@@ -1,0 +1,89 @@
+nornyx: "0.1"
+project:
+  name: GovernedPackageExternalEvidence
+
+governed_package:
+  profile: governed_package
+  schema_version: "1.0"
+  package_id: gp-external-evidence-001
+  name: External evidence adapter example
+  risk_tier: medium
+  mission:
+    id: mission-external-evidence
+    objective: "Govern a package with optional imported external scanner evidence."
+  tasks:
+    - id: task-review-external-evidence
+      title: "Review imported scanner evidence"
+      assigned_to: reviewer
+      required_evidence:
+        - package_analysis
+        - external_evidence_summary
+  changes:
+    - id: change-register-evidence
+      type: evidence_import
+      expected_artifacts:
+        - artifact-external-evidence-summary
+  evidence:
+    requirements:
+      - id: package_analysis
+        type: package_analysis
+        required: true
+      - id: external_evidence_summary
+        type: external_evidence_summary
+        required: true
+      - id: review_record
+        type: review
+        required: true
+  approval_gates:
+    - id: gate-review
+      required_evidence:
+        - package_analysis
+        - external_evidence_summary
+        - review_record
+      eligible_approver_roles:
+        - reviewer
+      denied_approver_types:
+        - execution_surface
+        - ai_tool
+  evidence_adapters:
+    - name: syft
+      type: sbom
+      mode: local_cli
+      required: false
+      failure_policy: warn
+    - name: gitleaks
+      type: secret_scan
+      mode: local_cli
+      required: false
+      failure_policy: warn
+  agent_assignments:
+    - id: reviewer
+      role: reviewer
+      accountable_actor_type: human_or_service
+  execution_surfaces:
+    - id: local-scanner
+      type: tool
+      can_approve: false
+      produces_evidence:
+        - package_analysis
+        - external_evidence_summary
+  artifacts:
+    - id: artifact-external-evidence-summary
+      path: external_evidence_summary.json
+      type: evidence
+  installation_policy:
+    installed: false
+    executable_by_default: false
+    requires_explicit_install: true
+  safety_boundary:
+    secrets_allowed: false
+    production_data_allowed: false
+    autonomous_execution_allowed: false
+    external_writes_allowed: false
+    deployment_allowed: false
+    approval_required: true
+  provenance:
+    source_contract: examples/governed_package/external_evidence_adapters.nyx
+    source_sha256: pending-generation
+    generator_version: "1.4.0"
+    profile_version: "1.0"

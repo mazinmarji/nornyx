@@ -13,6 +13,7 @@ import yaml
 
 from . import __version__
 from .errors import Diagnostic
+from .package_scanner import SCANNER_NAME, SCANNER_VERSION, scan_package, write_scan_reports
 from .parser import load_nyx
 
 
@@ -61,6 +62,35 @@ SECRET_RE = re.compile(
     r"(api[_-]?key|token|secret|password|credential|private[_-]?key)\s*[:=]\s*([^\s]+)",
     re.IGNORECASE,
 )
+SCAN_REPORT_FILES = [
+    "package_analysis.json",
+    "package_analysis.md",
+    "risk_surface_report.json",
+    "risk_surface_report.md",
+    "source_inventory.md",
+    "hook_risk_review.md",
+    "hook_risk_report.json",
+    "mcp_risk_review.md",
+    "mcp_risk_report.json",
+    "secret_scan_report.json",
+    "secret_scan_report.md",
+    "endpoint_scan_report.json",
+    "endpoint_scan_report.md",
+    "command_risk_report.json",
+    "command_risk_report.md",
+    "claim_vs_evidence_report.json",
+    "claim_vs_evidence_report.md",
+    "external_evidence_summary.json",
+    "external_evidence_summary.md",
+    "adapter_execution_report.json",
+]
+RISK_EVIDENCE_REQUIREMENTS = [
+    ("inventory_report", "inventory", "source_inventory.md"),
+    ("package_analysis", "package_analysis", "package_analysis.json"),
+    ("risk_surface_report", "risk_surface", "risk_surface_report.json"),
+    ("claim_vs_evidence_report", "claim_vs_evidence", "claim_vs_evidence_report.json"),
+    ("review_record", "human_review", ""),
+]
 
 
 @dataclass(frozen=True)
@@ -199,6 +229,224 @@ def _diag(
     level: str = "error",
 ) -> Diagnostic:
     return Diagnostic(level, code, message, path, hint)
+
+
+def _risk_rank(tier: str) -> int:
+    return {"low": 0, "medium": 1, "high": 2, "critical": 3}.get(tier, 0)
+
+
+def _max_risk_tier(*tiers: str) -> str:
+    return max((tier for tier in tiers if tier in RISK_TIERS), key=_risk_rank, default="low")
+
+
+def _requirement_types(package: dict[str, Any]) -> set[str]:
+    values: set[str] = set()
+    for item in _evidence_requirements(package):
+        for field in ("id", "type"):
+            if _non_empty_string(item.get(field)):
+                values.add(str(item[field]))
+    return values
+
+
+def _gate_roles(package: dict[str, Any]) -> set[str]:
+    roles: set[str] = set()
+    for gate in _as_list(package.get("approval_gates")):
+        if isinstance(gate, dict):
+            roles.update(_flatten_approver_values(gate))
+    return roles
+
+
+def _scan_meta(package: dict[str, Any]) -> dict[str, Any]:
+    scan = package.get("scan_metadata")
+    return scan if isinstance(scan, dict) else {}
+
+
+def _scan_count(package: dict[str, Any], key: str) -> int:
+    meta = _scan_meta(package)
+    counts = meta.get("risk_surface_counts")
+    if isinstance(counts, dict):
+        try:
+            return int(counts.get(key, 0))
+        except (TypeError, ValueError):
+            return 0
+    return 0
+
+
+def _scanner_claim_mismatch_count(package: dict[str, Any]) -> int:
+    meta = _scan_meta(package)
+    try:
+        return int(meta.get("claim_mismatch_count", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _adapter_status(package: dict[str, Any], name: str) -> str | None:
+    meta = _scan_meta(package)
+    statuses = meta.get("adapter_status")
+    if isinstance(statuses, dict):
+        value = statuses.get(name)
+        if _non_empty_string(value):
+            return str(value)
+    return None
+
+
+def _external_critical_count(package: dict[str, Any]) -> int:
+    meta = _scan_meta(package)
+    try:
+        return int(meta.get("external_critical_findings", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _has_scan_evidence(package: dict[str, Any], *needles: str) -> bool:
+    available = _requirement_types(package)
+    return any(needle in available for needle in needles)
+
+
+def _scan_manifest_fields(
+    manifest: dict[str, Any],
+    scan: dict[str, Any],
+    *,
+    source: Path,
+    acquisition_mode: str,
+    copied_payload: bool = False,
+) -> None:
+    risk_surface = scan["risk_surface"]
+    summary = scan["summary"]
+    findings = scan["findings"]
+    adapter_summary = scan["external_evidence_summary"]
+    manifest["source_path"] = _portable_ref(source)
+    manifest["acquisition_mode"] = acquisition_mode
+    manifest["copied_payload"] = copied_payload
+    manifest["scanner"] = {
+        "name": SCANNER_NAME,
+        "version": SCANNER_VERSION,
+        "scan_timestamp": manifest.get("provenance", {}).get("generated_at") or _utc_now(),
+        "deterministic": True,
+        "network_used": False,
+        "package_payload_executed": False,
+    }
+    manifest["file_count"] = summary["total_files_scanned"]
+    manifest["total_byte_count"] = summary["total_bytes_scanned"]
+    manifest["hash_summary"] = {
+        "source_inventory_hash": scan["source_hash"],
+        "hash_algorithm": "sha256",
+    }
+    manifest["risk_tier"] = _max_risk_tier(str(manifest.get("risk_tier", "low")), risk_surface["risk_tier"])
+    manifest["risk_findings_count_by_severity"] = risk_surface["finding_count_by_severity"]
+    manifest["adapter_evidence_count_by_source"] = adapter_summary.get("evidence_count_by_source", {})
+    manifest["blocked_by_default"] = True
+    manifest["approval_required"] = True
+    manifest["scan_metadata"] = {
+        "scanner_version": SCANNER_VERSION,
+        "source_hash": scan["source_hash"],
+        "risk_tier": risk_surface["risk_tier"],
+        "risk_score": risk_surface["risk_score"],
+        "risk_surface_counts": {
+            "hooks": len(findings["hooks"]),
+            "mcp": len(findings["mcp"]),
+            "secrets": len(findings["secrets"]),
+            "endpoints": len(findings["endpoints"]),
+            "commands": len(findings["commands"]),
+            "scripts": len(findings["scripts"]),
+            "binary_files": summary["binary_like_files"],
+            "minified_files": summary["suspicious_long_line_or_minified_files"],
+        },
+        "claim_mismatch_count": len(scan["claim_vs_evidence"]["mismatches"]),
+        "claim_mismatch_max_severity": _max_risk_tier(
+            *(str(item.get("severity", "low")) for item in scan["claim_vs_evidence"]["mismatches"])
+        ),
+        "adapter_status": {
+            item.get("name", ""): item.get("status", "")
+            for item in scan["adapter_execution_report"].get("executions", [])
+            if isinstance(item, dict)
+        },
+        "adapter_diagnostics": adapter_summary.get("diagnostics", []),
+        "external_critical_findings": sum(
+            1
+            for item in scan.get("evidence_records", [])
+            if item.get("source") == "external_adapter" and item.get("severity") == "critical"
+        ),
+        "has_readme": any(Path(item["path"]).name.lower().startswith("readme") for item in scan["files"]),
+        "has_license": any(Path(item["path"]).name.lower().startswith("license") for item in scan["files"]),
+        "remote_endpoints_unclear": any(
+            item.get("endpoint_classification") == "unknown" for item in findings["endpoints"]
+        ),
+        "required_report_files": list(SCAN_REPORT_FILES),
+    }
+
+
+def _ensure_requirement(package: dict[str, Any], requirement: dict[str, Any]) -> None:
+    package.setdefault("evidence", {})
+    evidence = package["evidence"]
+    if not isinstance(evidence, dict):
+        package["evidence"] = {"requirements": []}
+        evidence = package["evidence"]
+    requirements = evidence.setdefault("requirements", [])
+    if not isinstance(requirements, list):
+        evidence["requirements"] = []
+        requirements = evidence["requirements"]
+    existing = {item.get("id") for item in requirements if isinstance(item, dict)}
+    if requirement["id"] not in existing:
+        requirements.append(requirement)
+
+
+def _ensure_gate(package: dict[str, Any], evidence_ids: list[str]) -> None:
+    gates = package.setdefault("approval_gates", [])
+    if not isinstance(gates, list):
+        package["approval_gates"] = []
+        gates = package["approval_gates"]
+    if gates:
+        gate = next((item for item in gates if isinstance(item, dict)), None)
+        if gate is not None:
+            refs = gate.setdefault("required_evidence", [])
+            if isinstance(refs, list):
+                for evidence_id in evidence_ids:
+                    if evidence_id not in refs:
+                        refs.append(evidence_id)
+            denied = gate.setdefault("denied_approver_types", [])
+            if isinstance(denied, list):
+                for denied_type in ["execution_surface", "ai_tool"]:
+                    if denied_type not in denied:
+                        denied.append(denied_type)
+            return
+    gates.append(
+        {
+            "id": "gate-package-review",
+            "required_evidence": evidence_ids,
+            "eligible_approver_roles": ["reviewer", "security"],
+            "denied_approver_types": ["execution_surface", "ai_tool"],
+        }
+    )
+
+
+def _apply_scan_contract_requirements(manifest: dict[str, Any], scan: dict[str, Any]) -> None:
+    required = list(RISK_EVIDENCE_REQUIREMENTS)
+    findings = scan["findings"]
+    if findings["hooks"]:
+        required.append(("hook_risk_review", "hook_risk_review", "hook_risk_review.md"))
+    if findings["mcp"]:
+        required.append(("mcp_risk_review", "mcp_risk_review", "mcp_risk_review.md"))
+    if findings["secrets"]:
+        required.append(("secret_scan_report", "secret_scan", "secret_scan_report.json"))
+    if findings["endpoints"]:
+        required.append(("endpoint_scan_report", "endpoint_scan", "endpoint_scan_report.json"))
+    if findings["commands"]:
+        required.append(("command_risk_report", "command_risk", "command_risk_report.json"))
+    for req_id, req_type, artifact in required:
+        requirement = {"id": req_id, "type": req_type, "required": True}
+        if artifact:
+            requirement["artifact"] = artifact
+        _ensure_requirement(manifest, requirement)
+    _ensure_gate(manifest, [item[0] for item in required if item[0] in _evidence_ids(manifest)])
+
+
+def _scan_report_hashes(out: Path) -> list[dict[str, str]]:
+    return [
+        {"path": name, "sha256": _sha256_file(out / name)}
+        for name in SCAN_REPORT_FILES
+        if (out / name).exists()
+    ]
 
 
 def load_governed_package_source(source: str | Path) -> dict[str, Any]:
@@ -452,6 +700,131 @@ def validate_governed_package(
                         f"governed_package.safety_boundary.{field}",
                     )
                 )
+        if safety.get("external_writes_allowed") is True and not package.get("approval_gates"):
+            diagnostics.append(
+                _diag(
+                    "EXTERNAL_WRITES_REQUIRE_APPROVAL_GATE",
+                    "external writes require an explicit approval gate",
+                    "governed_package.safety_boundary.external_writes_allowed",
+                )
+            )
+
+    if _scan_meta(package):
+        if _scan_count(package, "hooks") and not _has_scan_evidence(package, "hook_risk_review"):
+            diagnostics.append(
+                _diag(
+                    "HOOKS_REQUIRE_HOOK_RISK_REVIEW",
+                    "detected hooks require hook risk review evidence",
+                    "governed_package.evidence.requirements",
+                )
+            )
+        if _scan_count(package, "mcp") and not _has_scan_evidence(package, "mcp_risk_review"):
+            diagnostics.append(
+                _diag(
+                    "MCP_REQUIRES_MCP_RISK_REVIEW",
+                    "detected MCP configs require MCP risk review evidence",
+                    "governed_package.evidence.requirements",
+                )
+            )
+        if _scan_count(package, "secrets") and not _has_scan_evidence(package, "secret_scan"):
+            diagnostics.append(
+                _diag(
+                    "SECRETS_REQUIRE_SECRET_SCAN_EVIDENCE",
+                    "secret-like content requires secret scan evidence",
+                    "governed_package.evidence.requirements",
+                )
+            )
+        if (
+            _scanner_claim_mismatch_count(package)
+            and _scan_meta(package).get("claim_mismatch_max_severity") in {"high", "critical"}
+            and not _has_scan_evidence(package, "claim_vs_evidence")
+        ):
+            diagnostics.append(
+                _diag(
+                    "CLAIM_MISMATCH_REQUIRES_EVIDENCE",
+                    "critical claim-vs-evidence mismatches require claim review evidence",
+                    "governed_package.evidence.requirements",
+                )
+            )
+        for adapter in _as_list(package.get("evidence_adapters")):
+            if not isinstance(adapter, dict):
+                continue
+            name = str(adapter.get("name", "")).strip()
+            required = bool(adapter.get("required", False))
+            # A required adapter fails by default; opt out explicitly with failure_policy: warn.
+            failure_policy = str(adapter.get("failure_policy", "fail" if required else "warn"))
+            status = _adapter_status(package, name)
+            if required and failure_policy != "warn" and status in {None, "unavailable", "failed"}:
+                diagnostics.append(
+                    _diag(
+                        "REQUIRED_ADAPTER_UNAVAILABLE",
+                        f"required external adapter {name!r} is unavailable",
+                        "governed_package.evidence_adapters",
+                    )
+                )
+            elif not required and status in {"unavailable", "failed"}:
+                diagnostics.append(
+                    _diag(
+                        "OPTIONAL_ADAPTER_UNAVAILABLE",
+                        f"optional external adapter {name!r} is unavailable",
+                        "governed_package.evidence_adapters",
+                        level="warning",
+                    )
+                )
+        if _external_critical_count(package) and "security" not in _gate_roles(package):
+            diagnostics.append(
+                _diag(
+                    "CRITICAL_EXTERNAL_EVIDENCE_REQUIRES_SECURITY_GATE",
+                    "critical external evidence requires a security approval gate",
+                    "governed_package.approval_gates",
+                )
+            )
+        meta = _scan_meta(package)
+        if meta.get("has_license") is False:
+            diagnostics.append(
+                _diag(
+                    "PACKAGE_WITHOUT_LICENSE",
+                    "package scan did not find a license file",
+                    "governed_package.scan_metadata.has_license",
+                    level="warning",
+                )
+            )
+        if meta.get("has_readme") is False:
+            diagnostics.append(
+                _diag(
+                    "PACKAGE_WITHOUT_README",
+                    "package scan did not find a README file",
+                    "governed_package.scan_metadata.has_readme",
+                    level="warning",
+                )
+            )
+        if _scan_count(package, "binary_files"):
+            diagnostics.append(
+                _diag(
+                    "PACKAGE_CONTAINS_BINARY_FILES",
+                    "package scan found binary-like files",
+                    "governed_package.scan_metadata.risk_surface_counts.binary_files",
+                    level="warning",
+                )
+            )
+        if _scan_count(package, "minified_files"):
+            diagnostics.append(
+                _diag(
+                    "PACKAGE_CONTAINS_MINIFIED_FILES",
+                    "package scan found long-line or minified files",
+                    "governed_package.scan_metadata.risk_surface_counts.minified_files",
+                    level="warning",
+                )
+            )
+        if meta.get("remote_endpoints_unclear") is True:
+            diagnostics.append(
+                _diag(
+                    "PACKAGE_HAS_UNCLEAR_REMOTE_ENDPOINTS",
+                    "package scan found remote endpoints with unclear purpose",
+                    "governed_package.scan_metadata.remote_endpoints_unclear",
+                    level="warning",
+                )
+            )
 
     provenance = package.get("provenance")
     if not isinstance(provenance, dict):
@@ -590,12 +963,21 @@ def generate_governed_package(source_file: str | Path, out_dir: str | Path) -> l
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     manifest = _manifest_from_source(source)
+    scan = scan_package(
+        source,
+        package_id=str(manifest.get("package_id", "package")),
+        package_claims=manifest.get("claims") if isinstance(manifest.get("claims"), dict) else None,
+        evidence_adapters=manifest.get("evidence_adapters"),
+    )
+    _scan_manifest_fields(manifest, scan, source=source, acquisition_mode="contract_source")
+    _apply_scan_contract_requirements(manifest, scan)
     diagnostics = validate_governed_package(manifest)
     if any(item.level == "error" for item in diagnostics):
         messages = "; ".join(item.message for item in diagnostics)
         raise ValueError(f"governed package validation failed: {messages}")
 
     generated: list[Path] = []
+    generated.extend(write_scan_reports(scan, out))
     manifest_path = out / "package_manifest.json"
     _write_json(manifest_path, manifest)
     generated.append(manifest_path)
@@ -621,6 +1003,11 @@ def generate_governed_package(source_file: str | Path, out_dir: str | Path) -> l
         "profile_version": PROFILE_VERSION,
         "generated_at": manifest["provenance"]["generated_at"],
         "artifact_hashes": _artifact_hashes(out, generated),
+        "generated_governance_file_hashes": _artifact_hashes(out, generated),
+        "scanner_report_hash": _sha256_file(out / "package_analysis.json"),
+        "source_inventory_hash": _sha256_file(out / "source_inventory.md"),
+        "external_evidence_report_hashes": _scan_report_hashes(out),
+        "contract_hash": manifest["provenance"]["source_sha256"],
         "manifest_sha256": _sha256_file(manifest_path),
     }
     lock_path = out / "package_lock.json"
@@ -798,12 +1185,21 @@ def register_existing_package(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     manifest = _registration_manifest(source, contract)
+    scan = scan_package(
+        source,
+        package_id=str(manifest.get("package_id", "package")),
+        package_claims=manifest.get("claims") if isinstance(manifest.get("claims"), dict) else None,
+        evidence_adapters=manifest.get("evidence_adapters"),
+    )
+    _scan_manifest_fields(manifest, scan, source=source, acquisition_mode="existing_directory")
+    _apply_scan_contract_requirements(manifest, scan)
     diagnostics = validate_governed_package(manifest)
     if any(item.level == "error" for item in diagnostics):
         messages = "; ".join(item.message for item in diagnostics)
         raise ValueError(f"registered package validation failed: {messages}")
 
     written: list[Path] = []
+    written.extend(write_scan_reports(scan, out))
     manifest_path = out / "package_manifest.json"
     provenance_path = out / "provenance.json"
     _write_json(manifest_path, manifest)
@@ -834,7 +1230,13 @@ def register_existing_package(
         "profile_version": PROFILE_VERSION,
         "generated_at": manifest["provenance"]["generated_at"],
         "artifact_hashes": _artifact_hashes(out, written),
+        "generated_governance_file_hashes": _artifact_hashes(out, written),
         "registered_artifact_hashes": manifest["artifact_hashes"],
+        "payload_file_hashes": manifest["artifact_hashes"],
+        "scanner_report_hash": _sha256_file(out / "package_analysis.json"),
+        "source_inventory_hash": _sha256_file(out / "source_inventory.md"),
+        "external_evidence_report_hashes": _scan_report_hashes(out),
+        "contract_hash": manifest["provenance"]["source_sha256"],
         "manifest_sha256": _sha256_file(manifest_path),
     }
     lock_path = out / "package_lock.json"
@@ -911,55 +1313,64 @@ def radar_governed_packages(
     if not source.is_dir():
         raise ValueError(f"radar source is not a directory: {source}")
 
-    detected: list[dict[str, Any]] = []
-    safety_findings: list[dict[str, Any]] = []
-    for path in sorted(source.rglob("*")):
-        if not path.is_file() or any(part in {".git", "__pycache__"} for part in path.parts):
-            continue
-        rel = path.relative_to(source).as_posix()
-        text = _read_small_text(path)
-        secret_like = _is_secret_like(path, text)
-        if secret_like:
-            safety_findings.append(
-                {
-                    "path": rel,
-                    "finding": "possible_secret",
-                    "detail": "Secret-like material was detected and not copied into output.",
-                }
-            )
-        detected.append(
-            {
-                "path": rel,
-                "type": _artifact_type(path),
-                "sha256": _sha256_file(path),
-                "secret_like": secret_like,
-            }
-        )
+    scan = scan_package(source, package_id=f"radar-{source.name or 'source'}")
+    secret_paths = {item["file_path"] for item in scan["findings"]["secrets"]}
+    detected: list[dict[str, Any]] = [
+        {
+            "path": item["path"],
+            "type": _artifact_type(Path(item["path"])),
+            "sha256": item["sha256"],
+            "secret_like": item["path"] in secret_paths,
+            "binary_like": item["binary_like"],
+            "large_file": item["large_file"],
+        }
+        for item in scan["files"]
+    ]
+    safety_findings: list[dict[str, Any]] = [
+        {
+            "path": item.get("file_path"),
+            "finding": "possible_secret"
+            if item.get("finding_type") == "secret_like_pattern"
+            else item.get("finding_type", "risk_surface"),
+            "detail": "Risk material was detected and values were redacted where needed.",
+            "severity": item.get("severity"),
+        }
+        for group in scan["findings"].values()
+        for item in group
+    ]
 
     safe_artifacts = [
         {"id": item["path"].replace("/", "-"), "path": item["path"], "type": item["type"]}
         for item in detected
         if not item["secret_like"]
     ]
-    inferred_risk = "medium" if safety_findings else "low"
+    inferred_risk = scan["risk_surface"]["risk_tier"]
     evidence = [
         {"id": "inventory_report", "type": "inventory", "required": True},
+        {"id": "package_analysis", "type": "package_analysis", "required": True},
+        {"id": "risk_surface_report", "type": "risk_surface", "required": True},
+        {"id": "claim_vs_evidence_report", "type": "claim_vs_evidence", "required": True},
         {"id": "review_record", "type": "review", "required": True},
     ]
+    if scan["findings"]["hooks"]:
+        evidence.append({"id": "hook_risk_review", "type": "hook_risk_review", "required": True})
+    if scan["findings"]["mcp"]:
+        evidence.append({"id": "mcp_risk_review", "type": "mcp_risk_review", "required": True})
+    if scan["findings"]["secrets"]:
+        evidence.append({"id": "secret_scan_report", "type": "secret_scan", "required": True})
+    if scan["findings"]["endpoints"]:
+        evidence.append({"id": "endpoint_scan_report", "type": "endpoint_scan", "required": True})
+    if scan["findings"]["commands"]:
+        evidence.append({"id": "command_risk_report", "type": "command_risk", "required": True})
     gates = [
         {
             "id": "gate-review",
-            "required_evidence": ["inventory_report", "review_record"],
+            "required_evidence": [item["id"] for item in evidence],
             "eligible_approver_roles": ["reviewer"],
             "denied_approver_types": ["execution_surface", "ai_tool"],
         }
     ]
-    source_sha = _sha256_bytes(
-        json.dumps(
-            [{"path": item["path"], "sha256": item["sha256"]} for item in detected],
-            sort_keys=True,
-        ).encode("utf-8")
-    )
+    source_sha = scan["source_hash"]
     report: dict[str, Any] = {
         "profile": PROFILE_NAME,
         "mode": "radar",
@@ -1007,6 +1418,13 @@ def radar_governed_packages(
         "suggested_evidence_requirements": evidence,
         "suggested_approval_gates": gates,
         "safety_findings": safety_findings,
+        "scan_summary": {
+            "scanner": scan["scanner"],
+            "summary": scan["summary"],
+            "risk_surface": scan["risk_surface"],
+            "claim_vs_evidence": scan["claim_vs_evidence"],
+            "external_evidence_summary": scan["external_evidence_summary"],
+        },
         "confidence_score": 0.74 if detected else 0.2,
         "installation_policy": dict(SAFE_INSTALLATION_POLICY),
         "safety_boundary": dict(SAFE_BOUNDARY),
@@ -1036,6 +1454,7 @@ def radar_governed_packages(
         report_path = out_path
         if report_path.suffix.lower() != ".json":
             report_path = report_path / "radar_report.json"
+            write_scan_reports(scan, report_path.parent)
         _write_json(report_path, report)
     report["report_path"] = report_path.as_posix()
     return report
