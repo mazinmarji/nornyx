@@ -1,0 +1,20 @@
+name: delivery_profile
+version: v0.3
+core_surface: v0.2
+status: optional_profile
+purpose: Govern evidence-backed software delivery.
+domain: software_delivery
+required_blocks: [project, policies, evidence, goals]
+recommended_blocks: [graph, contracts, approvals, budgets]
+graph_node_kinds: [profile, approval, goal]
+validation_rules:
+  - generated starter document passes nornyx check
+conformance:
+  v1_readiness: optional_candidate
+  migration: Use the v1 pack when structured rules are required.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - automatic approvals
+  - production deployment
+core_concepts: [Intent, Agent, Policy, Eval, Approval, Evidence, Context, Artifact, Graph, Goal, Budget, Trace]

@@ -1,0 +1,10 @@
+[
+  {"id": "network_enabled", "path": "safety.network_access", "value": true},
+  {"id": "executable_code_enabled", "path": "safety.executable_code", "value": true},
+  {"id": "command_execution_enabled", "path": "safety.command_execution", "value": true},
+  {"id": "credential_access_enabled", "path": "safety.credential_access", "value": true},
+  {"id": "approval_grant_enabled", "path": "safety.can_grant_approval", "value": true},
+  {"id": "core_weakening_enabled", "path": "safety.can_weaken_core_safety", "value": true},
+  {"id": "python_entry_point", "path": "entry_point", "value": "package:module"},
+  {"id": "remote_source", "path": "source_url", "value": "https://example.invalid/module.yaml"}
+]

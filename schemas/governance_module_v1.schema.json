@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/governance_module_v1.schema.json",
+  "$comment": "DRAFT data-only contract for PR 1. No loader or composition behavior exists.",
+  "title": "Nornyx Governance Module v1 (Draft)",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "id",
+    "name",
+    "version",
+    "compatible_core",
+    "dependencies",
+    "conflicts",
+    "required_blocks",
+    "policies",
+    "evidence_requirements",
+    "approval_requirements",
+    "evaluations",
+    "rules",
+    "non_goals",
+    "provenance",
+    "integrity",
+    "safety"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.governance_module.v1"},
+    "kind": {"const": "module"},
+    "id": {"$ref": "profile_pack_v1.schema.json#/$defs/stableId"},
+    "name": {"$ref": "profile_pack_v1.schema.json#/$defs/shortName"},
+    "version": {"$ref": "profile_pack_v1.schema.json#/$defs/semver"},
+    "compatible_core": {"$ref": "profile_pack_v1.schema.json#/$defs/coreRange"},
+    "dependencies": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/stableId"},
+      "uniqueItems": true
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/stableId"},
+      "uniqueItems": true
+    },
+    "required_blocks": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/shortName"},
+      "uniqueItems": true
+    },
+    "policies": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/policy"}
+    },
+    "evidence_requirements": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/evidenceRequirement"}
+    },
+    "approval_requirements": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/approvalRequirement"}
+    },
+    "evaluations": {
+      "type": "array",
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/evaluation"}
+    },
+    "rules": {
+      "$comment": "At most 200 inert structured rules per module. Unknown operators fail schema validation.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {"$ref": "profile_pack_v1.schema.json#/$defs/rule"}
+    },
+    "non_goals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "provenance": {"$ref": "profile_pack_v1.schema.json#/$defs/provenance"},
+    "integrity": {"$ref": "profile_pack_v1.schema.json#/$defs/integrity"},
+    "safety": {
+      "type": "object",
+      "required": [
+        "data_only",
+        "local_only",
+        "network_access",
+        "executable_code",
+        "command_execution",
+        "credential_access",
+        "can_grant_approval",
+        "can_weaken_core_safety"
+      ],
+      "properties": {
+        "data_only": {"const": true},
+        "local_only": {"const": true},
+        "network_access": {"const": false},
+        "executable_code": {"const": false},
+        "command_execution": {"const": false},
+        "credential_access": {"const": false},
+        "can_grant_approval": {"const": false},
+        "can_weaken_core_safety": {"const": false}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

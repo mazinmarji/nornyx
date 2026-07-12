@@ -21,6 +21,7 @@ LOCAL_TERM_FILES = [
 ]
 
 SKIP_DIR_NAMES = {
+    ".claude",
     ".git",
     ".mypy_cache",
     ".pytest_cache",

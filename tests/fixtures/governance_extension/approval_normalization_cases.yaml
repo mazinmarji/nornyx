@@ -1,0 +1,117 @@
+- id: ordinary_contract
+  shape: ordinary_approval
+  path: approvals[0]
+  source:
+    name: HumanMergeApproval
+    required_for: [production_deploy, policy_change]
+  expected_resolution: complete
+- id: generated_profile
+  shape: generated_profile_approval
+  path: approvals[0]
+  source:
+    name: HumanOwner
+    required_for: [merge, policy_change, connector_write]
+  expected_resolution: complete
+- id: governed_package_current
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-review
+    required_evidence: [doc_diff, review_record]
+    eligible_approver_roles: [reviewer]
+    denied_approver_types: [execution_surface, ai_tool]
+  expected_resolution: complete
+- id: governed_package_legacy_aliases
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-legacy
+    required_evidence: [review_record]
+    approver_roles: [reviewer]
+    approvers: [security]
+    eligible_approvers: [owner]
+    denied_approver_types: [ai_tool]
+  expected_resolution: complete
+- id: structured_revision_bound_gate
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-revision-bound
+    required_roles: [reviewer]
+    eligible_approver_roles: [reviewer, security]
+    denied_approver_types: [execution_surface, ai_tool]
+    required_evidence: [review_record]
+    required_for: [merge]
+    accountable_authority: release_owner
+    revision_binding:
+      kind: git
+      revision: abc123
+      exact: true
+    invalidation_conditions: [revision_change, scope_change]
+    expires_at: "2026-12-31T23:59:59Z"
+  expected_resolution: complete
+- id: contract_reference
+  shape: legacy_contract_reference
+  path: contracts[0].approval
+  source: HumanMergeApproval
+  expected_resolution: reference_only
+- id: goal_text
+  shape: legacy_goal_text
+  path: goals[0].approval
+  source: required before merge or release
+  expected_resolution: legacy_text_preserved
+- id: boolean_requirement
+  shape: legacy_boolean_requirement
+  path: capabilities[0].approval_required
+  source: true
+  expected_resolution: requirement_only
+- id: duplicate_roles
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-duplicate
+    required_evidence: [review_record]
+    eligible_approver_roles: [reviewer, reviewer]
+    denied_approver_types: [ai_tool]
+  expected_resolution: complete
+  expected_diagnostic: APPROVAL_DUPLICATE_ROLE_NORMALIZED
+- id: eligible_and_denied
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-conflict
+    required_evidence: [review_record]
+    eligible_approver_roles: [ai_tool]
+    denied_approver_types: [ai_tool]
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_ACTOR_ELIGIBLE_AND_DENIED
+- id: required_role_not_eligible
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-role-conflict
+    required_evidence: [review_record]
+    required_roles: [security]
+    eligible_approver_roles: [reviewer]
+    denied_approver_types: [execution_surface, ai_tool]
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE
+- id: empty_gate
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-empty
+    required_evidence: []
+    eligible_approver_roles: []
+    denied_approver_types: []
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_EMPTY_REQUIREMENT
+- id: unknown_role_field
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-unknown
+    required_evidence: [review_record]
+    authorized_people: [reviewer]
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_UNKNOWN_ROLE_FIELD

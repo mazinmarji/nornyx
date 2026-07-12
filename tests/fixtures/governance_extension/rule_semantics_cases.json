@@ -1,0 +1,22 @@
+[
+  {"id": "when_collection_existential_match", "phase": "when", "input": ["low", "high"], "operator": "equals", "operand": "high", "outcome": "match"},
+  {"id": "when_collection_existential_no_match", "phase": "when", "input": ["low", "medium"], "operator": "equals", "operand": "high", "outcome": "no_match"},
+  {"id": "require_collection_universal_pass", "phase": "require", "input": [["test"], ["test", "review"]], "operator": "contains", "operand": "test", "outcome": "pass"},
+  {"id": "require_collection_universal_per_element_failure", "phase": "require", "input": [["test"], []], "operator": "contains", "operand": "test", "outcome": "fail", "diagnostic_paths": ["changes[1].required_evidence"]},
+  {"id": "empty_collection_when", "phase": "when", "input": [], "outcome": "no_match"},
+  {"id": "empty_collection_require", "phase": "require", "input": [], "outcome": "fail_closed"},
+  {"id": "missing_path_when_exists", "phase": "when", "input": "missing", "operator": "exists", "outcome": "no_match"},
+  {"id": "missing_path_when_not_exists", "phase": "when", "input": "missing", "operator": "not_exists", "outcome": "match"},
+  {"id": "missing_path_require", "phase": "require", "input": "missing", "operator": "exists", "outcome": "fail"},
+  {"id": "null_is_present", "phase": "require", "input": null, "operator": "exists", "outcome": "pass"},
+  {"id": "null_equals_null", "phase": "require", "input": null, "operator": "equals", "operand": null, "outcome": "pass"},
+  {"id": "wrong_value_type", "phase": "require", "input": 7, "operator": "contains", "operand": "test", "outcome": "structural_error"},
+  {"id": "nested_collections", "phase": "require", "input": [[true, true], [true, false]], "outcome": "fail", "diagnostic_paths": ["systems[1].components[1]"]},
+  {"id": "duplicate_matches", "phase": "require", "input": ["same_path", "same_path"], "outcome": "deduplicate_by_concrete_path"},
+  {"id": "unknown_operator", "phase": "load", "operator": "python", "outcome": "schema_error"},
+  {"id": "invalid_path", "phase": "load", "input": "changes[0].risk", "outcome": "schema_error"},
+  {"id": "scalar_used_as_collection", "phase": "require", "input": "high", "path_mode": "collection", "outcome": "structural_error"},
+  {"id": "collection_used_as_scalar", "phase": "require", "input": ["high"], "operator": "equals", "operand": "high", "outcome": "structural_error"},
+  {"id": "same_prefix_when_selection", "phase": "binding", "input": ["low", "high"], "outcome": "requirements_apply_only_to_selected_high_element"},
+  {"id": "different_prefix_no_join", "phase": "binding", "input": ["changes[]", "approvals[]"], "outcome": "independent_quantification"}
+]
