@@ -1,0 +1,18 @@
+[
+  {
+    "id": "exact_legacy_view",
+    "source": "valid_profile_v1.yaml",
+    "expected": "valid_profile_v03.yaml",
+    "result": "project",
+    "diagnostic": "PROFILE_PROJECTION_LOSS_REPORTED"
+  },
+  {
+    "id": "unsupported_semantics",
+    "source": "valid_profile_v1.yaml",
+    "mutations": [
+      {"path": "compatibility.legacy_v0_3.must_preserve", "value": ["validation_rules"]}
+    ],
+    "result": "fail",
+    "diagnostic": "PROFILE_PROJECTION_REQUIRED_FIELD_OMITTED"
+  }
+]

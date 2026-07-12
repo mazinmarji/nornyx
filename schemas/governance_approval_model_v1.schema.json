@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/governance_approval_model_v1.schema.json",
+  "$comment": "DRAFT internal normalization contract only. Production approval structures are unchanged in PR 1.",
+  "title": "Nornyx Normalized Approval Model v1 (Draft)",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "required_roles",
+    "eligible_roles",
+    "denied_actor_types",
+    "denied_execution_surfaces",
+    "required_evidence",
+    "actions_requiring_approval",
+    "timing",
+    "invalidation_conditions",
+    "resolution",
+    "normalization_diagnostics",
+    "source"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.normalized_approval.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "required_roles": {"$ref": "#/$defs/uniqueStrings"},
+    "eligible_roles": {"$ref": "#/$defs/uniqueStrings"},
+    "denied_actor_types": {"$ref": "#/$defs/uniqueStrings"},
+    "denied_execution_surfaces": {"$ref": "#/$defs/uniqueStrings"},
+    "required_evidence": {"$ref": "#/$defs/uniqueStrings"},
+    "actions_requiring_approval": {"$ref": "#/$defs/uniqueStrings"},
+    "timing": {
+      "enum": [
+        "before_action",
+        "before_merge",
+        "before_release",
+        "before_external_write",
+        "unspecified",
+        "legacy_text"
+      ]
+    },
+    "accountable_authority": {"type": ["string", "null"]},
+    "revision_binding": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["kind", "revision", "exact"],
+          "properties": {
+            "kind": {"enum": ["git", "artifact_hash", "package_manifest", "other"]},
+            "revision": {"type": "string", "minLength": 1},
+            "exact": {"const": true}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "invalidation_conditions": {"$ref": "#/$defs/uniqueStrings"},
+    "expires_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "resolution": {
+      "enum": ["complete", "reference_only", "legacy_text_preserved", "requirement_only", "invalid"]
+    },
+    "normalization_diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "level", "message"],
+        "properties": {
+          "code": {"type": "string", "pattern": "^APPROVAL_[A-Z0-9_]+$"},
+          "level": {"enum": ["error", "warning", "info"]},
+          "message": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["shape", "path", "raw"],
+      "properties": {
+        "shape": {
+          "enum": [
+            "ordinary_approval",
+            "generated_profile_approval",
+            "governed_package_gate",
+            "legacy_contract_reference",
+            "legacy_goal_text",
+            "legacy_boolean_requirement"
+          ]
+        },
+        "path": {"type": "string", "minLength": 1},
+        "raw": {"type": ["object", "string", "boolean"]},
+        "role_field": {
+          "enum": [
+            "required_roles",
+            "eligible_roles",
+            "eligible_approver_roles",
+            "approver_roles",
+            "approvers",
+            "eligible_approvers",
+            "none"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "uniqueStrings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,8 @@
+[
+  {"id": "version_mismatch", "path": "schema", "value": "nornyx.profile_pack.v2"},
+  {"id": "invalid_core_range", "path": "compatible_core", "value": ">=0.2 || *"},
+  {"id": "unknown_rule_operator", "path": "validation_rules.0.require.0.execute", "value": "shell"},
+  {"id": "malformed_compatibility", "path": "compatibility.compatible_with", "value": "ai_governance"},
+  {"id": "additional_property", "path": "python_entry_point", "value": "package:loader"},
+  {"id": "invalid_path_syntax", "path": "validation_rules.0.require.0.path", "value": "changes[0].risk_tier"}
+]

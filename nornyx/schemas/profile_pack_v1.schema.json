@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/profile_pack_v1.schema.json",
+  "$comment": "DRAFT specification contract for PR 1. It is not loaded by the Nornyx runtime.",
+  "title": "Nornyx Declarative Profile Pack v1 (Draft)",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "id",
+    "name",
+    "display_name",
+    "version",
+    "compatible_core",
+    "status",
+    "purpose",
+    "domain",
+    "required_modules",
+    "required_blocks",
+    "recommended_blocks",
+    "default_policies",
+    "required_evidence",
+    "default_evaluations",
+    "approval_requirements",
+    "graph",
+    "starter_fragments",
+    "validation_rules",
+    "compatibility",
+    "conflicts",
+    "migration_guidance",
+    "non_goals",
+    "provenance",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.profile_pack.v1"},
+    "kind": {"const": "profile"},
+    "id": {"$ref": "#/$defs/stableId"},
+    "name": {"$ref": "#/$defs/shortName"},
+    "display_name": {"type": "string", "minLength": 1},
+    "version": {"$ref": "#/$defs/semver"},
+    "compatible_core": {"$ref": "#/$defs/coreRange"},
+    "status": {"enum": ["stable", "candidate", "experimental", "deprecated"]},
+    "purpose": {"type": "string", "minLength": 1},
+    "domain": {"$ref": "#/$defs/shortName"},
+    "required_modules": {"$ref": "#/$defs/uniqueIds"},
+    "required_blocks": {"$ref": "#/$defs/uniqueNames"},
+    "recommended_blocks": {"$ref": "#/$defs/uniqueNames"},
+    "default_policies": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/policy"}
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evidenceRequirement"}
+    },
+    "default_evaluations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evaluation"}
+    },
+    "approval_requirements": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/approvalRequirement"}
+    },
+    "graph": {"$ref": "#/$defs/graph"},
+    "starter_fragments": {
+      "$comment": "Fragments are literal data. They are not templates and define no substitution points.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/starterFragment"}
+    },
+    "validation_rules": {
+      "$comment": "Rules are declarative and inert in PR 1. Unknown operators are schema errors.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {"$ref": "#/$defs/rule"}
+    },
+    "compatibility": {"$ref": "#/$defs/compatibility"},
+    "conflicts": {"$ref": "#/$defs/uniqueIds"},
+    "migration_guidance": {"type": "string", "minLength": 1},
+    "non_goals": {"$ref": "#/$defs/nonEmptyUniqueStrings"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "integrity": {"$ref": "#/$defs/integrity"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+(?:\\.[a-z0-9_]+)+$",
+      "maxLength": 160
+    },
+    "shortName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 80
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "coreRange": {
+      "$comment": "A whitespace-separated conjunction of simple version comparisons; no OR, wildcards, or executable expressions.",
+      "type": "string",
+      "pattern": "^(?:(?:>=|<=|>|<|=)?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)(?: (?:(?:>=|<=|>|<|=)?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?))*$"
+    },
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "uniqueNames": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/shortName"},
+      "uniqueItems": true
+    },
+    "uniqueIds": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/stableId"},
+      "uniqueItems": true
+    },
+    "nonEmptyUniqueStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/nonEmptyString"},
+      "uniqueItems": true
+    },
+    "policy": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {"$ref": "#/$defs/shortName"},
+        "description": {"$ref": "#/$defs/nonEmptyString"},
+        "deny": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "require": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "evidenceRequirement": {
+      "type": "object",
+      "required": ["id", "type", "required"],
+      "properties": {
+        "id": {"$ref": "#/$defs/shortName"},
+        "type": {"$ref": "#/$defs/shortName"},
+        "required": {"const": true},
+        "artifact": {"$ref": "#/$defs/nonEmptyString"},
+        "schema_id": {"$ref": "#/$defs/nonEmptyString"},
+        "revision_bound": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["id", "metrics"],
+      "properties": {
+        "id": {"$ref": "#/$defs/shortName"},
+        "metrics": {"$ref": "#/$defs/nonEmptyUniqueStrings"},
+        "required_evidence": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "approvalRequirement": {
+      "type": "object",
+      "required": ["id", "required_roles", "eligible_roles", "denied_actor_types", "required_evidence", "actions", "timing"],
+      "properties": {
+        "id": {"$ref": "#/$defs/shortName"},
+        "required_roles": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "eligible_roles": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "denied_actor_types": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "required_evidence": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "actions": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "timing": {"enum": ["before_action", "before_merge", "before_release", "before_external_write", "unspecified"]},
+        "accountable_authority": {"$ref": "#/$defs/shortName"},
+        "exact_revision_required": {"type": "boolean"},
+        "invalidation_conditions": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "expires_after": {"$ref": "#/$defs/nonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "graph": {
+      "type": "object",
+      "required": ["node_kinds", "relationship_constraints"],
+      "properties": {
+        "node_kinds": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "relationship_constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from_kind", "relation", "to_kind"],
+            "properties": {
+              "from_kind": {"$ref": "#/$defs/shortName"},
+              "relation": {"$ref": "#/$defs/shortName"},
+              "to_kind": {"$ref": "#/$defs/shortName"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "starterFragment": {
+      "type": "object",
+      "required": ["target", "content"],
+      "properties": {
+        "target": {"$ref": "#/$defs/shortName"},
+        "content": {
+          "$comment": "Literal YAML-compatible data only. Future rendering may insert the project name only at engine-owned locations.",
+          "type": ["object", "array", "string", "number", "boolean", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "path": {
+      "$comment": "At most eight dotted segments. [] means collection traversal. No indexes, filters, parent/root escapes, calls, or expressions.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?:\\[\\])?(?:\\.[A-Za-z_][A-Za-z0-9_]*(?:\\[\\])?){0,7}$"
+    },
+    "scalar": {"type": ["string", "number", "boolean", "null"]},
+    "predicate": {
+      "$comment": "Exactly one closed operator is allowed. In when, [] is existential. In require, [] is universal over applicable elements, with per-element diagnostics.",
+      "type": "object",
+      "required": ["path"],
+      "minProperties": 2,
+      "maxProperties": 2,
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "exists": {"const": true},
+        "not_exists": {"const": true},
+        "equals": {"$ref": "#/$defs/scalar"},
+        "not_equals": {"$ref": "#/$defs/scalar"},
+        "in": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scalar"}, "uniqueItems": true},
+        "not_in": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scalar"}, "uniqueItems": true},
+        "contains": {"$ref": "#/$defs/scalar"},
+        "contains_all": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scalar"}, "uniqueItems": true},
+        "min_count": {"type": "integer", "minimum": 0},
+        "max_count": {"type": "integer", "minimum": 0},
+        "references_role": {"$ref": "#/$defs/shortName"},
+        "references_evidence": {"$ref": "#/$defs/shortName"},
+        "references_approval": {"$ref": "#/$defs/shortName"},
+        "matches_id": {"type": "string", "pattern": "^[A-Za-z0-9_.?*:-]+$", "minLength": 1}
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {"required": ["exists"]},
+        {"required": ["not_exists"]},
+        {"required": ["equals"]},
+        {"required": ["not_equals"]},
+        {"required": ["in"]},
+        {"required": ["not_in"]},
+        {"required": ["contains"]},
+        {"required": ["contains_all"]},
+        {"required": ["min_count"]},
+        {"required": ["max_count"]},
+        {"required": ["references_role"]},
+        {"required": ["references_evidence"]},
+        {"required": ["references_approval"]},
+        {"required": ["matches_id"]}
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        {"$ref": "#/$defs/predicate"},
+        {
+          "type": "object",
+          "required": ["all"],
+          "properties": {"all": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/predicate"}}},
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["any"],
+          "properties": {"any": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/predicate"}}},
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "required": ["id", "description", "require", "severity", "message"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*-[0-9]{3}$"},
+        "description": {"$ref": "#/$defs/nonEmptyString"},
+        "when": {"$ref": "#/$defs/condition"},
+        "require": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/predicate"}},
+        "severity": {"enum": ["error", "warning"]},
+        "message": {"$ref": "#/$defs/nonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "legacyProjection": {
+      "type": "object",
+      "required": ["supported", "mode", "validation_rules", "conformance", "core_concepts", "omitted_fields", "must_preserve"],
+      "properties": {
+        "supported": {"type": "boolean"},
+        "mode": {"enum": ["exact_v0_3_view", "not_supported"]},
+        "validation_rules": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonEmptyString"}},
+        "conformance": {
+          "type": "object",
+          "required": ["v1_readiness", "migration"],
+          "properties": {
+            "v1_readiness": {"enum": ["stable_candidate", "profile_candidate", "optional_candidate"]},
+            "migration": {"$ref": "#/$defs/nonEmptyString"}
+          },
+          "additionalProperties": false
+        },
+        "core_concepts": {
+          "type": "array",
+          "items": {"enum": ["Intent", "Agent", "Policy", "Eval", "Approval", "Evidence", "Context", "Artifact", "Graph", "Goal", "Budget", "Trace"]},
+          "uniqueItems": true
+        },
+        "omitted_fields": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+        "must_preserve": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "compatibility": {
+      "type": "object",
+      "required": ["compatible_with", "requires_review_with", "legacy_v0_3"],
+      "properties": {
+        "compatible_with": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "requires_review_with": {"type": "array", "items": {"$ref": "#/$defs/shortName"}, "uniqueItems": true},
+        "legacy_v0_3": {"$ref": "#/$defs/legacyProjection"}
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["author", "source_tier", "source_revision"],
+      "properties": {
+        "author": {"$ref": "#/$defs/nonEmptyString"},
+        "source_tier": {"enum": ["builtin", "project", "org", "explicit_path"]},
+        "source_revision": {"$ref": "#/$defs/nonEmptyString"}
+      },
+      "additionalProperties": false
+    },
+    "integrity": {
+      "$comment": "Hash parsed content excluding integrity after canonical JSON serialization with sorted keys, UTF-8, ensure_ascii=false, and separators(',', ':').",
+      "type": "object",
+      "required": ["algorithm", "content_hash"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "schema": "nornyx.profile_pack.v1",
+      "kind": "profile",
+      "id": "org.example.review_profile",
+      "name": "review_profile",
+      "display_name": "Review Profile",
+      "version": "1.0.0",
+      "compatible_core": ">=0.2 <=1.0",
+      "status": "experimental",
+      "purpose": "Require review evidence.",
+      "domain": "software_delivery",
+      "required_modules": [],
+      "required_blocks": ["project", "evidence", "goals"],
+      "recommended_blocks": ["approvals"],
+      "default_policies": [],
+      "required_evidence": [{"id": "review_record", "type": "review", "required": true}],
+      "default_evaluations": [],
+      "approval_requirements": [],
+      "graph": {"node_kinds": [], "relationship_constraints": []},
+      "starter_fragments": [],
+      "validation_rules": [
+        {
+          "id": "REV-001",
+          "description": "High-risk changes require review evidence.",
+          "when": {"path": "changes[].risk_tier", "equals": "high"},
+          "require": [{"path": "changes[].required_evidence", "contains": "review_record"}],
+          "severity": "error",
+          "message": "Every selected high-risk change requires review evidence."
+        }
+      ],
+      "compatibility": {
+        "compatible_with": [],
+        "requires_review_with": [],
+        "legacy_v0_3": {
+          "supported": false,
+          "mode": "not_supported",
+          "validation_rules": ["structured rules are not projected"],
+          "conformance": {"v1_readiness": "optional_candidate", "migration": "Use v1."},
+          "core_concepts": [],
+          "omitted_fields": ["validation_rules"],
+          "must_preserve": ["validation_rules"]
+        }
+      },
+      "conflicts": [],
+      "migration_guidance": "No legacy projection.",
+      "non_goals": ["runtime execution"],
+      "provenance": {"author": "Example", "source_tier": "project", "source_revision": "draft"},
+      "integrity": {"algorithm": "sha256", "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+    }
+  ]
+}

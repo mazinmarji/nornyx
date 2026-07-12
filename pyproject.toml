@@ -35,7 +35,7 @@ Changelog = "https://github.com/mazinmarji/nornyx/blob/main/CHANGELOG.md"
 Issues = "https://github.com/mazinmarji/nornyx/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+dev = ["jsonschema>=4.21", "pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]
 nornyx = "nornyx.cli:main"

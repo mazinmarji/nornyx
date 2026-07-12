@@ -45,6 +45,15 @@ Profile names such as `telecom_ops`, `business_ops`, `ai_governance`, and
 
 ## Pack contract
 
+### Current source of truth
+
+The v0.3 pack catalog in `nornyx/profiles.py` is authoritative today. The six
+domain files under `profiles/` are repository mirrors checked against that
+Python catalog; they are not loaded by `nornyx init`, `nornyx profiles`, or
+`nornyx check`, and root `profiles/*.yaml` files are not included in the wheel.
+The five base-profile YAML files are descriptive metadata only. Structured v1
+packs and a loader are planned work, not current behavior.
+
 Each v0.3 pack declares:
 
 - `version: v0.3`;

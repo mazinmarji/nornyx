@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/profiles_lock_v1.schema.json",
+  "$comment": "DRAFT. Time fields are intentionally absent so identical resolution inputs produce byte-identical locks.",
+  "title": "Nornyx Profiles Lock v1 (Draft)",
+  "type": "object",
+  "required": ["schema", "resolved"],
+  "properties": {
+    "schema": {"const": "nornyx.profiles_lock.v1"},
+    "resolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "source_tier", "content_hash", "path_hint"],
+        "properties": {
+          "id": {"$ref": "profile_pack_v1.schema.json#/$defs/stableId"},
+          "version": {"$ref": "profile_pack_v1.schema.json#/$defs/semver"},
+          "source_tier": {"enum": ["builtin", "project", "org", "explicit_path"]},
+          "content_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "path_hint": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

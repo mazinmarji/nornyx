@@ -73,3 +73,12 @@ def test_public_boundary_script_ignores_local_term_file_itself(
     assert result == 0
     assert "public boundary check passed" in output
     assert local_marker not in output
+
+
+def test_public_boundary_script_ignores_claude_worktrees(tmp_path: Path) -> None:
+    module = _load_public_boundary_module()
+    nested = tmp_path / ".claude" / "worktrees" / "review"
+    nested.mkdir(parents=True)
+    (nested / "notes.md").write_text("PRIVATE_DOWNSTREAM_PLATFORM", encoding="utf-8")
+
+    assert module.check_public_boundary(tmp_path) == []

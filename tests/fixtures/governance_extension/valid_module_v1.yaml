@@ -1,0 +1,46 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: org.example.evidence_integrity
+name: evidence_integrity
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies: []
+conflicts: []
+required_blocks: [evidence]
+policies:
+  - id: evidence_policy
+    require: [evidence_if_goal_completed]
+evidence_requirements:
+  - id: review_record
+    type: review
+    required: true
+approval_requirements: []
+evaluations: []
+rules:
+  - id: EVI-001
+    description: Evidence requirements must identify an artifact.
+    require:
+      - path: evidence.required[]
+        exists: true
+    severity: error
+    message: Evidence requirements may not be empty.
+non_goals:
+  - command execution
+  - credential loading
+  - network access
+provenance:
+  author: Nornyx specification fixture
+  source_tier: project
+  source_revision: fixture-v1
+integrity:
+  algorithm: sha256
+  content_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

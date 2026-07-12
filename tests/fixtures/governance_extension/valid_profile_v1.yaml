@@ -1,0 +1,94 @@
+schema: nornyx.profile_pack.v1
+kind: profile
+id: org.example.delivery_profile
+name: delivery_profile
+display_name: Delivery Profile
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+status: experimental
+purpose: Govern evidence-backed software delivery.
+domain: software_delivery
+required_modules: []
+required_blocks: [project, policies, evidence, goals]
+recommended_blocks: [graph, contracts, approvals, budgets]
+default_policies:
+  - id: safe_delivery
+    deny: [automatic_approval, unrestricted_execution]
+    require: [tests_if_code_changed]
+required_evidence:
+  - id: test_report
+    type: test_report
+    required: true
+default_evaluations:
+  - id: regression_eval
+    metrics: [tests_pass]
+approval_requirements:
+  - id: human_review
+    required_roles: [reviewer]
+    eligible_roles: [reviewer]
+    denied_actor_types: [ai_tool, execution_surface]
+    required_evidence: [test_report]
+    actions: [merge]
+    timing: before_merge
+    exact_revision_required: true
+    invalidation_conditions: [revision_change]
+graph:
+  node_kinds: [profile, approval, goal]
+  relationship_constraints:
+    - from_kind: approval
+      relation: gates
+      to_kind: goal
+starter_fragments:
+  - target: evidence
+    content:
+      required: [test_report.json]
+validation_rules:
+  - id: DEL-001
+    description: High-risk changes require test evidence.
+    when:
+      path: changes[].risk_tier
+      equals: high
+    require:
+      - path: changes[].required_evidence
+        contains: test_report
+    severity: error
+    message: Every selected high-risk change requires test evidence.
+compatibility:
+  compatible_with: [ai_governance]
+  requires_review_with: [regulated]
+  legacy_v0_3:
+    supported: true
+    mode: exact_v0_3_view
+    validation_rules:
+      - generated starter document passes nornyx check
+    conformance:
+      v1_readiness: optional_candidate
+      migration: Use the v1 pack when structured rules are required.
+    core_concepts: [Intent, Agent, Policy, Eval, Approval, Evidence, Context, Artifact, Graph, Goal, Budget, Trace]
+    omitted_fields:
+      - required_modules
+      - default_policies
+      - required_evidence
+      - default_evaluations
+      - approval_requirements
+      - starter_fragments
+      - validation_rules
+      - compatibility
+      - conflicts
+      - provenance
+      - integrity
+    must_preserve: []
+conflicts: []
+migration_guidance: Existing v0.3 consumers receive the explicit legacy view only.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - automatic approvals
+  - production deployment
+provenance:
+  author: Nornyx specification fixture
+  source_tier: project
+  source_revision: fixture-v1
+integrity:
+  algorithm: sha256
+  content_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
