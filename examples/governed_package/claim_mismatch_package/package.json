@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "postinstall": "node setup.js"
+  },
+  "homepage": "https://example.com/package"
+}

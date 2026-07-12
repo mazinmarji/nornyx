@@ -19,6 +19,10 @@ provenance.
 - Generates inert artifacts.
 - Hash-locks generated outputs.
 - Exports portable metadata.
+- Inventories package contents with a built-in deterministic scanner.
+- Normalizes scanner and external-tool findings into evidence records.
+- Produces claim-vs-evidence, risk, hook, MCP, secret, endpoint, command, and
+  adapter reports.
 
 ## What Nornyx does not do
 
@@ -28,6 +32,10 @@ provenance.
 - Does not deploy.
 - Does not store secrets.
 - Does not operate runtime systems.
+- Does not start MCP servers.
+- Does not activate hooks.
+- Does not call external network by default.
+- Does not claim that a package is safe.
 
 ## Core concepts
 
@@ -71,6 +79,73 @@ approval_required: true
 
 Unsafe flags fail validation. Installation or execution is a downstream
 responsibility and outside the Nornyx runtime.
+
+## Built-in scanner
+
+`nornyx package scan <path> --out <dir>` runs the baseline deterministic scanner.
+It is always local, uses no network, does not execute package files, and does
+not mutate the scanned source. It emits JSON and Markdown reports for:
+
+- file inventory, size, extension, MIME/type classification, and SHA-256;
+- hidden files, binary-like files, large files, and long-line/minified files;
+- setup/install scripts, shell scripts, package manager lifecycle scripts, and hooks;
+- MCP server definitions and broad filesystem/network/database risk;
+- external URLs, domains, IPs, localhost ports, webhooks, and upload/write targets;
+- secret-like patterns with redacted evidence only;
+- dangerous command patterns such as `curl | sh`, `rm -rf`, privileged Docker,
+  `kubectl apply/delete`, and `terraform apply/destroy`;
+- claim-vs-evidence mismatches.
+
+Scanner output is portal-ready: stable JSON plus human-readable Markdown grouped
+by finding type, severity, and file. Raw secret values are not stored in reports.
+
+## Claim-vs-evidence model
+
+Nornyx distinguishes claims from evidence. README text, manifest text, package
+descriptions, and declared capabilities are treated as `untrusted_claim`.
+Scanner inventory, hashes, hook/MCP/script/endpoint/secret findings, external
+tool imports, and human review are evidence classes. Nornyx never treats README
+or package claims as truth.
+
+Claim-vs-evidence mismatches are reported when a package claims docs-only but
+hooks/MCP/scripts are observed, claims no-network but endpoints are observed,
+claims no-execution but install/lifecycle scripts are observed, claims no
+secrets but secret-like material is detected, claims template-only but
+executables exist, or claims local-only but remote/webhook endpoints exist.
+
+## External evidence adapters
+
+External tools are optional. They are not required by default and Nornyx does
+not call external network by default. The initial import framework normalizes
+Syft-like SBOM reports and Gitleaks-like secret scan reports into the Nornyx
+evidence schema. Adapter config in `.nyx` can declare:
+
+```yaml
+governed_package:
+  evidence_adapters:
+    - name: syft
+      type: sbom
+      mode: local_cli
+      required: false
+      failure_policy: warn
+    - name: gitleaks
+      type: secret_scan
+      mode: local_cli
+      required: true
+      failure_policy: fail
+```
+
+External scanner execution is separate from package payload execution. Imported
+records always identify whether network or scanner execution was used, and they
+do not imply that package payloads were executed.
+
+## Tool integration philosophy
+
+Existing tools test packages. Nornyx governs whether, how, and under which
+evidence and approval boundaries a package may be used by AI agents or delivery
+workflows. Nornyx may claim that a package was inventoried, risk-surfaced,
+evidence-bound, hash-locked, and approval-gated. It must not claim that the
+package is safe.
 
 ## Operating modes
 
@@ -178,12 +253,26 @@ governed_package:
 ## Generated artifacts
 
 - `package_manifest.json`: full governed package manifest.
-- `package_lock.json`: source hash, generator metadata, artifact hashes, and manifest hash.
+- `package_lock.json`: source hash, generator metadata, artifact hashes, and manifest hash. The
+  scanner-derived hashes (source inventory and scan reports) are reproducible for identical input;
+  provenance timestamps in the manifest and lock are recorded per run and are intentionally not
+  byte-stable.
 - `AGENTS.md`: responsible role assignments, without approval authority for tools.
 - `evidence_contract.md`: declared evidence requirements.
 - `approval_contract.md`: approval gates and approver restrictions.
 - `safety_boundary.md`: inert installation policy and safety flags.
 - `provenance.json`: source contract identity, generator version, timestamps, and hashes.
+- `package_analysis.json` / `package_analysis.md`: scanner summary and evidence records.
+- `risk_surface_report.json` / `risk_surface_report.md`: explainable deterministic risk score.
+- `source_inventory.md`: file inventory and hashes.
+- `hook_risk_review.md` / `hook_risk_report.json`: hook findings and recommendations.
+- `mcp_risk_review.md` / `mcp_risk_report.json`: MCP server risk findings.
+- `secret_scan_report.json` / `secret_scan_report.md`: redacted secret-like findings.
+- `endpoint_scan_report.json` / `endpoint_scan_report.md`: endpoint classification.
+- `command_risk_report.json` / `command_risk_report.md`: dangerous command findings.
+- `claim_vs_evidence_report.json` / `claim_vs_evidence_report.md`: untrusted claims compared to observed evidence.
+- `external_evidence_summary.json` / `external_evidence_summary.md`: adapter import status.
+- `adapter_execution_report.json`: adapter status with package payload execution set false.
 
 Register existing mode also writes `registration_report.json`. Radar mode writes
 `radar_report.json` and can optionally write a suggested `.nyx` contract.
@@ -206,6 +295,16 @@ Validation fails when:
 - Existing registered artifacts are missing `sha256`.
 - Provenance is missing source hash, generator version, or profile version.
 - Package lock hashes do not match generated artifacts.
+- Hooks are detected but hook risk review evidence is missing.
+- MCP configs are detected but MCP risk review evidence is missing.
+- Secret-like content is detected but secret scan evidence is missing.
+- Critical claim-vs-evidence mismatches lack claim review evidence.
+- A required adapter is unavailable with `failure_policy: fail`.
+- Critical external evidence lacks a security approval gate.
+
+Validation warns when optional adapters are unavailable, license or README files
+are missing from scanned package sources, binary-like files are present,
+long-line/minified files are present, or remote endpoints have unclear purpose.
 
 ## CLI usage
 
@@ -234,9 +333,22 @@ Register an existing artifact directory:
 nornyx package register ./some-existing-artifacts --contract examples/governed_package/register_existing.nyx --out dist/registered-package
 ```
 
+Run the deterministic scanner:
+
+```bash
+nornyx package scan ./example-repo --out dist/package-scan
+```
+
 Run radar discovery:
 
 ```bash
 nornyx package radar ./example-repo --out dist/radar_report.json
 nornyx package radar ./example-repo --suggest-contract --out dist/radar_suggested.nyx
+```
+
+Import external evidence:
+
+```bash
+nornyx package evidence import syft syft-report.json --out dist/external-evidence
+nornyx package evidence import gitleaks gitleaks-report.json --out dist/external-evidence
 ```
