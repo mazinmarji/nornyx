@@ -5,7 +5,11 @@ from typing import Any, Mapping
 
 from .composition import compose_governance
 from .errors import GovernanceError, error
-from .loader import _reject_symlink_components
+from .loader import (
+    _reject_symlink_components,
+    inspect_local_directory,
+    reject_remote_or_device_path,
+)
 from .locks import load_lock
 from .models import CompositionResult, GovernanceDiagnostic
 from .registry import GovernanceRegistry
@@ -23,32 +27,65 @@ def registry_for_directory(
     *,
     trust_root: str | Path | None = None,
 ) -> GovernanceRegistry:
-    registry = GovernanceRegistry.builtins()
+    reject_remote_or_device_path(root, code_prefix="PACK", noun="Project")
+    if trust_root is not None:
+        reject_remote_or_device_path(
+            trust_root,
+            code_prefix="PACK",
+            noun="Project",
+        )
     project_root = _absolute_without_resolving(Path(root))
     inspection_root = (
-        project_root
+        None
         if trust_root is None
         else _absolute_without_resolving(Path(trust_root))
     )
-    _reject_symlink_components(
+    inspected_project = inspect_local_directory(
         project_root,
-        inspection_root,
+        allowed_root=project_root,
+        trust_root=inspection_root,
         code_prefix="PACK",
         noun="Project",
     )
+    assert inspected_project is not None
     nornyx_root = project_root / ".nornyx"
-    for directory_name in ("profiles", "modules"):
-        directory = nornyx_root / directory_name
-        if directory.is_dir():
-            registry.register_directory(
+    inspected_nornyx = inspect_local_directory(
+        nornyx_root,
+        allowed_root=project_root,
+        trust_root=inspection_root,
+        code_prefix="PACK",
+        noun="Project governance",
+        allow_missing=True,
+    )
+    discovered: list[Path] = []
+    if inspected_nornyx is not None:
+        for directory_name in ("profiles", "modules"):
+            directory = nornyx_root / directory_name
+            inspected = inspect_local_directory(
                 directory,
-                source_tier="project",
+                allowed_root=project_root,
                 trust_root=inspection_root,
+                code_prefix="PACK",
+                noun=f"Project {directory_name}",
+                allow_missing=True,
             )
+            if inspected is not None:
+                discovered.append(inspected)
+
+    # Bundled discovery is intentionally deferred until every caller-controlled
+    # project component has passed inspection.
+    registry = GovernanceRegistry.builtins()
+    for directory in discovered:
+        registry.register_directory(
+            directory,
+            source_tier="project",
+            trust_root=inspection_root,
+        )
     return registry
 
 
 def registry_for_contract(path: str | Path) -> GovernanceRegistry:
+    reject_remote_or_device_path(path, code_prefix="PACK", noun="Contract")
     supplied = Path(path)
     contract = _absolute_without_resolving(supplied)
     trust_root = Path(contract.anchor) if supplied.is_absolute() else Path.cwd()

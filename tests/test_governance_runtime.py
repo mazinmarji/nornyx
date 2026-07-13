@@ -3,7 +3,9 @@ from __future__ import annotations
 from copy import deepcopy
 from importlib import resources
 import json
+import os
 from pathlib import Path
+import stat
 from typing import Any
 
 import pytest
@@ -191,15 +193,17 @@ def test_loader_checks_trust_root_components_before_resolving(
     pack_path = profiles / "profile.yaml"
     _write_pack(pack_path, payload)
 
-    original_is_symlink = Path.is_symlink
+    original_lstat = os.lstat
 
-    def simulated_ancestor_symlink(path: Path) -> bool:
-        return path == link_root or original_is_symlink(path)
+    def simulated_ancestor_symlink(path: str | Path) -> os.stat_result:
+        if Path(path) == link_root:
+            return os.stat_result((stat.S_IFLNK | 0o777, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        return original_lstat(path)
 
     def unexpected_resolve(*args: Any, **kwargs: Any) -> Path:
         raise AssertionError("path resolution ran before symlink inspection")
 
-    monkeypatch.setattr(Path, "is_symlink", simulated_ancestor_symlink)
+    monkeypatch.setattr(os, "lstat", simulated_ancestor_symlink)
     monkeypatch.setattr(Path, "resolve", unexpected_resolve)
     with pytest.raises(GovernanceError) as symlink:
         load_local_pack(
@@ -222,15 +226,17 @@ def test_loader_preserves_parent_traversal_before_symlink_inspection(
     _write_pack(real / "profile.yaml", payload)
     candidate = link / ".." / "profile.yaml"
 
-    original_is_symlink = Path.is_symlink
+    original_lstat = os.lstat
 
-    def simulated_traversed_symlink(path: Path) -> bool:
-        return path == link or original_is_symlink(path)
+    def simulated_traversed_symlink(path: str | Path) -> os.stat_result:
+        if Path(path) == link:
+            return os.stat_result((stat.S_IFLNK | 0o777, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        return original_lstat(path)
 
     def unexpected_resolve(*args: Any, **kwargs: Any) -> Path:
         raise AssertionError("path resolution ran before symlink inspection")
 
-    monkeypatch.setattr(Path, "is_symlink", simulated_traversed_symlink)
+    monkeypatch.setattr(os, "lstat", simulated_traversed_symlink)
     monkeypatch.setattr(Path, "resolve", unexpected_resolve)
     with pytest.raises(GovernanceError) as symlink:
         load_local_pack(

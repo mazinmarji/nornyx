@@ -4,10 +4,9 @@ Status: **prior execution record superseded by the independent NO-GO audit of
 `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation validation is in
 progress.**
 
-Status: implemented through Stage I. This document began as the PR-era test
-plan; reports 19-20 and 22 plus the formal compatibility/security tests are the
-current execution record. The final local result is 532 passed and 12
-platform skips. Linux CI passes all 544 tests, including real symlink cases.
+The prior 532/544-test and report 19-22 claims are historical, not current
+closure evidence. Final counts, exact-head Linux CI, wheel evidence, and the
+fresh independent verdict will be recorded only after Stage 7.
 
 ## Categories and representative cases
 
@@ -24,8 +23,10 @@ platform skips. Linux CI passes all 544 tests, including real symlink cases.
 - Discovery precedence: explicit > project > org > builtin; resolution trace
   golden. Dynamic discovery from `.nornyx/profiles/`; explicit-path loading.
 - Invalid pack schemas (one fixture per required field + unknown top-level key).
-- Duplicate identity same-tier (fatal) and cross-tier (shadow + provenance).
-- Reserved-namespace squat (`nornyx.builtin.*` from project tier) rejected.
+- Global profile/module id/name collision permutations are fatal before locks;
+  same-kind exact cross-tier identity shadows with provenance.
+- Reserved-namespace squat at exact `nornyx.builtin` and descendants is
+  rejected for every non-builtin tier; local loaders cannot claim builtin.
 - Version incompatibility (`compatible_core` unsatisfied) fail-closed.
 - Dependency cycles (self, pair, 3-cycle) named in diagnostic.
 - Frozen v0.3 fixture validation, valid v1 fixture validation, exact
@@ -57,10 +58,13 @@ executed against the current runtime.
 
 **Security / adversarial (doc 10 mapping)**
 - Path traversal fixtures (`../`, absolute, drive-relative on Windows).
-- Symlink escape (skipped where symlinks unavailable — runs on Linux CI).
+- Live/dangling symlink, junction/reparse, inaccessible-component, parent
+  traversal, UNC/device, and wrong-type paths. Real symlinks are mandatory on
+  Linux; Windows also runs host-independent lexical and simulated-lstat cases.
 - YAML abuse: alias bomb, deep nesting, 10 MB file, null bytes, non-UTF8.
 - Template-injection attempts in fragments (rendered literally).
-- Hash mismatch, lock version substitution, stale lock, missing lock warning.
+- Hash mismatch, version substitution, stale/forged/duplicate locks, strict
+  JSON/UTF-8/size failures, unsafe lock paths/writes, and optional absence.
 - Offline guarantee: static import audit of `nornyx/packs/` (no network
   modules), plus a socket-disabled integration run.
 

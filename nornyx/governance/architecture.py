@@ -4,11 +4,12 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 from .errors import GovernanceError, error
-from .loader import _reject_symlink_components
+from .loader import read_local_file_bytes
 from .models import CompositionResult, GovernanceDiagnostic
 from .schemas import validate_governance_block, validate_payload
 
@@ -61,45 +62,50 @@ def _absolute_without_resolving(path: Path) -> Path:
     return path if path.is_absolute() else Path.cwd() / path
 
 
-def _safe_local_file(path: str | Path, *, allowed_root: str | Path) -> tuple[Path, str]:
-    supplied_root = Path(allowed_root)
-    raw_root = _absolute_without_resolving(supplied_root)
-    candidate = Path(path)
-    if not candidate.is_absolute():
-        candidate = raw_root / candidate
+def _safe_local_file(
+    path: str | Path,
+    *,
+    allowed_root: str | Path,
+) -> tuple[bytes, Path, str]:
     try:
-        candidate.relative_to(raw_root)
+        raw, resolved = read_local_file_bytes(
+            path,
+            allowed_root=allowed_root,
+            code_prefix="ARCH_REPORT",
+            noun="Architecture report",
+            max_bytes=MAX_ARCHITECTURE_REPORT_BYTES,
+        )
+    except GovernanceError as exc:
+        codes = {item.code for item in exc.diagnostics}
+        stable_specific = {
+            "ARCH_REPORT_LIMIT_EXCEEDED",
+            "ARCH_REPORT_PATH_OUTSIDE_ROOT",
+            "ARCH_REPORT_REMOTE_SOURCE_REJECTED",
+            "ARCH_REPORT_SYMLINK_REJECTED",
+        }
+        if codes <= stable_specific:
+            raise
+        message = (
+            "Architecture report must be a regular local file."
+            if codes == {"ARCH_REPORT_PATH_TYPE_INVALID"}
+            else "Architecture report is missing, unreadable, or outside the permitted root."
+        )
+        raise error(
+            "ARCH_REPORT_UNAVAILABLE",
+            message,
+            path=str(path),
+        ) from exc
+    raw_root = _absolute_without_resolving(Path(allowed_root))
+    try:
+        resolved_root = Path(os.path.realpath(raw_root))
+        artifact = resolved.relative_to(resolved_root).as_posix()
     except ValueError as exc:
         raise error(
-            "ARCH_REPORT_PATH_OUTSIDE_ROOT",
-            "Architecture report must stay inside the permitted local root.",
+            "ARCH_REPORT_UNAVAILABLE",
+            "Architecture report is outside the permitted root.",
             path=str(path),
         ) from exc
-    trust_root = Path(raw_root.anchor) if supplied_root.is_absolute() else Path.cwd()
-    _reject_symlink_components(
-        candidate,
-        trust_root,
-        code_prefix="ARCH_REPORT",
-        noun="Architecture report",
-    )
-
-    try:
-        resolved_root = raw_root.resolve(strict=True)
-        resolved = candidate.resolve(strict=True)
-        artifact = resolved.relative_to(resolved_root).as_posix()
-    except (OSError, ValueError) as exc:
-        raise error(
-            "ARCH_REPORT_UNAVAILABLE",
-            "Architecture report is missing, unreadable, or outside the permitted root.",
-            path=str(path),
-        ) from exc
-    if not resolved.is_file():
-        raise error(
-            "ARCH_REPORT_UNAVAILABLE",
-            "Architecture report must be a regular local file.",
-            path=str(path),
-        )
-    return resolved, artifact
+    return raw, resolved, artifact
 
 
 def _bounded_json(raw: bytes) -> dict[str, Any]:
@@ -151,15 +157,7 @@ def import_architecture_evidence(
     allowed_root: str | Path,
 ) -> dict[str, Any]:
     """Import one bounded neutral report without running the named tool."""
-    resolved, artifact = _safe_local_file(report_path, allowed_root=allowed_root)
-    try:
-        raw = resolved.read_bytes()
-    except OSError as exc:
-        raise error(
-            "ARCH_REPORT_UNAVAILABLE",
-            "Architecture report became unreadable during import.",
-            path=artifact,
-        ) from exc
+    raw, _, artifact = _safe_local_file(report_path, allowed_root=allowed_root)
     payload = _bounded_json(raw)
     try:
         validate_payload(payload, "architecture_report_v1.schema.json")
@@ -197,9 +195,9 @@ def _artifact_hash(root: Path, artifact: Any) -> str | None:
     if not isinstance(artifact, str):
         return None
     try:
-        resolved, _ = _safe_local_file(artifact, allowed_root=root)
-        return "sha256:" + hashlib.sha256(resolved.read_bytes()).hexdigest()
-    except (GovernanceError, OSError):
+        raw, _, _ = _safe_local_file(artifact, allowed_root=root)
+        return "sha256:" + hashlib.sha256(raw).hexdigest()
+    except GovernanceError:
         return None
 
 

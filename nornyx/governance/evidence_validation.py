@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .loader import parse_bounded_yaml_mapping, read_local_file_bytes
+from .loader import MAX_PACK_BYTES, parse_bounded_yaml_mapping, read_local_file_bytes
 from .models import GovernanceDiagnostic
 from .registry import GovernanceRegistry
 from .runtime import evaluate_document_governance
@@ -28,6 +28,7 @@ def validate_governance_evidence_file(
         trust_root=trust_root,
         code_prefix="EVIDENCE",
         noun="Evidence",
+        max_bytes=MAX_PACK_BYTES,
     )
     payload = parse_bounded_yaml_mapping(
         raw,

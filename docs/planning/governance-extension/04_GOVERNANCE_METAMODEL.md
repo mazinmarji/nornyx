@@ -42,11 +42,14 @@ doc 10 threat-models attempts to violate it.
 ## Identity model
 
 - Pack id: reverse-DNS-ish stable string, e.g. `nornyx.builtin.ai_coding`,
-  `org.acme.module.change_control`. Built-ins own the `nornyx.builtin.*`
-  namespace; the loader **rejects** non-builtin sources claiming it.
-- Short name (`ai_coding`) is a registry alias resolved through precedence;
-  collisions across tiers are resolved by precedence and *reported*; collisions
-  within a tier are fatal.
+  `org.acme.module.change_control`. Built-ins own both the exact
+  `nornyx.builtin` identity and every `nornyx.builtin.*` descendant; local
+  loaders cannot claim the built-in source tier.
+- Profile and module ids/names share one global token namespace. Any
+  cross-kind id, name, or cross-field collision is fatal and deterministic.
+  Same-kind exact `(id, name)` shadowing across tiers remains resolved by
+  precedence and is reported; same-tier or ambiguous same-kind identity is
+  fatal.
 - Rule ids are namespaced by pack id at composition time
   (`nornyx.builtin.ai_coding/AICODE-001`); packs reference their own rules by
   local id.

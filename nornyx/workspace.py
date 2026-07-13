@@ -22,6 +22,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .governance.errors import GovernanceError
+from .governance.loader import inspect_local_file, reject_remote_or_device_path
 from .parser import load_nyx
 from .policy_runtime import normalize_policy_rules
 
@@ -32,6 +34,31 @@ _RULE_KEYS = ("rules", "deny", "require")
 
 class WorkspaceError(Exception):
     """Raised when the workspace manifest is malformed."""
+
+
+def _absolute_without_resolving(path: Path) -> Path:
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def _safe_workspace_file(
+    path: str | Path,
+    *,
+    allowed_root: Path,
+    allow_missing: bool = False,
+) -> Path | None:
+    try:
+        return inspect_local_file(
+            path,
+            allowed_root=allowed_root,
+            code_prefix="WORKSPACE",
+            noun="Workspace file",
+            allow_missing=allow_missing,
+        )
+    except GovernanceError as exc:
+        details = "; ".join(
+            f"{item.code}: {item.message}" for item in exc.diagnostics
+        )
+        raise WorkspaceError(details) from exc
 
 
 def _canonical_ordered(rules: Any) -> list[str]:
@@ -75,6 +102,12 @@ def sync_policy_in_contract(contract: Path, policy_name: str, ordered_rules: lis
     Surgical: keeps the policy's `- name:` line and any non-rule lines, removes
     existing `rules:`/`deny:`/`require:` sub-blocks, and writes one canonical
     `rules:` block. Returns True if the policy was found and rewritten."""
+    safe_contract = _safe_workspace_file(
+        contract,
+        allowed_root=_absolute_without_resolving(contract).parent,
+    )
+    assert safe_contract is not None
+    contract = safe_contract
     lines = contract.read_text(encoding="utf-8").splitlines()
     n = len(lines)
 
@@ -190,9 +223,23 @@ def check_workspace(manifest_path: str | Path, *, write: bool = False) -> dict[s
     A policy a member doesn't declare at all, or a missing contract file, is left
     for a human (still reported as drift) — sync edits existing policies, it does
     not invent new blocks or files."""
-    manifest_path = Path(manifest_path)
+    try:
+        reject_remote_or_device_path(
+            manifest_path,
+            code_prefix="WORKSPACE",
+            noun="Workspace manifest",
+        )
+    except GovernanceError as exc:
+        raise WorkspaceError(str(exc)) from exc
+    supplied_manifest = _absolute_without_resolving(Path(manifest_path))
+    safe_manifest = _safe_workspace_file(
+        supplied_manifest,
+        allowed_root=supplied_manifest.parent,
+    )
+    assert safe_manifest is not None
+    manifest_path = safe_manifest
     manifest = load_nyx(manifest_path)  # YAML; reuses Nornyx's safe loader
-    root = manifest_path.resolve().parent
+    root = manifest_path.parent
 
     canonical_block = manifest.get("policies")
     if not isinstance(canonical_block, dict) or not canonical_block:
@@ -211,9 +258,11 @@ def check_workspace(manifest_path: str | Path, *, write: bool = False) -> dict[s
     drift = False
     for member in members:
         rel = member.get("path") if isinstance(member, dict) else member
-        contract = (root / rel).resolve()
         member_result: dict[str, Any] = {"path": rel, "policies": []}
-        if not contract.is_file():
+        if not isinstance(rel, str) or not rel.strip():
+            raise WorkspaceError("workspace member paths must be non-empty strings")
+        contract = _safe_workspace_file(rel, allowed_root=root, allow_missing=True)
+        if contract is None:
             member_result["policies"].append({"status": "contract_missing"})
             drift = True
             results.append(member_result)

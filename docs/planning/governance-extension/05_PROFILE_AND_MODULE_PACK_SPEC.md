@@ -132,10 +132,18 @@ Implemented precedence is deterministic:
 4. bundled files
 ```
 
-No URL is valid. Network loading and Python entry-point discovery are rejected
-for the current program. Explicit paths and source roots are canonicalized;
-symlinked pack files or path components are rejected. Same-tier identity
-ambiguity is fatal. Cross-tier shadowing is reported with provenance.
+No URI, UNC path, device namespace, or remote-backed path is valid. Network
+loading and Python entry-point discovery are rejected for the current program.
+Every unresolved component is inspected with `lstat` before canonicalization;
+live/dangling links, junctions, reparse points, inaccessible components, and
+wrong-type governance directories fail closed. Caller-supplied trust roots only
+narrow containment and never replace anchor-to-target inspection.
+
+Profile and module ids/names occupy one global identity namespace, so a
+cross-kind token collision is fatal before composition or lock generation.
+Same-kind exact cross-tier shadowing remains supported and is reported with
+provenance. The reserved namespace includes both `nornyx.builtin` and all
+`nornyx.builtin.*` descendants, and local inputs cannot claim built-in tier.
 
 An organization-tier pack requires a committed lock. A missing org lock is an
 error, not a warning, and resolve/check reports display the configured source
@@ -161,6 +169,13 @@ not alter the canonical content hash; parsed values do.
 content hash, and path hint. Time fields are schema-invalid. Identical inputs
 must produce byte-identical lock files. Hash, version, tier, or missing-pack
 mismatch is fatal.
+
+Lock reads use the same unresolved-component and containment checks as packs,
+with a 512 KiB limit, strict UTF-8, strict JSON duplicate-key/non-finite-value
+rejection, packaged-schema validation, and semantic duplicate-id rejection.
+Lock generation and verification materialize and validate selected identities
+before constructing id-keyed dictionaries. Lock writes reject unsafe parents,
+existing links, non-regular targets, and use same-directory atomic replacement.
 
 ## 9. Loader hardening
 

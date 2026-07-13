@@ -3,9 +3,11 @@ from __future__ import annotations
 from importlib.resources.abc import Traversable
 import os
 from pathlib import Path
+import stat
 from typing import Any, Mapping
 import yaml
 
+from nornyx.path_security import is_remote_or_device_path
 from nornyx.parser import NornyxSafeLoader
 
 from .errors import GovernanceError, error
@@ -32,7 +34,10 @@ MAX_YAML_DEPTH = 40
 MAX_YAML_NODES = 20_000
 MAX_YAML_ALIASES = 50
 MAX_RULES_PER_PACK = 200
-URL_PREFIXES = ("http://", "https://", "ftp://", "git://", "ssh://")
+
+
+def _reserved_builtin_identity(pack_id: str) -> bool:
+    return pack_id == "nornyx.builtin" or pack_id.startswith("nornyx.builtin.")
 
 
 def _walk_limits(
@@ -170,7 +175,7 @@ def _profile_from_payload(
 ) -> ProfilePack:
     pack_id = str(payload["id"])
     _check_rule_cap(payload["validation_rules"], source_path=source_path, pack_id=pack_id)
-    if source_tier != "builtin" and pack_id.startswith("nornyx.builtin."):
+    if source_tier != "builtin" and _reserved_builtin_identity(pack_id):
         raise error(
             "PACK_RESERVED_NAMESPACE",
             "Only bundled profiles may use the nornyx.builtin namespace.",
@@ -229,7 +234,7 @@ def _module_from_payload(
 ) -> GovernanceModule:
     pack_id = str(payload["id"])
     _check_rule_cap(payload["rules"], source_path=source_path, pack_id=pack_id)
-    if source_tier != "builtin" and pack_id.startswith("nornyx.builtin."):
+    if source_tier != "builtin" and _reserved_builtin_identity(pack_id):
         raise error(
             "PACK_RESERVED_NAMESPACE",
             "Only bundled modules may use the nornyx.builtin namespace.",
@@ -278,12 +283,19 @@ def _module_from_payload(
     )
 
 
-def load_pack_bytes(
+def _load_pack_bytes(
     raw: bytes,
     *,
     source_path: str,
     source_tier: PackSourceTier,
+    allow_builtin: bool,
 ) -> ProfilePack | GovernanceModule:
+    if source_tier == "builtin" and not allow_builtin:
+        raise error(
+            "PACK_SOURCE_TIER_INVALID",
+            "The builtin source tier is reserved for packaged Nornyx resources.",
+            path=source_path,
+        )
     payload = parse_bounded_yaml_mapping(raw, source_path=source_path)
     discriminator = payload.get("schema")
     schema_name = SCHEMA_BY_DISCRIMINATOR.get(str(discriminator))
@@ -310,6 +322,22 @@ def load_pack_bytes(
     )
 
 
+def load_pack_bytes(
+    raw: bytes,
+    *,
+    source_path: str,
+    source_tier: PackSourceTier,
+) -> ProfilePack | GovernanceModule:
+    """Load caller-supplied bytes without granting bundled-resource authority."""
+
+    return _load_pack_bytes(
+        raw,
+        source_path=source_path,
+        source_tier=source_tier,
+        allow_builtin=False,
+    )
+
+
 def _path_contains(parent: Path, child: Path) -> bool:
     # Case- and 8.3-shortname-insensitive containment: both sides must already
     # be real paths (os.path.realpath) so the comparison is purely textual.
@@ -322,6 +350,109 @@ def _absolute_without_resolving(path: Path) -> Path:
     return path if path.is_absolute() else Path.cwd() / path
 
 
+def reject_remote_or_device_path(
+    path: str | Path,
+    *,
+    code_prefix: str,
+    noun: str,
+) -> None:
+    if is_remote_or_device_path(path):
+        raise error(
+            f"{code_prefix}_REMOTE_SOURCE_REJECTED",
+            f"Remote or device-backed {noun.lower()} paths are not allowed.",
+            path=str(path),
+        )
+
+
+def _is_link_or_reparse(metadata: os.stat_result) -> bool:
+    attributes = getattr(metadata, "st_file_attributes", 0)
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return stat.S_ISLNK(metadata.st_mode) or bool(attributes & reparse_flag)
+
+
+def _inspect_unresolved_components(
+    path: Path,
+    *,
+    code_prefix: str,
+    noun: str,
+) -> None:
+    """Inspect every lexical component with lstat, preserving ``..`` walks."""
+
+    candidate = _absolute_without_resolving(path)
+    anchor = Path(candidate.anchor) if candidate.anchor else Path.cwd()
+    try:
+        relative = candidate.relative_to(anchor)
+    except ValueError as exc:
+        raise error(
+            f"{code_prefix}_PATH_INSPECTION_FAILED",
+            f"Cannot derive a local inspection anchor for the {noun.lower()} path.",
+            path=str(path),
+        ) from exc
+
+    probe = anchor
+    components = [probe]
+    for component in relative.parts:
+        if component in {"", os.curdir}:
+            continue
+        probe = probe.parent if component == os.pardir else probe / component
+        components.append(probe)
+
+    for component in components:
+        try:
+            metadata = os.lstat(component)
+        except FileNotFoundError:
+            # A dangling link is visible to lstat. A genuinely missing path is
+            # handled by the final type check, while later ``..`` components
+            # still need inspection.
+            continue
+        except OSError as exc:
+            raise error(
+                f"{code_prefix}_PATH_INSPECTION_FAILED",
+                f"Cannot inspect the {noun.lower()} path: {exc}",
+                path=str(path),
+            ) from exc
+        if _is_link_or_reparse(metadata):
+            raise error(
+                f"{code_prefix}_SYMLINK_REJECTED",
+                f"Symlinked or reparse-point {noun.lower()} paths are not allowed.",
+                path=str(path),
+            )
+
+
+def _require_lexical_containment(
+    root: Path,
+    candidate: Path,
+    *,
+    code_prefix: str,
+    noun: str,
+) -> None:
+    raw_root = _absolute_without_resolving(root)
+    raw_candidate = _absolute_without_resolving(candidate)
+    try:
+        relative = raw_candidate.relative_to(raw_root)
+    except ValueError as exc:
+        raise error(
+            f"{code_prefix}_PATH_OUTSIDE_ROOT",
+            f"{noun} path must stay inside the explicitly permitted root.",
+            path=str(candidate),
+        ) from exc
+
+    depth = 0
+    for component in relative.parts:
+        if component in {"", os.curdir}:
+            continue
+        if component == os.pardir:
+            if depth == 0:
+                raise error(
+                    f"{code_prefix}_PATH_OUTSIDE_ROOT",
+                    f"{noun} path must not traverse outside the explicitly permitted root.",
+                    path=str(candidate),
+                )
+            depth -= 1
+        else:
+            depth += 1
+
+
 def _reject_symlink_components(
     candidate: Path,
     trust_root: Path,
@@ -329,42 +460,193 @@ def _reject_symlink_components(
     code_prefix: str,
     noun: str,
 ) -> None:
+    reject_remote_or_device_path(candidate, code_prefix=code_prefix, noun=noun)
+    reject_remote_or_device_path(trust_root, code_prefix=code_prefix, noun=noun)
     raw_root = _absolute_without_resolving(trust_root)
     raw_candidate = _absolute_without_resolving(candidate)
+    _inspect_unresolved_components(raw_root, code_prefix=code_prefix, noun=noun)
+    _inspect_unresolved_components(raw_candidate, code_prefix=code_prefix, noun=noun)
+    _require_lexical_containment(
+        raw_root,
+        raw_candidate,
+        code_prefix=code_prefix,
+        noun=noun,
+    )
+
+
+def _prepare_local_candidate(
+    path: str | Path,
+    *,
+    allowed_root: str | Path,
+    trust_root: str | Path | None,
+    code_prefix: str,
+    noun: str,
+) -> tuple[Path, Path, Path]:
+    for boundary in (path, allowed_root, trust_root):
+        if boundary is not None:
+            reject_remote_or_device_path(
+                boundary,
+                code_prefix=code_prefix,
+                noun=noun,
+            )
+
+    raw_root = _absolute_without_resolving(Path(allowed_root))
+    supplied = Path(path)
+    candidate = supplied if supplied.is_absolute() else raw_root / supplied
+    candidate = _absolute_without_resolving(candidate)
+
+    _inspect_unresolved_components(raw_root, code_prefix=code_prefix, noun=noun)
+    _inspect_unresolved_components(candidate, code_prefix=code_prefix, noun=noun)
+    _require_lexical_containment(
+        raw_root,
+        candidate,
+        code_prefix=code_prefix,
+        noun=noun,
+    )
+    if trust_root is not None:
+        raw_trust_root = _absolute_without_resolving(Path(trust_root))
+        _inspect_unresolved_components(
+            raw_trust_root,
+            code_prefix=code_prefix,
+            noun=noun,
+        )
+        _require_lexical_containment(
+            raw_trust_root,
+            raw_root,
+            code_prefix=code_prefix,
+            noun=noun,
+        )
+        _require_lexical_containment(
+            raw_trust_root,
+            candidate,
+            code_prefix=code_prefix,
+            noun=noun,
+        )
+
     try:
-        relative = raw_candidate.relative_to(raw_root)
-    except ValueError as exc:
+        root_metadata = os.lstat(raw_root)
+    except FileNotFoundError as exc:
+        raise error(
+            f"{code_prefix}_NOT_FOUND",
+            f"Permitted {noun.lower()} root does not exist.",
+            path=str(raw_root),
+        ) from exc
+    except OSError as exc:
+        raise error(
+            f"{code_prefix}_PATH_INSPECTION_FAILED",
+            f"Cannot inspect the permitted {noun.lower()} root: {exc}",
+            path=str(raw_root),
+        ) from exc
+    if not stat.S_ISDIR(root_metadata.st_mode):
+        raise error(
+            f"{code_prefix}_PATH_TYPE_INVALID",
+            f"Permitted {noun.lower()} root must be a directory.",
+            path=str(raw_root),
+        )
+
+    resolved_root = Path(os.path.realpath(raw_root))
+    resolved_candidate = Path(os.path.realpath(candidate))
+    if not _path_contains(resolved_root, resolved_candidate):
         raise error(
             f"{code_prefix}_PATH_OUTSIDE_ROOT",
-            f"{noun} path must stay inside the symlink-inspection trust root.",
+            f"{noun} path must resolve inside the explicitly permitted root.",
+            path=str(path),
+        )
+    return candidate, resolved_candidate, resolved_root
+
+
+def inspect_local_file(
+    path: str | Path,
+    *,
+    allowed_root: str | Path,
+    trust_root: str | Path | None = None,
+    code_prefix: str,
+    noun: str,
+    allow_missing: bool = False,
+) -> Path | None:
+    candidate, resolved, _ = _prepare_local_candidate(
+        path,
+        allowed_root=allowed_root,
+        trust_root=trust_root,
+        code_prefix=code_prefix,
+        noun=noun,
+    )
+    try:
+        metadata = os.lstat(candidate)
+    except FileNotFoundError:
+        if allow_missing:
+            return None
+        raise error(
+            f"{code_prefix}_NOT_FOUND",
+            f"{noun} path is not a file.",
+            path=str(candidate),
+        ) from None
+    except OSError as exc:
+        raise error(
+            f"{code_prefix}_PATH_INSPECTION_FAILED",
+            f"Cannot inspect the {noun.lower()} path: {exc}",
             path=str(candidate),
         ) from exc
+    if _is_link_or_reparse(metadata):
+        raise error(
+            f"{code_prefix}_SYMLINK_REJECTED",
+            f"Symlinked or reparse-point {noun.lower()} paths are not allowed.",
+            path=str(candidate),
+        )
+    if not stat.S_ISREG(metadata.st_mode):
+        raise error(
+            f"{code_prefix}_PATH_TYPE_INVALID",
+            f"{noun} path must be a regular file.",
+            path=str(candidate),
+        )
+    return resolved
 
-    probe = raw_root
-    components = [probe]
-    for name in relative.parts:
-        if name == os.pardir:
-            if probe == raw_root:
-                raise error(
-                    f"{code_prefix}_PATH_OUTSIDE_ROOT",
-                    f"{noun} path must stay inside the symlink-inspection trust root.",
-                    path=str(candidate),
-                )
-            probe = probe.parent
-        else:
-            probe /= name
-        components.append(probe)
-    for part in components:
-        try:
-            is_symlink = part.is_symlink()
-        except OSError:
-            continue
-        if is_symlink:
-            raise error(
-                f"{code_prefix}_SYMLINK_REJECTED",
-                f"Symlinked {noun.lower()} paths are not allowed.",
-                path=str(candidate),
-            )
+
+def inspect_local_directory(
+    path: str | Path,
+    *,
+    allowed_root: str | Path,
+    trust_root: str | Path | None = None,
+    code_prefix: str,
+    noun: str,
+    allow_missing: bool = False,
+) -> Path | None:
+    candidate, resolved, _ = _prepare_local_candidate(
+        path,
+        allowed_root=allowed_root,
+        trust_root=trust_root,
+        code_prefix=code_prefix,
+        noun=noun,
+    )
+    try:
+        metadata = os.lstat(candidate)
+    except FileNotFoundError:
+        if allow_missing:
+            return None
+        raise error(
+            f"{code_prefix}_NOT_FOUND",
+            f"{noun} directory does not exist.",
+            path=str(candidate),
+        ) from None
+    except OSError as exc:
+        raise error(
+            f"{code_prefix}_PATH_INSPECTION_FAILED",
+            f"Cannot inspect the {noun.lower()} directory: {exc}",
+            path=str(candidate),
+        ) from exc
+    if _is_link_or_reparse(metadata):
+        raise error(
+            f"{code_prefix}_SYMLINK_REJECTED",
+            f"Symlinked or reparse-point {noun.lower()} paths are not allowed.",
+            path=str(candidate),
+        )
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise error(
+            f"{code_prefix}_PATH_TYPE_INVALID",
+            f"{noun} path must be a directory.",
+            path=str(candidate),
+        )
+    return resolved
 
 
 def read_local_file_bytes(
@@ -374,54 +656,32 @@ def read_local_file_bytes(
     trust_root: str | Path | None = None,
     code_prefix: str,
     noun: str,
+    max_bytes: int | None = None,
 ) -> tuple[bytes, Path]:
-    raw_path = str(path)
-    if raw_path.lower().startswith(URL_PREFIXES):
-        raise error(
-            f"{code_prefix}_REMOTE_SOURCE_REJECTED",
-            f"Network {noun.lower()} sources are not allowed.",
-            path=raw_path,
-        )
-    raw_root = _absolute_without_resolving(Path(allowed_root))
-    candidate = Path(path)
-    if not candidate.is_absolute():
-        candidate = raw_root / candidate
-    inspection_root = raw_root if trust_root is None else Path(trust_root)
-    _reject_symlink_components(
-        candidate,
-        inspection_root,
+    resolved = inspect_local_file(
+        path,
+        allowed_root=allowed_root,
+        trust_root=trust_root,
         code_prefix=code_prefix,
         noun=noun,
     )
+    assert resolved is not None
     try:
-        root = Path(os.path.realpath(raw_root.resolve(strict=True)))
-    except OSError as exc:
-        raise error(
-            f"{code_prefix}_NOT_FOUND",
-            f"Permitted {noun.lower()} root does not exist.",
-            path=str(raw_root),
-        ) from exc
-    resolved = Path(os.path.realpath(candidate))
-    if not _path_contains(root, resolved):
-        raise error(
-            f"{code_prefix}_PATH_OUTSIDE_ROOT",
-            f"{noun} path must resolve inside the explicitly permitted root.",
-            path=raw_path,
-        )
-    if not resolved.is_file():
-        raise error(
-            f"{code_prefix}_NOT_FOUND",
-            f"{noun} path is not a file.",
-            path=str(resolved),
-        )
-    try:
-        return resolved.read_bytes(), resolved
+        with resolved.open("rb") as stream:
+            raw = stream.read() if max_bytes is None else stream.read(max_bytes + 1)
     except OSError as exc:
         raise error(
             f"{code_prefix}_READ_ERROR",
             f"Cannot read {noun.lower()}: {exc}",
             path=str(resolved),
         ) from exc
+    if max_bytes is not None and len(raw) > max_bytes:
+        raise error(
+            f"{code_prefix}_LIMIT_EXCEEDED",
+            f"{noun} exceeds the {max_bytes}-byte limit.",
+            path=str(resolved),
+        )
+    return raw, resolved
 
 
 def load_local_pack(
@@ -431,19 +691,40 @@ def load_local_pack(
     trust_root: str | Path | None = None,
     source_tier: PackSourceTier = "explicit_path",
 ) -> ProfilePack | GovernanceModule:
+    if source_tier == "builtin":
+        raise error(
+            "PACK_SOURCE_TIER_INVALID",
+            "Local pack sources cannot claim the builtin source tier.",
+            path=str(path),
+        )
     raw, resolved = read_local_file_bytes(
         path,
         allowed_root=allowed_root,
         trust_root=trust_root,
         code_prefix="PACK",
         noun="Pack",
+        max_bytes=MAX_PACK_BYTES,
     )
     return load_pack_bytes(raw, source_path=resolved.as_posix(), source_tier=source_tier)
 
 
-def load_bundled_pack(resource: Traversable) -> ProfilePack | GovernanceModule:
-    return load_pack_bytes(
+_BUNDLED_RESOURCE_CAPABILITY = object()
+
+
+def _load_bundled_pack(
+    resource: Traversable,
+    *,
+    capability: object,
+) -> ProfilePack | GovernanceModule:
+    if capability is not _BUNDLED_RESOURCE_CAPABILITY:
+        raise error(
+            "PACK_SOURCE_TIER_INVALID",
+            "Bundled pack loading is restricted to the packaged catalog.",
+            path=str(getattr(resource, "name", "<resource>")),
+        )
+    return _load_pack_bytes(
         resource.read_bytes(),
         source_path=f"nornyx/profiles_data/{resource.name}",
         source_tier="builtin",
+        allow_builtin=True,
     )

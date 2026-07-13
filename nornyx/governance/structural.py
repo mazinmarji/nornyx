@@ -15,6 +15,7 @@ from .approvals import (
     trusted_normalized_approval,
 )
 from .errors import GovernanceError
+from .loader import read_local_file_bytes
 from .models import CompositionResult, GovernanceDiagnostic, NormalizedApproval
 
 
@@ -293,18 +294,16 @@ def _human_approval(
 
 
 def _artifact_hash(root: Path, relative: str) -> str | None:
-    current = root
-    for part in Path(relative).parts:
-        current = current / part
-        if current.is_symlink():
-            return None
     try:
-        if not current.is_file():
-            return None
-        resolved = current.resolve(strict=True)
-        resolved.relative_to(root.resolve(strict=True))
-        return "sha256:" + hashlib.sha256(resolved.read_bytes()).hexdigest()
-    except (OSError, ValueError):
+        raw, _ = read_local_file_bytes(
+            relative,
+            allowed_root=root,
+            code_prefix="EVIDENCE",
+            noun="Evidence artifact",
+            max_bytes=16 * 1024 * 1024,
+        )
+        return "sha256:" + hashlib.sha256(raw).hexdigest()
+    except GovernanceError:
         return None
 
 

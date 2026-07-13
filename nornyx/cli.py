@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import yaml
 
@@ -52,6 +53,7 @@ from .governance import (
     write_lock,
 )
 from .governance.errors import error as governance_error
+from .governance.loader import inspect_local_file, reject_remote_or_device_path
 from .governance.reporting import build_governance_report
 from .governed_package import (
     generate_governed_package,
@@ -87,7 +89,25 @@ from .schema_model import (
 
 PACKAGE_RADAR_REPORT_DEFAULT = "dist/radar_report.json"
 PACKAGE_RADAR_CONTRACT_DEFAULT = "dist/radar_suggested.nyx"
-REMOTE_SOURCE_PREFIXES = ("http://", "https://", "ftp://", "git://", "ssh://")
+
+
+def _absolute_contract_path(path: str | Path) -> tuple[Path, Path]:
+    reject_remote_or_device_path(path, code_prefix="PACK", noun="Contract")
+    supplied = Path(path)
+    trust_root = Path(supplied.anchor) if supplied.is_absolute() else Path.cwd()
+    contract = supplied if supplied.is_absolute() else Path.cwd() / supplied
+    return contract, trust_root
+
+
+def _optional_profile_lock(directory: Path, *, trust_root: Path) -> Path | None:
+    return inspect_local_file(
+        directory / "nornyx.profiles.lock",
+        allowed_root=directory,
+        trust_root=trust_root,
+        code_prefix="PACK",
+        noun="Profile lock",
+        allow_missing=True,
+    )
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -104,8 +124,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 2
     diagnostics = list(check_document(doc))
     try:
-        lock_candidate = Path(args.file).resolve().parent / "nornyx.profiles.lock"
-        lock_path = lock_candidate if lock_candidate.is_file() else None
+        contract_path, trust_root = _absolute_contract_path(args.file)
+        contract_path = Path(os.path.realpath(contract_path))
+        document_root = contract_path.parent
+        lock_path = _optional_profile_lock(document_root, trust_root=trust_root)
         composition = compose_document_governance(
             doc,
             registry=registry,
@@ -127,7 +149,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 registry=registry,
                 lock_path=lock_path,
                 as_of=datetime.now(timezone.utc).isoformat(),
-                document_root=Path(args.file).resolve().parent,
+                document_root=document_root,
             )
         )
     except GovernanceError as exc:
@@ -615,18 +637,17 @@ def _explicit_pack_path_and_trust_root(path: str | Path) -> tuple[Path, Path]:
 
 
 def _reject_remote_cli_path(path: str | Path, *, code_prefix: str, noun: str) -> None:
-    if str(path).lower().startswith(REMOTE_SOURCE_PREFIXES):
-        raise governance_error(
-            f"{code_prefix}_REMOTE_SOURCE_REJECTED",
-            f"Network {noun.lower()} sources are not allowed.",
-            path=str(path),
-        )
+    reject_remote_or_device_path(path, code_prefix=code_prefix, noun=noun)
 
 
 def cmd_profiles(args: argparse.Namespace) -> int:
     command = getattr(args, "profiles_command", None)
     as_json = getattr(args, "json", False)
-    registry = GovernanceRegistry.builtins()
+    registry = (
+        GovernanceRegistry()
+        if command in {"resolve", "validate"}
+        else GovernanceRegistry.builtins()
+    )
     if command is None:
         for name in PROFILE_NAMES:
             print(name)
@@ -691,8 +712,17 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             resolve_registry = registry_for_directory(Path.cwd())
             lock_file = Path.cwd() / "nornyx.profiles.lock"
             existing_lock = None
-            if lock_file.is_file() and not args.lock:
-                existing_lock = load_lock(lock_file)
+            if not args.lock:
+                discovered_lock = _optional_profile_lock(
+                    Path.cwd(),
+                    trust_root=Path.cwd(),
+                )
+                if discovered_lock is not None:
+                    existing_lock = load_lock(
+                        discovered_lock,
+                        allowed_root=Path.cwd(),
+                        trust_root=Path.cwd(),
+                    )
             try:
                 result = compose_governance(
                     resolve_registry,
@@ -753,7 +783,11 @@ def cmd_modules(args: argparse.Namespace) -> int:
     command = args.modules_command
     as_json = args.json
     try:
-        registry = registry_for_directory(Path.cwd())
+        if command == "validate":
+            _reject_remote_cli_path(args.path, code_prefix="PACK", noun="Pack")
+            registry = GovernanceRegistry()
+        else:
+            registry = registry_for_directory(Path.cwd())
         if command == "list":
             modules = []
             for name in registry.module_names:
@@ -834,9 +868,9 @@ _LOCK_ERROR_CODES = {
 def _governance_report_for_path(args: argparse.Namespace) -> dict[str, object]:
     registry = registry_for_contract(args.file)
     document = load_nyx(args.file)
-    contract_path = Path(args.file).resolve()
-    lock_candidate = contract_path.parent / "nornyx.profiles.lock"
-    lock_path = lock_candidate if lock_candidate.is_file() else None
+    contract_path, trust_root = _absolute_contract_path(args.file)
+    contract_path = Path(os.path.realpath(contract_path))
+    lock_path = _optional_profile_lock(contract_path.parent, trust_root=trust_root)
     as_of = args.as_of or datetime.now(timezone.utc).isoformat()
     report = build_governance_report(
         document,
@@ -948,6 +982,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_init(args: argparse.Namespace) -> int:
     try:
         if args.profile_path:
+            _reject_remote_cli_path(
+                args.profile_path,
+                code_prefix="PACK",
+                noun="Pack",
+            )
             source, trust_root = _explicit_pack_path_and_trust_root(args.profile_path)
             pack = load_local_pack(
                 source,

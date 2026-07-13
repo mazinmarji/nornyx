@@ -12,6 +12,15 @@ distribution version is independent of the Nornyx **language/schema** version
   AUD-001 through AUD-022. Earlier compatibility, security, closure, and
   release-candidate claims are superseded while remediation is in progress.
   The PR remains draft and no merge or release action is authorized.
+- Stage 2 closes the implementation gaps for AUD-001, AUD-002, AUD-009,
+  AUD-010, AUD-011, and AUD-018 pending final cross-platform validation:
+  anchor-derived unresolved-component inspection rejects links/reparse points
+  before discovery, profile/module identity is globally collision-safe, locks
+  are bounded and strict, remote/device paths are rejected lexically, and the
+  exact plus descendant built-in namespace is reserved.
+- The same filesystem invariant now protects adjacent workspace member sync,
+  governed-package lock/artifact verification, architecture reports, evidence
+  artifacts, and direct parser/API paths.
 
 ### Added
 - Foundational data-only governance modules for human approval, evidence

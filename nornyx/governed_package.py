@@ -13,6 +13,12 @@ import yaml
 
 from . import __version__
 from .errors import Diagnostic
+from .governance.errors import GovernanceError
+from .governance.loader import (
+    inspect_local_directory,
+    read_local_file_bytes,
+    reject_remote_or_device_path,
+)
 from .governance.schemas import validate_governance_block
 from .package_scanner import SCANNER_NAME, SCANNER_VERSION, scan_package, write_scan_reports
 from .parser import load_nyx
@@ -1033,26 +1039,96 @@ def generate_governed_package(source_file: str | Path, out_dir: str | Path) -> l
 
 
 def verify_package_lock(package_dir: str | Path) -> list[Diagnostic]:
-    directory = Path(package_dir)
-    lock_path = directory / "package_lock.json"
-    diagnostics: list[Diagnostic] = []
-    if not lock_path.exists():
-        return [_diag("MISSING_PACKAGE_LOCK", "package_lock.json is required", lock_path.as_posix())]
     try:
-        lock = json.loads(lock_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return [_diag("INVALID_PACKAGE_LOCK_JSON", f"package_lock.json is invalid JSON: {exc}", lock_path.as_posix())]
-    manifest_path = directory / "package_manifest.json"
-    if not manifest_path.exists():
-        diagnostics.append(
-            _diag("MISSING_PACKAGE_MANIFEST", "package_manifest.json is required", manifest_path.as_posix())
+        reject_remote_or_device_path(
+            package_dir,
+            code_prefix="PACKAGE",
+            noun="Governed package",
         )
-    elif lock.get("manifest_sha256") != _sha256_file(manifest_path):
+        supplied = Path(package_dir)
+        display_directory = supplied
+        raw_directory = supplied if supplied.is_absolute() else Path.cwd() / supplied
+        directory = inspect_local_directory(
+            raw_directory,
+            allowed_root=raw_directory.parent,
+            code_prefix="PACKAGE",
+            noun="Governed package",
+            allow_missing=True,
+        )
+    except GovernanceError as exc:
+        return [
+            _diag(
+                "UNSAFE_PACKAGE_PATH",
+                str(exc),
+                str(package_dir),
+            )
+        ]
+    if directory is None:
+        missing = display_directory / "package_lock.json"
+        return [_diag("MISSING_PACKAGE_LOCK", "package_lock.json is required", missing.as_posix())]
+    lock_path = directory / "package_lock.json"
+    display_lock_path = display_directory / "package_lock.json"
+    diagnostics: list[Diagnostic] = []
+    try:
+        raw_lock, _ = read_local_file_bytes(
+            lock_path,
+            allowed_root=directory,
+            code_prefix="PACKAGE",
+            noun="Package lock",
+            max_bytes=1024 * 1024,
+        )
+    except GovernanceError as exc:
+        if {item.code for item in exc.diagnostics} == {"PACKAGE_NOT_FOUND"}:
+            return [
+                _diag(
+                    "MISSING_PACKAGE_LOCK",
+                    "package_lock.json is required",
+                    display_lock_path.as_posix(),
+                )
+            ]
+        return [_diag("UNSAFE_PACKAGE_LOCK", str(exc), display_lock_path.as_posix())]
+    try:
+        lock = json.loads(raw_lock.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return [_diag("INVALID_PACKAGE_LOCK_JSON", f"package_lock.json is invalid JSON: {exc}", display_lock_path.as_posix())]
+    if not isinstance(lock, dict):
+        return [
+            _diag(
+                "INVALID_PACKAGE_LOCK_JSON",
+                "package_lock.json must contain one JSON object",
+                display_lock_path.as_posix(),
+            )
+        ]
+    manifest_path = directory / "package_manifest.json"
+    display_manifest_path = display_directory / "package_manifest.json"
+    manifest_missing = False
+    try:
+        raw_manifest, _ = read_local_file_bytes(
+            manifest_path,
+            allowed_root=directory,
+            code_prefix="PACKAGE",
+            noun="Package manifest",
+            max_bytes=4 * 1024 * 1024,
+        )
+    except GovernanceError as exc:
+        raw_manifest = None
+        codes = {item.code for item in exc.diagnostics}
+        if codes == {"PACKAGE_NOT_FOUND"}:
+            manifest_missing = True
+        else:
+            diagnostics.append(
+                _diag("UNSAFE_PACKAGE_MANIFEST", str(exc), display_manifest_path.as_posix())
+            )
+    if manifest_missing:
+        diagnostics.append(
+            _diag("MISSING_PACKAGE_MANIFEST", "package_manifest.json is required", display_manifest_path.as_posix())
+        )
+    elif raw_manifest is not None and lock.get("manifest_sha256") != _sha256_bytes(raw_manifest):
         diagnostics.append(
             _diag(
                 "PACKAGE_LOCK_MANIFEST_HASH_MISMATCH",
                 "package_manifest.json hash does not match package_lock.json",
-                manifest_path.as_posix(),
+                display_manifest_path.as_posix(),
             )
         )
     for item in _as_list(lock.get("artifact_hashes")):
@@ -1063,15 +1139,40 @@ def verify_package_lock(package_dir: str | Path) -> list[Diagnostic]:
         if not _non_empty_string(rel) or not _non_empty_string(expected):
             diagnostics.append(_diag("INVALID_PACKAGE_LOCK_ENTRY", "artifact hash entries require path and sha256", "package_lock.artifact_hashes"))
             continue
-        path = directory / str(rel)
-        if not path.exists():
-            diagnostics.append(_diag("PACKAGE_LOCK_ARTIFACT_MISSING", f"locked artifact missing: {rel}", path.as_posix()))
-        elif _sha256_file(path) != expected:
+        try:
+            raw_artifact, _ = read_local_file_bytes(
+                str(rel),
+                allowed_root=directory,
+                code_prefix="PACKAGE",
+                noun="Locked package artifact",
+                max_bytes=16 * 1024 * 1024,
+            )
+        except GovernanceError as exc:
+            codes = {entry.code for entry in exc.diagnostics}
+            display_path = display_directory / str(rel)
+            if codes == {"PACKAGE_NOT_FOUND"}:
+                diagnostics.append(
+                    _diag(
+                        "PACKAGE_LOCK_ARTIFACT_MISSING",
+                        f"locked artifact missing: {rel}",
+                        display_path.as_posix(),
+                    )
+                )
+            else:
+                diagnostics.append(
+                    _diag(
+                        "UNSAFE_PACKAGE_LOCK_ARTIFACT",
+                        f"locked artifact path is unsafe: {rel}; {exc}",
+                        display_path.as_posix(),
+                    )
+                )
+            continue
+        if _sha256_bytes(raw_artifact) != expected:
             diagnostics.append(
                 _diag(
                     "PACKAGE_LOCK_ARTIFACT_HASH_MISMATCH",
                     f"artifact hash mismatch for {rel}",
-                    path.as_posix(),
+                    (display_directory / str(rel)).as_posix(),
                 )
             )
     return diagnostics
@@ -1087,12 +1188,42 @@ def verify_registered_artifact_hashes(
     if not _non_empty_string(source_path):
         return [_diag("MISSING_REGISTERED_SOURCE_PATH", "registered packages require source_path", "source_path")]
 
+    try:
+        reject_remote_or_device_path(
+            package_dir,
+            code_prefix="PACKAGE",
+            noun="Governed package",
+        )
+        reject_remote_or_device_path(
+            str(source_path),
+            code_prefix="PACKAGE",
+            noun="Registered package source",
+        )
+    except GovernanceError as exc:
+        return [_diag("UNSAFE_REGISTERED_SOURCE_PATH", str(exc), "source_path")]
     raw_source = Path(str(source_path))
     candidates = [raw_source]
     if not raw_source.is_absolute():
         candidates.append(Path(package_dir) / raw_source)
-    source = next((candidate for candidate in candidates if candidate.is_dir()), None)
-    if source is None:
+    source = None
+    source_display = None
+    for candidate in candidates:
+        absolute = candidate if candidate.is_absolute() else Path.cwd() / candidate
+        try:
+            inspected = inspect_local_directory(
+                absolute,
+                allowed_root=absolute.parent,
+                code_prefix="PACKAGE",
+                noun="Registered package source",
+                allow_missing=True,
+            )
+        except GovernanceError as exc:
+            return [_diag("UNSAFE_REGISTERED_SOURCE_PATH", str(exc), "source_path")]
+        if inspected is not None:
+            source = inspected
+            source_display = candidate
+            break
+    if source is None or source_display is None:
         return []
 
     diagnostics: list[Diagnostic] = []
@@ -1103,21 +1234,40 @@ def verify_registered_artifact_hashes(
         expected = item.get("sha256")
         if not _non_empty_string(rel) or not _non_empty_string(expected):
             continue
-        path = source / str(rel)
-        if not path.exists():
-            diagnostics.append(
-                _diag(
-                    "REGISTERED_ARTIFACT_MISSING",
-                    f"registered artifact missing from source: {rel}",
-                    path.as_posix(),
-                )
+        try:
+            raw_artifact, _ = read_local_file_bytes(
+                str(rel),
+                allowed_root=source,
+                code_prefix="PACKAGE",
+                noun="Registered package artifact",
+                max_bytes=16 * 1024 * 1024,
             )
-        elif _sha256_file(path) != expected:
+        except GovernanceError as exc:
+            codes = {entry.code for entry in exc.diagnostics}
+            display_path = source_display / str(rel)
+            if codes == {"PACKAGE_NOT_FOUND"}:
+                diagnostics.append(
+                    _diag(
+                        "REGISTERED_ARTIFACT_MISSING",
+                        f"registered artifact missing from source: {rel}",
+                        display_path.as_posix(),
+                    )
+                )
+            else:
+                diagnostics.append(
+                    _diag(
+                        "UNSAFE_REGISTERED_ARTIFACT_PATH",
+                        f"registered artifact path is unsafe: {rel}; {exc}",
+                        display_path.as_posix(),
+                    )
+                )
+            continue
+        if _sha256_bytes(raw_artifact) != expected:
             diagnostics.append(
                 _diag(
                     "REGISTERED_ARTIFACT_HASH_MISMATCH",
                     f"registered artifact hash mismatch for {rel}",
-                    path.as_posix(),
+                    (source_display / str(rel)).as_posix(),
                 )
             )
     return diagnostics

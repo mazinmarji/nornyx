@@ -28,6 +28,17 @@ or rewrite it. `--as-of` accepts an offset timestamp and should be supplied for
 reproducible freshness and expiry results; otherwise the current UTC time is
 used.
 
+All caller-controlled contract, pack, evidence, architecture-report, and lock
+paths are screened lexically before filesystem access. URL/URI, UNC, Windows
+extended/device, reparse-point, junction, live-symlink, and dangling-symlink
+paths fail closed. Unresolved components are inspected from the filesystem
+anchor (or current working directory for relative input); an explicit
+`trust_root` can narrow containment but cannot hide a higher ancestor.
+
+Profile locks are bounded to 512 KiB, strict UTF-8 JSON, reject duplicate keys
+at every nesting level and non-finite constants, and must satisfy the packaged
+lock schema before semantic duplicate/set/hash verification.
+
 ## Output and Exit Codes
 
 Text output is YAML-shaped except for a one-line successful evidence result.

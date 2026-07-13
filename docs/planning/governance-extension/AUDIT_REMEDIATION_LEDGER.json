@@ -21,12 +21,12 @@
       "original_severity": "High",
       "root_cause": "Project governance discovery calls is_dir before rejecting dangling or non-directory symlink components.",
       "reproducer": "tests/test_governance_audit_aud001_aud002.py::test_aud001_dangling_project_governance_components_fail_all_commands",
-      "affected_files": ["nornyx/governance/runtime.py", "nornyx/governance/registry.py", "nornyx/cli.py"],
+      "affected_files": ["nornyx/governance/loader.py", "nornyx/governance/runtime.py", "nornyx/governance/registry.py", "nornyx/cli.py"],
       "correction": "Inspect every lexical governance component before metadata or enumeration and fail closed.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_aud001_aud002.py::test_aud001_dangling_project_governance_components_fail_all_commands"],
-      "validation": {"status": "reproduced_failing", "evidence": "Audited-head Linux dangling-symlink commands returned success."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/loader.py::_inspect_unresolved_components", "nornyx/governance/runtime.py::registry_for_directory", "nornyx/governance/registry.py::GovernanceRegistry.register_directory"],
+      "tests": ["tests/test_governance_audit_aud001_aud002.py::test_aud001_dangling_project_governance_components_fail_all_commands", "tests/test_governance_audit_aud001_aud002.py::test_aud001_live_governance_symlink_targets_fail_closed", "tests/test_governance_audit_aud001_aud002.py::test_aud001_project_components_are_inspected_before_bundled_discovery"],
+      "validation": {"status": "stage_passed", "evidence": "Focused Stage-2 suite rejects dangling/live links, wrong types, inaccessible components, and premature bundled discovery; real-link cases remain scheduled for Linux CI."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-002",
@@ -35,10 +35,10 @@
       "reproducer": "tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_identity_is_globally_unique_and_locks_cannot_collapse",
       "affected_files": ["nornyx/governance/registry.py", "nornyx/governance/locks.py"],
       "correction": "Enforce one global pack identity namespace and reject duplicate selected identities before lock construction.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_identity_is_globally_unique_and_locks_cannot_collapse"],
-      "validation": {"status": "reproduced_failing", "evidence": "A profile-only lock accepted a colliding active module."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/registry.py::GovernanceRegistry._cross_kind_collision", "nornyx/governance/locks.py::_reject_pack_identity_collisions"],
+      "tests": ["tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_identity_is_globally_unique_and_locks_cannot_collapse", "tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_collision_diagnostic_is_order_independent", "tests/test_governance_audit_aud001_aud002.py::test_aud002_lock_identity_collision_is_permutation_safe", "tests/test_governance_audit_aud001_aud002.py::test_aud002_forged_duplicate_lock_cannot_be_written"],
+      "validation": {"status": "stage_passed", "evidence": "Profile/module id, name, and cross-field collision permutations fail deterministically before registry or lock dictionary collapse; generated locks self-verify."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-003",
@@ -117,36 +117,36 @@
       "original_severity": "Medium",
       "root_cause": "Exported path APIs default the trust boundary to the caller-supplied root, omitting higher ancestors.",
       "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud009_exported_api_rejects_symlink_ancestor",
-      "affected_files": ["nornyx/governance/runtime.py", "nornyx/governance/loader.py"],
+      "affected_files": ["nornyx/governance/runtime.py", "nornyx/governance/loader.py", "nornyx/governance/registry.py", "nornyx/governance/evidence_validation.py"],
       "correction": "Derive an independent lexical trust root or require a safe explicit one without breaking callers.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud009_exported_api_rejects_symlink_ancestor"],
-      "validation": {"status": "reproduced_failing", "evidence": "Direct APIs accepted a root already below a symlink ancestor."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/loader.py::_prepare_local_candidate", "nornyx/governance/loader.py::inspect_local_file", "nornyx/governance/loader.py::inspect_local_directory"],
+      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud009_exported_api_rejects_symlink_ancestor", "tests/test_governance_audit_path_and_lock_security.py::test_aud009_caller_supplied_weak_trust_root_cannot_hide_symlink", "tests/test_governance_audit_path_and_lock_security.py::test_aud009_safe_explicit_trust_root_remains_supported"],
+      "validation": {"status": "stage_passed", "evidence": "Direct registry, directory, pack, byte-reader, and evidence APIs inspect from an independent anchor; explicit roots only narrow containment."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-010",
       "original_severity": "Medium",
       "root_cause": "Lock loading uses unrestricted Path.read_text and permissive json.loads.",
       "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_loader_rejects_unsafe_inputs",
-      "affected_files": ["nornyx/governance/locks.py", "nornyx/cli.py"],
+      "affected_files": ["nornyx/governance/locks.py", "nornyx/governance/loader.py", "nornyx/cli.py"],
       "correction": "Use the bounded hardened local-file loader, strict UTF-8, duplicate-key rejection and stable lock diagnostics.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_loader_rejects_unsafe_inputs"],
-      "validation": {"status": "reproduced_failing", "evidence": "Symlinked and duplicate-key locks were accepted."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/locks.py::load_lock", "nornyx/governance/locks.py::write_lock", "nornyx/cli.py::_optional_profile_lock"],
+      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_loader_rejects_unsafe_inputs", "tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_json_is_strict_and_schema_validated", "tests/test_governance_audit_path_and_lock_security.py::test_aud010_cli_lock_symlink_fails_all_governance_consumers", "tests/test_governance_audit_path_and_lock_security.py::test_aud010_write_lock_refuses_existing_symlink"],
+      "validation": {"status": "stage_passed", "evidence": "Bounded strict lock reads reject links, traversal, oversized/invalid UTF-8, duplicate keys, non-finite JSON, schema errors, directories, and unsafe writes."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-011",
       "original_severity": "Medium",
       "root_cause": "Remote-path checks cover URL schemes but not Windows UNC and device namespaces.",
       "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud011_windows_remote_paths_are_rejected_before_filesystem_access",
-      "affected_files": ["nornyx/governance/loader.py", "nornyx/cli.py", "nornyx/governance/runtime.py"],
+      "affected_files": ["nornyx/path_security.py", "nornyx/parser.py", "nornyx/governance/loader.py", "nornyx/governance/runtime.py", "nornyx/governance/architecture.py", "nornyx/governance/structural.py", "nornyx/cli.py"],
       "correction": "Centrally reject UNC, device and extended Windows paths before any filesystem call.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud011_windows_remote_paths_are_rejected_before_filesystem_access"],
-      "validation": {"status": "reproduced_failing", "evidence": "UNC input reached filesystem-oriented registry handling."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/path_security.py::is_remote_or_device_path", "nornyx/governance/loader.py::reject_remote_or_device_path", "nornyx/parser.py::load_nyx"],
+      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud011_windows_remote_paths_are_rejected_before_filesystem_access", "tests/test_governance_audit_path_and_lock_security.py::test_aud011_every_loader_boundary_is_lexically_screened_first", "tests/test_governance_audit_path_and_lock_security.py::test_aud011_public_governance_path_apis_reject_before_probe", "tests/test_governance_audit_path_and_lock_security.py::test_aud011_validation_clis_reject_before_probe"],
+      "validation": {"status": "stage_passed", "evidence": "Host-independent URI, UNC, extended/device namespace and DOS-device matrix is rejected before mocked lstat/exists probes across public APIs and CLIs."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-012",
@@ -225,12 +225,12 @@
       "original_severity": "Low",
       "root_cause": "Reserved namespace validation rejects descendants but not exact nornyx.builtin equality.",
       "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud018_reserved_namespace_root_is_rejected",
-      "affected_files": ["nornyx/governance/loader.py"],
+      "affected_files": ["nornyx/governance/loader.py", "nornyx/governance/registry.py"],
       "correction": "Reject exact and descendant reserved namespace identities for every non-built-in tier.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud018_reserved_namespace_root_is_rejected"],
-      "validation": {"status": "reproduced_failing", "evidence": "A project pack id exactly nornyx.builtin loaded."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/loader.py::_reserved_builtin_identity", "nornyx/governance/loader.py::_load_bundled_pack", "nornyx/governance/loader.py::load_local_pack", "nornyx/governance/registry.py::GovernanceRegistry._validate_namespace"],
+      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud018_reserved_namespace_root_is_rejected", "tests/test_governance_audit_path_and_lock_security.py::test_aud018_local_loader_cannot_claim_builtin_tier", "tests/test_governance_audit_path_and_lock_security.py::test_aud018_public_bytes_loader_cannot_claim_builtin_tier", "tests/test_governance_audit_path_and_lock_security.py::test_aud018_programmatic_nonbuiltin_pack_is_defensively_rejected", "tests/test_governance_audit_path_and_lock_security.py::test_aud018_programmatic_builtin_tier_claim_is_rejected", "tests/test_governance_audit_path_and_lock_security.py::test_aud018_private_bundled_loader_requires_catalog_capability"],
+      "validation": {"status": "stage_passed", "evidence": "Exact root and descendant identities fail for project, org and explicit tiers in profile/module inputs; local byte/file loaders, forged dataclasses, and uncatalogued resources cannot claim bundled tier while authentic packaged packs remain registerable."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-019",
