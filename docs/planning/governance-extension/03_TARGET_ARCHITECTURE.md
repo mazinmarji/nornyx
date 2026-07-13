@@ -45,7 +45,7 @@ default policies, required evidence types, approval requirements, structured
 rules, reviewed block-schema bindings, fixed structural checks, and non-goals.
 No code. Inline schemas and custom validators are prohibited.
 
-MVP module set (deliberately small — see audit finding F-07):
+Completed program module set (deliberately small; see audit finding F-07):
 
 | Module | Provides |
 |---|---|
@@ -66,10 +66,10 @@ after GSA. No seventh module is justified in this program.
 
 A profile pack assembles modules and adds: domain terminology, defaults,
 required controls, graph node kinds and relationship constraints, evidence
-expectations, starter fragments, and profile-scoped rules. Existing 11 names
-migrate as-is (doc 11). New examples enabled by the system:
-`architecture_governance` (doc 08) is the first proof-of-concept profile that
-ships *after* the engine exists.
+expectations, starter fragments, and profile-scoped rules. The 11 established
+names migrated without semantic replacement (doc 11).
+`architecture_governance` (doc 08) is the additive proof profile shipped after
+the engine.
 
 ## Layer 4 — Project contracts
 

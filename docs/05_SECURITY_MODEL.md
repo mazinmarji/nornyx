@@ -16,7 +16,7 @@ AI agents may make mistakes. They may also receive poisoned context. Therefore N
 8. Evidence: every completed workflow must prove what happened.
 9. Containment: stop conditions, budgets, kill switch.
 
-## Required future checks
+## Required security constraints
 
 - untrusted context cannot define policy;
 - untrusted context cannot request privileged tool use;
@@ -82,8 +82,8 @@ not execution plans.
 
 ## Bounded execution readiness boundary v0.8
 
-GOAL-040 adds readiness checks for future bounded execution. Readiness is not
-execution.
+GOAL-040 adds readiness checks for bounded execution as a
+`future_proposal_outside_current_program`. Readiness is not execution.
 
 - network and credentials must remain disabled;
 - production deployment must remain disabled;

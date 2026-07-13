@@ -1,5 +1,7 @@
 # 20 - Security Assurance Report
 
+Status: implemented assurance record for the completed program surfaces.
+
 ## Scope
 
 This report covers governance packs, composition, approvals, evidence,

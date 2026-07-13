@@ -1,5 +1,7 @@
 # 17 - Profile Module Mapping
 
+Status: implemented mapping for all 12 built-in profiles.
+
 ## Decision Rule
 
 The 11 established profiles retain `required_modules: []`. Adding a module to
@@ -37,4 +39,3 @@ entire chain plus architecture checks.
 Each adjacent `gsa/*.yaml` file answers the governance-completeness questions
 for one profile. Tests require exact catalog coverage and validate the advisory
 template shape. No matrix is loaded as executable pack data.
-

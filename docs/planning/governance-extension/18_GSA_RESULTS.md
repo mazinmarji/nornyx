@@ -1,5 +1,7 @@
 # 18 - Governance Surface Analysis Results
 
+Status: implemented final placement record for all candidate domains.
+
 ## Method Result
 
 The 16-step method in doc 09 was applied to Nornyx itself and the remaining
@@ -70,4 +72,3 @@ Likelihood, Autonomy)`, each scored 1-3.
 No later candidate passes the module-proliferation gate. Stage F is complete
 with no additional module implementation. Re-entry conditions are normative in
 ADR-0031.
-

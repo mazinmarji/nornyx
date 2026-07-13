@@ -1,5 +1,7 @@
 # 06 — Composition and Precedence Semantics
 
+Status: implemented normative composition contract.
+
 ## 1. Merge order (fixed, deterministic)
 
 ```text
@@ -111,7 +113,7 @@ declare them, and `exception_management` module rules can require approval
 evidence for each exception.
 
 `starts_at` and `expires` are evaluated against an explicit checker time input;
-tests inject it. A future evaluator must not sample wall-clock time inside rule
+tests inject it. The evaluator does not sample wall-clock time inside rule
 evaluation. Closure evidence is mandatory when an exception is expired or
 closed. Invalid, overlapping, or ambiguous exception scope fails closed.
 
@@ -123,10 +125,11 @@ Options considered:
 |---|---|
 | A. One profile + many modules | **Adopted** |
 | B. Multiple composable profiles | Rejected for v1: today's compatibility matrix already flags most cross-domain pairs "requires_review_with"; free composition multiplies conflict surface (duplicate starters, colliding defaults) for no demonstrated user need. |
-| C. Primary profile + secondary overlays | Deferred: overlay = "profile without starter skeleton" ≈ module. If a real need appears, an overlay is expressible as a module; no new mechanism required. |
+| C. Primary profile + secondary overlays | Rejected for the current program: an overlay is a module under another name; no new mechanism is justified. |
 
 Rationale: modules already give reuse; a single profile keeps starter
 generation, terminology, and identity unambiguous. The registry API keeps a
-`profiles: [..]` plural internally so option B/C could be enabled later
-without breaking the lock or pack formats. Existing contracts declare exactly
-one `project.profile` today, so A is also the zero-migration choice.
+plural internal collection for uniform implementation, not as authorization
+for multiple active profiles. Re-entry requires a new ADR, compatibility
+proof, and human approval. Existing contracts declare exactly one
+`project.profile`, so A is also the zero-migration choice.

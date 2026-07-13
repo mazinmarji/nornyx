@@ -1,8 +1,11 @@
 # 02 — Problem Statement and Scope
 
+Status: accepted scope, implemented by the governance-extension program. The
+problem description below records the pre-implementation repository state.
+
 ## Problem
 
-Every new governance domain today requires Python changes in at least four
+At the program baseline, every new governance domain required Python changes in at least four
 places: `profiles.py` (names, pack dict, stability, compatibility matrix,
 starter template branches), `checker.py` (any new validation), `cli.py`
 (choices/help), and tests. Profile "packs" exist as YAML but are dead data.
@@ -33,7 +36,8 @@ deliberately reviewed.
 2. Loader, registry, precedence, and trust model — local-only (doc 05 §6, doc 10).
 3. Deterministic composition semantics with monotonic safety (doc 06).
 4. Constrained declarative validation-rule language (doc 05 §5, ADR-0023).
-5. Migration of the 11 built-in profiles to authoritative packs (doc 11).
+5. Migration of the 11 established profiles to authoritative packs, plus the
+   additive architecture profile (doc 11).
 6. Generalized change governance as a reusable module reconciled with
    `governed_package.changes` (doc 07).
 7. Architecture governance as an optional profile over external-tool evidence
@@ -54,8 +58,8 @@ deliberately reviewed.
   Semgrep, CodeQL, SonarQube) — Nornyx declares/verifies evidence, tools produce it.
 - Runtime enforcement — Nornyx stays a contract/checker/generator/governance
   layer; nothing here creates an execution engine.
-- Multi-profile free composition in MVP (ADR-0022 limits to one primary profile
-  + modules; overlays deferred).
+- Multi-profile free composition (ADR-0022 limits the completed program to one
+  primary profile plus modules; overlays are `rejected_with_ADR`).
 - Changing `.nyx` core language semantics or schema versions.
 
 ## Non-negotiable invariants preserved (checklist used by the audit, doc 14)
@@ -75,8 +79,9 @@ profile or module must never weaken core safety policy.
 - A new domain profile can be added by writing one pack file + fixtures; zero
   Python edits; `nornyx profiles validate` passes it; `nornyx init --profile-path`
   scaffolds from it.
-- All 11 built-in profiles load from packs with byte-identical (or explicitly
-  documented-diff) starter output vs. today.
+- All 11 established profiles load from packs with byte-identical or
+  explicitly approved starter output; the additive architecture profile has a
+  reviewed golden.
 - Every prose validation rule in current packs either becomes a structured rule
   or is explicitly recorded as "descriptive, not enforceable" in the pack.
 - Full existing test suite passes unmodified except where a change is an

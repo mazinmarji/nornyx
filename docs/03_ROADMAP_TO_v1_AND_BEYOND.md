@@ -100,8 +100,8 @@ Add:
 - MCP/A2A connector contract conformance;
 - policy/eval/evidence integration tests.
 
-Current local v0.4 surface: `adapters:` is recognized as a deferred extension
-block; `schemas/adapter_contract.schema.json` defines contract-only adapter
+Current local v0.4 surface: `adapters:` is a static extension block;
+`schemas/adapter_contract.schema.json` defines contract-only adapter
 metadata; `examples/nornyx_v04_adapter_contracts.nyx` covers Mission Control
 OS, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops bridges; and tests
 verify policy/eval/evidence bindings plus MCP/A2A connector conformance. This
@@ -165,9 +165,10 @@ readiness, and release-candidate evidence. It does not publish, tag, push,
 change package versions, deploy, enable live connectors, call models, grant
 automatic approvals, or promote regulated/enterprise extensions.
 
-## Beyond v1.0
+## Future proposals outside the completed governance program
 
-Possible tracks:
+The following tracks are `future_proposal_outside_current_program`, not
+unfinished governance roadmap obligations:
 
 - dedicated parser and LSP;
 - package/registry system;
@@ -180,4 +181,4 @@ Possible tracks:
 
 GOAL-013 keeps these tracks in research status through
 `docs/RFCs/RFC-0003-full-language-evolution-research.md`; promotion requires a
-new scoped goal, local validation, evidence, and human approval.
+new scoped goal, ADR review, local validation, evidence, and human approval.

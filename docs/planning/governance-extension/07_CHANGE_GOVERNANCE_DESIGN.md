@@ -1,5 +1,8 @@
 # 07 — Change Governance Design
 
+Status: implemented by the `change_control` governance module and reconciled
+governed-package projection.
+
 ## ADR-0021 — Where does `Change` live?
 
 | Option | Assessment |

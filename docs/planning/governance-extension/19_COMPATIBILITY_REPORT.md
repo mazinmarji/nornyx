@@ -1,5 +1,7 @@
 # 19 - Backward Compatibility Report
 
+Status: implemented compatibility release gate.
+
 ## Baseline and Policy
 
 The formal corpus is

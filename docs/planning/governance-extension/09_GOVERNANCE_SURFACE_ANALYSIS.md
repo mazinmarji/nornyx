@@ -1,5 +1,8 @@
 # 09 — Governance Surface Analysis (GSA) Method
 
+Status: implemented documented method with validated advisory matrices; runtime
+tooling is `not_required_after_GSA`.
+
 A repeatable, documented method for deciding what Nornyx should govern and
 where each control belongs. Inspired by STPA-style control analysis; it is a
 **prioritization method, not a mathematical proof of completeness**.

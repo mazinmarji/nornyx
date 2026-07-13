@@ -1,5 +1,7 @@
 # 16 - Governance Module Catalog
 
+Status: implemented catalog, frozen at six modules for this program.
+
 ## Contract
 
 Built-in modules are authoritative YAML resources in `nornyx/profiles_data/`

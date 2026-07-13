@@ -63,15 +63,16 @@ executed against the current runtime.
 **Cross-platform**
 - Windows path fixtures (backslashes, drive letters, reserved names).
 - CRLF-input packs hash identically to LF (canonicalization test).
-- Unicode pack filenames and unicode ids.
+- Unicode pack filenames and rejection of Unicode/confusable pack ids by the
+  ASCII identity grammar.
 
 **Determinism (lesson from the scanner-branch defect: name tests honestly)**
-- Double-run byte-equality for: composed model dump, future rendered starter output,
+- Double-run byte-equality for: composed model dump, rendered starter output,
   resolution trace, lock file (excluding nothing — locks contain no timestamps
   by design; if a timestamp is ever added it must be injected, not sampled).
 
 **Specification foundation**
-- Root and bundled draft schemas are byte-identical and meta-schema valid.
+- Root and bundled schemas are byte-identical and meta-schema valid.
 - Unknown operators, malformed paths/core ranges/compatibility, version
   mismatch, and additional properties are rejected.
 - Collection semantics fixture covers existential `when`, universal `require`,

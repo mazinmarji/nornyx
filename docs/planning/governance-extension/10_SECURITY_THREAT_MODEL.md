@@ -1,5 +1,8 @@
 # 10 — Security Threat Model (Pack and Module Framework)
 
+Status: implemented and mapped to the adversarial assurance suite and report
+20.
+
 Assets: contract integrity, composed-model integrity, approval semantics,
 evidence requirements, generated artifacts, the safety boundary itself.
 Adversaries: malicious pack author (local or org tier), compromised org share,

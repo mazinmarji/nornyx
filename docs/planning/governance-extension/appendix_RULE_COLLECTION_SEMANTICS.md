@@ -1,6 +1,6 @@
 # Appendix - Structured Rule and Collection Semantics (F-02)
 
-Status: normative PR 1 specification. No runtime evaluator is implemented.
+Status: implemented normative evaluator contract.
 
 ## Closed language
 
@@ -15,7 +15,7 @@ references_approval matches_id
 Exactly one operator is permitted per predicate. `matches_id` accepts only
 literal identifier characters plus `*` and `?`; it is not a regular expression.
 Unknown operators, unknown fields, malformed paths, nested condition groups,
-and structurally invalid rules are schema errors. A future loader must stop
+and structurally invalid rules are schema errors. The loader stops
 before composition; warnings or skipped rules are forbidden.
 
 There are no expressions, scripts, regular expressions, templates, calls,
@@ -101,5 +101,5 @@ evaluates v1 rules today.
 
 ## F-02 closure
 
-Resolution: closed for PR 1. Quantification, binding, edge cases, diagnostics,
+Resolution: implemented. Quantification, binding, edge cases, diagnostics,
 and fail-closed load behavior are explicit and fixture-backed.

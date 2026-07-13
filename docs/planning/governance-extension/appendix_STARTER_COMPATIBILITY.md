@@ -1,6 +1,7 @@
 # Appendix - Starter Compatibility Baselines (F-01)
 
-Status: normative PR 1 specification and captured test foundation.
+Status: implemented normative compatibility contract and executable golden
+test foundation.
 
 ## Authoritative baseline
 
@@ -33,7 +34,7 @@ scanner-hardening branch before capture.
 Current-main `write_profile()` uses platform text translation. The same
 starter is CRLF on Windows and LF on POSIX. This is repository evidence that
 cross-platform byte identity is not currently achievable without changing
-starter generation, which PR 1 must not do. All existing profiles therefore
+starter generation. All established profiles therefore
 use `semantic_equivalence_allowed` with exactly one permitted normalization:
 `CRLF_to_LF_only`. The exact Windows current-main bytes are preserved as the
 goldens; canonical-LF hashes make the cross-platform expectation explicit.
@@ -57,8 +58,8 @@ from an implementation that differs from the recorded source commit.
 
 ## F-01 closure
 
-Resolution: closed for PR 1. Exact current-main output and canonical hashes now
+Resolution: implemented. Exact baseline output and canonical hashes
 exist for every public profile, deterministic double-run tests cover every
 profile, and the only semantic-equivalence allowance is the demonstrated
-platform newline translation. Future generator refactoring remains blocked on
+platform newline translation. Any generator refactoring remains blocked on
 these baselines and the approval procedure above.

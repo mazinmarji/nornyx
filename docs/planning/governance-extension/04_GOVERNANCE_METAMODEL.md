@@ -1,11 +1,13 @@
 # 04 — Governance Metamodel
 
+Status: implemented normative metamodel.
+
 ## Entities and relationships
 
 ```text
 PackSource (builtin | project | org | explicit_path)
   └─ contains → ProfilePack | GovernanceModule (separate schemas)
-       ├─ declares → RequiredBlock names (extension schemas deferred)
+       ├─ declares → RequiredBlock names (bound to packaged block schemas)
        ├─ declares → Defaults (policies, evidence, approvals, budgets)
        ├─ declares → Rules (constrained declarative, doc 05 §5)
        ├─ declares → StarterFragments (inert data)

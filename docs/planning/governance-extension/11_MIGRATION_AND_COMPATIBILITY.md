@@ -1,78 +1,82 @@
 # 11 - Migration and Compatibility
 
-## 1. Current authority and future target
+Status: implemented compatibility contract.
 
-Today, `nornyx/profiles.py` is authoritative for profile names, starter
-generation, six v0.3 domain dictionaries, stability, and compatibility.
-`profiles/*.yaml` is not loaded and is not packaged. Tests treat Python as the
-source and the six domain YAML files as mirrors. The five base YAML files are
-descriptive metadata with a different shape.
+## 1. Current authority
 
-Future migration may make packaged v1 profile files authoritative, but that is
-PR 2 or later. PR 1 adds no loader, no `packs_data`, and no migration of built-in
-content.
+The 12 authoritative v1 profile packs live under `nornyx/profiles_data/` and
+ship in the wheel. Runtime profile inspection, starter generation, governance
+resolution, and legacy projection all read that packaged source. The former
+repo-root `profiles/*.yaml` mirrors were removed, so there is no writable
+second source of profile truth.
+
+`nornyx/profiles.py` remains the public compatibility facade. It delegates to
+the authoritative packs while preserving the established constants, starter
+APIs, projection APIs, and validation entry points.
 
 ## 2. Starter compatibility
 
-The exact current-main starter baseline, newline evidence, three compatibility
-classes, deterministic tests, and intentional-change procedure are normative
-in `appendix_STARTER_COMPATIBILITY.md`.
+The exact starter baseline, newline evidence, compatibility classes,
+deterministic tests, and intentional-change procedure are normative in
+`appendix_STARTER_COMPATIBILITY.md`.
 
-All 11 current profiles are frozen semantically. The demonstrated Windows/
-POSIX text translation is the only allowed normalization. A future renderer
-must either reproduce the canonical baseline exactly or obtain approval for an
-intentional migration. Golden mismatches are investigated, never auto-updated.
+The 11 profiles present before this program retain their approved semantics.
+The additive `architecture_governance` profile has its own reviewed golden.
+Golden mismatches fail tests and are never accepted automatically. Any
+intentional migration requires a recorded reason, updated golden hashes, and
+human review.
 
 ## 3. Public compatibility guarantees
 
-- `nornyx profiles` keeps the same 11 names, order, stdout, and exit code.
-- `nornyx init --profile <name>` keeps names, flags, output-path behavior, and
-  baseline content subject only to the recorded line-ending normalization.
-- Existing `.nyx` contracts keep current parser/checker meaning.
-- `PROFILE_NAMES`, `BASE_PROFILE_NAMES`, and `DOMAIN_PROFILE_NAMES` remain
-  importable with the same values and order.
-- `profile_document()` and `write_profile()` keep signatures.
+- `nornyx profiles` preserves the 11 established names and adds
+  `architecture_governance` without renaming an existing profile.
+- `nornyx init --profile <name>` preserves flags, output-path behavior, and
+  approved starter content.
+- Existing `.nyx` contracts preserve parser/checker meaning.
+- `PROFILE_NAMES` remains the additive 12-profile catalog.
+- `BASE_PROFILE_NAMES` and `DOMAIN_PROFILE_NAMES` preserve their documented
+  legacy categories and order.
+- `profile_document()` and `write_profile()` preserve their signatures.
 - `profile_pack()`, `profile_pack_catalog()`,
   `profile_compatibility_matrix()`, `validate_profile_pack_catalog()`,
-  `validate_profile_conformance()`, and `profile_conformance_report()` keep
-  signatures and legacy return shapes for at least one deprecation cycle.
+  `validate_profile_conformance()`, and `profile_conformance_report()` preserve
+  their documented legacy return shapes.
 
-## 4. v1 and v0.3 are separate
+The public API compatibility floor and deprecation policy are documented in
+`docs/GOVERNANCE_CLI_AND_API.md`. No active governance API deprecation is part
+of this program.
 
-The v0.3 schema is frozen. The v1 schema supersedes it without modifying old
-meaning. The exact v1-to-v0.3 projection is specified in
-`appendix_LEGACY_PROJECTION.md`.
+## 4. v1 and v0.3 separation
 
-The existing `profile_pack()` compatibility API will return only the exact
-schema-valid v0.3 view. Source v1 identity and omitted-field diagnostics are
-available through a separate projection-report API; no marker is inserted into
-the strict v0.3 object. Projection fails when required semantics would be lost.
+The v0.3 schema remains frozen. The v1 schema supersedes it without changing
+historical meaning. The exact v1-to-v0.3 projection is specified in
+`appendix_LEGACY_PROJECTION.md` and implemented by the compatibility facade.
 
-New v1-native APIs and CLI inspection will expose the authoritative v1 object.
-They are not implemented in PR 1.
+Legacy projection returns only the schema-valid v0.3 object. Source v1
+identity and omitted-field diagnostics remain in the separate projection
+report; no marker is inserted into the strict v0.3 object. Projection fails
+closed when required legacy semantics would be lost. V1-native APIs and CLI
+inspection expose the complete authoritative object.
 
 ## 5. Mirror decision
 
-When built-ins migrate, repo-root `profiles/*.yaml` mirrors will be removed,
-not regenerated. A user who needs an export will use a future explicit inspect
-or export command. This prevents recreating the dual-source drift that the
-framework is intended to eliminate. Reversal requires an identified consumer
-and a new decision.
+Repo-root profile mirrors are `superseded` and removed. Users can inspect
+authoritative objects through the CLI/API instead of maintaining exported
+copies as runtime sources. Reversal requires an identified consumer, a new
+ADR, and dual-source drift controls.
 
-## 6. Deprecation sequence
+## 6. Import and deprecation boundary
 
-1. Loader release: constants and legacy functions remain stable; v1-native
-   inspection is added.
-2. Following release: v0.3 authoring/import is documented as deprecated while
-   historical validation and exact projection remain.
-3. Later release, with human approval: consider removing direct access to the
-   mutable `DOMAIN_PROFILE_PACKS` constant. Function APIs remain.
+No v0.3 authoring/import shim is required by the current program. A later shim
+would be a `future_proposal_outside_current_program` and would require explicit
+provenance, compatibility tests, and human approval. Historical v0.3
+validation and exact projection remain supported.
 
-No deprecation warning or API behavior change is introduced by PR 1.
+## 7. Packaging and assurance
 
-## 7. Packaging
-
-The four PR 1 draft schemas are synchronized into `nornyx/schemas/` and are
-included by the existing `schemas/*.json` package-data glob. Profile YAML files
-remain outside the wheel until a future loader PR deliberately adds packaged
-data and corresponding compatibility tests.
+Authoritative profile/module packs and all governance schemas are included in
+sdist and wheel package data. The wheel smoke test installs the built artifact
+in isolation, enumerates all 12 profiles and six modules, validates governance
+evidence, and confirms that no network access is used. Compatibility corpus
+tests cover established starters, legacy projections, example contracts, and
+approved intentional migrations.

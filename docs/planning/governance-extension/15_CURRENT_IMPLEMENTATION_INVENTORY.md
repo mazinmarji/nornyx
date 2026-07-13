@@ -16,7 +16,10 @@ starts from that commit. At reconciliation time the clean baseline produced:
 The six local skips are platform/optional-environment cases. Linux CI is the
 authority for real symlink behavior.
 
-## Closure Matrix Before Implementation
+## Historical Baseline Matrix Before Implementation
+
+This table records the 1.5.2 starting point. It is not the current program
+status; the authoritative final dispositions are in report 21.
 
 | Surface | State at 1.5.2 | Evidence | Program action |
 |---|---|---|---|
@@ -27,7 +30,7 @@ authority for real symlink behavior.
 | Deterministic locks | Implemented | lock and composition tests | preserve byte stability |
 | Rule evaluator | Implemented | normative fixture and adversarial tests | keep closed; do not add expressions |
 | Approval normalization | Implemented and source-retained revalidation is fail closed | approval matrix and forged-source tests | reuse as sole model |
-| Built-in profiles | 11 authoritative packaged v1 YAML packs | catalog, starter goldens, public API tests | map justified modules |
+| Built-in profiles | 11 authoritative packaged v1 YAML packs | catalog, starter goldens, public API tests | map justified modules and add the approved architecture profile |
 | Built-in modules | Absent | catalog has an empty module list | implement approved modules |
 | Required block/evidence/approval semantics | Composed but advisory unless a rule happens to enforce them | 1.5.0 changelog and runtime | enforce through block schemas and fixed checks for selected modules |
 | Structural relational checks | Absent | no structural-check catalog | implement bounded reviewed checks |
@@ -49,7 +52,7 @@ authority for real symlink behavior.
 | Public API stability | Implemented and documented | `nornyx/governance/__init__.py`, `docs/GOVERNANCE_CLI_AND_API.md` | signatures preserved; private reporting internals not exported; deprecation floor recorded |
 | Compatibility corpus | Implemented | formal manifest, all starters/examples, CLI, generated drift, locks, manifests, projections | release-gated hashes and approved migration metadata |
 | Security assurance | Implemented for current surfaces | original runtime suite plus CLI/evidence/confusable/removal/revision/no-execution adversarial tests; report 20 | Linux CI remains authority for real symlinks |
-| Planning/status documentation | Contradictory: PR 1/deferred language remains after runtime shipped | planning docs 01-14 and ADR statuses | reconcile to actual state |
+| Planning/status documentation | Contradictory: PR 1/deferred language remained after runtime shipped | planning docs 01-14 and ADR statuses | reconciled in Stage I; report 21 is authoritative |
 
 ## Preserved Boundaries
 
@@ -83,13 +86,14 @@ Every stage must be green before the next stage. A Critical or High finding,
 core revision, compatibility break, arbitrary expression requirement, external
 execution requirement, or unbound evidence requirement stops the program.
 
-## Progress Through Stage H
+## Current Implementation State
 
-Stages A through H are implemented. The branch now contains six reusable
+Stages A through H are implemented, and Stage I reconciles the documentation,
+closure matrix, release-candidate evidence, and independent audit. The branch contains six reusable
 modules, the shared change model, governed-package delegation, the optional
 `architecture_governance` profile, bounded architecture evidence import,
 complete GSA decisions, and a compatibility-preserving mapping for every
 profile. No later specialist module passed the proliferation gate. CLI/API,
 compatibility, security, build, and installed-wheel assurance are complete.
-The initial 1.5.2 inventory above remains the baseline record; later rows are
-updated as program decisions close.
+The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
+the authoritative item-by-item final status record.
