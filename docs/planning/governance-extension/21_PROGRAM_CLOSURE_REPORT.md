@@ -66,4 +66,5 @@ Report 22 independently audits this matrix and returns `GO`. Release
 publication, tagging, deployment, promotion, and PR merge are not program
 implementation items and remain prohibited without explicit human release
 authorization. The prepared release candidate records that approval as
-pending rather than inferring it from automated evidence.
+an explicit human decision for release review only. Merge, tag, publication,
+deployment, and promotion remain unauthorized.

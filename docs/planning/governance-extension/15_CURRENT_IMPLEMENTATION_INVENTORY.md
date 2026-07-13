@@ -98,4 +98,5 @@ profile. No later specialist module passed the proliferation gate. CLI/API,
 compatibility, security, build, and installed-wheel assurance are complete.
 The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
 the authoritative item-by-item final status record, and report 22 returns
-`GO`. Human release approval remains a separate, explicit decision.
+`GO`. Human approval of release candidate `2189bb3` was recorded explicitly on
+2026-07-13; operational release actions remain separately unauthorized.

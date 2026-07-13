@@ -102,10 +102,12 @@ def test_final_audit_and_release_candidate_are_explicit() -> None:
 
     assert "## Verdict\n\n`GO`" in audit
     assert (
-        "Status: implemented; human release approval remains external and pending."
+        "Status: implemented; human approval of the release candidate is recorded."
         in roadmap
     )
-    assert "Human release approval: **not yet recorded**." in candidate
+    assert "Human release-candidate approval: **recorded**." in candidate
+    assert "Approved candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`" in candidate
+    assert "readiness for human release review only" in candidate
     assert "532 passed" in audit and "522 passed, 10 skipped" in audit
 
 

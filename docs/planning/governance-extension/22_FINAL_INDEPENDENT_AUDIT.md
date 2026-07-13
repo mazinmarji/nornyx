@@ -94,6 +94,14 @@ The implementation is technically release-ready. Human release approval is
 not recorded by this audit. No merge, tag, package publication, deployment, or
 promotion is authorized by this report.
 
+## Post-Audit Approval Record
+
+After the audit returned `GO`, the human operator explicitly approved release
+candidate `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088` on 2026-07-13 for human
+release review. This satisfies the program's release-candidate approval
+criterion. It does not authorize PR merge, tagging, package publication,
+deployment, promotion, or any other operational action.
+
 ## Verdict
 
 `GO`

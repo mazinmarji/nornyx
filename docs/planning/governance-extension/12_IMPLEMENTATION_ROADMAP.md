@@ -124,12 +124,14 @@ nonblocking deprecation warning with a 2027 deadline.
 
 ## Stage I - Program Closure
 
-Status: implemented; human release approval remains external and pending.
+Status: implemented; human approval of the release candidate is recorded.
 
 Reports 16-22 reconcile every roadmap item to an unambiguous final status. The
 release candidate is prepared without publication, report 22 returns exact
 `GO`, no mandatory roadmap remainder exists, and PR #30 has no review thread.
-Human release approval is intentionally not inferred from automated evidence.
+Human release-candidate approval was recorded explicitly after the automated
+evidence and audit completed. It does not authorize an operational release
+action.
 
 ## Rollback and Review
 

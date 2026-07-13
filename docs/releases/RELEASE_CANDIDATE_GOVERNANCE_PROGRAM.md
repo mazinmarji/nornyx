@@ -4,7 +4,7 @@
 
 - Package version: `1.5.2`
 - Baseline main: `95952226999327458c6fea81cb32d82539bcae5b`
-- Candidate commit: `16f8eb350e61966d37000f34b8ebdd720aa741af`
+- Candidate commit: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
 - Branch: `codex/complete-governance-program`
 - Pull request: `https://github.com/mazinmarji/nornyx/pull/30`
 - Status: ready for human release review
@@ -39,8 +39,9 @@ approval, deploy, publish, or remediate.
 | PR review threads | none |
 | Independent audit | `GO` |
 
-Release-readiness, RC-stabilization, and stable-language checks report zero
-blockers and intentionally remain pending human approval.
+Approval-gated reruns report release readiness at 9 passed, RC stabilization
+at 15 passed, and stable-language validation at 24 passed, with zero warnings,
+blockers, or remaining approval requirements.
 
 ## Residual Maintenance
 
@@ -51,7 +52,12 @@ Both are Low, nonblocking maintenance observations in report 22.
 
 ## Approval Record
 
-Human release approval: **not yet recorded**.
+Human release-candidate approval: **recorded**.
+
+- Date: 2026-07-13
+- Approved candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
+- Scope: readiness for human release review only
+- Source: explicit approval in the authoritative Codex task
 
 This candidate does not authorize merging PR #30, tagging, PyPI publication,
 deployment, promotion, or any operational action. Those actions require an
