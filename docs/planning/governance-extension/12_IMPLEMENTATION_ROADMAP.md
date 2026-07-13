@@ -1,5 +1,9 @@
 # 12 - Implementation Roadmap
 
+Status: **remediation in progress after the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`. Earlier closure statements in
+this roadmap are superseded.**
+
 ## Reconciled Status
 
 The original PR 1 through PR 4 sequence shipped across Nornyx 1.5.0-1.5.2:
@@ -124,16 +128,12 @@ nonblocking deprecation warning with a 2027 deadline.
 
 ## Stage I - Program Closure
 
-Status: implemented; corrected candidate verified and awaiting human review.
+Status: superseded; AUD-001 through AUD-022 remain under remediation.
 
-Reports 16-22 reconcile every roadmap item to an unambiguous final status. The
-release candidate was prepared without publication and no mandatory roadmap
-remainder exists. Report 22 records the superseding PR #30 review, all four
-corrections, fresh Linux evidence, and a new exact `GO` audit.
-The approval of candidate `2189bb3` was superseded by the later PR #30
-blocking review. Corrected implementation commit `5417b1a` has fresh Linux
-evidence and independent audit; human approval of that corrected candidate is
-not yet recorded. No operational release action is authorized.
+Reports 19-22 and the release-candidate record are retained as historical
+evidence but are not current closure proof. The machine-readable remediation
+ledger is authoritative while the findings are open. No operational release
+action is authorized.
 
 ## Rollback and Review
 

@@ -1,6 +1,10 @@
 # 19 - Backward Compatibility Report
 
-Status: implemented compatibility release gate.
+Status: **superseded for candidate assurance by the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation is in progress.**
+
+The results below are retained as historical implementation evidence only.
+They are not current proof of backward compatibility or release readiness.
 
 ## Baseline and Policy
 

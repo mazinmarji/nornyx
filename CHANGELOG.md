@@ -6,6 +6,13 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## Unreleased
 
+### Audit remediation
+- The independent audit of candidate
+  `35ee69359599af7887f6b9b58ae0a4cd06a48d25` returned `NO-GO` with
+  AUD-001 through AUD-022. Earlier compatibility, security, closure, and
+  release-candidate claims are superseded while remediation is in progress.
+  The PR remains draft and no merge or release action is authorized.
+
 ### Added
 - Foundational data-only governance modules for human approval, evidence
   integrity, separation of duties, and exception management, with packaged

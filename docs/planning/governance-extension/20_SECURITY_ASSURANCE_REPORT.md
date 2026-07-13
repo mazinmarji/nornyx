@@ -1,6 +1,10 @@
 # 20 - Security Assurance Report
 
-Status: implemented assurance record for the completed program surfaces.
+Status: **superseded for candidate assurance by the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation is in progress.**
+
+The threat matrix below is historical and must not be treated as evidence that
+the current candidate closes the reported trust-boundary findings.
 
 ## Scope
 

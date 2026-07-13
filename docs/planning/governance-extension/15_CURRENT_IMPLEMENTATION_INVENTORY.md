@@ -1,5 +1,10 @@
 # 15 - Current Implementation Inventory
 
+Status: **the prior closure inventory is superseded for candidate assurance by
+the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`. See
+`AUDIT_REMEDIATION_LEDGER.json`.**
+
 ## Baseline
 
 This inventory reconciles the governance plan against commit

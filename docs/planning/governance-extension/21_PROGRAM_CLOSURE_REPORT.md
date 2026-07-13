@@ -1,5 +1,12 @@
 # 21 - Governance Program Closure Report
 
+Status: **superseded for candidate assurance by the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; the program is not closed.**
+
+The item matrix is preserved as historical planning disposition. Runtime and
+release closure now depend on `AUDIT_REMEDIATION_LEDGER.json` and a new
+independent exact-head audit.
+
 ## Authority and Status Vocabulary
 
 This is the authoritative item-by-item closure ledger for the accepted Nornyx

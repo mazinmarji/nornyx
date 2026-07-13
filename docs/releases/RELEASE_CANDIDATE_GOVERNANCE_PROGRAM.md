@@ -8,8 +8,11 @@
 - Corrected implementation: `5417b1a32b9e0258ca0fbe55b80e23b6604faaf9`
 - Branch: `codex/complete-governance-program`
 - Pull request: `https://github.com/mazinmarji/nornyx/pull/30`
-- Status: ready for fresh human release review
-- Independent audit: `GO`
+- Status: superseded candidate; remediation in progress; PR remains draft
+- Independent audit: `NO-GO` at `35ee69359599af7887f6b9b58ae0a4cd06a48d25`
+
+This record is not current release readiness evidence. Merge, release, tag,
+publication, and deployment remain unauthorized.
 
 ## Included Program
 

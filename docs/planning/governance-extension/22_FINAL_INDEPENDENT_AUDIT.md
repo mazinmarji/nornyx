@@ -1,5 +1,10 @@
 # 22 - Final Independent Governance Audit
 
+Status: **superseded.** The recorded positive verdict did not cover the
+independently reproduced AUD-001 through AUD-022 failures at exact head
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`. This file is historical evidence,
+not current authorization or release assurance.
+
 ## Audit Identity
 
 This report contains the original independent adversarial audit at commit

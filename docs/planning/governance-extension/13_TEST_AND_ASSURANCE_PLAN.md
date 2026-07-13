@@ -1,4 +1,8 @@
-# 13 — Test and Assurance Plan
+# 13 - Test and Assurance Plan
+
+Status: **prior execution record superseded by the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation validation is in
+progress.**
 
 Status: implemented through Stage I. This document began as the PR-era test
 plan; reports 19-20 and 22 plus the formal compatibility/security tests are the
