@@ -116,24 +116,24 @@ Status: implemented.
 - public-boundary and repository-specific assurance.
 
 Reports 19-20 and the formal compatibility manifest record the results. The
-final expanded suite passes 522 tests with 10 platform skips on Windows; Linux
-CI passes all 532 tests, including real symlink cases. Ruff, public-boundary,
+final expanded suite passes 532 tests with 12 platform skips on Windows; Linux
+CI passes all 544 tests, including real symlink cases. Ruff, public-boundary,
 key examples, source/sdist/wheel build, Twine checks, and an isolated
 no-network installed-wheel probe pass. Setuptools license metadata emits a
 nonblocking deprecation warning with a 2027 deadline.
 
 ## Stage I - Program Closure
 
-Status: corrections implemented locally; external verification is pending.
+Status: implemented; corrected candidate verified and awaiting human review.
 
 Reports 16-22 reconcile every roadmap item to an unambiguous final status. The
 release candidate was prepared without publication and no mandatory roadmap
-remainder exists. Report 22 now records the superseding PR #30 `NO-GO` review
-and its locally implemented corrections.
+remainder exists. Report 22 records the superseding PR #30 review, all four
+corrections, fresh Linux evidence, and a new exact `GO` audit.
 The approval of candidate `2189bb3` was superseded by the later PR #30
-blocking review. A corrected candidate requires fresh Linux evidence,
-independent audit, and human review. No operational release action is
-authorized.
+blocking review. Corrected implementation commit `5417b1a` has fresh Linux
+evidence and independent audit; human approval of that corrected candidate is
+not yet recorded. No operational release action is authorized.
 
 ## Rollback and Review
 

@@ -2,8 +2,8 @@
 
 Status: implemented through Stage I. This document began as the PR-era test
 plan; reports 19-20 and 22 plus the formal compatibility/security tests are the
-current execution record. The final local result is 522 passed and 10
-platform skips. Linux CI passes all 532 tests, including real symlink cases.
+current execution record. The final local result is 532 passed and 12
+platform skips. Linux CI passes all 544 tests, including real symlink cases.
 
 ## Categories and representative cases
 

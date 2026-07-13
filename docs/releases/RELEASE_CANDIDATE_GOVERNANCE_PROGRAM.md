@@ -5,11 +5,11 @@
 - Package version: `1.5.2`
 - Baseline main: `95952226999327458c6fea81cb32d82539bcae5b`
 - Superseded candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
-- Corrected candidate: pending committed review corrections
+- Corrected implementation: `5417b1a32b9e0258ca0fbe55b80e23b6604faaf9`
 - Branch: `codex/complete-governance-program`
 - Pull request: `https://github.com/mazinmarji/nornyx/pull/30`
-- Status: blocked pending corrected Linux evidence and fresh audit
-- Independent audit: `NO-GO`
+- Status: ready for fresh human release review
+- Independent audit: `GO`
 
 ## Included Program
 
@@ -27,8 +27,8 @@ approval, deploy, publish, or remediate.
 
 | Gate | Result |
 |---|---|
-| Windows full suite | `522 passed, 10 skipped` |
-| Linux CI | run `29260631031`, `532 passed` |
+| Windows full suite | `532 passed, 12 skipped` |
+| Linux CI | run `29272686337`, `544 passed` |
 | Ruff | pass |
 | Public boundary | pass |
 | Diff check | pass |
@@ -38,7 +38,7 @@ approval, deploy, publish, or remediate.
 | Twine | source and wheel pass |
 | Installed wheel | 12 profiles, 6 modules, network false, pass |
 | PR review threads | none |
-| Independent audit | `NO-GO` pending corrected external evidence |
+| Independent audit | `GO` |
 
 Non-approved reruns report release readiness at 8 passed, RC stabilization at
 13 passed, and stable-language validation at 21 passed, with zero warnings or

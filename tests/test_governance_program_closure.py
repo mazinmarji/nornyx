@@ -100,9 +100,9 @@ def test_final_audit_and_release_candidate_are_explicit() -> None:
     roadmap = ROADMAP.read_text(encoding="utf-8")
     candidate = RELEASE_CANDIDATE.read_text(encoding="utf-8")
 
-    assert "## Verdict\n\n`NO-GO`" in audit
+    assert "## Verdict\n\n`GO`" in audit
     assert (
-        "Status: corrections implemented locally; external verification is pending."
+        "Status: implemented; corrected candidate verified and awaiting human review."
         in roadmap
     )
     assert (
@@ -110,7 +110,7 @@ def test_final_audit_and_release_candidate_are_explicit() -> None:
         in candidate
     )
     assert "A-012" in audit and "A-015" in audit
-    assert "532 passed" in audit and "522 passed, 10 skipped" in audit
+    assert "544 passed" in audit and "532 passed, 12 skipped" in audit
 
 
 def test_current_specs_do_not_claim_the_runtime_is_unimplemented() -> None:

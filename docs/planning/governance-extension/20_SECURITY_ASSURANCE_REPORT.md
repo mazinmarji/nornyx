@@ -72,8 +72,8 @@ automatic approval, deployment, or autonomous remediation.
 
 ## Final Execution Evidence
 
-The final local adversarial and regression suite passes 522 tests with 10
-platform symlink skips. Linux CI run `29260631031` passes all 532 tests,
+The final local adversarial and regression suite passes 532 tests with 12
+platform symlink skips. Linux CI run `29272686337` passes all 544 tests,
 including the real ancestor-symlink cases for packs, project discovery,
 evidence, and architecture reports. Report 22 records every independently
 discovered finding and its correction.

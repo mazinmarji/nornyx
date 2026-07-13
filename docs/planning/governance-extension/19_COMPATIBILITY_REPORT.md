@@ -74,7 +74,7 @@ and the installed CLI without network access.
 ## Final Execution Evidence
 
 At audited commit `16f8eb350e61966d37000f34b8ebdd720aa741af`, the
-Windows suite passes 522 tests with 10 platform symlink skips. Linux CI run
-`29260631031` passes all 532 tests. A fresh 1.5.2 source distribution and wheel
+Windows suite passes 532 tests with 12 platform symlink skips. Linux CI run
+`29272686337` passes all 544 tests. A fresh 1.5.2 source distribution and wheel
 pass Twine, and the isolated wheel probe reports 12 profiles, 6 modules, no
 network use, and status pass.

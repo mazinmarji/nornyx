@@ -98,6 +98,7 @@ profile. No later specialist module passed the proliferation gate. CLI/API,
 compatibility, security, build, and installed-wheel assurance are complete.
 The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
 the authoritative item-by-item final status record. A later PR #30 review
-superseded the prior `GO` and candidate approval with four blocking findings;
-their corrections are implemented locally and await Linux verification plus a
-fresh audit. Operational release actions remain unauthorized.
+superseded the prior `GO` and candidate approval with four blocking findings.
+Corrected implementation commit `5417b1a` passes fresh Linux verification and
+a new independent audit returns `GO`. Human approval of the corrected
+candidate and all operational release actions remain pending.
