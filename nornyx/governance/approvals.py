@@ -40,16 +40,19 @@ def _as_values(value: Any) -> list[Any]:
     return value if isinstance(value, list) else [value]
 
 
-def _unique(values: list[Any]) -> tuple[tuple[str, ...], bool]:
+def _unique(values: list[Any]) -> tuple[tuple[str, ...], bool, bool]:
     result: list[str] = []
     duplicate = False
+    invalid = False
     for value in values:
-        text = str(value)
-        if text in result:
+        if not isinstance(value, str) or not value:
+            invalid = True
+            continue
+        if value in result:
             duplicate = True
         else:
-            result.append(text)
-    return tuple(result), duplicate
+            result.append(value)
+    return tuple(result), duplicate, invalid
 
 
 def _diagnostic(code: str, level: str, message: str, path: str) -> GovernanceDiagnostic:
@@ -69,15 +72,19 @@ def normalize_approval(
     eligible_values: list[Any] = []
     for field in ROLE_FIELDS:
         eligible_values.extend(_as_values(source.get(field)))
-    eligible, duplicate_eligible = _unique(eligible_values)
-    required, duplicate_required = _unique(_as_values(source.get("required_roles")))
-    denied, duplicate_denied = _unique(
+    eligible, duplicate_eligible, invalid_eligible = _unique(eligible_values)
+    required, duplicate_required, invalid_required = _unique(
+        _as_values(source.get("required_roles"))
+    )
+    denied, duplicate_denied, invalid_denied = _unique(
         _as_values(source.get("denied_approver_types"))
         + _as_values(source.get("denied_actor_types"))
         + _as_values(source.get("denied_execution_surfaces"))
     )
-    evidence, duplicate_evidence = _unique(_as_values(source.get("required_evidence")))
-    actions, duplicate_actions = _unique(
+    evidence, duplicate_evidence, invalid_evidence = _unique(
+        _as_values(source.get("required_evidence"))
+    )
+    actions, duplicate_actions, invalid_actions = _unique(
         _as_values(source.get("required_for"))
         + _as_values(source.get("actions"))
         + _as_values(source.get("actions_requiring_approval"))
@@ -88,6 +95,25 @@ def normalize_approval(
     )
     denied_actors = tuple(item for item in denied if item not in set(denied_surfaces))
     diagnostics: list[GovernanceDiagnostic] = []
+
+    if any(
+        (
+            invalid_eligible,
+            invalid_required,
+            invalid_denied,
+            invalid_evidence,
+            invalid_actions,
+        )
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_VALUE_TYPE_INVALID",
+                "error",
+                "Approval role, denial, evidence, and action values must be "
+                "non-empty strings.",
+                path,
+            )
+        )
 
     if any((duplicate_eligible, duplicate_required, duplicate_denied, duplicate_evidence, duplicate_actions)):
         diagnostics.append(

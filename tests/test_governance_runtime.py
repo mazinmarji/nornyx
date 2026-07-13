@@ -436,6 +436,61 @@ def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
     assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        {"timing": "during"},
+        {"expires_at": "not-a-time"},
+        {"expires_at": "2026-07-13 10:00:00+00:00"},
+        {"eligible_roles": [""]},
+        {"eligible_roles": [{"role": "reviewer"}]},
+        {
+            "revision_binding": {
+                "kind": "git",
+                "revision": "",
+                "exact": True,
+            }
+        },
+    ],
+)
+def test_raw_approval_normalization_errors_fail_closed(
+    mutation: dict[str, Any],
+) -> None:
+    approval = {
+        "name": "review_gate",
+        "eligible_roles": ["reviewer"],
+        **mutation,
+    }
+    rule = _rule(
+        requirement={"path": "approvals", "references_role": "reviewer"}
+    )
+
+    diagnostics = evaluate_rule({"approvals": [approval]}, rule)
+
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
+
+
+def test_non_string_approval_values_cannot_normalize_as_authority() -> None:
+    normalized = normalize_approval(
+        {
+            "name": "review_gate",
+            "required_roles": [{"role": "reviewer"}],
+            "eligible_roles": [{"role": "reviewer"}],
+            "required_evidence": ["review_record"],
+        },
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="review_gate",
+    )
+
+    assert normalized.resolution == "invalid"
+    assert normalized.required_roles == ()
+    assert normalized.eligible_roles == ()
+    assert {item.code for item in normalized.diagnostics} == {
+        "APPROVAL_VALUE_TYPE_INVALID"
+    }
+
+
 def _genuine_normalized_approval() -> dict[str, Any]:
     return normalize_approval(
         {

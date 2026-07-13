@@ -20,9 +20,9 @@ network content.
 | Namespace squatting | Non-bundled `nornyx.builtin.*` rejected | `test_loader_rejects_reserved_namespaces_and_resource_abuse` | mitigated |
 | Path, parent, and symlink traversal | Inspect unresolved components from independent trust root, then real-path containment | loader, project discovery, both profile CLI entry points, module CLI, evidence CLI tests | mitigated; real symlinks authoritative on Linux CI |
 | YAML exhaustion | 512 KiB, depth, node, and alias caps before semantic loading | pack and evidence resource-abuse tests | mitigated |
-| Schema bombs, local cycles, remote `$ref` | Only bundled reviewed block schemas; bounded subset; local cycle and remote-ref rejection | `test_governance_block_schema_subset_rejects_unsafe_references` | mitigated |
+| Schema bombs, local cycles, dangling/remote `$ref` | Only bundled reviewed block schemas; bounded subset; complete nested reference-graph cycle and target validation | `test_governance_block_schema_subset_rejects_unsafe_references` | mitigated |
 | Malformed/unknown rule | Closed schema/operators/path grammar; structural type errors fail closed | normative rule fixtures and runtime adversarial tests | mitigated |
-| Forged normalized approval | Full schema validation and exact re-normalization from retained source | 16-mutation invariant matrix and adversarial `nornyx check` tests | mitigated |
+| Forged or malformed approval | Full schema validation, exact re-normalization from retained source, and fail-closed raw-normalization errors | normalized invariant matrix, raw mutation matrix, and adversarial `nornyx check` tests | mitigated |
 | Stale approval | Exact revision/scope, invalidation, and expiry checks | change/foundational mutation matrices | mitigated |
 | Forged, stale, or substituted evidence | Schema, artifact containment, SHA-256, revision, dependency, and freshness checks | foundational and evidence CLI tests | mitigated |
 | Lock substitution | Set, id, version, tier, and content hash verified; duplicates fatal | runtime and governance CLI tamper tests | mitigated |

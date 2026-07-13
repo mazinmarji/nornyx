@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime
 import hashlib
 from importlib import resources
 import json
+import re
 from typing import Any, Iterator, Mapping
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
@@ -24,6 +26,23 @@ MAX_GOVERNANCE_SCHEMA_BYTES = 256 * 1024
 MAX_GOVERNANCE_SCHEMA_DEPTH = 40
 MAX_GOVERNANCE_SCHEMA_NODES = 20_000
 MAX_GOVERNANCE_SCHEMA_REFS = 128
+FORMAT_CHECKER = FormatChecker()
+_OFFSET_DATE_TIME_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$"
+)
+
+
+@FORMAT_CHECKER.checks("date-time", raises=(TypeError, ValueError))
+def _is_offset_date_time(value: object) -> bool:
+    if not isinstance(value, str):
+        return True
+    if _OFFSET_DATE_TIME_RE.fullmatch(value) is None:
+        return False
+    normalized = value.replace("t", "T", 1)
+    if normalized[-1] in {"Z", "z"}:
+        normalized = f"{normalized[:-1]}+00:00"
+    parsed = datetime.fromisoformat(normalized)
+    return parsed.tzinfo is not None
 _ALLOWED_SCHEMA_KEYS = {
     "$schema",
     "$id",
@@ -166,23 +185,62 @@ def _check_schema_subset(schema: Mapping[str, Any], *, schema_id: str) -> None:
             f"Governance block schema {schema_id!r} exceeds the reference limit.",
         )
 
-    refs: dict[str, str] = {}
     definitions = schema.get("$defs", {})
-    if isinstance(definitions, Mapping):
-        for name, value in definitions.items():
-            if isinstance(value, Mapping) and isinstance(value.get("$ref"), str):
-                refs[str(name)] = str(value["$ref"]).removeprefix("#/$defs/")
-    for start in refs:
-        seen: set[str] = set()
-        current = start
-        while current in refs:
-            if current in seen:
+    definition_names = (
+        {str(name) for name in definitions}
+        if isinstance(definitions, Mapping)
+        else set()
+    )
+    reference_graph: dict[str, set[str]] = {
+        name: set() for name in definition_names
+    }
+    for owner, value in (
+        definitions.items() if isinstance(definitions, Mapping) else ()
+    ):
+        for _, node in _schema_nodes(value):
+            if not isinstance(node, Mapping) or not isinstance(node.get("$ref"), str):
+                continue
+            target = str(node["$ref"]).removeprefix("#/$defs/")
+            if target not in definition_names:
                 raise error(
-                    "PACK_BLOCK_SCHEMA_REF_CYCLE",
-                    f"Governance block schema {schema_id!r} contains a local $ref cycle.",
+                    "PACK_BLOCK_SCHEMA_REF_REJECTED",
+                    f"Governance block schema {schema_id!r} references missing "
+                    f"local definition {target!r}.",
                 )
-            seen.add(current)
-            current = refs[current]
+            reference_graph[str(owner)].add(target)
+
+    # Root-level references are not graph vertices, but still must resolve to
+    # one reviewed local definition.
+    for _, node in nodes:
+        if not isinstance(node, Mapping) or not isinstance(node.get("$ref"), str):
+            continue
+        target = str(node["$ref"]).removeprefix("#/$defs/")
+        if target not in definition_names:
+            raise error(
+                "PACK_BLOCK_SCHEMA_REF_REJECTED",
+                f"Governance block schema {schema_id!r} references missing "
+                f"local definition {target!r}.",
+            )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit_references(name: str) -> None:
+        if name in visiting:
+            raise error(
+                "PACK_BLOCK_SCHEMA_REF_CYCLE",
+                f"Governance block schema {schema_id!r} contains a local $ref cycle.",
+            )
+        if name in visited:
+            return
+        visiting.add(name)
+        for target in sorted(reference_graph[name]):
+            visit_references(target)
+        visiting.remove(name)
+        visited.add(name)
+
+    for name in sorted(reference_graph):
+        visit_references(name)
 
 
 def validate_governance_block_schema(
@@ -218,7 +276,11 @@ def validate_governance_block(
 ) -> tuple[GovernanceDiagnostic, ...]:
     validate_governance_block_schema(block, schema_id, source_id=source_id)
     schema = bundled_schema_catalog()[schema_id]
-    validator = Draft202012Validator(schema, registry=schema_registry())
+    validator = Draft202012Validator(
+        schema,
+        registry=schema_registry(),
+        format_checker=FORMAT_CHECKER,
+    )
     diagnostics = []
     for item in sorted(validator.iter_errors(value), key=lambda error: list(error.absolute_path)):
         suffix = ".".join(str(part) for part in item.absolute_path)
@@ -235,7 +297,11 @@ def validate_governance_block(
 
 
 def validate_payload(payload: Mapping[str, Any], schema_name: str) -> None:
-    validator = Draft202012Validator(load_bundled_schema(schema_name), registry=schema_registry())
+    validator = Draft202012Validator(
+        load_bundled_schema(schema_name),
+        registry=schema_registry(),
+        format_checker=FORMAT_CHECKER,
+    )
     errors = sorted(validator.iter_errors(dict(payload)), key=lambda item: list(item.absolute_path))
     if not errors:
         return

@@ -57,6 +57,8 @@ role-bearing fields are errors until added to this table by an ADR.
 
 - Duplicate roles/evidence/actions are de-duplicated in first-seen order and
   produce an informational diagnostic.
+- Role, denial, evidence, and action values must be non-empty strings;
+  malformed values are omitted and make normalization invalid.
 - A required role absent from a non-empty eligible-role set is an error.
 - Governed-package gates missing all known eligible-role fields are errors.
 - `ai_tool` and `execution_surface` can never be eligible approvers. If an

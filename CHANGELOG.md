@@ -59,6 +59,11 @@ distribution version is independent of the Nornyx **language/schema** version
 - Project-local `.nornyx` discovery now preserves the unresolved project trust
   root and rejects symlinked ancestor components before enumerating profile or
   module packs.
+- Governance block-schema validation now detects nested local-reference cycles
+  and dangling local references, not only direct `$defs` aliases.
+- Raw approval role lookup now fails closed on normalization/schema errors;
+  non-string or empty authority values cannot normalize as roles, evidence, or
+  governed actions, and offset timestamp formats are checked explicitly.
 
 ## [1.5.2] - 2026-07-13
 

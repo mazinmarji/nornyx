@@ -248,7 +248,10 @@ def test_selected_modules_enforce_required_blocks_and_schema_shape(tmp_path: Pat
     assert "GOVERNANCE_BLOCK_SCHEMA_INVALID" in _codes(_diagnostics(malformed, tmp_path))
 
 
-@pytest.mark.parametrize("mode", ["remote_ref", "ref_cycle"])
+@pytest.mark.parametrize(
+    "mode",
+    ["remote_ref", "ref_cycle", "nested_ref_cycle", "missing_local_ref"],
+)
 def test_governance_block_schema_subset_rejects_unsafe_references(
     mode: str,
     monkeypatch,
@@ -265,12 +268,29 @@ def test_governance_block_schema_subset_rejects_unsafe_references(
     if mode == "remote_ref":
         schema["$ref"] = "https://example.invalid/remote.schema.json"
         expected = "PACK_BLOCK_SCHEMA_REF_REJECTED"
-    else:
+    elif mode == "ref_cycle":
         schema["$defs"] = {
             "a": {"$ref": "#/$defs/b"},
             "b": {"$ref": "#/$defs/a"},
         }
         expected = "PACK_BLOCK_SCHEMA_REF_CYCLE"
+    elif mode == "nested_ref_cycle":
+        schema["$defs"] = {
+            "a": {
+                "type": "object",
+                "properties": {"child": {"$ref": "#/$defs/b"}},
+            },
+            "b": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/a"},
+            },
+        }
+        expected = "PACK_BLOCK_SCHEMA_REF_CYCLE"
+    else:
+        schema["properties"] = {
+            "missing": {"$ref": "#/$defs/not_declared"},
+        }
+        expected = "PACK_BLOCK_SCHEMA_REF_REJECTED"
     monkeypatch.setattr(schemas, "bundled_schema_catalog", lambda: {schema_id: schema})
     with pytest.raises(GovernanceError) as caught:
         validate_governance_block_schema("adversarial", schema_id)

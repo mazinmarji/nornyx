@@ -6,6 +6,7 @@ import re
 from typing import Any, Iterable, Mapping
 
 from .approvals import normalize_approval, trusted_normalized_approval
+from .errors import GovernanceError
 from .models import GovernanceDiagnostic, Rule
 
 
@@ -207,12 +208,17 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
                     )
                 )
             )
-            normalized = normalize_approval(
-                item,
-                shape="governed_package_gate" if governed else "ordinary_approval",
-                path=f"approvals[{index}]",
-                fallback_id=f"approval-{index}",
-            )
+            try:
+                normalized = normalize_approval(
+                    item,
+                    shape=(
+                        "governed_package_gate" if governed else "ordinary_approval"
+                    ),
+                    path=f"approvals[{index}]",
+                    fallback_id=f"approval-{index}",
+                )
+            except (GovernanceError, AttributeError, KeyError, TypeError, ValueError):
+                return None
             if normalized.resolution == "invalid":
                 return None
             values = [*normalized.required_roles, *normalized.eligible_roles]
