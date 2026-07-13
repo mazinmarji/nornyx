@@ -116,20 +116,20 @@ Status: implemented.
 - public-boundary and repository-specific assurance.
 
 Reports 19-20 and the formal compatibility manifest record the results. The
-expanded suite passes 499 tests with 8 environment/platform skips on Windows;
-Ruff, public-boundary, key examples, source/sdist/wheel build, Twine checks, and
-an isolated no-network installed-wheel probe pass. Real symlink cases remain a
-required Linux CI gate. Setuptools license metadata emits a non-blocking
-deprecation warning with a 2027 deadline.
+final expanded suite passes 522 tests with 10 platform skips on Windows; Linux
+CI passes all 531 tests, including real symlink cases. Ruff, public-boundary,
+key examples, source/sdist/wheel build, Twine checks, and an isolated
+no-network installed-wheel probe pass. Setuptools license metadata emits a
+nonblocking deprecation warning with a 2027 deadline.
 
 ## Stage I - Program Closure
 
-Status: in progress.
+Status: implemented; human release approval remains external and pending.
 
-Produce reports 16-21, reconcile every roadmap item to an unambiguous final
-status, prepare a human-reviewed release candidate without publishing it, and
-run the independent audit in report 22. Completion requires an exact `GO`, no
-mandatory roadmap remainder, and no unresolved review thread.
+Reports 16-22 reconcile every roadmap item to an unambiguous final status. The
+release candidate is prepared without publication, report 22 returns exact
+`GO`, no mandatory roadmap remainder exists, and PR #30 has no review thread.
+Human release approval is intentionally not inferred from automated evidence.
 
 ## Rollback and Review
 

@@ -11,6 +11,23 @@ CLOSURE_REPORT = (
     / "governance-extension"
     / "21_PROGRAM_CLOSURE_REPORT.md"
 )
+FINAL_AUDIT = (
+    ROOT
+    / "docs"
+    / "planning"
+    / "governance-extension"
+    / "22_FINAL_INDEPENDENT_AUDIT.md"
+)
+ROADMAP = (
+    ROOT
+    / "docs"
+    / "planning"
+    / "governance-extension"
+    / "12_IMPLEMENTATION_ROADMAP.md"
+)
+RELEASE_CANDIDATE = (
+    ROOT / "docs" / "releases" / "RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"
+)
 
 ALLOWED_FINAL_STATUSES = {
     "implemented",
@@ -68,7 +85,7 @@ def test_closure_matrix_is_complete_unique_and_unambiguous() -> None:
 
 def test_required_program_records_and_catalog_counts_exist() -> None:
     planning = ROOT / "docs" / "planning" / "governance-extension"
-    for number in range(15, 22):
+    for number in range(15, 23):
         assert list(planning.glob(f"{number:02d}_*.md")), number
 
     profiles = list((ROOT / "nornyx" / "profiles_data").glob("*.yaml"))
@@ -76,6 +93,20 @@ def test_required_program_records_and_catalog_counts_exist() -> None:
     profile_packs = [path for path in profiles if not path.name.startswith("module_")]
     assert len(modules) == 6
     assert len(profile_packs) == 12
+
+
+def test_final_audit_and_release_candidate_are_explicit() -> None:
+    audit = FINAL_AUDIT.read_text(encoding="utf-8")
+    roadmap = ROADMAP.read_text(encoding="utf-8")
+    candidate = RELEASE_CANDIDATE.read_text(encoding="utf-8")
+
+    assert "## Verdict\n\n`GO`" in audit
+    assert (
+        "Status: implemented; human release approval remains external and pending."
+        in roadmap
+    )
+    assert "Human release approval: **not yet recorded**." in candidate
+    assert "531 passed" in audit and "522 passed, 10 skipped" in audit
 
 
 def test_current_specs_do_not_claim_the_runtime_is_unimplemented() -> None:

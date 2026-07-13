@@ -51,7 +51,7 @@ Every final status is one of the six statuses authorized by `CODEX_GOAL.md`:
 | Distribution and installed-wheel assurance | Newly discovered release requirement | `implemented` | package data configuration, `scripts/test_wheel_install.py` | build, Twine, and isolated wheel smoke | reports 19-20, roadmap | Setuptools license metadata has a nonblocking deprecation deadline | Packaging changes require installed-artifact resource and no-network verification |
 | Authoritative packaged profile source and mirror removal | Planned migration | `superseded` | `nornyx/profiles_data/`, compatibility facade in `nornyx/profiles.py` | catalog, projection, starter, wheel tests | doc 11 and domain-profile guide | Exported user copies can become stale but are not runtime sources | Restoring mirrors requires an ADR and concrete drift controls |
 | Scanner-hardening sequencing prerequisite | External branch dependency | `implemented` | scanner and governed-package runtime precede shared change delegation | governed-package and change suites | scanner integration appendix | Future incompatible scanner revisions can reopen coupling | Re-entry requires a scanner/change contract incompatibility |
-| Planning and status-document reconciliation | Contradictory historical/current text | `implemented` | planning docs 01-21 and ADR statuses | closure-document tests | docs 12, 15, and this report | Historical findings remain readable and can be misquoted without context | New roadmap work must use an authorized final status and explicit re-entry rule |
+| Planning and status-document reconciliation | Contradictory historical/current text | `implemented` | planning docs 01-22 and ADR statuses | closure-document tests | docs 12, 15, and this report | Historical findings remain readable and can be misquoted without context | New roadmap work must use an authorized final status and explicit re-entry rule |
 | V0.3 authoring/import shim | Possible later migration | `future_proposal_outside_current_program` | No import shim; exact v1-to-v0.3 projection only | projection and API compatibility tests | doc 11, legacy projection appendix | External v0.3 authors may need manual migration | Re-entry requires an identified consumer, provenance design, and migration approval |
 | Remote packs, entry-point discovery, and executable governance plugins | Rejected architecture alternatives | `rejected_with_ADR` | No implementation; schemas and loader prohibit them | loader, module-security, no-network/no-process tests | ADR-0010, ADR-0024, docs 03, 05, and 10 | Product pressure may recur | Re-entry requires a separate capability program and explicit human approval |
 | Native execution, connector runtime, self-healing, marketplace, and broad language tracks | Long-term roadmap ideas | `future_proposal_outside_current_program` | Research RFC only | existing boundary and no-execution tests | roadmap beyond v1, RFC-0003 | Future goals could conflict with current identity | Each track requires a new scoped goal, ADR, evidence, and human approval |
@@ -62,7 +62,8 @@ All accepted capabilities have a final placement. The six-module catalog is
 frozen for this program. No source-analysis engine, remote registry, executable
 plugin, automatic approval, deployment, or specialist-tool execution was added.
 
-Release publication, tagging, deployment, and promotion are not program
+Report 22 independently audits this matrix and returns `GO`. Release
+publication, tagging, deployment, promotion, and PR merge are not program
 implementation items and remain prohibited without explicit human release
-authorization. Report 22 independently audits this matrix and the resulting
-release-candidate evidence.
+authorization. The prepared release candidate records that approval as
+pending rather than inferring it from automated evidence.

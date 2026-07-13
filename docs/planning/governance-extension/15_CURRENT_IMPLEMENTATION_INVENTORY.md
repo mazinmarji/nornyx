@@ -79,7 +79,7 @@ do not select governance modules remain compatibility anchors.
 7. Map every profile to justified modules and record rejected alternatives.
 8. Complete CLI/API hardening, compatibility corpus, security suite, wheel and
    cross-platform assurance.
-9. Reconcile all planning/status documents, produce reports 16-21, and run an
+9. Reconcile all planning/status documents, produce reports 16-22, and run an
    independent requirement-by-requirement audit in report 22.
 
 Every stage must be green before the next stage. A Critical or High finding,
@@ -88,12 +88,14 @@ execution requirement, or unbound evidence requirement stops the program.
 
 ## Current Implementation State
 
-Stages A through H are implemented, and Stage I reconciles the documentation,
-closure matrix, release-candidate evidence, and independent audit. The branch contains six reusable
+Stages A through I are implemented. Stage I reconciles the documentation,
+closure matrix, release-candidate evidence, and independent audit. The branch
+contains six reusable
 modules, the shared change model, governed-package delegation, the optional
 `architecture_governance` profile, bounded architecture evidence import,
 complete GSA decisions, and a compatibility-preserving mapping for every
 profile. No later specialist module passed the proliferation gate. CLI/API,
 compatibility, security, build, and installed-wheel assurance are complete.
 The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
-the authoritative item-by-item final status record.
+the authoritative item-by-item final status record, and report 22 returns
+`GO`. Human release approval remains a separate, explicit decision.

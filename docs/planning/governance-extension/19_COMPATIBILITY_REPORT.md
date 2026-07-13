@@ -62,3 +62,11 @@ probe installs one local wheel with `--no-deps` into a temporary environment,
 runs outside the repository with isolated Python path handling, and verifies
 all packaged profiles, modules, governance schemas, the public evidence API,
 and the installed CLI without network access.
+
+## Final Execution Evidence
+
+At audited commit `16f8eb350e61966d37000f34b8ebdd720aa741af`, the
+Windows suite passes 522 tests with 10 platform symlink skips. Linux CI run
+`29259022794` passes all 531 tests. A fresh 1.5.2 source distribution and wheel
+pass Twine, and the isolated wheel probe reports 12 profiles, 6 modules, no
+network use, and status pass.

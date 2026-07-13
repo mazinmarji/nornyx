@@ -1,9 +1,9 @@
 # 13 — Test and Assurance Plan
 
-Status: implemented through Stage H. This document began as the PR-era test
-plan; reports 19-20 and the formal compatibility/security tests are the current
-execution record. The full local result is 499 passed and 8 platform/optional
-environment skips. Linux CI remains required for real symlink execution.
+Status: implemented through Stage I. This document began as the PR-era test
+plan; reports 19-20 and 22 plus the formal compatibility/security tests are the
+current execution record. The final local result is 522 passed and 10
+platform skips. Linux CI passes all 531 tests, including real symlink cases.
 
 ## Categories and representative cases
 
