@@ -5,10 +5,8 @@ from fnmatch import fnmatchcase
 import re
 from typing import Any, Iterable, Mapping
 
-from .approvals import normalize_approval
-from .errors import GovernanceError
+from .approvals import normalize_approval, trusted_normalized_approval
 from .models import GovernanceDiagnostic, Rule
-from .schemas import validate_payload
 
 
 PATH_RE = re.compile(
@@ -27,14 +25,6 @@ STRUCTURAL_MATCH_REASONS = {
     "RULE_COLLECTION_TYPE_ERROR",
     "RULE_REFERENCE_TYPE_ERROR",
     "RULE_OPERATOR_UNKNOWN",
-}
-# Resolutions under which a pre-normalized approval's role lists may be read.
-# "invalid", anything unknown, and a missing resolution all fail closed.
-TRUSTED_APPROVAL_RESOLUTIONS = {
-    "complete",
-    "reference_only",
-    "legacy_text_preserved",
-    "requirement_only",
 }
 
 
@@ -185,23 +175,8 @@ def _trusted_normalized_roles(item: Mapping[str, Any]) -> tuple[str, ...] | None
     authoritative normalizer. Any failure returns None, which surfaces as
     RULE_REFERENCE_TYPE_ERROR.
     """
-    try:
-        validate_payload(dict(item), "governance_approval_model_v1.schema.json")
-    except GovernanceError:
-        return None
-    source = item["source"]
-    try:
-        renormalized = normalize_approval(
-            source["raw"],
-            shape=str(source["shape"]),
-            path=str(source["path"]),
-            fallback_id=str(item["id"]),
-        )
-    except (GovernanceError, AttributeError, TypeError, ValueError):
-        return None
-    if renormalized.to_dict() != dict(item):
-        return None
-    if renormalized.resolution not in TRUSTED_APPROVAL_RESOLUTIONS:
+    renormalized = trusted_normalized_approval(item)
+    if renormalized is None:
         return None
     if renormalized.resolution != "complete":
         return ()

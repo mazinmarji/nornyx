@@ -29,5 +29,10 @@
     "ai_governance",
     "finance_ops"
   ],
-  "modules": []
+  "modules": [
+    "evidence_integrity",
+    "human_approval",
+    "separation_of_duties",
+    "exception_management"
+  ]
 }

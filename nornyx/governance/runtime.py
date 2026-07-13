@@ -9,6 +9,8 @@ from .locks import load_lock
 from .models import CompositionResult, GovernanceDiagnostic
 from .registry import GovernanceRegistry
 from .rules import evaluate_rules
+from .schemas import validate_governance_block
+from .structural import evaluate_structural_checks
 
 
 def registry_for_directory(root: str | Path) -> GovernanceRegistry:
@@ -69,6 +71,8 @@ def evaluate_document_governance(
     *,
     registry: GovernanceRegistry,
     lock_path: str | Path | None = None,
+    as_of: str | None = None,
+    document_root: str | Path | None = None,
 ) -> tuple[GovernanceDiagnostic, ...]:
     composition = compose_document_governance(
         document,
@@ -92,4 +96,41 @@ def evaluate_document_governance(
                     ),
                 )
         return ()
-    return evaluate_rules(document, composition.rules)
+    diagnostics: list[GovernanceDiagnostic] = []
+    enforced_blocks = sorted(
+        {
+            block
+            for module in composition.modules
+            for block in module.required_blocks
+        }
+    )
+    for block in enforced_blocks:
+        if block not in document:
+            diagnostics.append(
+                GovernanceDiagnostic(
+                    "error",
+                    "GOVERNANCE_REQUIRED_BLOCK_MISSING",
+                    f"Selected governance modules require top-level block {block!r}.",
+                    path=block,
+                )
+            )
+    for binding in composition.block_schemas:
+        if binding.block in document:
+            diagnostics.extend(
+                validate_governance_block(
+                    binding.block,
+                    document[binding.block],
+                    binding.schema_id,
+                    source_id=binding.source_id,
+                )
+            )
+    diagnostics.extend(evaluate_rules(document, composition.rules))
+    diagnostics.extend(
+        evaluate_structural_checks(
+            document,
+            composition,
+            as_of=as_of,
+            document_root=document_root,
+        )
+    )
+    return tuple(diagnostics)

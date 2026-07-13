@@ -20,11 +20,14 @@ SCHEMA_DIR = ROOT / "schemas"
 BUNDLED_SCHEMA_DIR = ROOT / "nornyx" / "schemas"
 FIXTURES = ROOT / "tests" / "fixtures" / "governance_extension"
 GOLDEN = FIXTURES / "starter_golden"
-NEW_SCHEMA_FILES = (
+GOVERNANCE_SCHEMA_FILES = (
     "profile_pack_v1.schema.json",
     "governance_module_v1.schema.json",
     "governance_approval_model_v1.schema.json",
     "profiles_lock_v1.schema.json",
+    "governance_evidence_v1.schema.json",
+    "separation_of_duties_v1.schema.json",
+    "governance_exception_v1.schema.json",
 )
 
 
@@ -254,12 +257,11 @@ def _project_v1_to_v03(pack: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
     return projected, report
 
 
-def test_draft_schemas_are_valid_and_bundled_copies_are_exact() -> None:
-    for name in NEW_SCHEMA_FILES:
+def test_governance_schemas_are_valid_and_bundled_copies_are_exact() -> None:
+    for name in GOVERNANCE_SCHEMA_FILES:
         root_schema = _json(SCHEMA_DIR / name)
         Draft202012Validator.check_schema(root_schema)
         assert (SCHEMA_DIR / name).read_bytes() == (BUNDLED_SCHEMA_DIR / name).read_bytes()
-        assert "DRAFT" in root_schema["$comment"]
 
 
 def test_v03_and_v1_profile_fixtures_validate_against_separate_schemas() -> None:

@@ -1,0 +1,68 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.evidence_integrity
+name: evidence_integrity
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies: []
+conflicts: []
+required_blocks:
+  - governance_evidence
+block_schemas:
+  - block: governance_evidence
+    schema_id: https://nornyx.dev/schemas/governance_evidence_v1.schema.json
+structural_checks:
+  - evidence_integrity.v1
+policies:
+  - id: evidence_integrity_policy
+    description: Evidence must be local, revision-bound, fresh, and content-hashed.
+    deny:
+      - evidence substitution
+      - unbound evidence
+      - stale evidence
+    require:
+      - local artifact hash verification
+      - explicit validation time
+evidence_requirements:
+  - id: evidence_manifest
+    type: evidence_manifest
+    required: true
+    schema_id: nornyx.governance_evidence.v1
+    revision_bound: true
+approval_requirements: []
+evaluations:
+  - id: evidence_integrity_evaluation
+    metrics:
+      - required_evidence_present
+      - artifact_hashes_verified
+      - evidence_fresh
+    required_evidence:
+      - evidence_manifest
+rules:
+  - id: EVI-001
+    description: A governance evidence set must contain at least one record.
+    require:
+      - path: governance_evidence.records
+        min_count: 1
+    severity: error
+    message: Governance evidence records may not be empty.
+non_goals:
+  - proving that evidence claims are true
+  - executing evidence producers or external tools
+  - network retrieval of artifacts
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-b
+integrity:
+  algorithm: sha256
+  content_hash: sha256:460d9ca1ad53f634a2f7a344d7a8f3809546c49c78ee564e6b5bc466b8bb9ef8
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

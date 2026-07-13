@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/separation_of_duties_v1.schema.json",
+  "title": "Nornyx Separation of Duties v1",
+  "x-nornyx-governance-block": "separation_of_duties",
+  "type": "object",
+  "required": ["schema", "assignments"],
+  "properties": {
+    "schema": {"const": "nornyx.separation_of_duties.v1"},
+    "assignments": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/assignment"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "actors": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/identity"},
+      "uniqueItems": true
+    },
+    "assignment": {
+      "type": "object",
+      "required": [
+        "subject",
+        "risk_tier",
+        "author",
+        "approvers",
+        "evidence_producers",
+        "require_evidence_independence"
+      ],
+      "properties": {
+        "subject": {"$ref": "#/$defs/identity"},
+        "risk_tier": {"enum": ["low", "medium", "high", "critical"]},
+        "author": {"$ref": "#/$defs/identity"},
+        "approvers": {"$ref": "#/$defs/actors"},
+        "evidence_producers": {"$ref": "#/$defs/actors"},
+        "require_evidence_independence": {"type": "boolean"},
+        "release_requester": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        },
+        "final_release_approver": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        },
+        "exception_requester": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        },
+        "exception_approver": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

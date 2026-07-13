@@ -1,0 +1,115 @@
+nornyx: "0.2"
+project:
+  name: GovernanceFoundationsExample
+  profile: minimal
+  modules:
+    - exception_management
+
+approvals:
+  - name: HumanGovernanceGate
+    required_roles: [reviewer]
+    eligible_roles: [reviewer, security_reviewer]
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence: [approval_record]
+    required_for: [merge]
+    timing: before_merge
+    accountable_authority: governance_owner
+    revision_binding:
+      kind: git
+      revision: git:0123456789abcdef
+      exact: true
+    invalidation_conditions: [revision_changed, scope_changed]
+    expires_at: "2099-01-01T00:00:00Z"
+
+governance_evidence:
+  schema: nornyx.governance_evidence.v1
+  subject_revision: git:0123456789abcdef
+  records:
+    - id: evidence_manifest
+      type: evidence_manifest
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: local.example, type: tool}
+      artifact: governance_evidence/evidence_manifest.json
+      content_hash: sha256:a9cf03996a56895a694c8b5f151063fc8a6915198ffad3fe3426ba15ec93cb4f
+      subject_revision: git:0123456789abcdef
+      tool: {name: example_tool, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: []
+    - id: approval_record
+      type: approval_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.reviewer, type: human}
+      artifact: governance_evidence/approval_record.json
+      content_hash: sha256:6ad40fdf451d274730cd9315dfae772a300175817e1b116dbea07cd0903b23db
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [evidence_manifest]
+    - id: independent_review_record
+      type: independent_review_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.independent_reviewer, type: human}
+      artifact: governance_evidence/independent_review_record.json
+      content_hash: sha256:b302df1f03b34094e303bd2e8ee702078e4d7abb765eebc7932d6065d90fc8ec
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [approval_record]
+    - id: exception_review_record
+      type: exception_review_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.risk_owner, type: human}
+      artifact: governance_evidence/exception_review_record.json
+      content_hash: sha256:01e0983fc5848dfe94d75d8a2cb331ddae6412e1f06146917a6df5cba0421ec3
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [independent_review_record]
+
+separation_of_duties:
+  schema: nornyx.separation_of_duties.v1
+  assignments:
+    - subject: change:example
+      risk_tier: high
+      author: user:author
+      approvers: [user:reviewer]
+      evidence_producers: [tool:example_tool]
+      require_evidence_independence: true
+      release_requester: user:release_requester
+      final_release_approver: user:release_approver
+      exception_requester: user:exception_requester
+      exception_approver: user:exception_approver
+
+exceptions:
+  schema: nornyx.governance_exceptions.v1
+  source: project_contract
+  entries:
+    - id: EXC-EXAMPLE
+      control: project.review_window
+      reason: A bounded example exception for documentation execution.
+      scope: [change:example]
+      risk_tier: high
+      requester: user:exception_requester
+      accountable_owner: user:risk_owner
+      approving_authority: user:exception_approver
+      compensating_controls: [control:independent_review]
+      evidence: [exception_review_record]
+      starts_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      renewal_policy: manual_reapproval
+      closure_evidence: []
+      status: active

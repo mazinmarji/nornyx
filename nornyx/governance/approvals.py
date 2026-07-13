@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any, Mapping
 
 from .models import GovernanceDiagnostic, NormalizedApproval, immutable_mapping
+from .errors import GovernanceError
 from .schemas import validate_payload
 
 
@@ -17,7 +18,20 @@ ROLE_FIELDS = (
 ROLE_MARKERS = ("role", "approver", "authorized", "people")
 # Intrinsic, non-declarable prohibition: these actor categories can never be
 # eligible or required approvers, regardless of what any document declares.
-CORE_DENIED_ACTOR_TYPES = ("ai_tool", "execution_surface")
+CORE_DENIED_ACTOR_TYPES = (
+    "ai_tool",
+    "execution_surface",
+    "autonomous_agent",
+    "model",
+    "connector",
+    "generated_output",
+)
+TRUSTED_APPROVAL_RESOLUTIONS = {
+    "complete",
+    "reference_only",
+    "legacy_text_preserved",
+    "requirement_only",
+}
 
 
 def _as_values(value: Any) -> list[Any]:
@@ -208,3 +222,23 @@ def normalize_approval(
     )
     validate_payload(normalized.to_dict(), "governance_approval_model_v1.schema.json")
     return normalized
+
+
+def trusted_normalized_approval(item: Mapping[str, Any]) -> NormalizedApproval | None:
+    """Re-derive a claimed normalized approval from its retained source."""
+    try:
+        validate_payload(dict(item), "governance_approval_model_v1.schema.json")
+        source = item["source"]
+        renormalized = normalize_approval(
+            source["raw"],
+            shape=str(source["shape"]),
+            path=str(source["path"]),
+            fallback_id=str(item["id"]),
+        )
+    except (GovernanceError, AttributeError, KeyError, TypeError, ValueError):
+        return None
+    if renormalized.to_dict() != dict(item):
+        return None
+    if renormalized.resolution not in TRUSTED_APPROVAL_RESOLUTIONS:
+        return None
+    return renormalized

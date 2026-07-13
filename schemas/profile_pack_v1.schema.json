@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/profile_pack_v1.schema.json",
-  "$comment": "DRAFT specification contract for PR 1. It is not loaded by the Nornyx runtime.",
-  "title": "Nornyx Declarative Profile Pack v1 (Draft)",
+  "$comment": "Active declarative profile-pack contract loaded locally by the Nornyx governance runtime.",
+  "title": "Nornyx Declarative Profile Pack v1",
   "type": "object",
   "required": [
     "schema",

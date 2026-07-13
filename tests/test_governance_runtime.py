@@ -311,7 +311,7 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
     registry = GovernanceRegistry()
     registry.register_directory(tmp_path, source_tier="project")
     assert registry.profile_names == ("delivery_profile",)
-    assert registry.module_names == ("evidence_integrity",)
+    assert registry.module_names == ("fixture_evidence_integrity",)
 
     with pytest.raises(GovernanceError) as duplicate:
         registry.register_path(profile_path, allowed_root=tmp_path, source_tier="project")
@@ -320,12 +320,15 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
     first = compose_governance(
         registry,
         profile_identity="delivery_profile",
-        module_ids=["evidence_integrity"],
+        module_ids=["fixture_evidence_integrity"],
     )
     second = compose_governance(
         registry,
         profile_identity="delivery_profile",
-        module_ids=["org.example.evidence_integrity", "evidence_integrity"],
+        module_ids=[
+            "org.example.fixture_evidence_integrity",
+            "fixture_evidence_integrity",
+        ],
     )
     assert first.to_dict() == second.to_dict()
     assert "evidence" in first.required_blocks
@@ -347,7 +350,7 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
     assert compose_governance(
         registry,
         profile_identity="delivery_profile",
-        module_ids=["evidence_integrity"],
+        module_ids=["fixture_evidence_integrity"],
         lock=lock,
     ).to_dict() == first.to_dict()
     shortened = type(lock)(lock.resolved[:-1])
@@ -355,7 +358,7 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
         compose_governance(
             registry,
             profile_identity="delivery_profile",
-            module_ids=["evidence_integrity"],
+            module_ids=["fixture_evidence_integrity"],
             lock=shortened,
         )
     assert _codes(mismatch.value) == {"PACK_LOCK_SET_MISMATCH"}
@@ -677,7 +680,11 @@ def test_rule_caps_apply_per_pack_and_per_composition(tmp_path: Path, monkeypatc
     registry.register_path(ok_path, allowed_root=tmp_path, source_tier="project")
     monkeypatch.setattr(composition_module, "MAX_COMPOSED_RULES", 2)
     with pytest.raises(GovernanceError) as composed_cap:
-        compose_governance(registry, profile_identity=None, module_ids=["evidence_integrity"])
+        compose_governance(
+            registry,
+            profile_identity=None,
+            module_ids=["fixture_evidence_integrity"],
+        )
     assert _codes(composed_cap.value) == {"PACK_LIMIT_EXCEEDED"}
 
 
@@ -694,7 +701,11 @@ def test_same_pack_duplicate_item_ids_are_fatal(tmp_path: Path) -> None:
     registry = GovernanceRegistry.builtins()
     registry.register_path(path, allowed_root=tmp_path, source_tier="project")
     with pytest.raises(GovernanceError) as duplicated:
-        compose_governance(registry, profile_identity=None, module_ids=["evidence_integrity"])
+        compose_governance(
+            registry,
+            profile_identity=None,
+            module_ids=["fixture_evidence_integrity"],
+        )
     assert _codes(duplicated.value) == {"PACK_DUPLICATE_ID"}
 
 
@@ -825,14 +836,14 @@ def test_org_tier_requires_a_matching_lock(tmp_path: Path) -> None:
         compose_governance(
             registry,
             profile_identity=None,
-            module_ids=["evidence_integrity"],
+            module_ids=["fixture_evidence_integrity"],
         )
     assert _codes(required.value) == {"PACK_LOCK_REQUIRED"}
     lock = lock_for_packs([module])
     result = compose_governance(
         registry,
         profile_identity=None,
-        module_ids=["evidence_integrity"],
+        module_ids=["fixture_evidence_integrity"],
         lock=lock,
     )
     assert result.modules == (module,)
@@ -1091,10 +1102,10 @@ def test_check_fails_closed_on_adversarial_retained_approval_source(
     ]
     module_dir = tmp_path / ".nornyx" / "modules"
     module_dir.mkdir(parents=True)
-    _write_pack(module_dir / "evidence_integrity.yaml", module)
+    _write_pack(module_dir / "fixture_evidence_integrity.yaml", module)
 
     document = profile_document("minimal", "ApprovalBoundary")
-    document["project"]["modules"] = ["evidence_integrity"]
+    document["project"]["modules"] = ["fixture_evidence_integrity"]
     document.setdefault("experimental", {})["normalized_approvals"] = [approval]
     contract = tmp_path / "project.nyx"
     contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
@@ -1116,17 +1127,17 @@ def test_check_runs_project_local_module_rules(tmp_path: Path, capsys) -> None:
     ]
     module_dir = tmp_path / ".nornyx" / "modules"
     module_dir.mkdir(parents=True)
-    _write_pack(module_dir / "evidence_integrity.yaml", module)
+    _write_pack(module_dir / "fixture_evidence_integrity.yaml", module)
 
     document = profile_document("minimal", "LocalModule")
-    document["project"]["modules"] = ["evidence_integrity"]
+    document["project"]["modules"] = ["fixture_evidence_integrity"]
     contract = tmp_path / "project.nyx"
     contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
 
     assert main(["check", str(contract)]) == 1
     output = capsys.readouterr().out
     assert "RULE_PATH_MISSING" in output
-    assert "org.example.evidence_integrity/GOV-001" in output
+    assert "org.example.fixture_evidence_integrity/GOV-001" in output
 
     document["project"]["governance_marker"] = True
     contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")

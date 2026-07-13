@@ -5,11 +5,12 @@ from dataclasses import replace
 from types import MappingProxyType
 from typing import Any, Iterable, Mapping
 
-from .approvals import normalize_approval
+from .approvals import CORE_DENIED_ACTOR_TYPES, normalize_approval
 from .errors import GovernanceError, error
 from .locks import verify_lock
 from .models import (
     CompositionResult,
+    GovernanceBlockSchema,
     GovernanceModule,
     NormalizedApproval,
     ProfileLock,
@@ -25,9 +26,10 @@ Pack = ProfilePack | GovernanceModule
 # Non-removable core denials: no pack may make an AI tool or an execution
 # surface an eligible approver, and every composed approval carries these
 # denials regardless of what the pack declared.
-CORE_DENIED_ACTOR_TYPES = ("ai_tool", "execution_surface")
 CORE_DENIED_EXECUTION_SURFACES = ("execution_surface",)
 MAX_COMPOSED_RULES = 2000
+MAX_COMPOSED_BLOCK_SCHEMAS = 64
+MAX_COMPOSED_STRUCTURAL_CHECKS = 64
 
 
 def _provenance_record(
@@ -263,6 +265,8 @@ def compose_governance(
         verify_lock(lock, selected)
 
     required_blocks: tuple[str, ...] = ()
+    block_schemas: dict[str, GovernanceBlockSchema] = {}
+    structural_checks: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
     policies: dict[str, Mapping[str, Any]] = {}
     evidence: dict[str, Mapping[str, Any]] = {}
@@ -306,6 +310,34 @@ def compose_governance(
         source_approvals = pack.approval_requirements
         source_evaluations = pack.evaluations if isinstance(pack, GovernanceModule) else pack.default_evaluations
         source_rules = pack.rules if isinstance(pack, GovernanceModule) else pack.validation_rules
+
+        if isinstance(pack, GovernanceModule):
+            structural_checks = _ordered_union(structural_checks, pack.structural_checks)
+            for binding in pack.block_schemas:
+                existing = block_schemas.get(binding.block)
+                if existing is not None and existing.schema_id != binding.schema_id:
+                    raise error(
+                        "PACK_BLOCK_SCHEMA_CONFLICT",
+                        f"Block {binding.block!r} is claimed by both {existing.schema_id!r} "
+                        f"and {binding.schema_id!r}.",
+                        source_id=pack.id,
+                    )
+                block_schemas[binding.block] = binding
+                provenance.append(
+                    _provenance_record(
+                        pack,
+                        element_kind="block_schema",
+                        element_id=f"{binding.block}:{binding.schema_id}",
+                    )
+                )
+            provenance.extend(
+                _provenance_record(
+                    pack,
+                    element_kind="structural_check",
+                    element_id=check_id,
+                )
+                for check_id in pack.structural_checks
+            )
 
         for item in source_policies:
             item_id = _item_id(item, "policy", pack.id)
@@ -381,12 +413,26 @@ def compose_governance(
             "PACK_LIMIT_EXCEEDED",
             f"Composition produced {len(rules)} rules; the limit is {MAX_COMPOSED_RULES}.",
         )
+    if len(block_schemas) > MAX_COMPOSED_BLOCK_SCHEMAS:
+        raise error(
+            "PACK_LIMIT_EXCEEDED",
+            f"Composition produced {len(block_schemas)} block schemas; "
+            f"the limit is {MAX_COMPOSED_BLOCK_SCHEMAS}.",
+        )
+    if len(structural_checks) > MAX_COMPOSED_STRUCTURAL_CHECKS:
+        raise error(
+            "PACK_LIMIT_EXCEEDED",
+            f"Composition produced {len(structural_checks)} structural checks; "
+            f"the limit is {MAX_COMPOSED_STRUCTURAL_CHECKS}.",
+        )
 
     fragments = profile.starter_fragments if profile else ()
     return CompositionResult(
         profile=profile,
         modules=modules,
         required_blocks=required_blocks,
+        block_schemas=tuple(block_schemas[key] for key in sorted(block_schemas)),
+        structural_checks=tuple(sorted(structural_checks)),
         policies=tuple(policies[key] for key in sorted(policies)),
         evidence_requirements=tuple(evidence[key] for key in sorted(evidence)),
         approval_requirements=tuple(approvals[key] for key in sorted(approvals)),

@@ -10,6 +10,7 @@ from nornyx.parser import NornyxSafeLoader
 
 from .errors import GovernanceError, error
 from .models import (
+    GovernanceBlockSchema,
     GovernanceModule,
     PackProvenance,
     PackSourceTier,
@@ -18,7 +19,12 @@ from .models import (
     StarterFragment,
     immutable_mapping,
 )
-from .schemas import SCHEMA_BY_DISCRIMINATOR, canonical_pack_hash, validate_payload
+from .schemas import (
+    SCHEMA_BY_DISCRIMINATOR,
+    canonical_pack_hash,
+    validate_governance_block_schema,
+    validate_payload,
+)
 
 
 MAX_PACK_BYTES = 512 * 1024
@@ -182,6 +188,16 @@ def _module_from_payload(
             source_id=pack_id,
         )
     provenance = payload["provenance"]
+    block_schemas = tuple(
+        GovernanceBlockSchema(
+            block=str(item["block"]),
+            schema_id=str(item["schema_id"]),
+            source_id=pack_id,
+        )
+        for item in payload.get("block_schemas", [])
+    )
+    for binding in block_schemas:
+        validate_governance_block_schema(binding.block, binding.schema_id, source_id=pack_id)
     return GovernanceModule(
         id=pack_id,
         name=str(payload["name"]),
@@ -190,6 +206,8 @@ def _module_from_payload(
         dependencies=tuple(str(item) for item in payload["dependencies"]),
         conflicts=tuple(str(item) for item in payload["conflicts"]),
         required_blocks=tuple(str(item) for item in payload["required_blocks"]),
+        block_schemas=block_schemas,
+        structural_checks=tuple(str(item) for item in payload.get("structural_checks", [])),
         policies=tuple(immutable_mapping(item) for item in payload["policies"]),
         evidence_requirements=tuple(
             immutable_mapping(item) for item in payload["evidence_requirements"]

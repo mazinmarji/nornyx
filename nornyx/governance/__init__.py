@@ -1,12 +1,13 @@
 """Declarative, local-only governance extension runtime."""
 
-from .approvals import normalize_approval
+from .approvals import normalize_approval, trusted_normalized_approval
 from .composition import compose_governance
 from .errors import GovernanceError
 from .loader import load_local_pack, load_pack_bytes
 from .locks import load_lock, lock_for_packs, verify_lock, write_lock
 from .models import (
     CompositionResult,
+    GovernanceBlockSchema,
     GovernanceDiagnostic,
     GovernanceModule,
     LockEntry,
@@ -29,6 +30,7 @@ from .runtime import (
 
 __all__ = [
     "CompositionResult",
+    "GovernanceBlockSchema",
     "GovernanceDiagnostic",
     "GovernanceError",
     "GovernanceModule",
@@ -50,6 +52,7 @@ __all__ = [
     "load_pack_bytes",
     "lock_for_packs",
     "normalize_approval",
+    "trusted_normalized_approval",
     "project_profile_to_v03",
     "registry_for_contract",
     "registry_for_directory",

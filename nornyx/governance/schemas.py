@@ -3,12 +3,13 @@ from __future__ import annotations
 import hashlib
 from importlib import resources
 import json
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
-from .errors import GovernanceError
+from .errors import GovernanceError, error
 from .models import GovernanceDiagnostic
 
 
@@ -17,6 +18,47 @@ SCHEMA_BY_DISCRIMINATOR = {
     "nornyx.governance_module.v1": "governance_module_v1.schema.json",
     "nornyx.normalized_approval.v1": "governance_approval_model_v1.schema.json",
     "nornyx.profiles_lock.v1": "profiles_lock_v1.schema.json",
+}
+
+MAX_GOVERNANCE_SCHEMA_BYTES = 256 * 1024
+MAX_GOVERNANCE_SCHEMA_DEPTH = 40
+MAX_GOVERNANCE_SCHEMA_NODES = 20_000
+MAX_GOVERNANCE_SCHEMA_REFS = 128
+_ALLOWED_SCHEMA_KEYS = {
+    "$schema",
+    "$id",
+    "$comment",
+    "$defs",
+    "$ref",
+    "title",
+    "description",
+    "type",
+    "const",
+    "enum",
+    "properties",
+    "required",
+    "additionalProperties",
+    "items",
+    "minItems",
+    "maxItems",
+    "uniqueItems",
+    "minLength",
+    "maxLength",
+    "pattern",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minProperties",
+    "maxProperties",
+    "allOf",
+    "anyOf",
+    "oneOf",
+    "default",
+    "examples",
+    "readOnly",
+    "x-nornyx-governance-block",
 }
 
 
@@ -36,6 +78,160 @@ def schema_registry() -> Registry:
         if schema_id:
             registry = registry.with_resource(schema_id, Resource.from_contents(contents))
     return registry
+
+
+def bundled_schema_catalog() -> dict[str, dict[str, Any]]:
+    catalog: dict[str, dict[str, Any]] = {}
+    schema_root = resources.files("nornyx") / "schemas"
+    for entry in schema_root.iterdir():
+        if not entry.name.endswith(".schema.json"):
+            continue
+        contents = json.loads(entry.read_text(encoding="utf-8"))
+        schema_id = contents.get("$id")
+        if isinstance(schema_id, str):
+            catalog[schema_id] = contents
+    return catalog
+
+
+def _schema_nodes(value: Any, *, depth: int = 0) -> Iterator[tuple[int, Any]]:
+    yield depth, value
+    if isinstance(value, Mapping):
+        for item in value.values():
+            yield from _schema_nodes(item, depth=depth + 1)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _schema_nodes(item, depth=depth + 1)
+
+
+def _check_schema_subset(schema: Mapping[str, Any], *, schema_id: str) -> None:
+    encoded = json.dumps(schema, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    if len(encoded) > MAX_GOVERNANCE_SCHEMA_BYTES:
+        raise error(
+            "PACK_BLOCK_SCHEMA_LIMIT_EXCEEDED",
+            f"Governance block schema {schema_id!r} exceeds the byte limit.",
+        )
+    nodes = list(_schema_nodes(schema))
+    if len(nodes) > MAX_GOVERNANCE_SCHEMA_NODES or any(
+        depth > MAX_GOVERNANCE_SCHEMA_DEPTH for depth, _ in nodes
+    ):
+        raise error(
+            "PACK_BLOCK_SCHEMA_LIMIT_EXCEEDED",
+            f"Governance block schema {schema_id!r} exceeds structural limits.",
+        )
+
+    ref_count = 0
+
+    def visit(node: Mapping[str, Any], path: str) -> None:
+        nonlocal ref_count
+        unknown = sorted(set(node) - _ALLOWED_SCHEMA_KEYS)
+        if unknown:
+            raise error(
+                "PACK_BLOCK_SCHEMA_KEYWORD_REJECTED",
+                f"Governance block schema {schema_id!r} uses unsupported keyword(s): "
+                f"{', '.join(unknown)}.",
+                path=path,
+            )
+        reference = node.get("$ref")
+        if reference is not None:
+            ref_count += 1
+            if not isinstance(reference, str) or not reference.startswith("#/$defs/"):
+                raise error(
+                    "PACK_BLOCK_SCHEMA_REF_REJECTED",
+                    "Governance block schemas may use only local bundled $defs references.",
+                    path=path,
+                )
+        for container in ("properties", "$defs"):
+            entries = node.get(container, {})
+            if isinstance(entries, Mapping):
+                for key, child in entries.items():
+                    if isinstance(child, Mapping):
+                        visit(child, f"{path}.{container}.{key}")
+        child = node.get("items")
+        if isinstance(child, Mapping):
+            visit(child, f"{path}.items")
+        child = node.get("additionalProperties")
+        if isinstance(child, Mapping):
+            visit(child, f"{path}.additionalProperties")
+        for container in ("allOf", "anyOf", "oneOf"):
+            entries = node.get(container, [])
+            if isinstance(entries, list):
+                for index, child in enumerate(entries):
+                    if isinstance(child, Mapping):
+                        visit(child, f"{path}.{container}[{index}]")
+
+    visit(schema, schema_id)
+    if ref_count > MAX_GOVERNANCE_SCHEMA_REFS:
+        raise error(
+            "PACK_BLOCK_SCHEMA_LIMIT_EXCEEDED",
+            f"Governance block schema {schema_id!r} exceeds the reference limit.",
+        )
+
+    refs: dict[str, str] = {}
+    definitions = schema.get("$defs", {})
+    if isinstance(definitions, Mapping):
+        for name, value in definitions.items():
+            if isinstance(value, Mapping) and isinstance(value.get("$ref"), str):
+                refs[str(name)] = str(value["$ref"]).removeprefix("#/$defs/")
+    for start in refs:
+        seen: set[str] = set()
+        current = start
+        while current in refs:
+            if current in seen:
+                raise error(
+                    "PACK_BLOCK_SCHEMA_REF_CYCLE",
+                    f"Governance block schema {schema_id!r} contains a local $ref cycle.",
+                )
+            seen.add(current)
+            current = refs[current]
+
+
+def validate_governance_block_schema(
+    block: str,
+    schema_id: str,
+    *,
+    source_id: str | None = None,
+) -> None:
+    schema = bundled_schema_catalog().get(schema_id)
+    if schema is None or schema.get("x-nornyx-governance-block") != block:
+        raise error(
+            "PACK_BLOCK_SCHEMA_UNAVAILABLE",
+            f"Block {block!r} must reference a matching bundled governance schema.",
+            source_id=source_id,
+        )
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise error(
+            "PACK_BLOCK_SCHEMA_INVALID",
+            f"Bundled governance schema {schema_id!r} is invalid: {exc}",
+            source_id=source_id,
+        ) from exc
+    _check_schema_subset(schema, schema_id=schema_id)
+
+
+def validate_governance_block(
+    block: str,
+    value: Any,
+    schema_id: str,
+    *,
+    source_id: str,
+) -> tuple[GovernanceDiagnostic, ...]:
+    validate_governance_block_schema(block, schema_id, source_id=source_id)
+    schema = bundled_schema_catalog()[schema_id]
+    validator = Draft202012Validator(schema, registry=schema_registry())
+    diagnostics = []
+    for item in sorted(validator.iter_errors(value), key=lambda error: list(error.absolute_path)):
+        suffix = ".".join(str(part) for part in item.absolute_path)
+        diagnostics.append(
+            GovernanceDiagnostic(
+                "error",
+                "GOVERNANCE_BLOCK_SCHEMA_INVALID",
+                item.message,
+                path=f"{block}.{suffix}" if suffix else block,
+                source_id=source_id,
+            )
+        )
+    return tuple(diagnostics)
 
 
 def validate_payload(payload: Mapping[str, Any], schema_name: str) -> None:

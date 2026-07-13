@@ -100,6 +100,20 @@ class StarterFragment:
 
 
 @dataclass(frozen=True, slots=True)
+class GovernanceBlockSchema:
+    block: str
+    schema_id: str
+    source_id: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "block": self.block,
+            "schema_id": self.schema_id,
+            "source_id": self.source_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ProfilePack:
     id: str
     name: str
@@ -137,6 +151,8 @@ class GovernanceModule:
     dependencies: tuple[str, ...]
     conflicts: tuple[str, ...]
     required_blocks: tuple[str, ...]
+    block_schemas: tuple[GovernanceBlockSchema, ...]
+    structural_checks: tuple[str, ...]
     policies: tuple[Mapping[str, Any], ...]
     evidence_requirements: tuple[Mapping[str, Any], ...]
     approval_requirements: tuple[Mapping[str, Any], ...]
@@ -268,6 +284,8 @@ class CompositionResult:
     profile: ProfilePack | None
     modules: tuple[GovernanceModule, ...]
     required_blocks: tuple[str, ...]
+    block_schemas: tuple[GovernanceBlockSchema, ...]
+    structural_checks: tuple[str, ...]
     policies: tuple[Mapping[str, Any], ...]
     evidence_requirements: tuple[Mapping[str, Any], ...]
     approval_requirements: tuple[NormalizedApproval, ...]
@@ -284,6 +302,8 @@ class CompositionResult:
             "profile": self.profile.id if self.profile else None,
             "modules": [module.id for module in self.modules],
             "required_blocks": list(self.required_blocks),
+            "block_schemas": [item.to_dict() for item in self.block_schemas],
+            "structural_checks": list(self.structural_checks),
             "policies": [deepcopy(dict(item)) for item in self.policies],
             "evidence_requirements": [deepcopy(dict(item)) for item in self.evidence_requirements],
             "approval_requirements": [item.to_dict() for item in self.approval_requirements],

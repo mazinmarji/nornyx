@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/governance_exception_v1.schema.json",
+  "title": "Nornyx Governed Exception Set v1",
+  "x-nornyx-governance-block": "exceptions",
+  "type": "object",
+  "required": ["schema", "source", "entries"],
+  "properties": {
+    "schema": {"const": "nornyx.governance_exceptions.v1"},
+    "source": {"const": "project_contract"},
+    "entries": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {"$ref": "#/$defs/exception"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "identities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/identity"},
+      "uniqueItems": true
+    },
+    "exception": {
+      "type": "object",
+      "required": [
+        "id",
+        "control",
+        "reason",
+        "scope",
+        "risk_tier",
+        "requester",
+        "accountable_owner",
+        "approving_authority",
+        "compensating_controls",
+        "evidence",
+        "starts_at",
+        "expires_at",
+        "renewal_policy",
+        "closure_evidence",
+        "status"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/identity"},
+        "control": {"$ref": "#/$defs/identity"},
+        "reason": {"$ref": "#/$defs/nonEmpty"},
+        "scope": {"$ref": "#/$defs/identities"},
+        "risk_tier": {"enum": ["low", "medium", "high", "critical"]},
+        "requester": {"$ref": "#/$defs/identity"},
+        "accountable_owner": {"$ref": "#/$defs/identity"},
+        "approving_authority": {"$ref": "#/$defs/identity"},
+        "compensating_controls": {"$ref": "#/$defs/identities"},
+        "evidence": {"$ref": "#/$defs/identities"},
+        "starts_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "renewal_policy": {"enum": ["prohibited", "manual_reapproval"]},
+        "closure_evidence": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/identity"},
+          "uniqueItems": true
+        },
+        "status": {"enum": ["requested", "approved", "active", "expired", "closed", "rejected"]}
+      },
+      "additionalProperties": false
+    }
+  }
+}

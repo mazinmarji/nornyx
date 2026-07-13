@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import yaml
@@ -38,6 +39,7 @@ from .governance import (
     GovernanceError,
     GovernanceRegistry,
     ProfilePack,
+    compose_document_governance,
     compose_governance,
     evaluate_document_governance,
     load_local_pack,
@@ -93,11 +95,29 @@ def cmd_check(args: argparse.Namespace) -> int:
     try:
         registry = registry_for_contract(args.file)
         lock_candidate = Path(args.file).resolve().parent / "nornyx.profiles.lock"
+        lock_path = lock_candidate if lock_candidate.is_file() else None
+        composition = compose_document_governance(
+            doc,
+            registry=registry,
+            lock_path=lock_path,
+        )
+        if composition is not None:
+            contributed_blocks = {item.block for item in composition.block_schemas}
+            diagnostics = [
+                item
+                for item in diagnostics
+                if not (
+                    item.code == "UNKNOWN_TOP_LEVEL_BLOCK"
+                    and item.path in contributed_blocks
+                )
+            ]
         diagnostics.extend(
             evaluate_document_governance(
                 doc,
                 registry=registry,
-                lock_path=lock_candidate if lock_candidate.is_file() else None,
+                lock_path=lock_path,
+                as_of=datetime.now(timezone.utc).isoformat(),
+                document_root=Path(args.file).resolve().parent,
             )
         )
     except GovernanceError as exc:

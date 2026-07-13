@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/governance_approval_model_v1.schema.json",
-  "$comment": "DRAFT internal normalization contract only. Production approval structures are unchanged in PR 1.",
-  "title": "Nornyx Normalized Approval Model v1 (Draft)",
+  "$comment": "Active internal approval-normalization contract; legacy source structures remain unchanged.",
+  "title": "Nornyx Normalized Approval Model v1",
   "type": "object",
   "required": [
     "schema",
