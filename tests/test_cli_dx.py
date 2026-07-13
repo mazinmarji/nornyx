@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib import resources
 from pathlib import Path
 
 import pytest
@@ -111,8 +112,9 @@ def test_builtin_profile_names_are_stable() -> None:
 
 
 def test_builtin_profile_metadata_files_exist() -> None:
+    root = resources.files("nornyx") / "profiles_data"
     for profile in PROFILE_NAMES:
-        assert Path("profiles", f"{profile}.yaml").exists()
+        assert (root / f"{profile}.yaml").is_file()
 
 
 def test_v03_domain_profile_pack_catalog_is_valid() -> None:
@@ -128,19 +130,19 @@ def test_v03_domain_profile_pack_catalog_is_valid() -> None:
     ]
 
 
-def test_v03_domain_profile_metadata_files_match_pack_contract() -> None:
+def test_v1_domain_profile_data_projects_to_the_legacy_contract() -> None:
+    root = resources.files("nornyx") / "profiles_data"
     for name in DOMAIN_PROFILE_NAMES:
-        path = Path("profiles", f"{name}.yaml")
-        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        payload = yaml.safe_load((root / f"{name}.yaml").read_text(encoding="utf-8"))
         pack = profile_pack(name)
 
-        assert payload["name"] == name
-        assert payload["version"] == "v0.3"
-        assert payload["core_surface"] == "v0.2"
-        assert payload["status"] == "optional_profile"
-        assert payload["core_concepts"] == GENERAL_CORE_CONCEPTS
-        assert payload["conformance"]["migration"]
-        assert payload == pack
+        assert payload["schema"] == "nornyx.profile_pack.v1"
+        assert payload["name"] == pack["name"] == name
+        assert pack["version"] == "v0.3"
+        assert pack["core_surface"] == "v0.2"
+        assert pack["status"] == "optional_profile"
+        assert pack["core_concepts"] == GENERAL_CORE_CONCEPTS
+        assert pack["conformance"]["migration"]
 
 
 def test_v03_domain_profile_generated_documents_are_checkable() -> None:
