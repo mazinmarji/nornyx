@@ -325,7 +325,195 @@ def test_composition_rejects_cross_module_approval_weakening(tmp_path: Path) -> 
     registry.register_directory(tmp_path, source_tier="project")
     with pytest.raises(GovernanceError) as weakening:
         compose_governance(registry, profile_identity=None, module_ids=["b_eligible", "a_denied"])
-    assert _codes(weakening.value) == {"PACK_MONOTONICITY_APPROVAL"}
+    # The intrinsic prohibition now trips at the normalization boundary,
+    # before the cross-pack monotonicity merge is even reached.
+    assert _codes(weakening.value) == {"APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE"}
+
+
+def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
+    # F1: an AI tool or execution surface can never normalize as an eligible
+    # or required approver, so references_role fails closed on such gates.
+    normalized = normalize_approval(
+        {"id": "g", "eligible_approver_roles": ["ai_tool"], "required_evidence": ["x"]},
+        shape="governed_package_gate",
+        path="approvals[0]",
+        fallback_id="g",
+    )
+    assert normalized.resolution == "invalid"
+    assert "APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE" in {
+        item.code for item in normalized.diagnostics
+    }
+    rule = _rule(requirement={"path": "approvals", "references_role": "ai_tool"})
+    document = {
+        "approvals": [
+            {"id": "g", "eligible_approver_roles": ["ai_tool"], "required_evidence": ["x"]}
+        ]
+    }
+    diagnostics = evaluate_rule(document, rule)
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
+
+
+def test_structural_errors_in_when_fail_closed() -> None:
+    # F2: a malformed document must not silently disable a rule.
+    rule = _rule(
+        when={"path": "changes[].risk", "equals": "high"},
+        requirement={"path": "approvals", "exists": True},
+    )
+    diagnostics = evaluate_rule({"changes": "not-a-list"}, rule)
+    assert [item.code for item in diagnostics] == ["RULE_COLLECTION_TYPE_ERROR"]
+    assert diagnostics[0].level == "error"
+
+
+def test_all_mode_when_requires_a_single_satisfying_element() -> None:
+    # F5: with same-prefix `all` predicates, the condition matches only if one
+    # element satisfies every predicate.
+    rule = _rule(
+        when={
+            "all": [
+                {"path": "changes[].risk", "equals": "high"},
+                {"path": "changes[].type", "equals": "feature"},
+            ]
+        },
+        requirement={"path": "changes[].owner", "exists": True},
+    )
+    split = {
+        "changes": [
+            {"risk": "high", "type": "fix", "owner": "a"},
+            {"risk": "low", "type": "feature", "owner": "b"},
+        ]
+    }
+    assert evaluate_rule(split, rule) == ()
+    joint = {
+        "changes": [
+            {"risk": "high", "type": "feature"},
+            {"risk": "low", "type": "fix", "owner": "b"},
+        ]
+    }
+    diagnostics = evaluate_rule(joint, rule)
+    assert diagnostics and all(item.binding == (("changes", 0),) for item in diagnostics)
+
+
+def test_duplicate_lock_entries_are_rejected(tmp_path: Path) -> None:
+    # F3: duplicate lock ids must fail before dictionary collapse.
+    from nornyx.governance.locks import load_lock, verify_lock
+    from nornyx.governance.models import LockEntry, ProfileLock
+
+    registry = GovernanceRegistry.builtins()
+    profile = registry.resolve_profile("minimal")
+    stale = LockEntry(
+        id=profile.id,
+        version="9.9.9",
+        source_tier="builtin",
+        content_hash="sha256:" + "0" * 64,
+        path_hint="x",
+    )
+    fresh = LockEntry(
+        id=profile.id,
+        version=profile.version,
+        source_tier="builtin",
+        content_hash=profile.content_hash,
+        path_hint="y",
+    )
+    with pytest.raises(GovernanceError) as duplicated:
+        verify_lock(ProfileLock((stale, fresh)), [profile])
+    assert _codes(duplicated.value) == {"PACK_LOCK_DUPLICATE_ID"}
+
+    lock_path = tmp_path / "nornyx.profiles.lock"
+    lock_path.write_text(
+        json.dumps(
+            {
+                "schema": "nornyx.profiles_lock.v1",
+                "resolved": [stale.to_dict(), fresh.to_dict()],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(GovernanceError) as loaded:
+        load_lock(lock_path)
+    assert _codes(loaded.value) == {"PACK_LOCK_DUPLICATE_ID"}
+
+
+def test_rule_caps_apply_per_pack_and_per_composition(tmp_path: Path, monkeypatch) -> None:
+    # F4: a pack over the per-pack cap fails to load, and composition enforces
+    # the composed-rule cap.
+    module = _yaml("valid_module_v1.yaml")
+
+    def cap_rule(index: int) -> dict[str, Any]:
+        return {
+            "id": f"CAP-{index:03d}",
+            "description": f"cap {index}",
+            "require": [{"path": "project", "exists": True}],
+            "severity": "warning",
+            "message": f"cap {index}",
+        }
+
+    module["rules"] = [cap_rule(index) for index in range(201)]
+    over_path = tmp_path / "over.yaml"
+    _write_pack(over_path, module)
+    with pytest.raises(GovernanceError) as over_cap:
+        load_local_pack(over_path, allowed_root=tmp_path, source_tier="project")
+    # The per-pack cap is enforced primarily by the schema (maxItems: 200);
+    # the loader keeps PACK_LIMIT_EXCEEDED as a backstop for API callers.
+    assert _codes(over_cap.value) <= {"PACK_SCHEMA_INVALID", "PACK_LIMIT_EXCEEDED"}
+    assert _codes(over_cap.value)
+
+    from nornyx.governance import composition as composition_module
+
+    module["rules"] = [cap_rule(index) for index in range(3)]
+    ok_path = tmp_path / "ok.yaml"
+    _write_pack(ok_path, module)
+    registry = GovernanceRegistry.builtins()
+    registry.register_path(ok_path, allowed_root=tmp_path, source_tier="project")
+    monkeypatch.setattr(composition_module, "MAX_COMPOSED_RULES", 2)
+    with pytest.raises(GovernanceError) as composed_cap:
+        compose_governance(registry, profile_identity=None, module_ids=["evidence_integrity"])
+    assert _codes(composed_cap.value) == {"PACK_LIMIT_EXCEEDED"}
+
+
+def test_same_pack_duplicate_item_ids_are_fatal(tmp_path: Path) -> None:
+    # F6: duplicate ids inside one pack are author errors, not merges.
+    module = _yaml("valid_module_v1.yaml")
+    module["rules"] = []
+    module["policies"] = [
+        {"id": "dup_policy", "deny": ["a"], "require": []},
+        {"id": "dup_policy", "deny": ["b"], "require": []},
+    ]
+    path = tmp_path / "dup.yaml"
+    _write_pack(path, module)
+    registry = GovernanceRegistry.builtins()
+    registry.register_path(path, allowed_root=tmp_path, source_tier="project")
+    with pytest.raises(GovernanceError) as duplicated:
+        compose_governance(registry, profile_identity=None, module_ids=["evidence_integrity"])
+    assert _codes(duplicated.value) == {"PACK_DUPLICATE_ID"}
+
+
+def test_resolve_sees_project_tier_and_verifies_existing_locks(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    # F7: resolve discovers project-local packs and verifies an existing lock
+    # instead of overwriting it; a stale lock exits 2.
+    profile = _yaml("valid_profile_v1.yaml")
+    profile_dir = tmp_path / ".nornyx" / "profiles"
+    profile_dir.mkdir(parents=True)
+    _write_pack(profile_dir / "delivery.yaml", profile)
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["profiles", "resolve", "delivery_profile", "--lock", "--json"]) == 0
+    written = json.loads(capsys.readouterr().out)
+    assert written["status"] == "resolved"
+    assert (tmp_path / "nornyx.profiles.lock").is_file()
+
+    assert main(["profiles", "resolve", "delivery_profile", "--json"]) == 0
+    verified = json.loads(capsys.readouterr().out)
+    assert verified["lock_verified"] is True
+
+    stale = deepcopy(profile)
+    stale["version"] = "1.0.1"
+    _write_pack(profile_dir / "delivery.yaml", stale)
+    assert main(["profiles", "resolve", "delivery_profile", "--json"]) == 2
+    mismatch = json.loads(capsys.readouterr().out)
+    codes = {item["code"] for item in mismatch["diagnostics"]}
+    assert "PACK_LOCK_MISMATCH" in codes
 
 
 def test_composed_approvals_always_carry_core_denials(tmp_path: Path) -> None:
@@ -354,7 +542,7 @@ def test_composed_approvals_always_carry_core_denials(tmp_path: Path) -> None:
     registry.register_path(grant_path, allowed_root=tmp_path, source_tier="project")
     with pytest.raises(GovernanceError) as rejected:
         compose_governance(registry, profile_identity=None, module_ids=["ai_grant"])
-    assert _codes(rejected.value) == {"PACK_MONOTONICITY_APPROVAL"}
+    assert _codes(rejected.value) == {"APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE"}
 
     clean = deepcopy(base)
     clean["id"] = "org.example.clean"

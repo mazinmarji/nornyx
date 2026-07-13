@@ -11,15 +11,18 @@ from .registry import GovernanceRegistry
 from .rules import evaluate_rules
 
 
-def registry_for_contract(path: str | Path) -> GovernanceRegistry:
-    contract_path = Path(path).resolve()
+def registry_for_directory(root: str | Path) -> GovernanceRegistry:
     registry = GovernanceRegistry.builtins()
-    nornyx_root = contract_path.parent / ".nornyx"
+    nornyx_root = Path(root).resolve() / ".nornyx"
     for directory_name in ("profiles", "modules"):
         directory = nornyx_root / directory_name
         if directory.is_dir():
             registry.register_directory(directory, source_tier="project")
     return registry
+
+
+def registry_for_contract(path: str | Path) -> GovernanceRegistry:
+    return registry_for_directory(Path(path).resolve().parent)
 
 
 def compose_document_governance(

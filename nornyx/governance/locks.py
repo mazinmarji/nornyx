@@ -12,6 +12,19 @@ from .schemas import validate_payload
 Pack = ProfilePack | GovernanceModule
 
 
+def _reject_duplicate_entries(entries: tuple[LockEntry, ...], *, path: str | None = None) -> None:
+    seen: set[str] = set()
+    for entry in entries:
+        if entry.id in seen:
+            raise error(
+                "PACK_LOCK_DUPLICATE_ID",
+                f"Profile lock lists {entry.id!r} more than once.",
+                path=path,
+                source_id=entry.id,
+            )
+        seen.add(entry.id)
+
+
 def lock_for_packs(packs: Iterable[Pack]) -> ProfileLock:
     entries = tuple(
         LockEntry(
@@ -45,6 +58,7 @@ def load_lock(path: str | Path) -> ProfileLock:
         )
         for item in payload["resolved"]
     )
+    _reject_duplicate_entries(entries, path=str(path))
     return ProfileLock(entries)
 
 
@@ -62,6 +76,7 @@ def write_lock(path: str | Path, lock: ProfileLock) -> Path:
 
 
 def verify_lock(lock: ProfileLock, packs: Iterable[Pack]) -> None:
+    _reject_duplicate_entries(lock.resolved)
     expected = {entry.id: entry for entry in lock.resolved}
     actual = {pack.id: pack for pack in packs}
     if set(expected) != set(actual):

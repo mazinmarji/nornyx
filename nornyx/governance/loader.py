@@ -25,6 +25,7 @@ MAX_PACK_BYTES = 512 * 1024
 MAX_YAML_DEPTH = 40
 MAX_YAML_NODES = 20_000
 MAX_YAML_ALIASES = 50
+MAX_RULES_PER_PACK = 200
 URL_PREFIXES = ("http://", "https://", "ftp://", "git://", "ssh://")
 
 
@@ -95,6 +96,16 @@ def _verify_integrity(payload: Mapping[str, Any], source_path: str) -> str:
     return actual
 
 
+def _check_rule_cap(rules: list[Any], *, source_path: str, pack_id: str) -> None:
+    if len(rules) > MAX_RULES_PER_PACK:
+        raise error(
+            "PACK_LIMIT_EXCEEDED",
+            f"Pack declares {len(rules)} rules; the limit is {MAX_RULES_PER_PACK}.",
+            path=source_path,
+            source_id=pack_id,
+        )
+
+
 def _profile_from_payload(
     payload: dict[str, Any],
     *,
@@ -103,6 +114,7 @@ def _profile_from_payload(
     content_hash: str,
 ) -> ProfilePack:
     pack_id = str(payload["id"])
+    _check_rule_cap(payload["validation_rules"], source_path=source_path, pack_id=pack_id)
     if source_tier != "builtin" and pack_id.startswith("nornyx.builtin."):
         raise error(
             "PACK_RESERVED_NAMESPACE",
@@ -161,6 +173,7 @@ def _module_from_payload(
     content_hash: str,
 ) -> GovernanceModule:
     pack_id = str(payload["id"])
+    _check_rule_cap(payload["rules"], source_path=source_path, pack_id=pack_id)
     if source_tier != "builtin" and pack_id.startswith("nornyx.builtin."):
         raise error(
             "PACK_RESERVED_NAMESPACE",

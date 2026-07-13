@@ -41,8 +41,10 @@ from .governance import (
     compose_governance,
     evaluate_document_governance,
     load_local_pack,
+    load_lock,
     lock_for_packs,
     registry_for_contract,
+    registry_for_directory,
     write_lock,
 )
 from .governed_package import (
@@ -630,13 +632,32 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             print(json.dumps(payload, indent=2) if as_json else f"Valid {payload['kind']}: {pack.id}@{pack.version}")
             return 0
         if command == "resolve":
-            result = compose_governance(registry, profile_identity=args.name)
+            # Resolution sees the same discovery tiers as `nornyx check`:
+            # project-local .nornyx/{profiles,modules} under the current
+            # directory, then built-ins. An existing lock is verified unless
+            # --lock explicitly regenerates it; a mismatch exits 2.
+            resolve_registry = registry_for_directory(Path.cwd())
+            lock_file = Path.cwd() / "nornyx.profiles.lock"
+            existing_lock = None
+            if lock_file.is_file() and not args.lock:
+                existing_lock = load_lock(lock_file)
+            try:
+                result = compose_governance(
+                    resolve_registry,
+                    profile_identity=args.name,
+                    lock=existing_lock,
+                )
+            except GovernanceError as exc:
+                _print_pack_error(exc, as_json=as_json)
+                lock_codes = {"PACK_LOCK_MISMATCH", "PACK_LOCK_SET_MISMATCH", "PACK_LOCK_DUPLICATE_ID", "PACK_LOCK_INVALID"}
+                return 2 if any(item.code in lock_codes for item in exc.diagnostics) else 1
             payload = result.to_dict()
             payload["status"] = "resolved"
-            payload["resolution_trace"] = list(registry.resolution_trace)
+            payload["resolution_trace"] = list(resolve_registry.resolution_trace)
+            payload["lock_verified"] = existing_lock is not None
             if args.lock:
                 lock = lock_for_packs([*result.modules, result.profile])
-                lock_path = write_lock("nornyx.profiles.lock", lock)
+                lock_path = write_lock(lock_file, lock)
                 payload["lock_path"] = lock_path.as_posix()
             print(
                 json.dumps(payload, indent=2)

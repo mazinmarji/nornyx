@@ -27,6 +27,7 @@ Pack = ProfilePack | GovernanceModule
 # denials regardless of what the pack declared.
 CORE_DENIED_ACTOR_TYPES = ("ai_tool", "execution_surface")
 CORE_DENIED_EXECUTION_SURFACES = ("execution_surface",)
+MAX_COMPOSED_RULES = 2000
 
 
 def _provenance_record(
@@ -271,6 +272,20 @@ def compose_governance(
     provenance: list[Mapping[str, Any]] = []
 
     for pack in selected:
+        # Duplicate ids within one pack are always author errors and are fatal;
+        # merge-by-id semantics apply only across layers.
+        pack_seen: set[tuple[str, str]] = set()
+
+        def _claim(kind: str, item_id: str) -> None:
+            key = (kind, item_id)
+            if key in pack_seen:
+                raise error(
+                    "PACK_DUPLICATE_ID",
+                    f"Pack {pack.id!r} declares {kind} id {item_id!r} more than once.",
+                    source_id=pack.id,
+                )
+            pack_seen.add(key)
+
         provenance.append(
             _provenance_record(pack, element_kind="pack", element_id=pack.id)
         )
@@ -294,6 +309,7 @@ def compose_governance(
 
         for item in source_policies:
             item_id = _item_id(item, "policy", pack.id)
+            _claim("policy", item_id)
             provenance.append(
                 _provenance_record(pack, element_kind="policy", element_id=item_id)
             )
@@ -304,6 +320,7 @@ def compose_governance(
             )
         for item in source_evidence:
             item_id = _item_id(item, "evidence", pack.id)
+            _claim("evidence", item_id)
             provenance.append(
                 _provenance_record(pack, element_kind="evidence", element_id=item_id)
             )
@@ -314,6 +331,7 @@ def compose_governance(
             )
         for index, item in enumerate(source_approvals):
             normalized = _normalize_pack_approval(item, source_id=pack.id, index=index)
+            _claim("approval", normalized.id)
             provenance.append(
                 _provenance_record(
                     pack,
@@ -328,6 +346,7 @@ def compose_governance(
             )
         for item in source_evaluations:
             item_id = _item_id(item, "evaluation", pack.id)
+            _claim("evaluation", item_id)
             provenance.append(
                 _provenance_record(pack, element_kind="evaluation", element_id=item_id)
             )
@@ -356,6 +375,12 @@ def compose_governance(
                 )
                 for item in pack.starter_fragments
             )
+
+    if len(rules) > MAX_COMPOSED_RULES:
+        raise error(
+            "PACK_LIMIT_EXCEEDED",
+            f"Composition produced {len(rules)} rules; the limit is {MAX_COMPOSED_RULES}.",
+        )
 
     fragments = profile.starter_fragments if profile else ()
     return CompositionResult(

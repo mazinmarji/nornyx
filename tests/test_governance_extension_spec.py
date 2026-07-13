@@ -135,6 +135,16 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
             )
         )
 
+    core_conflict = (set(eligible) | set(required)) & {"ai_tool", "execution_surface"}
+    if core_conflict:
+        diagnostics.append(
+            _normalization_diagnostic(
+                "APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE",
+                "error",
+                "AI tools and execution surfaces can never be eligible or "
+                f"required approvers: {', '.join(sorted(core_conflict))}.",
+            )
+        )
     denied_all = set(denied_actors) | set(denied_surfaces)
     if set(eligible) & denied_all:
         diagnostics.append(

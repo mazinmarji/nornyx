@@ -24,6 +24,7 @@ from .runtime import (
     compose_document_governance,
     evaluate_document_governance,
     registry_for_contract,
+    registry_for_directory,
 )
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "normalize_approval",
     "project_profile_to_v03",
     "registry_for_contract",
+    "registry_for_directory",
     "verify_lock",
     "write_lock",
 ]

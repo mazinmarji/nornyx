@@ -280,12 +280,21 @@ def _predicate_outcome(document: Mapping[str, Any], predicate: Mapping[str, Any]
 def _condition_outcome(
     document: Mapping[str, Any],
     condition: Mapping[str, Any] | None,
-) -> tuple[bool, dict[str, frozenset[tuple[tuple[str, int], ...]]]]:
+) -> tuple[
+    bool,
+    dict[str, frozenset[tuple[tuple[str, int], ...]]],
+    tuple[GovernanceDiagnostic, ...],
+]:
     if condition is None:
-        return True, {}
+        return True, {}, ()
     if "all" in condition or "any" in condition:
         mode = "all" if "all" in condition else "any"
         outcomes = [_predicate_outcome(document, item) for item in condition[mode]]
+        structural = tuple(
+            diagnostic
+            for item in outcomes
+            for diagnostic in item.resolution.structural_errors
+        )
         matched = all(item.matched for item in outcomes) if mode == "all" else any(item.matched for item in outcomes)
         prefixes = {prefix for item in outcomes for prefix in item.successes}
         selections: dict[str, frozenset[tuple[tuple[str, int], ...]]] = {}
@@ -294,16 +303,43 @@ def _condition_outcome(
             if not groups:
                 continue
             selected = set.intersection(*groups) if mode == "all" else set.union(*groups)
+            if mode == "all" and len(groups) >= 2 and not selected:
+                # Per-element semantics: an element is selected only if every
+                # same-prefix predicate matches that element. If no single
+                # element satisfies them all, the condition does not match.
+                matched = False
             selections[prefix] = frozenset(selected)
-        return matched, selections
+        return matched, selections, structural
     outcome = _predicate_outcome(document, condition)
-    return outcome.matched, dict(outcome.successes)
+    return outcome.matched, dict(outcome.successes), outcome.resolution.structural_errors
 
 
 def evaluate_rule(document: Mapping[str, Any], rule: Rule) -> tuple[GovernanceDiagnostic, ...]:
-    matched, selections = _condition_outcome(document, rule.when)
+    matched, selections, when_errors = _condition_outcome(document, rule.when)
+    if when_errors:
+        # A malformed document must never silently disable a rule: structural
+        # errors while evaluating `when` fail closed at the rule's severity.
+        return tuple(
+            GovernanceDiagnostic(
+                rule.severity,
+                item.code,
+                rule.message,
+                path=item.path,
+                source_id=rule.namespaced_id,
+                binding=item.binding,
+            )
+            for item in when_errors
+        )
     if not matched:
         return ()
+    return _evaluate_requirements(document, rule, selections)
+
+
+def _evaluate_requirements(
+    document: Mapping[str, Any],
+    rule: Rule,
+    selections: dict[str, frozenset[tuple[tuple[str, int], ...]]],
+) -> tuple[GovernanceDiagnostic, ...]:
     diagnostics: list[GovernanceDiagnostic] = []
     for predicate in rule.requirements:
         path = str(predicate["path"])

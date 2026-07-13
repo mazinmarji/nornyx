@@ -15,6 +15,9 @@ ROLE_FIELDS = (
     "eligible_approvers",
 )
 ROLE_MARKERS = ("role", "approver", "authorized", "people")
+# Intrinsic, non-declarable prohibition: these actor categories can never be
+# eligible or required approvers, regardless of what any document declares.
+CORE_DENIED_ACTOR_TYPES = ("ai_tool", "execution_surface")
 
 
 def _as_values(value: Any) -> list[Any]:
@@ -99,6 +102,17 @@ def normalize_approval(
                 "APPROVAL_UNKNOWN_ROLE_FIELD",
                 "error",
                 f"Unknown role-bearing fields: {', '.join(unknown)}.",
+                path,
+            )
+        )
+    core_conflict = (set(eligible) | set(required)) & set(CORE_DENIED_ACTOR_TYPES)
+    if core_conflict:
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE",
+                "error",
+                "AI tools and execution surfaces can never be eligible or "
+                f"required approvers: {', '.join(sorted(core_conflict))}.",
                 path,
             )
         )
