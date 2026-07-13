@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import yaml
 
 from . import __version__
 from .adoption import adoption_status, write_lite_nyx
@@ -33,6 +34,17 @@ from .explain import explain_document
 from .fmt import format_file
 from .generator import generate_artifacts
 from .goals import write_goal_plan
+from .governance import (
+    GovernanceError,
+    GovernanceRegistry,
+    ProfilePack,
+    compose_governance,
+    evaluate_document_governance,
+    load_local_pack,
+    lock_for_packs,
+    registry_for_contract,
+    write_lock,
+)
 from .governed_package import (
     generate_governed_package,
     radar_governed_packages,
@@ -44,7 +56,7 @@ from .language_evolution import build_language_evolution_report, write_language_
 from .package_scanner import parse_gitleaks_report, parse_syft_report, scan_package, write_json
 from .parser import NornyxParseError, load_nyx
 from .policy_runtime import PolicyRuntimeError, evaluate_harness_policy, write_policy_report
-from .profiles import PROFILE_NAMES, write_profile
+from .profiles import PROFILE_NAMES, render_profile_document, write_profile
 from .release_readiness import (
     build_release_readiness_report,
     build_stable_language_report,
@@ -75,7 +87,19 @@ def cmd_check(args: argparse.Namespace) -> int:
     except NornyxParseError as exc:
         print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
         return 2
-    diagnostics = check_document(doc)
+    diagnostics = list(check_document(doc))
+    try:
+        registry = registry_for_contract(args.file)
+        lock_candidate = Path(args.file).resolve().parent / "nornyx.profiles.lock"
+        diagnostics.extend(
+            evaluate_document_governance(
+                doc,
+                registry=registry,
+                lock_path=lock_candidate if lock_candidate.is_file() else None,
+            )
+        )
+    except GovernanceError as exc:
+        diagnostics.extend(exc.diagnostics)
     for diag in diagnostics:
         print(json.dumps(diag.to_dict(), indent=2))
     if has_errors(diagnostics):
@@ -538,10 +562,118 @@ def cmd_evidence_pack(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_pack_error(exc: GovernanceError, *, as_json: bool) -> None:
+    payload = {
+        "status": "error",
+        "diagnostics": [item.to_dict() for item in exc.diagnostics],
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+    else:
+        for item in exc.diagnostics:
+            print(f"{item.code}: {item.message}")
+
+
 def cmd_profiles(args: argparse.Namespace) -> int:
-    for name in PROFILE_NAMES:
-        print(name)
-    return 0
+    command = getattr(args, "profiles_command", None)
+    as_json = getattr(args, "json", False)
+    registry = GovernanceRegistry.builtins()
+    if command is None:
+        for name in PROFILE_NAMES:
+            print(name)
+        return 0
+    try:
+        if command == "list":
+            entries = []
+            for name in registry.profile_names:
+                profile = registry.resolve_profile(name)
+                entries.append(
+                    {
+                        "name": profile.name,
+                        "id": profile.id,
+                        "version": profile.version,
+                        "status": profile.status,
+                        "source_tier": profile.provenance.source_tier,
+                    }
+                )
+            if as_json:
+                print(json.dumps({"status": "ok", "profiles": entries}, indent=2))
+            else:
+                for item in entries:
+                    print(
+                        f"{item['name']} {item['version']} {item['status']} "
+                        f"({item['source_tier']})"
+                    )
+            return 0
+        if command == "inspect":
+            profile = registry.resolve_profile(args.name)
+            payload = profile.as_dict()
+            payload["resolved_provenance"] = profile.provenance.to_dict()
+            payload["resolved_content_hash"] = profile.content_hash
+            print(
+                json.dumps({"status": "ok", "profile": payload}, indent=2)
+                if as_json
+                else yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip()
+            )
+            return 0
+        if command == "validate":
+            path = Path(args.path).resolve()
+            pack = load_local_pack(path, allowed_root=path.parent)
+            payload = {
+                "status": "valid",
+                "kind": "profile" if isinstance(pack, ProfilePack) else "module",
+                "id": pack.id,
+                "version": pack.version,
+                "content_hash": pack.content_hash,
+                "path": path.as_posix(),
+            }
+            print(json.dumps(payload, indent=2) if as_json else f"Valid {payload['kind']}: {pack.id}@{pack.version}")
+            return 0
+        if command == "resolve":
+            result = compose_governance(registry, profile_identity=args.name)
+            payload = result.to_dict()
+            payload["status"] = "resolved"
+            payload["resolution_trace"] = list(registry.resolution_trace)
+            if args.lock:
+                lock = lock_for_packs([*result.modules, result.profile])
+                lock_path = write_lock("nornyx.profiles.lock", lock)
+                payload["lock_path"] = lock_path.as_posix()
+            print(
+                json.dumps(payload, indent=2)
+                if as_json
+                else yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip()
+            )
+            return 0
+        if command == "compatibility":
+            profiles = [registry.resolve_profile(name) for name in args.names]
+            selected_ids = {item.id for item in profiles}
+            selected_names = {item.name for item in profiles}
+            conflicts: set[tuple[str, str]] = set()
+            review: set[tuple[str, str]] = set()
+            for profile in profiles:
+                raw = profile.raw
+                for identity in raw["conflicts"]:
+                    if identity in selected_ids or identity in selected_names:
+                        conflicts.add(tuple(sorted((profile.name, identity))))
+                for identity in raw["compatibility"]["requires_review_with"]:
+                    if identity in selected_ids or identity in selected_names:
+                        review.add(tuple(sorted((profile.name, identity))))
+            payload = {
+                "status": "conflict" if conflicts else "compatible",
+                "profiles": [item.name for item in profiles],
+                "conflicts": [list(item) for item in sorted(conflicts)],
+                "requires_review": [list(item) for item in sorted(review)],
+            }
+            print(
+                json.dumps(payload, indent=2)
+                if as_json
+                else yaml.safe_dump(payload, sort_keys=False).rstrip()
+            )
+            return 1 if conflicts else 0
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=as_json)
+        return 1
+    raise ValueError(f"Unsupported profiles command {command!r}")
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -552,8 +684,33 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 def cmd_init(args: argparse.Namespace) -> int:
     try:
-        path = write_profile(args.out, args.profile, args.name, force=args.force)
-    except (ValueError, FileExistsError) as exc:
+        if args.profile_path:
+            source = Path(args.profile_path).resolve()
+            pack = load_local_pack(source, allowed_root=source.parent)
+            if not isinstance(pack, ProfilePack):
+                raise ValueError("--profile-path must identify a profile pack, not a module.")
+            target = Path(args.out)
+            if target.exists() and not args.force:
+                raise FileExistsError(f"{target} already exists. Use --force to overwrite.")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(
+                yaml.safe_dump(
+                    render_profile_document(pack, args.name),
+                    sort_keys=False,
+                    allow_unicode=True,
+                    width=100,
+                ),
+                encoding="utf-8",
+            )
+            path = target
+        else:
+            path = write_profile(
+                args.out,
+                args.profile or "ai_coding",
+                args.name,
+                force=args.force,
+            )
+    except (GovernanceError, ValueError, FileExistsError) as exc:
         print(json.dumps({"level": "error", "code": "INIT_ERROR", "message": str(exc)}, indent=2))
         return 1
     print(f"Nornyx project draft written to {path}")
@@ -822,8 +979,36 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default="generated/evidence")
     p.set_defaults(func=cmd_evidence_pack)
 
-    p = sub.add_parser("profiles", help="List built-in Nornyx profiles")
-    p.set_defaults(func=cmd_profiles)
+    p = sub.add_parser("profiles", help="Inspect and validate local Nornyx profiles")
+    p.set_defaults(func=cmd_profiles, profiles_command=None)
+    profile_sub = p.add_subparsers(dest="profiles_command")
+
+    profile_command = profile_sub.add_parser("list", help="List built-in profiles")
+    profile_command.add_argument("--json", action="store_true")
+    profile_command.set_defaults(func=cmd_profiles)
+
+    profile_command = profile_sub.add_parser("inspect", help="Inspect a built-in v1 profile")
+    profile_command.add_argument("name")
+    profile_command.add_argument("--json", action="store_true")
+    profile_command.set_defaults(func=cmd_profiles)
+
+    profile_command = profile_sub.add_parser("validate", help="Validate one local pack")
+    profile_command.add_argument("path")
+    profile_command.add_argument("--json", action="store_true")
+    profile_command.set_defaults(func=cmd_profiles)
+
+    profile_command = profile_sub.add_parser("resolve", help="Resolve one built-in profile")
+    profile_command.add_argument("name")
+    profile_command.add_argument("--lock", action="store_true")
+    profile_command.add_argument("--json", action="store_true")
+    profile_command.set_defaults(func=cmd_profiles)
+
+    profile_command = profile_sub.add_parser(
+        "compatibility", help="Analyze declared profile compatibility"
+    )
+    profile_command.add_argument("names", nargs="+")
+    profile_command.add_argument("--json", action="store_true")
+    profile_command.set_defaults(func=cmd_profiles)
 
     p = sub.add_parser("doctor", help="Check local Nornyx repository readiness")
     p.add_argument("--repo", default=".")
@@ -831,7 +1016,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_doctor)
 
     p = sub.add_parser("init", help="Create a starter .nyx file from a built-in profile")
-    p.add_argument("--profile", choices=PROFILE_NAMES, default="ai_coding")
+    profile_source = p.add_mutually_exclusive_group()
+    profile_source.add_argument("--profile", choices=PROFILE_NAMES)
+    profile_source.add_argument("--profile-path", help="Explicit local v1 profile pack")
     p.add_argument("--name", required=True)
     p.add_argument("--out", default="nornyx.project.nyx")
     p.add_argument("--force", action="store_true")
