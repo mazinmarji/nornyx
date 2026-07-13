@@ -106,7 +106,7 @@ required module because it was introduced with that contract.
 
 ## Stage H - Full Hardening
 
-Status: planned.
+Status: implemented.
 
 - stable CLI/API and diagnostics;
 - malicious pack/schema/evidence/exception corpus;
@@ -115,9 +115,16 @@ Status: planned.
 - build, wheel install, documentation execution, and Linux symlink tests;
 - public-boundary and repository-specific assurance.
 
+Reports 19-20 and the formal compatibility manifest record the results. The
+expanded suite passes 499 tests with 8 environment/platform skips on Windows;
+Ruff, public-boundary, key examples, source/sdist/wheel build, Twine checks, and
+an isolated no-network installed-wheel probe pass. Real symlink cases remain a
+required Linux CI gate. Setuptools license metadata emits a non-blocking
+deprecation warning with a 2027 deadline.
+
 ## Stage I - Program Closure
 
-Status: planned.
+Status: in progress.
 
 Produce reports 16-21, reconcile every roadmap item to an unambiguous final
 status, prepare a human-reviewed release candidate without publishing it, and

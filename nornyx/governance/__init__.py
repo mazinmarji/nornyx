@@ -4,6 +4,7 @@ from .architecture import import_architecture_evidence
 from .approvals import normalize_approval, trusted_normalized_approval
 from .composition import compose_governance
 from .errors import GovernanceError
+from .evidence_validation import validate_governance_evidence_file
 from .loader import load_local_pack, load_pack_bytes
 from .locks import load_lock, lock_for_packs, verify_lock, write_lock
 from .models import (
@@ -57,6 +58,7 @@ __all__ = [
     "lock_for_packs",
     "normalize_approval",
     "trusted_normalized_approval",
+    "validate_governance_evidence_file",
     "project_profile_to_v03",
     "registry_for_contract",
     "registry_for_directory",

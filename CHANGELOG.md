@@ -23,6 +23,16 @@ distribution version is independent of the Nornyx **language/schema** version
 - Governance Surface Analysis dogfood, one validated advisory completeness
   matrix for each profile, and a compatibility-preserving profile/module
   mapping. GSA remains documentation, not a runtime schema or command.
+- Read-only `modules list/inspect/validate`, `governance
+  resolve/explain/matrix`, and `evidence validate` commands with text/JSON
+  output, stable exit semantics, lock status, provenance, controls,
+  requirements, exception status, and bounded local evidence verification.
+- Public `validate_governance_evidence_file` API and an explicit governance API
+  stability/deprecation policy.
+- A formal compatibility corpus covering starters, examples, legacy API
+  projections, CLI output/exit codes, generated artifacts, locks, manifests,
+  and approved migrations, plus adversarial assurance for every new governance
+  trust boundary.
 
 ### Changed
 - Approval authority now explicitly denies autonomous agents, models,
@@ -43,6 +53,9 @@ distribution version is independent of the Nornyx **language/schema** version
   superseded by existing release tooling and shared modules, and data
   protection, common lifecycle, and incident response are not required after
   GSA. The module catalog is frozen at six for this program.
+- Local evidence-file loading now reuses the pack loader's unresolved-component
+  symlink inspection, containment, resource limits, and safe YAML parser with
+  evidence-specific fail-closed diagnostics.
 
 ## [1.5.2] - 2026-07-13
 

@@ -15,9 +15,9 @@ Stage H may add only bounded local inspection and validation namespaces.
 | `nornyx profiles compatibility <p> [<p>...]` | Composed compatibility verdict (conflicts fatal-listed, review-with warned) | 0 compatible; 1 conflicts |
 | `nornyx init --profile <name>` | Unchanged | unchanged |
 | `nornyx init --profile-path <file>` | New: scaffold from explicit pack (validate first, fail-closed) | 0; 1 invalid pack |
-| `nornyx modules {list,inspect,validate}` | Stage H target: local module discovery, provenance, dependencies, and validation | 0 valid; 1 invalid/not found |
-| `nornyx governance {resolve,explain,matrix}` | Stage H target: effective controls, lock state, evidence, approvals, exceptions, and provenance | 0 valid; 1 invalid; 2 lock mismatch |
-| `nornyx evidence validate <file>` | Stage H target: bounded local governance-evidence validation | 0 valid; 1 invalid |
+| `nornyx modules {list,inspect,validate}` | Implemented: local module discovery, provenance, dependencies, and validation | 0 valid; 1 invalid/not found |
+| `nornyx governance {resolve,explain,matrix}` | Implemented: effective controls, lock state, evidence, approvals, exceptions, and provenance | 0 valid; 1 invalid; 2 parse/lock failure |
+| `nornyx evidence validate <file>` | Implemented: bounded local governance-evidence validation | 0 valid; 1 invalid |
 | `nornyx governance analyze` | `not_required_after_GSA`; prohibited for the current program | not implemented |
 
 ## Conventions (matching existing CLI style)
@@ -42,3 +42,6 @@ Stage H may add only bounded local inspection and validation namespaces.
   above. There is no analysis, execution, network, approval, deployment, or
   remediation command. Anything needing more than two new flags goes back to
   design.
+
+The executable contract and public Python stability policy are in
+`docs/GOVERNANCE_CLI_AND_API.md`.

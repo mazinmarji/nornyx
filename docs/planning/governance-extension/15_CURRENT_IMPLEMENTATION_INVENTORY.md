@@ -43,12 +43,12 @@ authority for real symlink behavior.
 | Release placement | `superseded` | local release-readiness/stabilization runtime plus shared governance modules | no parallel release module |
 | Incident placement | `not_required_after_GSA` | operational systems and existing advisory profile language | re-entry requires two profiles and a stable evidence envelope |
 | GSA method | Implemented as documented method and validated advisory matrices | docs 09, 17-18, `gsa/*.yaml`, ADR-0031, tests | no runtime schema or CLI justified |
-| Module CLI | Absent | only `profiles` commands exist | add only list/inspect/validate |
-| Governance explain/matrix CLI | Partial via `profiles resolve` | CLI and composition output | add only if needed for provenance/mapping |
-| Evidence validation CLI | Absent | package import is scanner-specific | add bounded local validation |
-| Public API stability | Runtime exports are broad and undocumented | `nornyx/governance/__init__.py` | mark intentional contracts; keep signatures |
-| Compatibility corpus | Partial | profile goldens and generated drift fixtures | add examples, CLI, locks, manifests, projections |
-| Security assurance | Strong pack/rule baseline; new surfaces untested | runtime adversarial suite | extend for schemas/evidence/exceptions |
+| Module CLI | Implemented | `modules list/inspect/validate`, text/JSON tests | local inspection only; no execution or network |
+| Governance explain/matrix CLI | Implemented | `governance resolve/explain/matrix`, lock/provenance tests | read-only resolution; `governance analyze` is not implemented |
+| Evidence validation CLI | Implemented | `evidence validate`, public validator, adversarial path/hash tests | bounded local evidence sets only |
+| Public API stability | Implemented and documented | `nornyx/governance/__init__.py`, `docs/GOVERNANCE_CLI_AND_API.md` | signatures preserved; private reporting internals not exported; deprecation floor recorded |
+| Compatibility corpus | Implemented | formal manifest, all starters/examples, CLI, generated drift, locks, manifests, projections | release-gated hashes and approved migration metadata |
+| Security assurance | Implemented for current surfaces | original runtime suite plus CLI/evidence/confusable/removal/revision/no-execution adversarial tests; report 20 | Linux CI remains authority for real symlinks |
 | Planning/status documentation | Contradictory: PR 1/deferred language remains after runtime shipped | planning docs 01-14 and ADR statuses | reconcile to actual state |
 
 ## Preserved Boundaries
@@ -83,12 +83,13 @@ Every stage must be green before the next stage. A Critical or High finding,
 core revision, compatibility break, arbitrary expression requirement, external
 execution requirement, or unbound evidence requirement stops the program.
 
-## Progress Through Stage G
+## Progress Through Stage H
 
-Stages A through G are implemented. The branch now contains six reusable
+Stages A through H are implemented. The branch now contains six reusable
 modules, the shared change model, governed-package delegation, the optional
 `architecture_governance` profile, bounded architecture evidence import,
 complete GSA decisions, and a compatibility-preserving mapping for every
-profile. No later specialist module passed the proliferation gate. The initial
-1.5.2 inventory above remains the baseline record; later rows are updated as
-program decisions close.
+profile. No later specialist module passed the proliferation gate. CLI/API,
+compatibility, security, build, and installed-wheel assurance are complete.
+The initial 1.5.2 inventory above remains the baseline record; later rows are
+updated as program decisions close.

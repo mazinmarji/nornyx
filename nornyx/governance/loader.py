@@ -35,35 +35,76 @@ MAX_RULES_PER_PACK = 200
 URL_PREFIXES = ("http://", "https://", "ftp://", "git://", "ssh://")
 
 
-def _walk_limits(value: Any, *, depth: int = 0) -> int:
+def _walk_limits(
+    value: Any,
+    *,
+    depth: int = 0,
+    code_prefix: str = "PACK",
+    noun: str = "YAML",
+) -> int:
     if depth > MAX_YAML_DEPTH:
-        raise error("PACK_LIMIT_EXCEEDED", f"YAML depth exceeds {MAX_YAML_DEPTH}.")
+        raise error(
+            f"{code_prefix}_LIMIT_EXCEEDED",
+            f"{noun} depth exceeds {MAX_YAML_DEPTH}.",
+        )
     count = 1
     if isinstance(value, Mapping):
         for key, item in value.items():
-            count += _walk_limits(key, depth=depth + 1)
-            count += _walk_limits(item, depth=depth + 1)
+            count += _walk_limits(
+                key,
+                depth=depth + 1,
+                code_prefix=code_prefix,
+                noun=noun,
+            )
+            count += _walk_limits(
+                item,
+                depth=depth + 1,
+                code_prefix=code_prefix,
+                noun=noun,
+            )
     elif isinstance(value, list):
         for item in value:
-            count += _walk_limits(item, depth=depth + 1)
+            count += _walk_limits(
+                item,
+                depth=depth + 1,
+                code_prefix=code_prefix,
+                noun=noun,
+            )
     if count > MAX_YAML_NODES:
-        raise error("PACK_LIMIT_EXCEEDED", f"YAML node count exceeds {MAX_YAML_NODES}.")
+        raise error(
+            f"{code_prefix}_LIMIT_EXCEEDED",
+            f"{noun} node count exceeds {MAX_YAML_NODES}.",
+        )
     return count
 
 
-def _parse_yaml(raw: bytes, *, source_path: str) -> dict[str, Any]:
+def parse_bounded_yaml_mapping(
+    raw: bytes,
+    *,
+    source_path: str,
+    code_prefix: str = "PACK",
+    noun: str = "Pack",
+) -> dict[str, Any]:
     if len(raw) > MAX_PACK_BYTES:
         raise error(
-            "PACK_LIMIT_EXCEEDED",
-            f"Pack exceeds the {MAX_PACK_BYTES}-byte limit.",
+            f"{code_prefix}_LIMIT_EXCEEDED",
+            f"{noun} exceeds the {MAX_PACK_BYTES}-byte limit.",
             path=source_path,
         )
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise error("PACK_ENCODING_INVALID", "Pack must be UTF-8.", path=source_path) from exc
+        raise error(
+            f"{code_prefix}_ENCODING_INVALID",
+            f"{noun} must be UTF-8.",
+            path=source_path,
+        ) from exc
     if "\x00" in text:
-        raise error("PACK_ENCODING_INVALID", "Pack contains a null byte.", path=source_path)
+        raise error(
+            f"{code_prefix}_ENCODING_INVALID",
+            f"{noun} contains a null byte.",
+            path=source_path,
+        )
     try:
         alias_count = sum(
             1
@@ -72,7 +113,7 @@ def _parse_yaml(raw: bytes, *, source_path: str) -> dict[str, Any]:
         )
         if alias_count > MAX_YAML_ALIASES:
             raise error(
-                "PACK_LIMIT_EXCEEDED",
+                f"{code_prefix}_LIMIT_EXCEEDED",
                 f"YAML alias count exceeds {MAX_YAML_ALIASES}.",
                 path=source_path,
             )
@@ -80,10 +121,18 @@ def _parse_yaml(raw: bytes, *, source_path: str) -> dict[str, Any]:
     except GovernanceError:
         raise
     except yaml.YAMLError as exc:
-        raise error("PACK_YAML_INVALID", f"Invalid YAML: {exc}", path=source_path) from exc
+        raise error(
+            f"{code_prefix}_YAML_INVALID",
+            f"Invalid YAML: {exc}",
+            path=source_path,
+        ) from exc
     if not isinstance(payload, dict):
-        raise error("PACK_TOP_LEVEL_INVALID", "Pack must contain one top-level mapping.", path=source_path)
-    _walk_limits(payload)
+        raise error(
+            f"{code_prefix}_TOP_LEVEL_INVALID",
+            f"{noun} must contain one top-level mapping.",
+            path=source_path,
+        )
+    _walk_limits(payload, code_prefix=code_prefix, noun="YAML")
     return payload
 
 
@@ -235,7 +284,7 @@ def load_pack_bytes(
     source_path: str,
     source_tier: PackSourceTier,
 ) -> ProfilePack | GovernanceModule:
-    payload = _parse_yaml(raw, source_path=source_path)
+    payload = parse_bounded_yaml_mapping(raw, source_path=source_path)
     discriminator = payload.get("schema")
     schema_name = SCHEMA_BY_DISCRIMINATOR.get(str(discriminator))
     if schema_name not in {"profile_pack_v1.schema.json", "governance_module_v1.schema.json"}:
@@ -273,15 +322,21 @@ def _absolute_without_resolving(path: Path) -> Path:
     return path if path.is_absolute() else Path.cwd() / path
 
 
-def _reject_symlink_components(candidate: Path, trust_root: Path) -> None:
+def _reject_symlink_components(
+    candidate: Path,
+    trust_root: Path,
+    *,
+    code_prefix: str,
+    noun: str,
+) -> None:
     raw_root = _absolute_without_resolving(trust_root)
     raw_candidate = _absolute_without_resolving(candidate)
     try:
         relative = raw_candidate.relative_to(raw_root)
     except ValueError as exc:
         raise error(
-            "PACK_PATH_OUTSIDE_ROOT",
-            "Pack path must stay inside the symlink-inspection trust root.",
+            f"{code_prefix}_PATH_OUTSIDE_ROOT",
+            f"{noun} path must stay inside the symlink-inspection trust root.",
             path=str(candidate),
         ) from exc
 
@@ -291,8 +346,8 @@ def _reject_symlink_components(candidate: Path, trust_root: Path) -> None:
         if name == os.pardir:
             if probe == raw_root:
                 raise error(
-                    "PACK_PATH_OUTSIDE_ROOT",
-                    "Pack path must stay inside the symlink-inspection trust root.",
+                    f"{code_prefix}_PATH_OUTSIDE_ROOT",
+                    f"{noun} path must stay inside the symlink-inspection trust root.",
                     path=str(candidate),
                 )
             probe = probe.parent
@@ -306,10 +361,67 @@ def _reject_symlink_components(candidate: Path, trust_root: Path) -> None:
             continue
         if is_symlink:
             raise error(
-                "PACK_SYMLINK_REJECTED",
-                "Symlinked pack paths are not allowed.",
+                f"{code_prefix}_SYMLINK_REJECTED",
+                f"Symlinked {noun.lower()} paths are not allowed.",
                 path=str(candidate),
             )
+
+
+def read_local_file_bytes(
+    path: str | Path,
+    *,
+    allowed_root: str | Path,
+    trust_root: str | Path | None = None,
+    code_prefix: str,
+    noun: str,
+) -> tuple[bytes, Path]:
+    raw_path = str(path)
+    if raw_path.lower().startswith(URL_PREFIXES):
+        raise error(
+            f"{code_prefix}_REMOTE_SOURCE_REJECTED",
+            f"Network {noun.lower()} sources are not allowed.",
+            path=raw_path,
+        )
+    raw_root = _absolute_without_resolving(Path(allowed_root))
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = raw_root / candidate
+    inspection_root = raw_root if trust_root is None else Path(trust_root)
+    _reject_symlink_components(
+        candidate,
+        inspection_root,
+        code_prefix=code_prefix,
+        noun=noun,
+    )
+    try:
+        root = Path(os.path.realpath(raw_root.resolve(strict=True)))
+    except OSError as exc:
+        raise error(
+            f"{code_prefix}_NOT_FOUND",
+            f"Permitted {noun.lower()} root does not exist.",
+            path=str(raw_root),
+        ) from exc
+    resolved = Path(os.path.realpath(candidate))
+    if not _path_contains(root, resolved):
+        raise error(
+            f"{code_prefix}_PATH_OUTSIDE_ROOT",
+            f"{noun} path must resolve inside the explicitly permitted root.",
+            path=raw_path,
+        )
+    if not resolved.is_file():
+        raise error(
+            f"{code_prefix}_NOT_FOUND",
+            f"{noun} path is not a file.",
+            path=str(resolved),
+        )
+    try:
+        return resolved.read_bytes(), resolved
+    except OSError as exc:
+        raise error(
+            f"{code_prefix}_READ_ERROR",
+            f"Cannot read {noun.lower()}: {exc}",
+            path=str(resolved),
+        ) from exc
 
 
 def load_local_pack(
@@ -319,29 +431,13 @@ def load_local_pack(
     trust_root: str | Path | None = None,
     source_tier: PackSourceTier = "explicit_path",
 ) -> ProfilePack | GovernanceModule:
-    raw_path = str(path)
-    if raw_path.lower().startswith(URL_PREFIXES):
-        raise error("PACK_REMOTE_SOURCE_REJECTED", "Network pack sources are not allowed.", path=raw_path)
-    raw_root = _absolute_without_resolving(Path(allowed_root))
-    candidate = Path(path)
-    if not candidate.is_absolute():
-        candidate = raw_root / candidate
-    inspection_root = raw_root if trust_root is None else Path(trust_root)
-    _reject_symlink_components(candidate, inspection_root)
-    root = Path(os.path.realpath(raw_root.resolve(strict=True)))
-    resolved = Path(os.path.realpath(candidate))
-    if not _path_contains(root, resolved):
-        raise error(
-            "PACK_PATH_OUTSIDE_ROOT",
-            "Pack path must resolve inside the explicitly permitted root.",
-            path=raw_path,
-        )
-    if not resolved.is_file():
-        raise error("PACK_NOT_FOUND", "Pack path is not a file.", path=str(resolved))
-    try:
-        raw = resolved.read_bytes()
-    except OSError as exc:
-        raise error("PACK_READ_ERROR", f"Cannot read pack: {exc}", path=str(resolved)) from exc
+    raw, resolved = read_local_file_bytes(
+        path,
+        allowed_root=allowed_root,
+        trust_root=trust_root,
+        code_prefix="PACK",
+        noun="Pack",
+    )
     return load_pack_bytes(raw, source_path=resolved.as_posix(), source_tier=source_tier)
 
 

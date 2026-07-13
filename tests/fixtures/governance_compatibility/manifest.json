@@ -1,0 +1,91 @@
+{
+  "schema": "nornyx.governance_compatibility_corpus.v1",
+  "baseline": {
+    "package_version": "1.5.2",
+    "main_commit": "95952226999327458c6fea81cb32d82539bcae5b"
+  },
+  "classes": [
+    "byte_identical",
+    "canonical_lf_identical",
+    "semantically_equivalent",
+    "intentional_migration_requiring_approval"
+  ],
+  "profile_starters": {
+    "classification": "byte_identical",
+    "manifest": "tests/fixtures/governance_extension/starter_golden/manifest.json",
+    "legacy_profiles_unchanged": 11,
+    "additive_profiles": ["architecture_governance"]
+  },
+  "nyx_examples": {
+    "classification": "byte_identical",
+    "files": [
+      {"path": "examples/architecture_governance.nyx", "sha256": "c704e7ea0942452a59e9f5ff12a114adc55f08f92ed529b53d8bf18a12dbacd8"},
+      {"path": "examples/email_triage.nyx", "sha256": "c44817ab2f0a4ccf79592b9e2574f3b5cbbf4d14694e1e9786f7ef68328d573c"},
+      {"path": "examples/governance_foundations.nyx", "sha256": "e49796639a56d5c79f9b1cc48226987235bed56b11c99a3b4d44ff05f5ecc3f9"},
+      {"path": "examples/governed_delivery_control_plane.nyx", "sha256": "ef6855401c93f5d7b566dc4509bffa29fa239b8376a992048b90e6ecd5b0366b"},
+      {"path": "examples/nornyx_decision_boundary_evidence_quality.nyx", "sha256": "d0db0c1370f0794a4fc77724e19160c2e57cf3314d8fc1b00b6a18ac45a7a33a"},
+      {"path": "examples/nornyx_distinct_language_showcase.nyx", "sha256": "56d8c4b540d2a4b830574f4c4e765d54a1126cb5b5a27e95ea9c93d5d91cf64f"},
+      {"path": "examples/nornyx_graph_demo.nyx", "sha256": "18eeb3f97290f74aeeea3915fbe95ada47648755de6c407c0dadb4252d37a58a"},
+      {"path": "examples/nornyx_graph_demo_expanded.nyx", "sha256": "4f34cc7b4df508fed53b242c0a07a62e5f158809227435abb7a3ff2efc784f3b"},
+      {"path": "examples/nornyx_handover_and_ambiguity.nyx", "sha256": "cf0e2fe1983a0af1d2646f7531632d262f47c8da115d68e9f927a2d88cc6dcda"},
+      {"path": "examples/nornyx_pattern_lifecycle.nyx", "sha256": "78ed60106eb0cc831eea2a5e5d41a45bf06dad3c35cf18871fbb76077c4948f7"},
+      {"path": "examples/nornyx_portal_contract.nyx", "sha256": "d5ac14f5fd7db394e820f4f102cb382b652978951c18e7a81ad1c0683f555856"},
+      {"path": "examples/nornyx_product_to_ops_lifecycle.nyx", "sha256": "dd2538aab2c95f85ee4f2fdd29d7143da545788b86f5fa4f7baecc916c22e4a5"},
+      {"path": "examples/nornyx_roadmap_goals.nyx", "sha256": "b400026f7f0fa1154b04c5ac7351a07273f057a30c6ee239bc539cd8e19682db"},
+      {"path": "examples/nornyx_v04_adapter_contracts.nyx", "sha256": "3eed1071e1b3afb1362d4f1f36c32a6beabbeca69c92af1cbbb5aee0811cea64"},
+      {"path": "examples/self_healing.nyx", "sha256": "760f183904960cfb9e53b3dbfc6448f573c87cabe042967a87fc96dc030c6bdf"}
+    ]
+  },
+  "governed_package_examples": {
+    "classification": "byte_identical",
+    "files": [
+      {"path": "examples/governed_package/basic.nyx", "sha256": "9cd14eceb1109e919af32f38004aa0cf49c915d735d9190343b73f4997ad4d6e"},
+      {"path": "examples/governed_package/external_evidence_adapters.nyx", "sha256": "7a304666c4364f50e8044d9e04508c1f8c7d57e5cb20d6735e41f92ef2a95c7c"},
+      {"path": "examples/governed_package/invalid_ai_tool_approver.nyx", "sha256": "e486517135e5e4e9bee9f7d2ba73de033f8d12b653212207044ad034bb751a8a"},
+      {"path": "examples/governed_package/invalid_unsafe_flags.nyx", "sha256": "0994c35b6ff2cd609b8d096de7c9bb58085589d2c9703b0b08d9c71c5778c626"},
+      {"path": "examples/governed_package/register_existing.nyx", "sha256": "02c63575908edaebfd981963c91a1246211e4c9ced6a077c7d5b4f49e425bfbb"},
+      {"path": "examples/governed_package/software_change.nyx", "sha256": "bb4c7b48c2b09957608493dcaab4e80ff2b1aae952002c945d8150cd205abe26"}
+    ]
+  },
+  "generated_artifacts_and_manifests": {
+    "classification": "byte_identical",
+    "files": [
+      {"path": "tests/fixtures/generated_drift/governed_delivery_control_plane.json", "sha256": "26f929f05c57a127ba230290d1209fcbc87bff05983cca3973cd234f9af9a3a6"},
+      {"path": "tests/fixtures/generated_drift/nornyx_roadmap_goals.json", "sha256": "afa6a6037e96be94212b00c59ad21f253d240b5fc3cb64bdbe2bfa16b2be77b2"}
+    ]
+  },
+  "legacy_profile_api": {
+    "classification": "semantically_equivalent",
+    "profile_names_test": "tests/test_cli_dx.py::test_profile_catalog_includes_base_and_domain_profiles",
+    "projection_cases": "tests/fixtures/governance_extension/projection_cases.json",
+    "ai_coding_projection_sha256": "2797fe61849828fef3db6020d26fecf5d5f9f31af795c41929c0530940999361",
+    "ai_coding_projection_report_sha256": "2031bf5c921b0e19cc69860a23297bb68a80be6ee32a313aa2860ace979cebd4"
+  },
+  "locks": {
+    "classification": "canonical_lf_identical",
+    "minimal_profile_lock_sha256": "bb4dbe2c19eaafd3e5b015665ba4beb29ba43739dff5863a2180751b3e6a1400"
+  },
+  "cli": {
+    "classification": "semantically_equivalent",
+    "normalization": "canonical JSON with repository root replaced by <ROOT>",
+    "cases": [
+      {"id": "profiles_list", "argv": ["profiles", "list", "--json"], "exit": 0, "sha256": "345d53ab4d0bf714fca9bb2d72495f940ca66a0b583f6cfc2f0cac9dd3a760b6"},
+      {"id": "modules_list", "argv": ["modules", "list", "--json"], "exit": 0, "sha256": "03a49a90f41514b4c4356df752167f38786e435f9b1a543776ad29552415b792"},
+      {"id": "modules_inspect", "argv": ["modules", "inspect", "change_control", "--json"], "exit": 0, "sha256": "917eb65494dae367f1c6d6d13d2605999469744512d4cb918f250dbd9b779bfd"},
+      {"id": "governance_explain", "argv": ["governance", "explain", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "651fd74c369080e28b6599e8ad608a6a59d40170d1c63c3d6507eeb56ac7afb8"},
+      {"id": "governance_matrix", "argv": ["governance", "matrix", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "f15375cbbdccec43f49f8e342eb7076c35e591923deeef24728167ae6873dad1"},
+      {"id": "module_not_found", "argv": ["modules", "inspect", "missing_module", "--json"], "exit": 1, "sha256": "7b46d935d67913bdb2c61ea9c31d9d7407dec759a88aec093b1e0c842a9fe0a1"}
+    ]
+  },
+  "intentional_migrations": [
+    {
+      "surface": "architecture_governance starter",
+      "classification": "intentional_migration_requiring_approval",
+      "old_hash": null,
+      "new_hash": "sha256:0bc6b7e5c9363b6f95a0ef858b2abe57cc1fc4025d6dcb6c610f6d7e8dc5ada0",
+      "reason": "Additive new profile; no prior starter existed.",
+      "approval": "Approved architecture-governance program scope",
+      "changelog": "CHANGELOG.md#unreleased"
+    }
+  ]
+}
