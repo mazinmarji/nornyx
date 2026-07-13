@@ -390,6 +390,9 @@ def _genuine_normalized_approval() -> dict[str, Any]:
         "eligible_role_also_denied",
         "complete_with_error_diagnostic",
         "reference_only_with_roles",
+        "source_roles_removed",
+        "source_shape_diverges",
+        "canonical_roles_diverge_from_source",
     ],
 )
 def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
@@ -398,6 +401,11 @@ def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
     # consistency, and full re-normalization of the semantic invariants.
     # Every mutation of a genuine normalized object must fail closed.
     base = _genuine_normalized_approval()
+    source_roles_removed = deepcopy(base)
+    source_roles_removed["source"]["raw"] = {"name": "gate"}
+    source_shape_diverges = deepcopy(base)
+    source_shape_diverges["source"]["shape"] = "legacy_goal_text"
+    source_shape_diverges["source"]["raw"] = "no named approver"
     mutations: dict[str, dict[str, Any]] = {
         "missing_id": {key: value for key, value in base.items() if key != "id"},
         "missing_resolution": {
@@ -441,9 +449,16 @@ def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
             ],
         },
         "reference_only_with_roles": {**base, "resolution": "reference_only"},
+        "source_roles_removed": source_roles_removed,
+        "source_shape_diverges": source_shape_diverges,
+        "canonical_roles_diverge_from_source": {
+            **base,
+            "required_roles": [],
+            "eligible_roles": ["admin"],
+        },
     }
     payload = mutations[mutation_id]
-    for role in ("reviewer", "ai_tool", "ghost"):
+    for role in ("reviewer", "admin", "ai_tool", "ghost"):
         rule = _rule(requirement={"path": "approvals", "references_role": role})
         diagnostics = evaluate_rule({"approvals": [payload]}, rule)
         assert [item.code for item in diagnostics] == [
@@ -457,6 +472,15 @@ def test_pre_normalized_approval_genuine_payload_still_resolves() -> None:
     assert evaluate_rule({"approvals": [base]}, reviewer_rule) == ()
     ghost_rule = _rule(requirement={"path": "approvals", "references_role": "ghost"})
     diagnostics = evaluate_rule({"approvals": [base]}, ghost_rule)
+    assert [item.code for item in diagnostics] == ["RULE_REQUIREMENT_FAILED"]
+
+    reference_only = normalize_approval(
+        "HumanMergeApproval",
+        shape="legacy_contract_reference",
+        path="contracts[0].approval",
+        fallback_id="approval-0",
+    ).to_dict()
+    diagnostics = evaluate_rule({"approvals": [reference_only]}, reviewer_rule)
     assert [item.code for item in diagnostics] == ["RULE_REQUIREMENT_FAILED"]
 
 

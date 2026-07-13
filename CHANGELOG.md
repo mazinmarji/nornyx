@@ -30,10 +30,10 @@ distribution version is independent of the Nornyx **language/schema** version
   the same ancestor element. Pre-normalized approval payloads are re-validated
   end to end before their roles are read: the payload must satisfy the
   normalized-approval schema, carry no error diagnostics, expose roles only
-  under a `complete` resolution, and its role and denial fields are
-  re-normalized through the authoritative validator so every semantic
-  invariant is re-derived rather than believed. Any failure makes
-  `references_role` fail closed.
+  under a `complete` resolution, and exactly match the canonical payload
+  regenerated from its retained raw source. Structural, semantic, diagnostic,
+  and provenance fields are therefore re-derived rather than believed. Any
+  failure makes `references_role` fail closed.
 - Profile locks reject duplicate entry ids (`PACK_LOCK_DUPLICATE_ID`); packs
   are capped at 200 rules and compositions at 2000
   (`PACK_LIMIT_EXCEEDED`); duplicate item ids inside one pack are fatal
