@@ -6,6 +6,8 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## Unreleased
 
+## [1.5.0] - 2026-07-13
+
 ### Added
 - Declarative governance runtime for local profile/module loading, deterministic
   monotonic composition, closed rule evaluation, approval normalization,
