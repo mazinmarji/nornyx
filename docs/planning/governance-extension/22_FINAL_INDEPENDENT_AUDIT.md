@@ -55,7 +55,7 @@ No corrected finding remains open. No Critical finding was observed.
 | Documentation accuracy | reports 15-22, ADR status, roadmap, executable closure test | pass |
 | Wheel packaging | fresh build, Twine, isolated no-network wheel smoke | pass |
 | Cross-platform behavior | canonical-LF corpus, Windows suite, Linux symlink suite | pass |
-| Test adequacy | local `522 passed, 10 skipped`; Linux `531 passed` | pass |
+| Test adequacy | local `522 passed, 10 skipped`; Linux `532 passed` | pass |
 | Security | report 20, static execution-boundary search, adversarial tests | pass |
 | Review state | PR #30 thread-aware query | pass; no comments, reviews, or threads |
 | Residual risk | reviewed below | accepted Low maintenance only |
@@ -63,7 +63,7 @@ No corrected finding remains open. No Critical finding was observed.
 ## Validation Evidence
 
 - `python -m pytest -q`: `522 passed, 10 skipped` on Windows.
-- GitHub Actions CI run `29259022794`: `531 passed` on Linux, bundled example
+- GitHub Actions CI run `29260631031`: `532 passed` on Linux, bundled example
   passed.
 - `python -m ruff check .`: passed.
 - `python scripts/check-public-boundary.py`: passed.

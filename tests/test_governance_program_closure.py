@@ -106,7 +106,7 @@ def test_final_audit_and_release_candidate_are_explicit() -> None:
         in roadmap
     )
     assert "Human release approval: **not yet recorded**." in candidate
-    assert "531 passed" in audit and "522 passed, 10 skipped" in audit
+    assert "532 passed" in audit and "522 passed, 10 skipped" in audit
 
 
 def test_current_specs_do_not_claim_the_runtime_is_unimplemented() -> None:

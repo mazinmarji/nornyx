@@ -27,7 +27,7 @@ approval, deploy, publish, or remediate.
 | Gate | Result |
 |---|---|
 | Windows full suite | `522 passed, 10 skipped` |
-| Linux CI | run `29259022794`, `531 passed` |
+| Linux CI | run `29260631031`, `532 passed` |
 | Ruff | pass |
 | Public boundary | pass |
 | Diff check | pass |

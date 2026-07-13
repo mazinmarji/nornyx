@@ -117,7 +117,7 @@ Status: implemented.
 
 Reports 19-20 and the formal compatibility manifest record the results. The
 final expanded suite passes 522 tests with 10 platform skips on Windows; Linux
-CI passes all 531 tests, including real symlink cases. Ruff, public-boundary,
+CI passes all 532 tests, including real symlink cases. Ruff, public-boundary,
 key examples, source/sdist/wheel build, Twine checks, and an isolated
 no-network installed-wheel probe pass. Setuptools license metadata emits a
 nonblocking deprecation warning with a 2027 deadline.
