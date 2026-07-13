@@ -21,6 +21,11 @@ distribution version is independent of the Nornyx **language/schema** version
 - The same filesystem invariant now protects adjacent workspace member sync,
   governed-package lock/artifact verification, architecture reports, evidence
   artifacts, and direct parser/API paths.
+- Stage 3 closes AUD-003 through AUD-007 and AUD-012 pending full integration:
+  accountable authority is intrinsically human-only, authority metadata is
+  never coerced, standalone approvals bind to one governed revision,
+  high-risk roles are checked as a strict authorized subset, and effective
+  approvals retain bounded verifiable source lineage under ADR-0032.
 
 ### Added
 - Foundational data-only governance modules for human approval, evidence
@@ -55,9 +60,10 @@ distribution version is independent of the Nornyx **language/schema** version
   before reading the contract or discovering project governance packs.
 - Approval composition intersects non-empty eligible human-role sets and fails
   on disjoint or required-role conflicts instead of broadening authority.
-- Normalized approval output now retains `exact_revision_required` and
-  relative `expires_after` independently from concrete revision bindings and
-  absolute expiry timestamps.
+- Explicit normalized-v2 and effective-approval output retains
+  `exact_revision_required` and relative `expires_after` independently from
+  concrete revision bindings and absolute expiry timestamps; base-compatible
+  `to_dict()` serializers remain v1.
 - Approval normalization rejects non-string or empty accountable authority
   instead of coercing it into an apparent human identity.
 - Approval authority now explicitly denies autonomous agents, models,

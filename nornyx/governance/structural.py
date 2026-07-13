@@ -16,7 +16,12 @@ from .approvals import (
 )
 from .errors import GovernanceError
 from .loader import read_local_file_bytes
-from .models import CompositionResult, GovernanceDiagnostic, NormalizedApproval
+from .models import (
+    CompositionResult,
+    EffectiveApproval,
+    GovernanceDiagnostic,
+    NormalizedApproval,
+)
 
 
 CORE_NON_EXCEPTABLE_CONTROLS = {
@@ -71,8 +76,10 @@ def _parse_time(value: str | datetime | None) -> datetime | None:
         return None
     if isinstance(value, datetime):
         parsed = value
-    else:
+    elif isinstance(value, str):
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    else:
+        raise ValueError("timestamp must be a source string or datetime")
     if parsed.tzinfo is None:
         raise ValueError("timestamp must include a UTC offset")
     return parsed.astimezone(timezone.utc)
@@ -90,26 +97,153 @@ def _evidence_references(document: Mapping[str, Any]) -> set[str]:
         for record in records or []
         if isinstance(record, Mapping)
         for value in (record.get("id"), record.get("type"))
-        if isinstance(value, str)
+        if isinstance(value, str) and value.strip() and value == value.strip()
     }
 
 
+def _strict_source_strings(value: Any) -> tuple[tuple[str, ...], bool]:
+    if not isinstance(value, list):
+        return (), value is not None
+    result: list[str] = []
+    invalid = False
+    for item in value:
+        if (
+            not isinstance(item, str)
+            or not item.strip()
+            or item != item.strip()
+            or item in result
+        ):
+            invalid = True
+            continue
+        result.append(item)
+    return tuple(result), invalid
+
+
+def _governed_subject_revision(
+    document: Mapping[str, Any],
+    *,
+    source_id: str,
+) -> tuple[str | None, tuple[GovernanceDiagnostic, ...]]:
+    """Resolve one subject revision from independent top-level anchors."""
+
+    diagnostics: list[GovernanceDiagnostic] = []
+    anchors: list[tuple[str, Any]] = []
+    evidence = document.get("governance_evidence")
+    if isinstance(evidence, Mapping) and "subject_revision" in evidence:
+        anchors.append(
+            ("governance_evidence.subject_revision", evidence["subject_revision"])
+        )
+    architecture = document.get("architecture")
+    if isinstance(architecture, Mapping) and "subject_revision" in architecture:
+        anchors.append(("architecture.subject_revision", architecture["subject_revision"]))
+
+    valid_anchors: list[tuple[str, str]] = []
+    for path, value in anchors:
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or value != value.strip()
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    "APPROVAL_GOVERNED_REVISION_INVALID",
+                    "Governed subject revisions must be canonical non-empty source strings.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
+        else:
+            valid_anchors.append((path, value))
+    if not valid_anchors:
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_GOVERNED_REVISION_MISSING",
+                "Human approval requires an independent governed subject revision.",
+                path="governance_evidence.subject_revision",
+                source_id=source_id,
+            )
+        )
+        return None, tuple(diagnostics)
+    revisions = {value for _, value in valid_anchors}
+    if len(revisions) != 1:
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_GOVERNED_REVISION_CONFLICT",
+                "Independent governed subject-revision anchors conflict.",
+                path=valid_anchors[-1][0],
+                source_id=source_id,
+            )
+        )
+        return None, tuple(diagnostics)
+    governed = valid_anchors[0][1]
+
+    claims: list[tuple[str, Any]] = []
+    if isinstance(evidence, Mapping):
+        records = _as_list(evidence.get("records")) or []
+        claims.extend(
+            (f"governance_evidence.records[{index}].subject_revision", raw.get("subject_revision"))
+            for index, raw in enumerate(records)
+            if isinstance(raw, Mapping)
+        )
+    changes = _as_list(document.get("changes")) or []
+    for index, raw in enumerate(changes):
+        binding = raw.get("revision_binding") if isinstance(raw, Mapping) else None
+        if isinstance(binding, Mapping):
+            claims.append(
+                (f"changes[{index}].revision_binding.revision", binding.get("revision"))
+            )
+    architecture_evidence = _as_list(document.get("architecture_evidence")) or []
+    claims.extend(
+        (f"architecture_evidence[{index}].subject_revision", raw.get("subject_revision"))
+        for index, raw in enumerate(architecture_evidence)
+        if isinstance(raw, Mapping)
+    )
+    for path, value in claims:
+        if value != governed:
+            diagnostics.append(
+                _diagnostic(
+                    "APPROVAL_GOVERNED_REVISION_CONFLICT",
+                    "A revision-bearing governance record conflicts with the governed subject.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
+    return governed, tuple(diagnostics)
+
+
 def change_scope_hash(change: Mapping[str, Any]) -> str:
+    scope = change.get("scope")
+    excluded_scope = change.get("excluded_scope")
     payload = {
-        "scope": sorted(str(item) for item in (_as_list(change.get("scope")) or [])),
-        "excluded_scope": sorted(
-            str(item) for item in (_as_list(change.get("excluded_scope")) or [])
-        ),
+        "scope": sorted(scope) if isinstance(scope, list) and all(
+            isinstance(item, str) for item in scope
+        ) else {"invalid": scope},
+        "excluded_scope": sorted(excluded_scope) if isinstance(excluded_scope, list) and all(
+            isinstance(item, str) for item in excluded_scope
+        ) else {"invalid": excluded_scope},
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
-def _normalize_document_approval(value: Any, index: int) -> NormalizedApproval | None:
+def _normalize_document_approval(
+    value: Any,
+    index: int,
+) -> NormalizedApproval | EffectiveApproval | None:
     if not isinstance(value, Mapping):
         return None
-    if value.get("schema") == "nornyx.normalized_approval.v1":
-        return trusted_normalized_approval(value)
+    schema = value.get("schema")
+    if schema in {"nornyx.normalized_approval.v1", "nornyx.normalized_approval.v2"}:
+        return trusted_normalized_approval(value, expected_path=f"approvals[{index}]")
+    if schema == "nornyx.effective_approval.v1":
+        # Effective approvals are reporting output. Authenticating their pack
+        # lineage requires a registry, which document structural evaluation
+        # deliberately does not infer from attacker-controlled content.
+        return None
+    if isinstance(schema, str) and schema.startswith(
+        ("nornyx.normalized_approval.", "nornyx.effective_approval.")
+    ):
+        return None
     governed = "id" in value and (
         "required_evidence" in value
         or any(
@@ -153,6 +287,11 @@ def _human_approval(
             ),
         )
     diagnostics: list[GovernanceDiagnostic] = []
+    governed_revision, revision_diagnostics = _governed_subject_revision(
+        document,
+        source_id=source_id,
+    )
+    diagnostics.extend(revision_diagnostics)
     denied_required = set(CORE_DENIED_ACTOR_TYPES)
     evidence_references = _evidence_references(document)
     for index, source in enumerate(approvals):
@@ -167,6 +306,17 @@ def _human_approval(
                     source_id=source_id,
                 )
             )
+            if normalized is not None:
+                diagnostics.extend(
+                    _diagnostic(
+                        item.code,
+                        item.message,
+                        path=path,
+                        source_id=source_id,
+                        level=item.level,
+                    )
+                    for item in normalized.diagnostics
+                )
             continue
         if not normalized.required_roles or not normalized.eligible_roles:
             diagnostics.append(
@@ -238,6 +388,15 @@ def _human_approval(
                     "APPROVAL_REVISION_BINDING_REQUIRED",
                     "Approval must bind to one exact governed revision.",
                     path=f"{path}.revision_binding",
+                    source_id=source_id,
+                )
+            )
+        elif governed_revision is not None and binding.get("revision") != governed_revision:
+            diagnostics.append(
+                _diagnostic(
+                    "APPROVAL_REVISION_MISMATCH",
+                    "Approval revision does not match the governed subject revision.",
+                    path=f"{path}.revision_binding.revision",
                     source_id=source_id,
                 )
             )
@@ -329,8 +488,24 @@ def _evidence_integrity(
         if not isinstance(raw, Mapping):
             continue
         path = f"governance_evidence.records[{index}]"
-        evidence_id = str(raw.get("id", ""))
-        if evidence_id in by_id:
+        evidence_id_value = raw.get("id")
+        evidence_id = (
+            evidence_id_value
+            if isinstance(evidence_id_value, str)
+            and evidence_id_value.strip()
+            and evidence_id_value == evidence_id_value.strip()
+            else None
+        )
+        if evidence_id is None:
+            diagnostics.append(
+                _diagnostic(
+                    "EVIDENCE_ID_INVALID",
+                    "Evidence ids must be canonical non-empty source strings.",
+                    path=f"{path}.id",
+                    source_id=source_id,
+                )
+            )
+        elif evidence_id in by_id:
             diagnostics.append(
                 _diagnostic(
                     "EVIDENCE_DUPLICATE_ID",
@@ -339,7 +514,7 @@ def _evidence_integrity(
                     source_id=source_id,
                 )
             )
-        else:
+        elif evidence_id is not None:
             by_id[evidence_id] = raw
         if raw.get("subject_revision") != subject_revision:
             diagnostics.append(
@@ -350,9 +525,32 @@ def _evidence_integrity(
                     source_id=source_id,
                 )
             )
-        artifact = str(raw.get("artifact", ""))
-        claimed_hash = str(raw.get("content_hash", ""))
-        if artifact in by_artifact and by_artifact[artifact] != claimed_hash:
+        artifact_value = raw.get("artifact")
+        artifact = (
+            artifact_value
+            if isinstance(artifact_value, str)
+            and artifact_value.strip()
+            and artifact_value == artifact_value.strip()
+            else None
+        )
+        claimed_hash_value = raw.get("content_hash")
+        claimed_hash = (
+            claimed_hash_value
+            if isinstance(claimed_hash_value, str)
+            and claimed_hash_value.strip()
+            and claimed_hash_value == claimed_hash_value.strip()
+            else None
+        )
+        if artifact is None or claimed_hash is None:
+            diagnostics.append(
+                _diagnostic(
+                    "EVIDENCE_SOURCE_VALUE_INVALID",
+                    "Evidence artifact and content hash must be canonical source strings.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
+        elif artifact in by_artifact and by_artifact[artifact] != claimed_hash:
             diagnostics.append(
                 _diagnostic(
                     "EVIDENCE_HASH_SUBSTITUTION",
@@ -361,7 +559,8 @@ def _evidence_integrity(
                     source_id=source_id,
                 )
             )
-        by_artifact[artifact] = claimed_hash
+        if artifact is not None and claimed_hash is not None:
+            by_artifact[artifact] = claimed_hash
         if document_root is None:
             diagnostics.append(
                 _diagnostic(
@@ -372,7 +571,11 @@ def _evidence_integrity(
                 )
             )
         else:
-            observed_hash = _artifact_hash(document_root, artifact)
+            observed_hash = (
+                _artifact_hash(document_root, artifact)
+                if artifact is not None
+                else None
+            )
             if observed_hash is None:
                 diagnostics.append(
                     _diagnostic(
@@ -382,7 +585,7 @@ def _evidence_integrity(
                         source_id=source_id,
                     )
                 )
-            elif observed_hash != claimed_hash:
+            elif claimed_hash is None or observed_hash != claimed_hash:
                 diagnostics.append(
                     _diagnostic(
                         "EVIDENCE_ARTIFACT_HASH_MISMATCH",
@@ -402,8 +605,8 @@ def _evidence_integrity(
             )
         else:
             try:
-                generated = _parse_time(str(raw.get("generated_at")))
-                expires = _parse_time(str(raw.get("expires_at")))
+                generated = _parse_time(raw.get("generated_at"))
+                expires = _parse_time(raw.get("expires_at"))
                 if generated is None or expires is None:
                     raise ValueError("missing timestamp")
                 if generated > as_of:
@@ -434,8 +637,20 @@ def _evidence_integrity(
                     )
                 )
 
+    graph: dict[str, list[str]] = {}
     for evidence_id, record in sorted(by_id.items()):
-        dependencies = _as_list(record.get("dependencies")) or []
+        dependencies, dependencies_invalid = _strict_source_strings(
+            record.get("dependencies")
+        )
+        if dependencies_invalid:
+            diagnostics.append(
+                _diagnostic(
+                    "EVIDENCE_DEPENDENCY_INVALID",
+                    "Evidence dependencies must be unique canonical source strings.",
+                    path=f"governance_evidence.records.{evidence_id}.dependencies",
+                    source_id=source_id,
+                )
+            )
         for dependency in dependencies:
             if dependency == evidence_id or dependency not in by_id:
                 diagnostics.append(
@@ -446,10 +661,7 @@ def _evidence_integrity(
                         source_id=source_id,
                     )
                 )
-    graph = {
-        evidence_id: [str(item) for item in (_as_list(record.get("dependencies")) or [])]
-        for evidence_id, record in by_id.items()
-    }
+        graph[evidence_id] = list(dependencies)
     visiting: set[str] = set()
     visited: set[str] = set()
 
@@ -474,9 +686,14 @@ def _evidence_integrity(
             )
         )
 
-    available = {
-        str(record.get("id")) for record in by_id.values()
-    } | {str(record.get("type")) for record in by_id.values()}
+    available = set(by_id)
+    available.update(
+        value
+        for record in by_id.values()
+        if isinstance((value := record.get("type")), str)
+        and value.strip()
+        and value == value.strip()
+    )
     module_requirements = (
         requirement
         for module in composition.modules
@@ -484,8 +701,14 @@ def _evidence_integrity(
     )
     for requirement in module_requirements:
         if requirement.get("required") is True:
-            required_id = str(requirement.get("id") or requirement.get("type") or "")
-            required_type = str(requirement.get("type") or "")
+            required_id_value = requirement.get("id") or requirement.get("type")
+            required_type_value = requirement.get("type")
+            required_id = (
+                required_id_value if isinstance(required_id_value, str) else ""
+            )
+            required_type = (
+                required_type_value if isinstance(required_type_value, str) else ""
+            )
             if required_id not in available and required_type not in available:
                 diagnostics.append(
                     _diagnostic(
@@ -614,7 +837,23 @@ def _exception_management(
         if not isinstance(raw, Mapping):
             continue
         path = f"exceptions.entries[{index}]"
-        identifier = str(raw.get("id", ""))
+        identifier_value = raw.get("id")
+        identifier = (
+            identifier_value
+            if isinstance(identifier_value, str)
+            and identifier_value.strip()
+            and identifier_value == identifier_value.strip()
+            else ""
+        )
+        if not identifier:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_ID_INVALID",
+                    "Exception ids must be canonical non-empty source strings.",
+                    path=f"{path}.id",
+                    source_id=source_id,
+                )
+            )
         if identifier in identifiers:
             diagnostics.append(
                 _diagnostic(
@@ -625,7 +864,23 @@ def _exception_management(
                 )
             )
         identifiers.add(identifier)
-        control = str(raw.get("control", ""))
+        control_value = raw.get("control")
+        control = (
+            control_value
+            if isinstance(control_value, str)
+            and control_value.strip()
+            and control_value == control_value.strip()
+            else ""
+        )
+        if not control:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_CONTROL_INVALID",
+                    "Exception controls must be canonical non-empty source strings.",
+                    path=f"{path}.control",
+                    source_id=source_id,
+                )
+            )
         if control.startswith("nornyx.core.") or control in CORE_NON_EXCEPTABLE_CONTROLS:
             diagnostics.append(
                 _diagnostic(
@@ -635,6 +890,25 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
+        for authority_field in (
+            "requester",
+            "approving_authority",
+            "accountable_owner",
+        ):
+            authority = raw.get(authority_field)
+            if (
+                not isinstance(authority, str)
+                or not authority.strip()
+                or authority != authority.strip()
+            ):
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_AUTHORITY_INVALID",
+                        "Exception authorities must be canonical non-empty source strings.",
+                        path=f"{path}.{authority_field}",
+                        source_id=source_id,
+                    )
+                )
         if raw.get("requester") == raw.get("approving_authority"):
             diagnostics.append(
                 _diagnostic(
@@ -662,11 +936,19 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-        declared_evidence = {
-            item
-            for item in (_as_list(raw.get("evidence")) or [])
-            if isinstance(item, str)
-        }
+        declared_evidence_values, evidence_invalid = _strict_source_strings(
+            raw.get("evidence")
+        )
+        declared_evidence = set(declared_evidence_values)
+        if evidence_invalid:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_EVIDENCE_INVALID",
+                    "Exception evidence names must be unique canonical source strings.",
+                    path=f"{path}.evidence",
+                    source_id=source_id,
+                )
+            )
         missing_evidence = declared_evidence - evidence_references
         if missing_evidence:
             diagnostics.append(
@@ -705,8 +987,8 @@ def _exception_management(
             )
             continue
         try:
-            starts = _parse_time(str(raw.get("starts_at")))
-            expires = _parse_time(str(raw.get("expires_at")))
+            starts = _parse_time(raw.get("starts_at"))
+            expires = _parse_time(raw.get("expires_at"))
             if starts is None or expires is None:
                 raise ValueError("missing timestamp")
             if starts >= expires:
@@ -760,11 +1042,11 @@ def _change_control(
         else []
     ) or []
     evidence_ids = {
-        str(value)
+        value
         for record in evidence_records
         if isinstance(record, Mapping)
         for value in (record.get("id"), record.get("type"))
-        if value is not None
+        if isinstance(value, str) and value.strip() and value == value.strip()
     }
     exception_block = document.get("exceptions")
     exception_entries = (
@@ -773,7 +1055,12 @@ def _change_control(
         else []
     ) or []
     exception_ids = {
-        str(item.get("id")) for item in exception_entries if isinstance(item, Mapping)
+        value
+        for item in exception_entries
+        if isinstance(item, Mapping)
+        if isinstance((value := item.get("id")), str)
+        and value.strip()
+        and value == value.strip()
     }
     duty_block = document.get("separation_of_duties")
     duty_assignments = (
@@ -782,7 +1069,12 @@ def _change_control(
         else []
     ) or []
     duty_subjects = {
-        str(item.get("subject")) for item in duty_assignments if isinstance(item, Mapping)
+        value
+        for item in duty_assignments
+        if isinstance(item, Mapping)
+        if isinstance((value := item.get("subject")), str)
+        and value.strip()
+        and value == value.strip()
     }
     approval_values = _as_list(document.get("approvals")) or []
     approvals = [
@@ -797,7 +1089,23 @@ def _change_control(
         if not isinstance(raw, Mapping):
             continue
         path = f"changes[{index}]"
-        change_id = str(raw.get("id", ""))
+        change_id_value = raw.get("id")
+        change_id = (
+            change_id_value
+            if isinstance(change_id_value, str)
+            and change_id_value.strip()
+            and change_id_value == change_id_value.strip()
+            else ""
+        )
+        if not change_id:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_ID_INVALID",
+                    "Change ids must be canonical non-empty source strings.",
+                    path=f"{path}.id",
+                    source_id=source_id,
+                )
+            )
         if change_id in identifiers:
             diagnostics.append(
                 _diagnostic(
@@ -821,8 +1129,10 @@ def _change_control(
                 )
             )
         if isinstance(transition, Mapping):
-            previous = str(transition.get("from", ""))
-            target = str(transition.get("to", ""))
+            previous_value = transition.get("from")
+            target_value = transition.get("to")
+            previous = previous_value if isinstance(previous_value, str) else ""
+            target = target_value if isinstance(target_value, str) else ""
             if target != status or target not in CHANGE_TRANSITIONS.get(previous, set()):
                 diagnostics.append(
                     _diagnostic(
@@ -834,7 +1144,9 @@ def _change_control(
                     )
                 )
             transition_evidence = {
-                str(item) for item in (_as_list(transition.get("evidence")) or [])
+                item
+                for item in (_as_list(transition.get("evidence")) or [])
+                if isinstance(item, str) and item.strip() and item == item.strip()
             }
             if not transition_evidence or not transition_evidence <= evidence_ids:
                 diagnostics.append(
@@ -847,7 +1159,9 @@ def _change_control(
                 )
 
         required_evidence = {
-            str(item) for item in (_as_list(raw.get("required_evidence")) or [])
+            item
+            for item in (_as_list(raw.get("required_evidence")) or [])
+            if isinstance(item, str) and item.strip() and item == item.strip()
         }
         missing_evidence = required_evidence - evidence_ids
         if missing_evidence:
@@ -862,7 +1176,11 @@ def _change_control(
                 )
             )
 
-        exception_refs = {str(item) for item in (_as_list(raw.get("exceptions")) or [])}
+        exception_refs = {
+            item
+            for item in (_as_list(raw.get("exceptions")) or [])
+            if isinstance(item, str) and item.strip() and item == item.strip()
+        }
         unknown_exceptions = exception_refs - exception_ids
         if unknown_exceptions:
             diagnostics.append(
@@ -877,9 +1195,29 @@ def _change_control(
             )
 
         high_risk = raw.get("risk_tier") in {"high", "critical"}
-        approver_roles = {
-            str(item) for item in (_as_list(raw.get("approver_roles")) or [])
+        declared_roles, roles_invalid = _strict_source_strings(raw.get("approver_roles"))
+        approver_roles = set(declared_roles)
+        non_human_roles = {
+            role for role in declared_roles if is_non_human_authority(role)
         }
+        if high_risk and roles_invalid:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_APPROVER_ROLE_INVALID",
+                    "High-risk change approver roles must be unique canonical strings.",
+                    path=f"{path}.approver_roles",
+                    source_id=source_id,
+                )
+            )
+        if high_risk and non_human_roles:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_NON_HUMAN_APPROVER",
+                    "High-risk change approvers must all be human roles.",
+                    path=f"{path}.approver_roles",
+                    source_id=source_id,
+                )
+            )
         if high_risk and (not approver_roles or not required_evidence):
             diagnostics.append(
                 _diagnostic(
@@ -921,7 +1259,9 @@ def _change_control(
             )
 
         invalidated_on = {
-            str(item) for item in (_as_list(raw.get("approval_invalidated_on")) or [])
+            item
+            for item in (_as_list(raw.get("approval_invalidated_on")) or [])
+            if isinstance(item, str) and item.strip() and item == item.strip()
         }
         if high_risk and not {"revision_change", "scope_change"} <= invalidated_on:
             diagnostics.append(
@@ -933,8 +1273,13 @@ def _change_control(
                 )
             )
 
+        matching_approvals: list[NormalizedApproval | EffectiveApproval] = []
         if high_risk and isinstance(binding, Mapping):
-            approval_ids = {str(item) for item in (_as_list(raw.get("approval_ids")) or [])}
+            approval_ids = {
+                item
+                for item in (_as_list(raw.get("approval_ids")) or [])
+                if isinstance(item, str) and item.strip() and item == item.strip()
+            }
             candidates = [
                 approval
                 for approval in approvals
@@ -955,12 +1300,24 @@ def _change_control(
                 valid = False
                 revision_mismatch = False
                 scope_mismatch = False
+                roles_authorized_any = False
                 for approval in candidates:
-                    approval_roles = set(approval.required_roles) | set(
-                        approval.eligible_roles
+                    eligible_roles = set(approval.eligible_roles)
+                    required_roles = set(approval.required_roles)
+                    denied_roles = set(approval.denied_actor_types) | set(
+                        approval.denied_execution_surfaces
                     )
-                    if not approver_roles & approval_roles:
+                    roles_authorized = (
+                        bool(approver_roles)
+                        and not roles_invalid
+                        and not non_human_roles
+                        and approver_roles <= eligible_roles
+                        and required_roles <= approver_roles
+                        and not approver_roles & denied_roles
+                    )
+                    if not roles_authorized:
                         continue
+                    roles_authorized_any = True
                     approval_binding = approval.revision_binding
                     if not isinstance(approval_binding, Mapping):
                         revision_mismatch = scope_mismatch = True
@@ -972,6 +1329,7 @@ def _change_control(
                         scope_mismatch = True
                         continue
                     valid = True
+                    matching_approvals.append(approval)
                     break
                 if not valid:
                     if revision_mismatch:
@@ -992,11 +1350,12 @@ def _change_control(
                                 source_id=source_id,
                             )
                         )
-                    if not revision_mismatch and not scope_mismatch:
+                    if not roles_authorized_any:
                         diagnostics.append(
                             _diagnostic(
-                                "CHANGE_APPROVAL_MISSING",
-                                "Matching approval does not authorize a declared approver role.",
+                                "CHANGE_APPROVER_ROLE_UNAUTHORIZED",
+                                "Every declared approver role must be eligible, human, "
+                                "non-denied, and include all required roles.",
                                 path=f"{path}.approver_roles",
                                 source_id=source_id,
                             )
@@ -1004,7 +1363,22 @@ def _change_control(
 
         if raw.get("reversibility") == "irreversible":
             authority = raw.get("irreversible_authority")
-            if authority is None or authority not in approver_roles:
+            authority_is_string = (
+                isinstance(authority, str)
+                and bool(authority.strip())
+                and authority == authority.strip()
+            )
+            authority_is_non_human = is_non_human_authority(authority)
+            if authority_is_non_human:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_NON_HUMAN_AUTHORITY",
+                        "Irreversible authority must identify an eligible human role.",
+                        path=f"{path}.irreversible_authority",
+                        source_id=source_id,
+                    )
+                )
+            if not authority_is_string or authority not in approver_roles:
                 diagnostics.append(
                     _diagnostic(
                         "CHANGE_IRREVERSIBLE_AUTHORITY_MISSING",
@@ -1013,6 +1387,23 @@ def _change_control(
                         source_id=source_id,
                     )
                 )
+            elif not authority_is_non_human:
+                authority_candidates = [
+                    approval
+                    for approval in matching_approvals
+                    if authority in set(approval.eligible_roles)
+                    and authority not in set(approval.denied_actor_types)
+                    and authority not in set(approval.denied_execution_surfaces)
+                ] if high_risk and isinstance(binding, Mapping) else []
+                if high_risk and not authority_candidates:
+                    diagnostics.append(
+                        _diagnostic(
+                            "CHANGE_IRREVERSIBLE_AUTHORITY_UNAUTHORIZED",
+                            "Irreversible authority is not eligible under a matching approval.",
+                            path=f"{path}.irreversible_authority",
+                            source_id=source_id,
+                        )
+                    )
             if raw.get("rollback_required") is not True:
                 diagnostics.append(
                     _diagnostic(
@@ -1048,7 +1439,19 @@ def _change_control(
                 )
 
         if status == "closed":
-            closure = {str(item) for item in (_as_list(raw.get("closure_evidence")) or [])}
+            closure_values, closure_invalid = _strict_source_strings(
+                raw.get("closure_evidence")
+            )
+            closure = set(closure_values)
+            if closure_invalid:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_CLOSURE_EVIDENCE_INVALID",
+                        "Closure evidence names must be unique canonical source strings.",
+                        path=f"{path}.closure_evidence",
+                        source_id=source_id,
+                    )
+                )
             if not closure or not closure <= evidence_ids:
                 diagnostics.append(
                     _diagnostic(

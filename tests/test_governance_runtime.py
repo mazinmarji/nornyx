@@ -77,7 +77,14 @@ def test_approval_normalization_cases_execute_against_the_runtime() -> None:
         )
         assert normalized.resolution == case["expected_resolution"], case["id"]
         assert normalized.source_raw == case["source"], case["id"]
-        validate_payload(normalized.to_dict(), "governance_approval_model_v1.schema.json")
+        verifiable = normalized.to_verifiable_dict()
+        validate_payload(
+            verifiable,
+            "governance_approval_model_v2.schema.json",
+        )
+        if case["id"] == "structured_revision_bound_gate":
+            assert verifiable["exact_revision_required"] is True
+            assert verifiable["expires_after"] == "PT24H"
         if diagnostic := case.get("expected_diagnostic"):
             assert diagnostic in {item.code for item in normalized.diagnostics}, case["id"]
 
@@ -704,7 +711,7 @@ def _genuine_normalized_approval() -> dict[str, Any]:
         shape="generated_profile_approval",
         path="approvals[0]",
         fallback_id="gate",
-    ).to_dict()
+    ).to_verifiable_dict()
 
 
 @pytest.mark.parametrize(

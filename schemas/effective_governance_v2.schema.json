@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/effective_governance_v2.schema.json",
+  "title": "Nornyx Effective Governance v2",
+  "type": "object",
+  "required": [
+    "schema",
+    "profile",
+    "modules",
+    "required_blocks",
+    "block_schemas",
+    "structural_checks",
+    "policies",
+    "evidence_requirements",
+    "approval_requirements",
+    "evaluations",
+    "rules",
+    "non_goals",
+    "starter_fragments",
+    "provenance",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.effective_governance.v2"},
+    "profile": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/nonEmpty"}]},
+    "modules": {"$ref": "#/$defs/uniqueStrings"},
+    "required_blocks": {"$ref": "#/$defs/uniqueStrings"},
+    "block_schemas": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "required": ["block", "schema_id", "source_id"],
+        "properties": {
+          "block": {"$ref": "#/$defs/nonEmpty"},
+          "schema_id": {"$ref": "#/$defs/nonEmpty"},
+          "source_id": {"$ref": "#/$defs/nonEmpty"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "structural_checks": {"$ref": "#/$defs/uniqueStrings"},
+    "policies": {"$ref": "#/$defs/objectArray"},
+    "evidence_requirements": {"$ref": "#/$defs/objectArray"},
+    "approval_requirements": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "oneOf": [
+          {"$ref": "https://nornyx.dev/schemas/effective_approval_v1.schema.json"},
+          {"$ref": "https://nornyx.dev/schemas/governance_approval_model_v2.schema.json"}
+        ]
+      }
+    },
+    "evaluations": {"$ref": "#/$defs/objectArray"},
+    "rules": {"$ref": "#/$defs/uniqueStrings"},
+    "non_goals": {"$ref": "#/$defs/uniqueStrings"},
+    "starter_fragments": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "required": ["target", "source_id", "source_index"],
+        "properties": {
+          "target": {"$ref": "#/$defs/nonEmpty"},
+          "source_id": {"$ref": "#/$defs/nonEmpty"},
+          "source_index": {"type": "integer", "minimum": 0}
+        },
+        "additionalProperties": false
+      }
+    },
+    "provenance": {"$ref": "#/$defs/objectArray"},
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "required": ["level", "code", "message"],
+        "properties": {
+          "level": {"enum": ["error", "warning", "info"]},
+          "code": {"$ref": "#/$defs/nonEmpty"},
+          "message": {"$ref": "#/$defs/nonEmpty"},
+          "path": {"$ref": "#/$defs/nonEmpty"},
+          "source_id": {"$ref": "#/$defs/nonEmpty"},
+          "binding": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["collection", "index"],
+              "properties": {
+                "collection": {"$ref": "#/$defs/nonEmpty"},
+                "index": {"type": "integer", "minimum": 0}
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "uniqueStrings": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/nonEmpty"},
+      "uniqueItems": true
+    },
+    "objectArray": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"type": "object"}
+    }
+  }
+}

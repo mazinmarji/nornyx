@@ -1,8 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nornyx.dev/schemas/governance_approval_model_v1.schema.json",
-  "$comment": "DRAFT internal normalization contract only. Production approval structures are unchanged in PR 1.",
-  "title": "Nornyx Normalized Approval Model v1 (Draft)",
+  "$id": "https://nornyx.dev/schemas/governance_approval_model_v2.schema.json",
+  "title": "Nornyx Verifiable Normalized Approval Model v2",
   "type": "object",
   "required": [
     "schema",
@@ -14,14 +13,19 @@
     "required_evidence",
     "actions_requiring_approval",
     "timing",
+    "accountable_authority",
+    "revision_binding",
+    "exact_revision_required",
     "invalidation_conditions",
+    "expires_after",
+    "expires_at",
     "resolution",
     "normalization_diagnostics",
     "source"
   ],
   "properties": {
-    "schema": {"const": "nornyx.normalized_approval.v1"},
-    "id": {"type": "string", "minLength": 1},
+    "schema": {"const": "nornyx.normalized_approval.v2"},
+    "id": {"$ref": "#/$defs/nonEmpty"},
     "required_roles": {"$ref": "#/$defs/uniqueStrings"},
     "eligible_roles": {"$ref": "#/$defs/uniqueStrings"},
     "denied_actor_types": {"$ref": "#/$defs/uniqueStrings"},
@@ -39,45 +43,40 @@
       ]
     },
     "accountable_authority": {"type": ["string", "null"]},
-    "revision_binding": {
-      "oneOf": [
-        {"type": "null"},
-        {
-          "type": "object",
-          "required": ["kind", "revision", "exact"],
-          "properties": {
-            "kind": {"enum": ["git", "artifact_hash", "package_manifest", "other"]},
-            "revision": {"type": "string", "minLength": 1},
-            "exact": {"const": true}
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
+    "revision_binding": {"$ref": "#/$defs/revisionBinding"},
+    "exact_revision_required": {"type": "boolean"},
     "invalidation_conditions": {"$ref": "#/$defs/uniqueStrings"},
+    "expires_after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/nonEmpty"}]},
     "expires_at": {
       "type": ["string", "null"],
       "format": "date-time"
     },
     "resolution": {
-      "enum": ["complete", "reference_only", "legacy_text_preserved", "requirement_only", "invalid"]
+      "enum": [
+        "complete",
+        "reference_only",
+        "legacy_text_preserved",
+        "requirement_only",
+        "invalid"
+      ]
     },
     "normalization_diagnostics": {
       "type": "array",
+      "maxItems": 128,
       "items": {
         "type": "object",
         "required": ["code", "level", "message"],
         "properties": {
           "code": {"type": "string", "pattern": "^APPROVAL_[A-Z0-9_]+$"},
           "level": {"enum": ["error", "warning", "info"]},
-          "message": {"type": "string", "minLength": 1}
+          "message": {"$ref": "#/$defs/nonEmpty"}
         },
         "additionalProperties": false
       }
     },
     "source": {
       "type": "object",
-      "required": ["shape", "path", "raw"],
+      "required": ["shape", "path", "raw", "role_field", "fallback_id", "binding"],
       "properties": {
         "shape": {
           "enum": [
@@ -89,7 +88,7 @@
             "legacy_boolean_requirement"
           ]
         },
-        "path": {"type": "string", "minLength": 1},
+        "path": {"$ref": "#/$defs/nonEmpty"},
         "raw": {"type": ["object", "string", "boolean"]},
         "role_field": {
           "enum": [
@@ -101,17 +100,38 @@
             "eligible_approvers",
             "none"
           ]
-        }
+        },
+        "fallback_id": {"$ref": "#/$defs/nonEmpty"},
+        "binding": {"$ref": "#/$defs/sha256"}
       },
       "additionalProperties": false
     }
   },
   "additionalProperties": false,
   "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "uniqueStrings": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1},
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/nonEmpty"},
       "uniqueItems": true
+    },
+    "revisionBinding": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["kind", "revision", "exact"],
+          "properties": {
+            "kind": {"enum": ["git", "artifact_hash", "package_manifest", "other"]},
+            "revision": {"$ref": "#/$defs/nonEmpty"},
+            "exact": {"const": true},
+            "scope_hash": {"$ref": "#/$defs/sha256"}
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

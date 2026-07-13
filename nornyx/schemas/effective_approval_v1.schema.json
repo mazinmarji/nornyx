@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/effective_approval_v1.schema.json",
+  "title": "Nornyx Effective Approval v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "required_roles",
+    "eligible_roles",
+    "denied_actor_types",
+    "denied_execution_surfaces",
+    "required_evidence",
+    "actions_requiring_approval",
+    "timing",
+    "accountable_authority",
+    "revision_binding",
+    "exact_revision_required",
+    "invalidation_conditions",
+    "expires_after",
+    "expires_at",
+    "resolution",
+    "operation",
+    "decisions",
+    "sources"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.effective_approval.v1"},
+    "id": {"$ref": "#/$defs/nonEmpty"},
+    "required_roles": {"$ref": "#/$defs/uniqueStrings"},
+    "eligible_roles": {"$ref": "#/$defs/uniqueStrings"},
+    "denied_actor_types": {"$ref": "#/$defs/uniqueStrings"},
+    "denied_execution_surfaces": {"$ref": "#/$defs/uniqueStrings"},
+    "required_evidence": {"$ref": "#/$defs/uniqueStrings"},
+    "actions_requiring_approval": {"$ref": "#/$defs/uniqueStrings"},
+    "timing": {
+      "enum": [
+        "before_action",
+        "before_merge",
+        "before_release",
+        "before_external_write",
+        "unspecified",
+        "legacy_text"
+      ]
+    },
+    "accountable_authority": {"type": ["string", "null"]},
+    "revision_binding": {"$ref": "#/$defs/revisionBinding"},
+    "exact_revision_required": {"type": "boolean"},
+    "invalidation_conditions": {"$ref": "#/$defs/uniqueStrings"},
+    "expires_after": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/nonEmpty"}]},
+    "expires_at": {"type": ["string", "null"], "format": "date-time"},
+    "resolution": {"const": "complete"},
+    "operation": {"const": "nornyx.monotonic_approval_composition.v1"},
+    "decisions": {
+      "type": "object",
+      "required": [
+        "eligible_roles",
+        "required_roles",
+        "denials",
+        "requirements",
+        "scalar_fields",
+        "source_order"
+      ],
+      "properties": {
+        "eligible_roles": {"const": "intersection_of_non_empty_sets"},
+        "required_roles": {"const": "ordered_union_then_subset_check"},
+        "denials": {"const": "ordered_union_with_intrinsic_core"},
+        "requirements": {"const": "ordered_union"},
+        "scalar_fields": {"const": "equal_or_single_declared_value"},
+        "source_order": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {"$ref": "#/$defs/nonEmpty"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": ["position", "hash", "approval", "provenance"],
+        "properties": {
+          "position": {"type": "integer", "minimum": 0, "maximum": 31},
+          "hash": {"$ref": "#/$defs/sha256"},
+          "approval": {
+            "$ref": "https://nornyx.dev/schemas/governance_approval_model_v2.schema.json"
+          },
+          "provenance": {
+            "type": "object",
+            "required": [
+              "source_id",
+              "source_kind",
+              "source_version",
+              "source_tier",
+              "source_path",
+              "approval_path",
+              "source_index",
+              "content_hash"
+            ],
+            "properties": {
+              "source_id": {"$ref": "#/$defs/nonEmpty"},
+              "source_kind": {"enum": ["profile", "module"]},
+              "source_version": {"$ref": "#/$defs/nonEmpty"},
+              "source_tier": {
+                "enum": ["builtin", "project", "org", "explicit_path"]
+              },
+              "source_path": {"$ref": "#/$defs/nonEmpty"},
+              "approval_path": {"$ref": "#/$defs/nonEmpty"},
+              "source_index": {"type": "integer", "minimum": 0, "maximum": 4095},
+              "content_hash": {"$ref": "#/$defs/sha256"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "uniqueStrings": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/nonEmpty"},
+      "uniqueItems": true
+    },
+    "revisionBinding": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["kind", "revision", "exact"],
+          "properties": {
+            "kind": {"enum": ["git", "artifact_hash", "package_manifest", "other"]},
+            "revision": {"$ref": "#/$defs/nonEmpty"},
+            "exact": {"const": true},
+            "scope_hash": {"$ref": "#/$defs/sha256"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

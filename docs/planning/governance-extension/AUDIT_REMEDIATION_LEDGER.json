@@ -45,24 +45,24 @@
       "original_severity": "High",
       "root_cause": "Approval normalization validates accountable_authority type but does not apply intrinsic non-human identity denial.",
       "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud003_non_human_accountable_authority_is_intrinsically_invalid",
-      "affected_files": ["nornyx/governance/approvals.py"],
+      "affected_files": ["nornyx/governance/approvals.py", "nornyx/governance/loader.py", "nornyx/governance/structural.py"],
       "correction": "Reject exact and prefixed non-human authority identities during normalization.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud003_non_human_accountable_authority_is_intrinsically_invalid"],
-      "validation": {"status": "reproduced_failing", "evidence": "Explicit tool and system authorities normalized as complete and trusted."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/approvals.py::normalize_approval", "nornyx/governance/approvals.py::is_non_human_authority", "nornyx/governance/loader.py::_load_pack_bytes", "nornyx/governance/structural.py::_human_approval"],
+      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud003_non_human_accountable_authority_is_intrinsically_invalid", "tests/test_governance_audit_approval_integrity.py::test_aud003_accountable_authority_requires_a_nonempty_source_string", "tests/test_governance_audit_approval_integrity.py::test_aud003_source_pack_loading_rejects_non_human_authority", "tests/test_governance_audit_approval_integrity.py::test_aud003_composition_rejects_programmatic_non_human_authority", "tests/test_governance_audit_approval_integrity.py::test_aud003_document_evaluation_preserves_specific_authority_failure"],
+      "validation": {"status": "stage_passed", "evidence": "Direct normalization, pack loading, programmatic composition, v2 serialization, retained-source verification, and document evaluation reject malformed and explicit non-human authority."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-004",
       "original_severity": "High",
       "root_cause": "Retained-source verification uses the untrusted claimed normalized id as its own fallback.",
       "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud004_normalized_identity_is_independently_derived",
-      "affected_files": ["nornyx/governance/approvals.py"],
+      "affected_files": ["nornyx/governance/approvals.py", "nornyx/governance/models.py", "schemas/governance_approval_model_v2.schema.json", "nornyx/schemas/governance_approval_model_v2.schema.json"],
       "correction": "Derive identity independently from raw source and a documented source-path fallback.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud004_normalized_identity_is_independently_derived"],
-      "validation": {"status": "reproduced_failing", "evidence": "Changing canonical id with unchanged raw source remained trusted."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/approvals.py::_source_identity", "nornyx/governance/approvals.py::trusted_normalized_approval", "nornyx/governance/models.py::NormalizedApproval.to_verifiable_dict"],
+      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud004_normalized_identity_is_independently_derived", "tests/test_governance_audit_approval_integrity.py::test_aud004_missing_identity_uses_one_path_derived_fallback", "tests/test_governance_audit_approval_integrity.py::test_aud004_legacy_serializer_and_schema_remain_base_compatible"],
+      "validation": {"status": "stage_passed", "evidence": "Changed/deleted identity, conflicting shape, changed path, case, whitespace and Unicode-confusable mutations all fail v2 re-derivation. Missing raw identity is derived only from shape/path; arbitrary in-band fallbacks fail even with a recomputed consistency binding. The frozen v1 serializer/schema remains valid."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-005",
@@ -71,10 +71,10 @@
       "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud005_invalidation_conditions_never_coerce",
       "affected_files": ["nornyx/governance/approvals.py"],
       "correction": "Strictly validate non-empty unique strings and mark malformed approval input invalid.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud005_invalidation_conditions_never_coerce"],
-      "validation": {"status": "reproduced_failing", "evidence": "Boolean, mapping and integer values became strings without an error."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/approvals.py::_strict_strings", "nornyx/governance/approvals.py::normalize_approval", "nornyx/governance/structural.py::_strict_source_strings"],
+      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud005_invalidation_conditions_never_coerce", "tests/test_governance_audit_approval_integrity.py::test_aud005_adjacent_approval_authority_values_never_coerce", "tests/test_governance_audit_approval_integrity.py::test_aud005_subject_revision_and_exception_authority_never_coerce"],
+      "validation": {"status": "stage_passed", "evidence": "Boolean, mapping, integer, empty, whitespace and duplicate invalidation inputs return resolution=invalid with APPROVAL_INVALIDATION_CONDITION_INVALID. Roles, evidence, actions, governed revisions, exception authorities, rule references, evidence dependencies and closure evidence are checked as source strings and are never stringified."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-006",
@@ -83,10 +83,10 @@
       "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud006_standalone_approval_must_match_governed_revision",
       "affected_files": ["nornyx/governance/structural.py"],
       "correction": "Resolve one canonical governed revision and compare all approval/evidence/change/architecture bindings.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud006_standalone_approval_must_match_governed_revision"],
-      "validation": {"status": "reproduced_failing", "evidence": "A wrong standalone approval revision emitted no diagnostic."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/structural.py::_governed_subject_revision", "nornyx/governance/structural.py::_human_approval"],
+      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud006_standalone_approval_must_match_governed_revision", "tests/test_governance_audit_approval_integrity.py::test_aud006_matching_standalone_revision_is_accepted", "tests/test_governance_audit_approval_integrity.py::test_aud006_missing_governed_revision_fails_closed", "tests/test_governance_audit_approval_integrity.py::test_aud006_conflicting_evidence_revision_fails_closed", "tests/test_governance_audit_approval_integrity.py::test_aud006_multiple_approvals_cannot_span_governed_revisions", "tests/test_governance_audit_approval_integrity.py::test_aud006_change_scope_hash_must_match_same_approval"],
+      "validation": {"status": "stage_passed", "evidence": "One independent top-level subject revision is required; approval, evidence-record, change, architecture and architecture-evidence claims are compared without relying on change_control selection."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-007",
@@ -95,10 +95,10 @@
       "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud007_high_risk_change_roles_are_a_strict_human_subset",
       "affected_files": ["nornyx/governance/structural.py"],
       "correction": "Require every declared role and irreversible authority to be eligible, human, non-denied and sufficient.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud007_high_risk_change_roles_are_a_strict_human_subset"],
-      "validation": {"status": "reproduced_failing", "evidence": "A valid reviewer masked ai_tool and arbitrary roles."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/structural.py::_change_control", "nornyx/governance/structural.py::_strict_source_strings"],
+      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud007_high_risk_change_roles_are_a_strict_human_subset", "tests/test_governance_audit_approval_integrity.py::test_aud007_required_duplicate_and_malformed_change_roles_fail", "tests/test_governance_audit_approval_integrity.py::test_aud007_irreversible_authority_must_be_eligible", "tests/test_governance_audit_approval_integrity.py::test_aud007_valid_human_high_risk_authority_remains_accepted"],
+      "validation": {"status": "stage_passed", "evidence": "Every high-risk role must be a unique canonical human role in one candidate's eligible set, include all required roles, avoid denials, and match the same revision/scope; irreversible authority is checked independently."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-008",
@@ -153,12 +153,12 @@
       "original_severity": "Medium",
       "root_cause": "Composition replaces complete retained approval sources with path-only merged_sources metadata.",
       "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approvals_are_independently_verifiable",
-      "affected_files": ["nornyx/governance/composition.py", "nornyx/governance/approvals.py", "nornyx/governance/models.py"],
-      "correction": "Introduce bounded deterministic effective-approval provenance and independent recomputation verification.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approvals_are_independently_verifiable"],
-      "validation": {"status": "reproduced_failing", "evidence": "All effective architecture approvals failed retained-source verification."},
-      "final_status": "open"
+      "affected_files": ["nornyx/governance/composition.py", "nornyx/governance/approvals.py", "nornyx/governance/models.py", "nornyx/governance/reporting.py", "schemas/effective_approval_v1.schema.json", "nornyx/schemas/effective_approval_v1.schema.json", "schemas/effective_governance_v2.schema.json", "nornyx/schemas/effective_governance_v2.schema.json", "docs/decisions/ADR-0032-verifiable-effective-approvals.md"],
+      "correction": "Introduce bounded deterministic effective-approval provenance, registry-backed source authentication, and independent recomputation verification under explicit versioned serializers.",
+      "implementation_reference": ["nornyx/governance/approvals.py::compose_effective_approval", "nornyx/governance/approvals.py::_trusted_provenance_source", "nornyx/governance/approvals.py::trusted_effective_approval", "nornyx/governance/composition.py::_effective_approval_facade", "nornyx/governance/models.py::EffectiveApproval", "nornyx/governance/models.py::CompositionResult.to_effective_dict"],
+      "tests": ["tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approvals_are_independently_verifiable", "tests/test_governance_audit_approval_integrity.py::test_aud012_nonbuiltin_effective_approval_requires_its_registry", "tests/test_governance_audit_approval_integrity.py::test_aud012_forged_builtin_lineage_is_not_self_authenticating", "tests/test_governance_audit_approval_integrity.py::test_aud012_document_rules_reject_effective_reporting_artifacts", "tests/test_governance_audit_approval_integrity.py::test_aud012_public_verifiers_fail_closed_on_excessive_depth", "tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approval_mutation_matrix", "tests/test_governance_audit_approval_integrity.py::test_aud012_provenance_id_index_and_path_must_agree", "tests/test_governance_audit_approval_integrity.py::test_aud012_composer_rejects_duplicate_source_leaves", "tests/test_governance_audit_approval_integrity.py::test_aud012_one_pack_index_cannot_claim_two_different_leaves", "tests/test_governance_audit_approval_integrity.py::test_aud012_source_limit_stops_consuming_the_generator", "tests/test_governance_audit_approval_integrity.py::test_aud012_three_layer_composition_is_deterministic_and_monotonic", "tests/test_governance_audit_approval_integrity.py::test_aud012_empty_eligibility_never_broadens_a_restriction", "tests/test_governance_audit_approval_integrity.py::test_aud012_disjoint_nonempty_sets_fail_even_with_an_empty_layer", "tests/test_governance_audit_approval_integrity.py::test_aud012_required_role_excluded_by_another_layer_fails"],
+      "validation": {"status": "stage_passed", "evidence": "Bounded flattened v2 leaves, source hashes, deterministic provenance order and declared operations are replayed by the public verifier. Built-ins resolve only from packaged packs; other tiers require an explicit registry. Forged pack lineage, contradictory or duplicate id/index/path lineage, over-limit generators, excessive nesting, document reuse, source/recipe/result mutations, disjoint roles and excluded requirements fail."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-013",

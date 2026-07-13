@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/governance_approval_model_v1.schema.json",
-  "$comment": "Active internal approval-normalization contract; legacy source structures remain unchanged.",
-  "title": "Nornyx Normalized Approval Model v1",
+  "$comment": "DRAFT internal normalization contract only. Production approval structures are unchanged in PR 1.",
+  "title": "Nornyx Normalized Approval Model v1 (Draft)",
   "type": "object",
   "required": [
     "schema",
@@ -14,12 +14,7 @@
     "required_evidence",
     "actions_requiring_approval",
     "timing",
-    "accountable_authority",
-    "revision_binding",
-    "exact_revision_required",
     "invalidation_conditions",
-    "expires_after",
-    "expires_at",
     "resolution",
     "normalization_diagnostics",
     "source"
@@ -53,19 +48,13 @@
           "properties": {
             "kind": {"enum": ["git", "artifact_hash", "package_manifest", "other"]},
             "revision": {"type": "string", "minLength": 1},
-            "exact": {"const": true},
-            "scope_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+            "exact": {"const": true}
           },
           "additionalProperties": false
         }
       ]
     },
-    "exact_revision_required": {"type": "boolean"},
     "invalidation_conditions": {"$ref": "#/$defs/uniqueStrings"},
-    "expires_after": {
-      "type": ["string", "null"],
-      "minLength": 1
-    },
     "expires_at": {
       "type": ["string", "null"],
       "format": "date-time"

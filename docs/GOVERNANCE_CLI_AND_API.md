@@ -84,5 +84,33 @@ be removed without a changelog deprecation notice lasting at least two package
 minor releases and six months, whichever is longer. Security fixes may tighten
 rejection of malformed or untrusted input without a deprecation period.
 
+Composed approvals use the separately versioned
+`nornyx.effective_approval.v1` envelope. The public verifier replays its
+bounded retained-source composition:
+
+```python
+from nornyx.governance import (
+    GovernanceRegistry,
+    compose_governance,
+    trusted_effective_approval,
+)
+
+registry = GovernanceRegistry.builtins()
+composition = compose_governance(registry, profile_identity="architecture_governance")
+for payload in composition.to_effective_dict()["approval_requirements"]:
+    assert trusted_effective_approval(payload) is not None
+```
+
+`NormalizedApproval.to_verifiable_dict()` emits
+`nornyx.normalized_approval.v2`; `NormalizedApproval.to_dict()` always retains
+the established v1 shape. Likewise, `CompositionResult.to_dict()` remains the
+v1 compatibility view and `to_effective_dict()` explicitly emits the bundled
+`nornyx.effective_governance.v2` schema. Source hashes detect inconsistent
+mutation but are not signatures. Missing source identities use a fallback
+derived only from source shape and canonical path. Built-in effective leaves
+are authenticated against packaged packs; non-built-in leaves require the
+same independently established registry as a keyword argument to
+`trusted_effective_approval`.
+
 Installed-wheel resources and the CLI implementation are checked locally
 without network access by `python scripts/test_wheel_install.py <wheel>`.

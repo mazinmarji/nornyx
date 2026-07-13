@@ -10,6 +10,7 @@ import yaml
 from nornyx.path_security import is_remote_or_device_path
 from nornyx.parser import NornyxSafeLoader
 
+from .approvals import normalize_approval
 from .errors import GovernanceError, error
 from .models import (
     GovernanceBlockSchema,
@@ -215,9 +216,9 @@ def _profile_from_payload(
         non_goals=tuple(str(item) for item in payload["non_goals"]),
         starter_fragments=fragments,
         provenance=PackProvenance(
-            author=str(provenance["author"]),
+            author=provenance["author"],
             source_tier=source_tier,
-            source_revision=str(provenance["source_revision"]),
+            source_revision=provenance["source_revision"],
             source_path=source_path,
         ),
         content_hash=content_hash,
@@ -273,9 +274,9 @@ def _module_from_payload(
         rules=tuple(Rule.from_dict(item, source_id=pack_id) for item in payload["rules"]),
         non_goals=tuple(str(item) for item in payload["non_goals"]),
         provenance=PackProvenance(
-            author=str(provenance["author"]),
+            author=provenance["author"],
             source_tier=source_tier,
-            source_revision=str(provenance["source_revision"]),
+            source_revision=provenance["source_revision"],
             source_path=source_path,
         ),
         content_hash=content_hash,
@@ -307,6 +308,24 @@ def _load_pack_bytes(
         )
     validate_payload(payload, schema_name)
     content_hash = _verify_integrity(payload, source_path)
+    for index, approval in enumerate(payload.get("approval_requirements", [])):
+        normalized = normalize_approval(
+            approval,
+            shape="generated_profile_approval",
+            path=f"{payload['id']}.approval_requirements[{index}]",
+            fallback_id=(
+                approval["id"]
+                if isinstance(approval, Mapping)
+                and isinstance(approval.get("id"), str)
+                else f"approval-{index}"
+            ),
+        )
+        blocking_codes = {
+            "APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID",
+            "APPROVAL_NON_HUMAN_AUTHORITY",
+        }
+        if blocking_codes & {item.code for item in normalized.diagnostics}:
+            raise GovernanceError(*normalized.diagnostics)
     if discriminator == "nornyx.profile_pack.v1":
         return _profile_from_payload(
             payload,

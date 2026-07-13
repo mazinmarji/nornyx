@@ -166,10 +166,15 @@ def build_governance_report(
             deepcopy(dict(item)) for item in composition.evidence_requirements
         ],
         "approval_requirements": [
-            item.to_dict() for item in composition.approval_requirements
+            (
+                item.effective_approval.to_dict()
+                if item.effective_approval is not None
+                else item.to_verifiable_dict()
+            )
+            for item in composition.approval_requirements
         ],
         "exception_status": _exception_status(document),
         "matrix": matrix,
-        "effective": composition.to_dict(),
+        "effective": composition.to_effective_dict(),
         "diagnostics": [item.to_dict() for item in diagnostics],
     }

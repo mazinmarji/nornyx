@@ -5,7 +5,10 @@ from fnmatch import fnmatchcase
 import re
 from typing import Any, Iterable, Mapping
 
-from .approvals import normalize_approval, trusted_normalized_approval
+from .approvals import (
+    normalize_approval,
+    trusted_normalized_approval,
+)
 from .errors import GovernanceError
 from .models import GovernanceDiagnostic, Rule
 
@@ -190,11 +193,24 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
     for index, item in enumerate(items):
         if not isinstance(item, Mapping):
             return None
-        if item.get("schema") == "nornyx.normalized_approval.v1":
+        schema = item.get("schema")
+        if schema in {
+            "nornyx.normalized_approval.v1",
+            "nornyx.normalized_approval.v2",
+        }:
             trusted = _trusted_normalized_roles(item)
             if trusted is None:
                 return None
             values = list(trusted)
+        elif schema == "nornyx.effective_approval.v1":
+            # Effective approvals are output artifacts whose provenance needs
+            # an independent pack registry. They are never accepted as
+            # document-authored rule inputs without that trust context.
+            return None
+        elif isinstance(schema, str) and schema.startswith(
+            ("nornyx.normalized_approval.", "nornyx.effective_approval.")
+        ):
+            return None
         else:
             governed = "id" in item and (
                 "required_evidence" in item
@@ -223,9 +239,10 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
                 return None
             values = [*normalized.required_roles, *normalized.eligible_roles]
         for role in values:
-            text = str(role)
-            if text not in roles:
-                roles.append(text)
+            if not isinstance(role, str):
+                return None
+            if role not in roles:
+                roles.append(role)
     return tuple(roles)
 
 
@@ -243,7 +260,11 @@ def _reference_ids(value: Any) -> tuple[str, ...] | None:
             candidate = item.get("id") or item.get("name")
         else:
             candidate = item
-        if not isinstance(candidate, str):
+        if (
+            not isinstance(candidate, str)
+            or not candidate.strip()
+            or candidate != candidate.strip()
+        ):
             return None
         if candidate not in result:
             result.append(candidate)
@@ -272,7 +293,9 @@ def _matches(value: Any, operator: str, operand: Any) -> tuple[bool, str | None]
             return value not in operand, None
         if not isinstance(value, str):
             return False, "RULE_SCALAR_TYPE_ERROR"
-        return fnmatchcase(value, str(operand)), None
+        if not isinstance(operand, str):
+            return False, "RULE_SCALAR_TYPE_ERROR"
+        return fnmatchcase(value, operand), None
     if operator in COLLECTION_OPERATORS:
         if not isinstance(value, list):
             return False, "RULE_COLLECTION_TYPE_ERROR"
@@ -284,15 +307,27 @@ def _matches(value: Any, operator: str, operand: Any) -> tuple[bool, str | None]
             return len(value) >= operand, None
         return len(value) <= operand, None
     if operator == "references_role":
+        if (
+            not isinstance(operand, str)
+            or not operand.strip()
+            or operand != operand.strip()
+        ):
+            return False, "RULE_REFERENCE_TYPE_ERROR"
         roles = _approval_roles(value)
         if roles is None:
             return False, "RULE_REFERENCE_TYPE_ERROR"
-        return str(operand) in roles, None
+        return operand in roles, None
     if operator in {"references_evidence", "references_approval"}:
+        if (
+            not isinstance(operand, str)
+            or not operand.strip()
+            or operand != operand.strip()
+        ):
+            return False, "RULE_REFERENCE_TYPE_ERROR"
         references = _reference_ids(value)
         if references is None:
             return False, "RULE_REFERENCE_TYPE_ERROR"
-        return str(operand) in references, None
+        return operand in references, None
     return False, "RULE_OPERATOR_UNKNOWN"
 
 

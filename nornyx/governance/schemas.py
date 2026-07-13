@@ -19,6 +19,9 @@ SCHEMA_BY_DISCRIMINATOR = {
     "nornyx.profile_pack.v1": "profile_pack_v1.schema.json",
     "nornyx.governance_module.v1": "governance_module_v1.schema.json",
     "nornyx.normalized_approval.v1": "governance_approval_model_v1.schema.json",
+    "nornyx.normalized_approval.v2": "governance_approval_model_v2.schema.json",
+    "nornyx.effective_approval.v1": "effective_approval_v1.schema.json",
+    "nornyx.effective_governance.v2": "effective_governance_v2.schema.json",
     "nornyx.profiles_lock.v1": "profiles_lock_v1.schema.json",
 }
 

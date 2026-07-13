@@ -6,7 +6,10 @@ enforce this representation.
 
 ## Normalized representation
 
-`nornyx.normalized_approval.v1` records:
+The legacy `nornyx.normalized_approval.v1` compatibility view and the
+trust-boundary `nornyx.normalized_approval.v2` representation share these
+semantic fields. V2 additionally retains a deterministic path-derived source
+fallback and source-consistency binding:
 
 ```text
 id
@@ -25,13 +28,19 @@ expires_after
 expires_at
 resolution
 normalization_diagnostics
-source {shape, path, raw, role_field}
+source {shape, path, raw, role_field, fallback_id, binding} (v2)
 ```
 
 The complete raw source value and source path are retained. This is essential
 for legacy prose and boolean requirement fields whose meaning cannot safely be
 invented. Normalization makes fields comparable; it does not manufacture an
 approver or grant authority.
+
+When raw source has no intrinsic identity, v1 keeps the caller-supplied
+fallback for public compatibility, but verifiable v2 derives one as
+`approval:` plus the first 24 hexadecimal characters of SHA-256 over canonical
+JSON containing only `shape` and `path`. Neither the claimed normalized ID nor
+an in-band caller fallback participates in verification.
 
 ## Repository-grounded mappings
 
@@ -63,8 +72,9 @@ role-bearing fields are errors until added to this table by an ADR.
   produce an informational diagnostic.
 - Role, denial, evidence, and action values must be non-empty strings;
   malformed values are omitted and make normalization invalid.
-- `accountable_authority` must be a non-empty source string. It is never
-  stringified from another YAML type.
+- `accountable_authority` must be a canonical non-empty source string. It is
+  never stringified from another YAML type and explicit non-human identities
+  are intrinsically invalid.
 - `exact_revision_required` must be boolean and `expires_after` must be a
   non-empty duration string when present.
 - Every required role must appear in the eligible-role set; required roles
@@ -83,6 +93,12 @@ role-bearing fields are errors until added to this table by an ADR.
 - Across composition layers, non-empty eligible-role sets intersect. A
   disjoint intersection or a required role excluded by another layer is a
   fatal monotonicity conflict; authority sets are never unioned.
+- Effective composition uses `nornyx.effective_approval.v1`, retains bounded
+  flattened source approvals and pack provenance, and is independently
+  replayed by `trusted_effective_approval` as specified by ADR-0032. Built-in
+  lineage is resolved from packaged resources; other tiers require an explicit
+  authoritative registry. Effective reporting artifacts are not document
+  approval declarations.
 
 `references_role` operates only on normalized `required_roles` and
 `eligible_roles`. Approval names, action names, prose, and accountable
