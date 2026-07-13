@@ -74,6 +74,15 @@ def test_compatibility_corpus_declares_every_required_class() -> None:
         "cli",
         "intentional_migrations",
     } <= set(manifest)
+    assert manifest["nyx_examples"]["classification"] == "canonical_lf_identical"
+    assert (
+        manifest["governed_package_examples"]["classification"]
+        == "canonical_lf_identical"
+    )
+    assert (
+        manifest["generated_artifacts_and_manifests"]["classification"]
+        == "canonical_lf_identical"
+    )
 
 
 def test_compatibility_corpus_pins_all_example_and_generated_bytes() -> None:

@@ -48,10 +48,10 @@
     ]
   },
   "generated_artifacts_and_manifests": {
-    "classification": "byte_identical",
+    "classification": "canonical_lf_identical",
     "files": [
-      {"path": "tests/fixtures/generated_drift/governed_delivery_control_plane.json", "sha256": "26f929f05c57a127ba230290d1209fcbc87bff05983cca3973cd234f9af9a3a6"},
-      {"path": "tests/fixtures/generated_drift/nornyx_roadmap_goals.json", "sha256": "afa6a6037e96be94212b00c59ad21f253d240b5fc3cb64bdbe2bfa16b2be77b2"}
+      {"path": "tests/fixtures/generated_drift/governed_delivery_control_plane.json", "sha256": "6c5b8d631374a74cc8f7186e75ba31c8bedcaf688c866cbfd8a7ac82cdbd1f6c"},
+      {"path": "tests/fixtures/generated_drift/nornyx_roadmap_goals.json", "sha256": "b5830de2bc3aafb9f50940688efbaa8e8b78bddc46dc467888d3ede69085e2df"}
     ]
   },
   "legacy_profile_api": {

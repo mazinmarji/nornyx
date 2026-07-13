@@ -27,7 +27,7 @@ golden is not regenerated automatically.
 | Existing top-level `.nyx` examples | `canonical_lf_identical` | complete enumerated canonical-LF path/hash set in compatibility manifest | pinned across Git text checkout modes |
 | Legacy profile API output | `semantically_equivalent` | catalog/API tests plus pinned `ai_coding` v0.3 projection and loss report | pinned |
 | CLI stdout and exit codes | `semantically_equivalent` canonical JSON | six success/error cases with repository-root normalization | pinned |
-| Generated artifacts and manifests | `byte_identical` | both committed generated-drift baselines | pinned |
+| Generated artifacts and manifests | `canonical_lf_identical` | both committed generated-drift baselines | pinned across Git text checkout modes |
 | Governance locks | `canonical_lf_identical` | canonical minimal-profile lock hash and existing permutation tests | pinned |
 | Governed-package locks/manifests | `semantically_equivalent` plus deterministic scanner anchors | governed-package generation, tamper, and byte-determinism tests | retained |
 | Projection reports | `semantically_equivalent` | normative projection cases and pinned report hash | pinned |
