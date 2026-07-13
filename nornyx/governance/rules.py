@@ -6,7 +6,9 @@ import re
 from typing import Any, Iterable, Mapping
 
 from .approvals import normalize_approval
+from .errors import GovernanceError
 from .models import GovernanceDiagnostic, Rule
+from .schemas import validate_payload
 
 
 PATH_RE = re.compile(
@@ -26,9 +28,6 @@ STRUCTURAL_MATCH_REASONS = {
     "RULE_REFERENCE_TYPE_ERROR",
     "RULE_OPERATOR_UNKNOWN",
 }
-# Actor categories that can never satisfy references_role, even in forged
-# pre-normalized approval payloads.
-CORE_DENIED_APPROVER_ACTORS = ("ai_tool", "execution_surface")
 # Resolutions under which a pre-normalized approval's role lists may be read.
 # "invalid", anything unknown, and a missing resolution all fail closed.
 TRUSTED_APPROVAL_RESOLUTIONS = {
@@ -175,6 +174,55 @@ def _is_scalar(value: Any) -> bool:
     return value is None or isinstance(value, (str, int, float, bool))
 
 
+def _trusted_normalized_roles(
+    item: Mapping[str, Any], index: int
+) -> tuple[str, ...] | None:
+    """Validate a claimed pre-normalized approval end to end.
+
+    A payload carrying the normalized-approval schema marker is claiming to be
+    output of normalize_approval. Nothing in it is trusted as-is: the payload
+    must validate against the normalized-approval schema, must not carry error
+    diagnostics, may expose roles only under a `complete` resolution, and its
+    role/denial fields are re-normalized through normalize_approval so every
+    semantic invariant (required ⊆ eligible, eligible ∩ denied = ∅, core-denied
+    actors never eligible) is re-derived rather than believed. Any failure
+    returns None, which surfaces as RULE_REFERENCE_TYPE_ERROR.
+    """
+    try:
+        validate_payload(dict(item), "governance_approval_model_v1.schema.json")
+    except GovernanceError:
+        return None
+    if item["resolution"] not in TRUSTED_APPROVAL_RESOLUTIONS:
+        return None
+    if any(
+        isinstance(diagnostic, Mapping) and diagnostic.get("level") == "error"
+        for diagnostic in item["normalization_diagnostics"]
+    ):
+        return None
+    claimed_roles = [*item["required_roles"], *item["eligible_roles"]]
+    if item["resolution"] != "complete":
+        # Non-complete resolutions never resolved roles; a payload claiming
+        # both is internally inconsistent.
+        return None if claimed_roles else ()
+    renormalized = normalize_approval(
+        {
+            "name": str(item["id"]),
+            "required_roles": list(item["required_roles"]),
+            "eligible_roles": list(item["eligible_roles"]),
+            "denied_approver_types": list(item["denied_actor_types"]),
+            "denied_execution_surfaces": list(item["denied_execution_surfaces"]),
+            "required_evidence": list(item["required_evidence"]),
+            "required_for": list(item["actions_requiring_approval"]),
+        },
+        shape="generated_profile_approval",
+        path=f"approvals[{index}]",
+        fallback_id=str(item["id"]),
+    )
+    if renormalized.resolution == "invalid":
+        return None
+    return (*renormalized.required_roles, *renormalized.eligible_roles)
+
+
 def _approval_roles(value: Any) -> tuple[str, ...] | None:
     items = value if isinstance(value, list) else [value]
     roles: list[str] = []
@@ -182,28 +230,10 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
         if not isinstance(item, Mapping):
             return None
         if item.get("schema") == "nornyx.normalized_approval.v1":
-            # A pre-normalized approval is only trusted when its resolution is
-            # a known non-invalid value and its role fields are well-typed
-            # lists of strings. A missing or unknown resolution, a role field
-            # of the wrong type, or a core-denied actor in the role lists all
-            # fail closed — a forged payload must never satisfy references_role.
-            if item.get("resolution") not in TRUSTED_APPROVAL_RESOLUTIONS:
+            trusted = _trusted_normalized_roles(item, index)
+            if trusted is None:
                 return None
-            values = []
-            for field in ("required_roles", "eligible_roles"):
-                # Both role fields are required by the normalized schema; an
-                # absent field marks an incomplete payload and fails closed
-                # rather than defaulting to a valid empty list.
-                if field not in item:
-                    return None
-                field_values = item[field]
-                if not isinstance(field_values, list) or not all(
-                    isinstance(entry, str) for entry in field_values
-                ):
-                    return None
-                values.extend(field_values)
-            if any(value in CORE_DENIED_APPROVER_ACTORS for value in values):
-                return None
+            values = list(trusted)
         else:
             governed = "id" in item and (
                 "required_evidence" in item

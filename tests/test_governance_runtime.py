@@ -353,65 +353,111 @@ def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
     assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
 
 
-def test_pre_normalized_approvals_are_not_trusted_blindly() -> None:
-    # An approval payload carrying the normalized-approval schema marker is
-    # only honored when its own normalization succeeded, and a core-denied
-    # actor in its role lists always fails closed — even with a forged
-    # resolution of "complete".
-    rule = _rule(requirement={"path": "approvals", "references_role": "ai_tool"})
-    invalid = {
-        "approvals": [
-            {
-                "schema": "nornyx.normalized_approval.v1",
-                "id": "g",
-                "resolution": "invalid",
-                "required_roles": [],
-                "eligible_roles": ["ai_tool"],
-            }
-        ]
-    }
-    assert [item.code for item in evaluate_rule(invalid, rule)] == [
-        "RULE_REFERENCE_TYPE_ERROR"
-    ]
-    forged = deepcopy(invalid)
-    forged["approvals"][0]["resolution"] = "complete"
-    assert [item.code for item in evaluate_rule(forged, rule)] == [
-        "RULE_REFERENCE_TYPE_ERROR"
-    ]
-    legitimate = {
-        "approvals": [
-            {
-                "schema": "nornyx.normalized_approval.v1",
-                "id": "g",
-                "resolution": "complete",
-                "required_roles": [],
-                "eligible_roles": ["reviewer"],
-            }
-        ]
-    }
-    reviewer_rule = _rule(requirement={"path": "approvals", "references_role": "reviewer"})
-    assert evaluate_rule(legitimate, reviewer_rule) == ()
+def _genuine_normalized_approval() -> dict[str, Any]:
+    return normalize_approval(
+        {
+            "name": "gate",
+            "required_roles": ["reviewer"],
+            "eligible_roles": ["reviewer", "security"],
+            "denied_approver_types": ["ai_tool"],
+            "required_evidence": ["review_record"],
+            "required_for": ["merge"],
+        },
+        shape="generated_profile_approval",
+        path="approvals[0]",
+        fallback_id="gate",
+    ).to_dict()
 
-    # Malformed pre-normalized payloads fail closed rather than being
-    # unpacked blindly: mapping role fields, null role fields, non-string
-    # role entries, and a missing resolution all reject.
-    base = legitimate["approvals"][0]
-    malformed_payloads = [
-        {**base, "eligible_roles": {"reviewer": False}},
-        {**base, "required_roles": None},
-        {**base, "eligible_roles": ["reviewer", 7]},
-        {key: value for key, value in base.items() if key != "resolution"},
-        {**base, "resolution": "definitely_fine"},
-        # Both role fields are required by the normalized schema; an absent
-        # field must not default to a valid empty list.
-        {key: value for key, value in base.items() if key != "required_roles"},
-        {key: value for key, value in base.items() if key != "eligible_roles"},
-    ]
-    for payload in malformed_payloads:
-        diagnostics = evaluate_rule({"approvals": [payload]}, reviewer_rule)
+
+@pytest.mark.parametrize(
+    "mutation_id",
+    [
+        # structural invariants
+        "missing_id",
+        "missing_resolution",
+        "missing_required_roles",
+        "missing_eligible_roles",
+        "roles_as_mapping",
+        "roles_as_null",
+        "non_string_role_entry",
+        "duplicate_roles",
+        "unknown_resolution",
+        "unknown_extra_field",
+        # semantic invariants (schema-valid but forged)
+        "resolution_invalid",
+        "forged_complete_with_core_denied_eligible",
+        "required_role_not_eligible",
+        "eligible_role_also_denied",
+        "complete_with_error_diagnostic",
+        "reference_only_with_roles",
+    ],
+)
+def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
+    # A payload carrying the normalized-approval schema marker is re-validated
+    # end to end: schema shape, diagnostic consistency, resolution/role
+    # consistency, and full re-normalization of the semantic invariants.
+    # Every mutation of a genuine normalized object must fail closed.
+    base = _genuine_normalized_approval()
+    mutations: dict[str, dict[str, Any]] = {
+        "missing_id": {key: value for key, value in base.items() if key != "id"},
+        "missing_resolution": {
+            key: value for key, value in base.items() if key != "resolution"
+        },
+        "missing_required_roles": {
+            key: value for key, value in base.items() if key != "required_roles"
+        },
+        "missing_eligible_roles": {
+            key: value for key, value in base.items() if key != "eligible_roles"
+        },
+        "roles_as_mapping": {**base, "eligible_roles": {"reviewer": False}},
+        "roles_as_null": {**base, "required_roles": None},
+        "non_string_role_entry": {**base, "eligible_roles": ["reviewer", 7]},
+        "duplicate_roles": {**base, "eligible_roles": ["reviewer", "reviewer"]},
+        "unknown_resolution": {**base, "resolution": "definitely_fine"},
+        "unknown_extra_field": {**base, "trusted": True},
+        "resolution_invalid": {**base, "resolution": "invalid"},
+        "forged_complete_with_core_denied_eligible": {
+            **base,
+            "eligible_roles": ["reviewer", "ai_tool"],
+            "denied_actor_types": [],
+        },
+        "required_role_not_eligible": {
+            **base,
+            "required_roles": ["ghost"],
+            "eligible_roles": ["reviewer"],
+        },
+        "eligible_role_also_denied": {
+            **base,
+            "eligible_roles": ["reviewer", "ai_tool"],
+        },
+        "complete_with_error_diagnostic": {
+            **base,
+            "normalization_diagnostics": [
+                {
+                    "code": "APPROVAL_ACTOR_ELIGIBLE_AND_DENIED",
+                    "level": "error",
+                    "message": "forged",
+                }
+            ],
+        },
+        "reference_only_with_roles": {**base, "resolution": "reference_only"},
+    }
+    payload = mutations[mutation_id]
+    for role in ("reviewer", "ai_tool", "ghost"):
+        rule = _rule(requirement={"path": "approvals", "references_role": role})
+        diagnostics = evaluate_rule({"approvals": [payload]}, rule)
         assert [item.code for item in diagnostics] == [
             "RULE_REFERENCE_TYPE_ERROR"
-        ], payload
+        ], (mutation_id, role)
+
+
+def test_pre_normalized_approval_genuine_payload_still_resolves() -> None:
+    base = _genuine_normalized_approval()
+    reviewer_rule = _rule(requirement={"path": "approvals", "references_role": "reviewer"})
+    assert evaluate_rule({"approvals": [base]}, reviewer_rule) == ()
+    ghost_rule = _rule(requirement={"path": "approvals", "references_role": "ghost"})
+    diagnostics = evaluate_rule({"approvals": [base]}, ghost_rule)
+    assert [item.code for item in diagnostics] == ["RULE_REQUIREMENT_FAILED"]
 
 
 def test_structural_errors_in_when_fail_closed() -> None:
