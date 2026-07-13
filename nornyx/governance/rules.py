@@ -17,6 +17,18 @@ SCALAR_OPERATORS = {"equals", "not_equals", "in", "not_in", "matches_id"}
 REFERENCE_OPERATORS = {"references_role", "references_evidence", "references_approval"}
 MAX_EVALUATION_STEPS = 100_000
 MISSING = object()
+# _matches reasons that are structural (malformed document), as opposed to the
+# ordinary missing/non-match semantics. Structural reasons fail closed in
+# `when` conditions instead of silently disabling the rule.
+STRUCTURAL_MATCH_REASONS = {
+    "RULE_SCALAR_TYPE_ERROR",
+    "RULE_COLLECTION_TYPE_ERROR",
+    "RULE_REFERENCE_TYPE_ERROR",
+    "RULE_OPERATOR_UNKNOWN",
+}
+# Actor categories that can never satisfy references_role, even in forged
+# pre-normalized approval payloads.
+CORE_DENIED_APPROVER_ACTORS = ("ai_tool", "execution_surface")
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +57,7 @@ class PredicateOutcome:
     matched: bool
     successes: Mapping[str, frozenset[tuple[tuple[str, int], ...]]]
     resolution: Resolution
+    type_errors: tuple[GovernanceDiagnostic, ...] = ()
 
 
 def parse_path(path: str) -> tuple[Segment, ...]:
@@ -161,7 +174,14 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
         if not isinstance(item, Mapping):
             return None
         if item.get("schema") == "nornyx.normalized_approval.v1":
+            # A pre-normalized approval is only trusted when its own
+            # normalization succeeded, and never if it claims a core-denied
+            # actor as a role — a forged payload must fail closed.
+            if item.get("resolution") == "invalid":
+                return None
             values = [*item.get("required_roles", []), *item.get("eligible_roles", [])]
+            if any(str(value) in CORE_DENIED_APPROVER_ACTORS for value in values):
+                return None
         else:
             governed = "id" in item and (
                 "required_evidence" in item
@@ -263,18 +283,81 @@ def _predicate_outcome(document: Mapping[str, Any], predicate: Mapping[str, Any]
     resolution = _resolve(document, path)
     operator, operand = _operator(predicate)
     successes: dict[str, set[tuple[tuple[str, int], ...]]] = {}
+    type_errors: list[GovernanceDiagnostic] = []
     matched = False
     for item in resolution.values:
-        passes, _ = _matches(item.value, operator, operand)
+        passes, reason = _matches(item.value, operator, operand)
         if passes:
             matched = True
             if resolution.deepest_prefix:
                 successes.setdefault(resolution.deepest_prefix, set()).add(item.binding)
+        elif reason in STRUCTURAL_MATCH_REASONS:
+            type_errors.append(
+                GovernanceDiagnostic(
+                    "error",
+                    reason,
+                    f"Structural type error evaluating {path!r}.",
+                    path=item.path,
+                    binding=item.binding,
+                )
+            )
     return PredicateOutcome(
         matched=matched,
         successes={key: frozenset(value) for key, value in successes.items()},
         resolution=resolution,
+        type_errors=tuple(type_errors),
     )
+
+
+def _binding_prefix(
+    binding: tuple[tuple[str, int], ...], prefix: str
+) -> tuple[tuple[str, int], ...] | None:
+    for index, (name, _) in enumerate(binding):
+        if name == prefix:
+            return binding[: index + 1]
+    return None
+
+
+def _project_selections(
+    outcomes: list[PredicateOutcome], mode: str
+) -> tuple[bool, dict[str, frozenset[tuple[tuple[str, int], ...]]]]:
+    """Project successful bindings onto every traversed collection level.
+
+    Predicates that traverse a shared ancestor collection (e.g. changes[].risk
+    and changes[].evidence[].kind both traverse changes[]) must, under `all`,
+    be satisfied by the same ancestor element. Returns (joint_ok, selections):
+    joint_ok is False when two or more predicates traverse a prefix but no
+    single element satisfies them all.
+    """
+    outcome_bindings: list[set[tuple[tuple[str, int], ...]]] = []
+    prefixes: set[str] = set()
+    for outcome in outcomes:
+        bindings: set[tuple[tuple[str, int], ...]] = set()
+        for group in outcome.successes.values():
+            bindings |= set(group)
+        outcome_bindings.append(bindings)
+        for binding in bindings:
+            for name, _ in binding:
+                prefixes.add(name)
+    joint_ok = True
+    selections: dict[str, frozenset[tuple[tuple[str, int], ...]]] = {}
+    for prefix in sorted(prefixes):
+        groups: list[set[tuple[tuple[str, int], ...]]] = []
+        for bindings in outcome_bindings:
+            projected = {
+                projection
+                for binding in bindings
+                if (projection := _binding_prefix(binding, prefix)) is not None
+            }
+            if projected:
+                groups.append(projected)
+        if not groups:
+            continue
+        selected = set.intersection(*groups) if mode == "all" else set.union(*groups)
+        if mode == "all" and len(groups) >= 2 and not selected:
+            joint_ok = False
+        selections[prefix] = frozenset(selected)
+    return joint_ok, selections
 
 
 def _condition_outcome(
@@ -293,25 +376,22 @@ def _condition_outcome(
         structural = tuple(
             diagnostic
             for item in outcomes
-            for diagnostic in item.resolution.structural_errors
+            for diagnostic in (*item.resolution.structural_errors, *item.type_errors)
         )
         matched = all(item.matched for item in outcomes) if mode == "all" else any(item.matched for item in outcomes)
-        prefixes = {prefix for item in outcomes for prefix in item.successes}
-        selections: dict[str, frozenset[tuple[tuple[str, int], ...]]] = {}
-        for prefix in prefixes:
-            groups = [set(item.successes[prefix]) for item in outcomes if prefix in item.successes]
-            if not groups:
-                continue
-            selected = set.intersection(*groups) if mode == "all" else set.union(*groups)
-            if mode == "all" and len(groups) >= 2 and not selected:
-                # Per-element semantics: an element is selected only if every
-                # same-prefix predicate matches that element. If no single
-                # element satisfies them all, the condition does not match.
-                matched = False
-            selections[prefix] = frozenset(selected)
+        joint_ok, selections = _project_selections(outcomes, mode)
+        if mode == "all" and not joint_ok:
+            # Per-element semantics: an element is selected only if every
+            # predicate traversing the same collection matches that element.
+            matched = False
         return matched, selections, structural
     outcome = _predicate_outcome(document, condition)
-    return outcome.matched, dict(outcome.successes), outcome.resolution.structural_errors
+    _, selections = _project_selections([outcome], "any")
+    return (
+        outcome.matched,
+        selections,
+        (*outcome.resolution.structural_errors, *outcome.type_errors),
+    )
 
 
 def evaluate_rule(document: Mapping[str, Any], rule: Rule) -> tuple[GovernanceDiagnostic, ...]:

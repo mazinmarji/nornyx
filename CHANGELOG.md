@@ -22,9 +22,14 @@ distribution version is independent of the Nornyx **language/schema** version
   required approver normalizes as invalid
   (`APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE`) and `references_role` fails closed.
 - Rule evaluation fails closed on malformed documents: structural errors while
-  resolving a `when` condition surface as diagnostics instead of silently
-  skipping the rule. Same-prefix `all` conditions match per element — the
-  condition holds only if one element satisfies every predicate.
+  resolving a `when` condition — including operator/value type mismatches such
+  as `equals` on a list or `contains` on a scalar — surface as diagnostics
+  instead of silently skipping the rule. Ordinary missing-path non-matches
+  remain silent. `all` conditions join across shared ancestor collections:
+  predicates traversing the same collection at any depth must be satisfied by
+  the same ancestor element. Pre-normalized approval payloads are not trusted
+  blindly: an invalid resolution or a core-denied actor in the role lists
+  makes `references_role` fail closed.
 - Profile locks reject duplicate entry ids (`PACK_LOCK_DUPLICATE_ID`); packs
   are capped at 200 rules and compositions at 2000
   (`PACK_LIMIT_EXCEEDED`); duplicate item ids inside one pack are fatal

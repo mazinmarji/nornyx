@@ -19,5 +19,7 @@
   {"id": "collection_used_as_scalar", "phase": "require", "input": ["high"], "operator": "equals", "operand": "high", "outcome": "structural_error"},
   {"id": "same_prefix_when_selection", "phase": "binding", "input": ["low", "high"], "outcome": "requirements_apply_only_to_selected_high_element"},
   {"id": "different_prefix_no_join", "phase": "binding", "input": ["changes[]", "approvals[]"], "outcome": "independent_quantification"},
-  {"id": "nested_under_selected_prefix", "phase": "binding", "input": ["changes[].risk", "changes[].evidence[].kind"], "outcome": "nested_requirements_scoped_to_selected_elements"}
+  {"id": "nested_under_selected_prefix", "phase": "binding", "input": ["changes[].risk", "changes[].evidence[].kind"], "outcome": "nested_requirements_scoped_to_selected_elements"},
+  {"id": "when_type_errors_fail_closed", "phase": "when", "input": ["equals_on_list", "contains_on_scalar"], "outcome": "structural_error"},
+  {"id": "shared_ancestor_all_join", "phase": "binding", "input": ["changes[].risk", "changes[].evidence[].kind"], "outcome": "all_predicates_must_bind_the_same_ancestor_element"}
 ]

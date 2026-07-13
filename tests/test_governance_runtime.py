@@ -353,6 +353,46 @@ def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
     assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
 
 
+def test_pre_normalized_approvals_are_not_trusted_blindly() -> None:
+    # An approval payload carrying the normalized-approval schema marker is
+    # only honored when its own normalization succeeded, and a core-denied
+    # actor in its role lists always fails closed — even with a forged
+    # resolution of "complete".
+    rule = _rule(requirement={"path": "approvals", "references_role": "ai_tool"})
+    invalid = {
+        "approvals": [
+            {
+                "schema": "nornyx.normalized_approval.v1",
+                "id": "g",
+                "resolution": "invalid",
+                "required_roles": [],
+                "eligible_roles": ["ai_tool"],
+            }
+        ]
+    }
+    assert [item.code for item in evaluate_rule(invalid, rule)] == [
+        "RULE_REFERENCE_TYPE_ERROR"
+    ]
+    forged = deepcopy(invalid)
+    forged["approvals"][0]["resolution"] = "complete"
+    assert [item.code for item in evaluate_rule(forged, rule)] == [
+        "RULE_REFERENCE_TYPE_ERROR"
+    ]
+    legitimate = {
+        "approvals": [
+            {
+                "schema": "nornyx.normalized_approval.v1",
+                "id": "g",
+                "resolution": "complete",
+                "required_roles": [],
+                "eligible_roles": ["reviewer"],
+            }
+        ]
+    }
+    reviewer_rule = _rule(requirement={"path": "approvals", "references_role": "reviewer"})
+    assert evaluate_rule(legitimate, reviewer_rule) == ()
+
+
 def test_structural_errors_in_when_fail_closed() -> None:
     # F2: a malformed document must not silently disable a rule.
     rule = _rule(
@@ -913,6 +953,57 @@ def test_every_rule_semantics_fixture_executes_against_the_runtime() -> None:
             }
             diagnostics = evaluate_rule(violating, rule)
             assert [item.path for item in diagnostics] == ["changes[0].evidence[0].kind"]
+        elif case_id == "when_type_errors_fail_closed":
+            equals_on_list = evaluate_rule(
+                {"risk": ["high"]},
+                _rule(
+                    when={"path": "risk", "equals": "high"},
+                    requirement={"path": "x", "exists": True},
+                ),
+            )
+            assert [item.code for item in equals_on_list] == ["RULE_SCALAR_TYPE_ERROR"]
+            contains_on_scalar = evaluate_rule(
+                {"tags": "prod"},
+                _rule(
+                    when={"path": "tags", "contains": "prod"},
+                    requirement={"path": "x", "exists": True},
+                ),
+            )
+            assert [item.code for item in contains_on_scalar] == ["RULE_COLLECTION_TYPE_ERROR"]
+            # Ordinary missing/non-match semantics remain silent.
+            assert evaluate_rule(
+                {},
+                _rule(
+                    when={"path": "missing", "equals": "x"},
+                    requirement={"path": "x", "exists": True},
+                ),
+            ) == ()
+        elif case_id == "shared_ancestor_all_join":
+            rule = _rule(
+                when={
+                    "all": [
+                        {"path": "changes[].risk", "equals": "high"},
+                        {"path": "changes[].evidence[].kind", "equals": "x"},
+                    ]
+                },
+                requirement={"path": "changes[].owner", "exists": True},
+            )
+            cross_element = {
+                "changes": [
+                    {"risk": "high", "evidence": [{"kind": "bad"}]},
+                    {"risk": "low", "evidence": [{"kind": "x"}]},
+                ]
+            }
+            assert evaluate_rule(cross_element, rule) == ()
+            same_element = {
+                "changes": [
+                    {"risk": "high", "evidence": [{"kind": "x"}]},
+                    {"risk": "low", "evidence": [{"kind": "bad"}], "owner": "b"},
+                ]
+            }
+            diagnostics = evaluate_rule(same_element, rule)
+            assert diagnostics
+            assert all(item.binding == (("changes", 0),) for item in diagnostics)
         elif case_id == "different_prefix_no_join":
             document = {
                 "changes": [{"risk": "high"}],

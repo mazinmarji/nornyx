@@ -57,6 +57,17 @@ value produces at most one diagnostic per predicate.
   `changes[].evidence[].kind` under a `changes[].risk` selection) — binds only
   to leaves whose binding starts with a selected element. Requirement paths
   that never traverse the selected prefix remain independent.
+- Shared ancestors join under `all`: predicates whose paths traverse the same
+  ancestor collection at any depth (for example `changes[].risk` and
+  `changes[].evidence[].kind` both traverse `changes[]`) must be satisfied by
+  the same ancestor element. Successful bindings are projected onto every
+  traversed collection level and intersected per level; if no single ancestor
+  element satisfies all traversing predicates, the condition does not match.
+- Structural type errors while evaluating a `when` predicate (a scalar
+  operator receiving a collection, a collection operator receiving a scalar,
+  a malformed reference target) fail closed as diagnostics at the rule's
+  severity. Ordinary missing-path and non-match outcomes remain silent
+  non-matches.
 
 For `all`, one collection element is selected only if all same-prefix
 predicates match that element. For `any`, an element is selected if any
