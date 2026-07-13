@@ -913,6 +913,7 @@ def test_packaged_builtin_authority_and_public_v1_api() -> None:
         stale_scopes = [
             scope
             for fragment in payload["starter_fragments"]
+            if isinstance(fragment["content"], dict)
             for goal in fragment["content"].get("goals", [])
             for scope in goal.get("scope", [])
             if scope.startswith("profiles/")

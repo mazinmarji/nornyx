@@ -11,7 +11,8 @@
     "telecom_ops",
     "business_ops",
     "ai_governance",
-    "finance_ops"
+    "finance_ops",
+    "architecture_governance"
   ],
   "base_profiles": [
     "minimal",
@@ -34,6 +35,7 @@
     "human_approval",
     "separation_of_duties",
     "exception_management",
-    "change_control"
+    "change_control",
+    "architecture_conformance"
   ]
 }

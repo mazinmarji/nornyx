@@ -95,14 +95,17 @@ prove integrity, not intent.
 
 Multi-profile composition pressure (registry keeps plural internally);
 entry-point discovery demand from packaged-profile vendors; rule-language
-operator growth (ADR-gated); architecture radar heuristics.
+operator growth (ADR-gated). Architecture Radar was subsequently
+`rejected_with_ADR` by ADR-0030 and is not an open program risk.
 
 ## Rejected alternatives worth revisiting
 
 Profile inheritance (`extends:`) — rejected for diamond ambiguity; revisit if
 fragment duplication across the 11 built-ins becomes measurably painful.
 Python entry points — revisit only with a concrete multi-distribution use case.
-Architecture Radar — revisit post-PR 6 with real evidence corpora.
+Architecture Radar — historical candidate, now `rejected_with_ADR` by
+ADR-0030; re-entry is outside the current program and requires its stated
+evidence conditions.
 
 ## MVP scope
 

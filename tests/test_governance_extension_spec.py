@@ -30,6 +30,9 @@ GOVERNANCE_SCHEMA_FILES = (
     "governance_exception_v1.schema.json",
     "change_v1.schema.json",
     "governed_package.schema.json",
+    "architecture_v1.schema.json",
+    "architecture_evidence_v1.schema.json",
+    "architecture_report_v1.schema.json",
 )
 
 

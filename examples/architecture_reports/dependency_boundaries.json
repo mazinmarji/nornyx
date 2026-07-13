@@ -1,0 +1,1 @@
+{"schema":"nornyx.architecture_report.v1","check_id":"dependency-boundaries","tool":"dependency-cruiser","tool_version":"16.10.4","status":"pass","subject_revision":"git:0123456789abcdef","generated_at":"2026-01-01T00:00:00Z","expires_at":"2099-01-01T00:00:00Z","violations":[]}

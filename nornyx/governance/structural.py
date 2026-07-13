@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+from .architecture import architecture_conformance_check
 from .approvals import (
     CORE_DENIED_ACTOR_TYPES,
     normalize_approval,
@@ -963,6 +964,7 @@ def _change_control(
 
 StructuralCheck = Callable[..., tuple[GovernanceDiagnostic, ...]]
 STRUCTURAL_CHECKS: dict[str, StructuralCheck] = {
+    "architecture_conformance.v1": architecture_conformance_check,
     "change_control.v1": _change_control,
     "evidence_integrity.v1": _evidence_integrity,
     "exception_management.v1": _exception_management,

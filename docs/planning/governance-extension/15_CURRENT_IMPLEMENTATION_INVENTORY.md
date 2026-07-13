@@ -36,7 +36,7 @@ authority for real symlink behavior.
 | Change lifecycle and staleness | Absent | no transition/revision checks | implement in `change_control` |
 | Exception model | Absent | planning semantics only | implement one non-core model |
 | Governance evidence model | Partial: scanner records and old evidence scaffold are separate | scanner and `evidence.py` | add one revision-bound normalized contract; preserve old scaffold API |
-| Architecture governance | Absent | design document only | module, profile, schemas, importer, example |
+| Architecture governance | Implemented in Stage D | module, optional profile, declaration/evidence/report schemas, neutral-envelope importer, starter, executable example, adversarial tests | retain boundary; Architecture Radar rejected by ADR-0030 |
 | Supply-chain placement | Partial inside governed packages/scanner | scanner and package evidence importers | GSA and final ADR; do not duplicate scanners |
 | Data-protection placement | Absent as composed governance | profile policy text only | GSA before module decision |
 | Lifecycle placement | Fragmented across existing object-specific models | lifecycle extension docs/tooling | GSA; avoid competing lifecycle fields |
@@ -83,3 +83,10 @@ Every stage must be green before the next stage. A Critical or High finding,
 core revision, compatibility break, arbitrary expression requirement, external
 execution requirement, or unbound evidence requirement stops the program.
 
+## Progress Through Stage D
+
+Stages A through D are implemented. The branch now contains six reusable
+modules, the shared change model, governed-package delegation, the optional
+`architecture_governance` profile, and bounded architecture evidence import.
+The initial 1.5.2 inventory above remains the baseline record; later rows are
+updated as program decisions close.

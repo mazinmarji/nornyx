@@ -15,7 +15,7 @@ operational action.
 
 ## Stage A - Program Reconciliation
 
-Status: in progress.
+Status: implemented.
 
 - verify current implementation and green baseline;
 - reconcile stale planning and ADR statuses;
@@ -27,7 +27,7 @@ schema and relational check.
 
 ## Stage B - Foundational Modules
 
-Status: planned.
+Status: implemented.
 
 - `human_approval`;
 - `evidence_integrity`;
@@ -40,7 +40,7 @@ monotonic, documented, and covered by unit/integration/adversarial tests.
 
 ## Stage C - Generalized Change Governance
 
-Status: planned.
+Status: implemented.
 
 - `nornyx.change.v1` with additive `id`/`type` compatibility;
 - `change_control` module;
@@ -54,7 +54,7 @@ new lifecycle/staleness diagnostics fail closed.
 
 ## Stage D - Architecture Governance
 
-Status: planned.
+Status: implemented.
 
 - `architecture_conformance` module;
 - `architecture_governance` optional profile;
@@ -62,11 +62,13 @@ Status: planned.
 - bounded report import only, with no external tool execution;
 - starter, examples, docs, and revision/freshness tests.
 
-Architecture Radar remains rejected unless separately justified by evidence.
+Architecture Radar is `rejected_with_ADR` by ADR-0030 for this program. Any
+re-entry is a separately approved future proposal with the evidence conditions
+defined there.
 
 ## Stage E - GSA and Candidate Decisions
 
-Status: planned.
+Status: in progress.
 
 Complete Governance Surface Analysis for Nornyx and for supply chain, data
 protection, lifecycle, release, and incident response. Each candidate receives

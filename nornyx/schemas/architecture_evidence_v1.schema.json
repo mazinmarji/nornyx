@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/architecture_evidence_v1.schema.json",
+  "title": "Nornyx Architecture Evidence Collection v1",
+  "description": "Normalized, revision-bound architecture evidence supplied by external systems and never produced by executing them inside Nornyx.",
+  "x-nornyx-governance-block": "architecture_evidence",
+  "type": "array",
+  "maxItems": 500,
+  "items": {"$ref": "#/$defs/evidence"},
+  "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 40,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "artifact": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._@/ -]+$"
+    },
+    "violation": {
+      "type": "object",
+      "required": ["id", "severity", "message"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identity"},
+        "severity": {"enum": ["info", "warning", "error"]},
+        "message": {"$ref": "#/$defs/nonEmpty"},
+        "source": {"$ref": "#/$defs/nonEmpty"},
+        "target": {"$ref": "#/$defs/nonEmpty"},
+        "rule": {"$ref": "#/$defs/identity"}
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "schema",
+        "check_id",
+        "tool",
+        "tool_version",
+        "status",
+        "subject_revision",
+        "generated_at",
+        "expires_at",
+        "violations",
+        "artifact",
+        "artifact_sha256"
+      ],
+      "properties": {
+        "schema": {"const": "nornyx.architecture_evidence.v1"},
+        "check_id": {"$ref": "#/$defs/identity"},
+        "tool": {"$ref": "#/$defs/identity"},
+        "tool_version": {"$ref": "#/$defs/nonEmpty"},
+        "status": {"enum": ["pass", "fail", "error"]},
+        "subject_revision": {"$ref": "#/$defs/nonEmpty"},
+        "generated_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "violations": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": {"$ref": "#/$defs/violation"}
+        },
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "artifact_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

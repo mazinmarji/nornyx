@@ -1,5 +1,6 @@
 """Declarative, local-only governance extension runtime."""
 
+from .architecture import import_architecture_evidence
 from .approvals import normalize_approval, trusted_normalized_approval
 from .composition import compose_governance
 from .errors import GovernanceError
@@ -49,6 +50,7 @@ __all__ = [
     "evaluate_document_governance",
     "evaluate_rule",
     "evaluate_rules",
+    "import_architecture_evidence",
     "load_local_pack",
     "load_lock",
     "load_pack_bytes",

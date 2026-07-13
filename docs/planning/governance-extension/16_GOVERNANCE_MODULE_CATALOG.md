@@ -18,9 +18,11 @@ network source, a custom validator, or approval authority.
 | `separation_of_duties` | `human_approval` | `separation_of_duties` | `separation_of_duties.v1` | Enforce author/approver, producer/approver, release, and exception role disjointness |
 | `exception_management` | `separation_of_duties` | `exceptions` | `exception_management.v1` | Keep exceptions project-owned, human-authorized, evidenced, compensated, expiring, and unable to weaken core safety |
 | `change_control` | `exception_management` | `changes` | `change_control.v1` | Enforce evidenced lifecycle transitions, risk gates, revision and scope binding, human approval, rollback readiness, architecture evidence, and explicit closure |
+| `architecture_conformance` | `change_control` | `architecture`, `architecture_evidence` | `architecture_conformance.v1` | Validate declared architecture, references and dependency directions, and revision-bound local evidence from external specialist tools |
 
-Selecting `change_control` resolves all five modules in the order shown.
-The complete executable contract is `examples/governance_foundations.nyx`.
+Selecting `architecture_conformance` resolves all six modules in the order
+shown. Executable contracts are `examples/governance_foundations.nyx` and
+`examples/architecture_governance.nyx`.
 
 ## Evidence Semantics
 
@@ -52,3 +54,11 @@ data-only loading, no-executable-code, no-network, no-auto-approval,
 non-human-authority denial, or no-external-tool-execution controls. Nornyx
 validates declarations only; it never approves, renews, applies, or executes an
 exception or compensating control.
+
+## Architecture Evidence Boundary
+
+Architecture analysis remains external. CI adapters may create the bounded
+`nornyx.architecture_report.v1` envelope; Nornyx parses, validates, hashes, and
+revision-binds it as `nornyx.architecture_evidence.v1`. Nornyx never invokes a
+tool or infers architecture from source. ADR-0030 rejects Architecture Radar
+for the current program.

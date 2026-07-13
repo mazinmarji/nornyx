@@ -14,6 +14,9 @@ distribution version is independent of the Nornyx **language/schema** version
 - Shared declarative change governance with evidenced lifecycle transitions,
   risk-proportionate human approval, revision and scope binding, rollback and
   closure checks, and one additive schema reused by governed packages.
+- Optional architecture governance profile and conformance module with bounded
+  declarations, revision-bound external evidence, a safe neutral-report
+  importer, deterministic starter, and fixed reference/direction checks.
 - Bounded module block-schema bindings. Packs may select only reviewed schemas
   bundled with Nornyx; inline schemas, remote references, custom validators,
   dynamic code, and unknown structural checks fail closed.
@@ -29,6 +32,9 @@ distribution version is independent of the Nornyx **language/schema** version
 - Governed-package changes now delegate shape validation to the shared change
   schema while retaining their existing package-specific references and
   compatibility behavior.
+- Architecture analysis remains external: Nornyx imports only a versioned
+  local data envelope and never executes tools or infers repository structure.
+  Architecture Radar is rejected for the current program by ADR-0030.
 
 ## [1.5.2] - 2026-07-13
 

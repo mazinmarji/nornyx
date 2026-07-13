@@ -2,8 +2,8 @@
 
 ## Positioning
 
-An **optional profile** (`architecture_governance`) composed from
-`change_control`, `architecture_conformance` (new module), `evidence_integrity`,
+An **implemented optional profile** (`architecture_governance`) composed from
+`change_control`, `architecture_conformance`, `evidence_integrity`,
 `exception_management`, `human_approval`. Nornyx declares which architecture
 checks are required, what evidence they must produce, binds evidence to exact
 revisions, validates presence/integrity/freshness, applies gates — and does
@@ -11,10 +11,19 @@ revisions, validates presence/integrity/freshness, applies gates — and does
 replace ArchUnit / import-linter / dependency-cruiser / Semgrep / CodeQL /
 SonarQube / compiler checks.
 
-## Governed vocabulary (blocks contributed by the profile)
+## Governed Vocabulary
+
+The `architecture_conformance` module contributes the reviewed
+`nornyx.architecture.v1` schema. It covers descriptions, viewpoints, systems,
+components, modules, layers, bounded contexts, interfaces, dependency
+directions, trust/data/deployment boundaries, canonical components, decisions,
+ADR artifacts, principles, constraints, required checks, and references to the
+single governed-exception model.
 
 ```yaml
 architecture:
+  schema: nornyx.architecture.v1
+  subject_revision: git:<exact-revision>
   descriptions: [{id, title, viewpoints: [...], artifact: docs/arch/overview.md}]
   systems: [...]
   components: [{id, name, layer, bounded_context, canonical: true}]
@@ -28,7 +37,7 @@ architecture:
   decisions: [{id: ADR-0007, status, artifact: docs/ADRs/0007-*.md, supersedes: []}]
   principles: [...]
   constraints: [{id, statement, verified_by: check-id | human_review}]
-required_checks:
+  required_checks:
   - id: dependency-boundaries
     tool: import-linter                # declared, not executed by Nornyx
     evidence_schema: nornyx.architecture_evidence.v1
@@ -38,9 +47,9 @@ required_checks:
 `impact classification` lives on changes (`impacts.architecture`, doc 07) —
 one model, no duplicate.
 
-## Normalized architecture evidence (`nornyx.architecture_evidence.v1`)
+## Normalized Architecture Evidence
 
-Exactly the brief's shape, plus freshness:
+`nornyx.architecture_evidence.v1` uses the brief's shape plus explicit expiry:
 
 ```json
 {
@@ -51,30 +60,33 @@ Exactly the brief's shape, plus freshness:
   "status": "pass",
   "subject_revision": "<commit-sha>",
   "generated_at": "<iso8601>",
+  "expires_at": "<iso8601>",
   "violations": [],
   "artifact": "reports/import-linter.json",
   "artifact_sha256": "<hash>"
 }
 ```
 
-New JSON schema file; the evidence-import pattern follows the scanner branch's
-adapter design (parse a report file; never execute the tool) — after that
-branch merges, architecture evidence importers register alongside
-syft/gitleaks parsers.
+The public `import_architecture_evidence` API reads only the versioned
+`nornyx.architecture_report.v1` neutral envelope under an explicit local root.
+It rejects traversal, symlinks, malformed JSON, duplicate keys, oversized or
+deep payloads, schema errors, and inconsistent pass status before hashing the
+exact report bytes. ADR-0030 records why raw vendor formats and tool execution
+are outside this program.
 
-## Profile rules (samples, all in the doc 05 rule language)
+## Rules And Fixed Checks
 
 - `ARCH-001` (error): change with `impacts.architecture equals major` requires
   `evidence contains architecture_decision_record` + `approvals
   references_role architect` (the brief's example, verbatim expressible).
-- `ARCH-010` (error): every `required_checks[].id` must have a matching
-  evidence record with `status equals pass` — presence is a rule; matching
-  `subject_revision` to the change's `revision_binding.revision` is a
-  structural check (`ARCH_EVIDENCE_STALE_REVISION`) since it's relational.
+- `ARCH-010` (error): declared required checks require normalized evidence.
+  The fixed `architecture_conformance.v1` check performs the relational match
+  and verifies tool, schema, pass status, subject revision, freshness, local
+  artifact, and SHA-256 content binding.
 - `ARCH-020` (error): `constraints[].verified_by exists`.
-- `ARCH-030` (warning): components not marked `canonical` referenced by >N
-  consumers — **dropped from v1**: needs counting over references; revisit
-  only if the rule language ever grows `min_count` over joins (scope guard).
+- Entity references, duplicate IDs, layer direction, constraint verifiers,
+  architecture exceptions, and one-evidence-record-per-check are fixed
+  structural checks with stable diagnostics.
 - Exceptions: standard governed-exception mechanics (owner = `authority`,
   compensating controls, expiry) via `exception_management`; architecture
   drift = generated-artifact drift (existing `nornyx drift`) + declared-vs-
@@ -82,7 +94,19 @@ syft/gitleaks parsers.
 
 ## Architecture Radar
 
-Advisory discovery ("these dirs look like undeclared components") mirrors
-`package radar`'s proposal-only pattern. **Not MVP** — it needs heuristics over
-repo layout, which flirts with the source-analysis non-goal. Deferred; listed
-as a rejected-for-now alternative worth revisiting in doc 14.
+Status: `rejected_with_ADR` for the current program. ADR-0030 requires a new,
+separately approved program and a representative evidence corpus before this
+candidate can re-enter. No radar command, source parser, repository heuristic,
+or inferred architecture exists in Nornyx.
+
+## Packaged Surface
+
+- module: `nornyx/profiles_data/module_architecture_conformance.yaml`;
+- profile: `nornyx/profiles_data/architecture_governance.yaml`;
+- declaration/evidence/report schemas: root and bundled exact copies;
+- executable contract: `examples/architecture_governance.nyx`;
+- assurance: `tests/test_architecture_governance.py`.
+
+The profile is appended to the built-in profile catalog but is not inserted
+into the legacy `DOMAIN_PROFILE_NAMES` projection API because its contributed
+blocks have no truthful v0.3 representation.

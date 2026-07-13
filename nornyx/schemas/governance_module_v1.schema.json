@@ -73,7 +73,8 @@
           "evidence_integrity.v1",
           "separation_of_duties.v1",
           "exception_management.v1",
-          "change_control.v1"
+          "change_control.v1",
+          "architecture_conformance.v1"
         ]
       },
       "uniqueItems": true
