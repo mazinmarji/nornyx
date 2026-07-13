@@ -47,12 +47,13 @@ Profile names such as `telecom_ops`, `business_ops`, `ai_governance`, and
 
 ### Current source of truth
 
-The v0.3 pack catalog in `nornyx/profiles.py` is authoritative today. The six
-domain files under `profiles/` are repository mirrors checked against that
-Python catalog; they are not loaded by `nornyx init`, `nornyx profiles`, or
-`nornyx check`, and root `profiles/*.yaml` files are not included in the wheel.
-The five base-profile YAML files are descriptive metadata only. Structured v1
-packs and a loader are planned work, not current behavior.
+The 11 structured v1 packs under `nornyx/profiles_data/` are authoritative and
+are included in the wheel. They are loaded through the local-only governance
+registry by `nornyx init`, `nornyx profiles`, and pack-aware `nornyx check`.
+The old root `profiles/*.yaml` mirrors were removed to prevent dual-source
+drift. `nornyx.profiles` remains a compatibility facade: its historical v0.3
+APIs return the exact validated v1-to-v0.3 projection, while `profile_pack_v1()`
+and `nornyx profiles inspect` expose the authoritative object.
 
 Each v0.3 pack declares:
 
@@ -65,9 +66,10 @@ Each v0.3 pack declares:
 - explicit non-goals;
 - the allowed general core concept set.
 
-The pack schema is documented in `schemas/domain_profile_pack.schema.json`.
-The Python catalog validator in `nornyx.profiles.validate_profile_pack_catalog`
-checks the same basic safety invariants for local tests.
+The frozen compatibility schema remains
+`schemas/domain_profile_pack.schema.json`; authoritative packs validate against
+`schemas/profile_pack_v1.schema.json`. The projection report stays separate so
+the strict v0.3 object receives no marker or unrecognized field.
 
 ## Generated starter behavior
 
@@ -86,10 +88,10 @@ anything.
 
 ## Validation
 
-Profile validation currently covers:
+Profile validation covers:
 
-- pack catalog shape;
-- pack metadata files matching the Python catalog;
+- v1 schema, canonical integrity hash, and packaged catalog completeness;
+- exact v1-to-v0.3 projection and separate loss reporting;
 - generated starter documents passing `nornyx check`;
 - profile-only domain names not appearing as mandatory core concepts;
 - non-goals that block runtime execution, automatic approvals, and production

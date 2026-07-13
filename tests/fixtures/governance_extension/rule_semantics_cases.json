@@ -18,5 +18,6 @@
   {"id": "scalar_used_as_collection", "phase": "require", "input": "high", "path_mode": "collection", "outcome": "structural_error"},
   {"id": "collection_used_as_scalar", "phase": "require", "input": ["high"], "operator": "equals", "operand": "high", "outcome": "structural_error"},
   {"id": "same_prefix_when_selection", "phase": "binding", "input": ["low", "high"], "outcome": "requirements_apply_only_to_selected_high_element"},
-  {"id": "different_prefix_no_join", "phase": "binding", "input": ["changes[]", "approvals[]"], "outcome": "independent_quantification"}
+  {"id": "different_prefix_no_join", "phase": "binding", "input": ["changes[]", "approvals[]"], "outcome": "independent_quantification"},
+  {"id": "nested_under_selected_prefix", "phase": "binding", "input": ["changes[].risk", "changes[].evidence[].kind"], "outcome": "nested_requirements_scoped_to_selected_elements"}
 ]

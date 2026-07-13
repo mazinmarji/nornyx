@@ -80,9 +80,10 @@ Add:
 - ai_governance;
 - finance_ops if needed.
 
-Current local v0.3 surface: optional profile packs in `profiles/`, generated
-starter documents for each domain profile, pack validation rules, pack metadata
-schema, and compatibility tests. Profiles layer on the v0.2 static
+Current local v0.3 compatibility surface: optional authoritative v1 profile
+packs in `nornyx/profiles_data/`, exact v0.3 projection, generated starter
+documents for each domain profile, closed validation rules, and compatibility
+tests. Profiles layer on the v0.2 static
 graph/contract model and do not enable adapters, live connectors, model calls,
 automatic approvals, self-modification, production deployment, or
 general-purpose programming language features.

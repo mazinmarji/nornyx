@@ -51,6 +51,12 @@ value produces at most one diagnostic per predicate.
   require a future, separately approved design or a fixed core check.
 - Nested collections flatten to concrete index tuples in document order.
   Universal requirements cover every applicable leaf.
+- Selection is inherited by nesting: when a `when` selection exists for a
+  collection prefix, a `require` path that traverses that prefix — including
+  paths that descend into deeper collections beneath it (for example
+  `changes[].evidence[].kind` under a `changes[].risk` selection) — binds only
+  to leaves whose binding starts with a selected element. Requirement paths
+  that never traverse the selected prefix remain independent.
 
 For `all`, one collection element is selected only if all same-prefix
 predicates match that element. For `any`, an element is selected if any

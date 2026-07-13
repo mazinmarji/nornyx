@@ -70,10 +70,11 @@ ai_governance
 finance_ops
 ```
 
-Each profile has a local metadata file under `profiles/` and controls the
-starter `.nyx` shape. The v0.3 domain profile packs are optional overlays on the
-v0.2 graph/contract surface; they do not enable adapters, live connectors,
-automatic approvals, or production runtime behavior.
+Each profile is an authoritative packaged v1 data file under
+`nornyx/profiles_data/` and controls the starter `.nyx` shape. The v0.3 domain
+view remains available as an exact compatibility projection. Profiles are
+optional overlays on the v0.2 graph/contract surface; they do not enable
+adapters, live connectors, automatic approvals, or production runtime behavior.
 
 The first complete authoring path is:
 

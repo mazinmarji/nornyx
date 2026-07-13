@@ -7,6 +7,20 @@ distribution version is independent of the Nornyx **language/schema** version
 ## Unreleased
 
 ### Added
+- Declarative governance runtime for local profile/module loading, deterministic
+  monotonic composition, closed rule evaluation, approval normalization,
+  timestamp-free locks, and exact v1-to-v0.3 projection with separate reports.
+- Pack-aware `nornyx check`, explicit local profile initialization, and
+  `profiles list`, `inspect`, `validate`, `resolve`, and `compatibility`
+  subcommands. Discovery remains offline and data-only. A `project.profile`
+  value that does not match any governance pack keeps passing `nornyx check`
+  exactly as before (a `PACK_NOT_RESOLVED` warning is printed); explicit
+  `project.modules` selections remain fail-closed.
+- Every composed approval requirement carries the non-removable core denials
+  (`ai_tool`, `execution_surface`); a pack that tries to make either eligible
+  fails composition with `PACK_MONOTONICITY_APPROVAL`.
+- Authoritative packaged v1 data for all 11 built-in profiles while preserving
+  the existing starter golden hashes and legacy Python API shapes.
 - Governed package hardening: built-in deterministic package scanner, normalized
   evidence records, claim-vs-evidence reports, risk scoring, scanner-backed
   manifest/lock metadata, and portal-ready JSON/Markdown reports.
