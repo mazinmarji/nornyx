@@ -179,6 +179,36 @@ def test_loader_rejects_symlinked_pack_files(tmp_path: Path) -> None:
     assert _codes(symlink.value) == {"PACK_SYMLINK_REJECTED"}
 
 
+def test_loader_checks_trust_root_components_before_resolving(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    payload = _yaml("valid_profile_v1.yaml")
+    link_root = tmp_path / "link_root"
+    profiles = link_root / "profiles"
+    profiles.mkdir(parents=True)
+    pack_path = profiles / "profile.yaml"
+    _write_pack(pack_path, payload)
+
+    original_is_symlink = Path.is_symlink
+
+    def simulated_ancestor_symlink(path: Path) -> bool:
+        return path == link_root or original_is_symlink(path)
+
+    def unexpected_resolve(*args: Any, **kwargs: Any) -> Path:
+        raise AssertionError("path resolution ran before symlink inspection")
+
+    monkeypatch.setattr(Path, "is_symlink", simulated_ancestor_symlink)
+    monkeypatch.setattr(Path, "resolve", unexpected_resolve)
+    with pytest.raises(GovernanceError) as symlink:
+        load_local_pack(
+            pack_path,
+            allowed_root=pack_path.parent,
+            trust_root=tmp_path,
+        )
+    assert _codes(symlink.value) == {"PACK_SYMLINK_REJECTED"}
+
+
 def test_registry_precedence_is_deterministic_and_cycles_fail_closed(tmp_path: Path) -> None:
     payload = _yaml("valid_profile_v1.yaml")
     project_path = tmp_path / "project.yaml"
@@ -869,6 +899,29 @@ def test_profiles_cli_and_explicit_profile_init(tmp_path: Path, monkeypatch, cap
     assert (tmp_path / "nornyx.profiles.lock").is_file()
 
 
+def _assert_profile_cli_path_rejected(
+    relative_path: Path,
+    target: Path,
+    capsys,
+) -> None:
+    assert main(["profiles", "validate", str(relative_path), "--json"]) == 1
+    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
+
+    assert main(
+        [
+            "init",
+            "--profile-path",
+            str(relative_path),
+            "--name",
+            "SymlinkRejected",
+            "--out",
+            str(target),
+        ]
+    ) == 1
+    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
+    assert not target.exists()
+
+
 @pytest.mark.parametrize("link_kind", ["file", "directory"])
 def test_profile_cli_entrypoints_reject_symlinked_pack_paths(
     link_kind: str,
@@ -893,24 +946,34 @@ def test_profile_cli_entrypoints_reject_symlinked_pack_paths(
         pytest.skip("symlink creation is unavailable")
 
     monkeypatch.chdir(tmp_path)
-    relative_path = requested.relative_to(tmp_path)
-    assert main(["profiles", "validate", str(relative_path), "--json"]) == 1
-    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
+    _assert_profile_cli_path_rejected(
+        requested.relative_to(tmp_path),
+        tmp_path / f"{link_kind}.nyx",
+        capsys,
+    )
 
-    target = tmp_path / f"{link_kind}.nyx"
-    assert main(
-        [
-            "init",
-            "--profile-path",
-            str(relative_path),
-            "--name",
-            "SymlinkRejected",
-            "--out",
-            str(target),
-        ]
-    ) == 1
-    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
-    assert not target.exists()
+
+def test_profile_cli_entrypoints_reject_symlinked_ancestor_above_pack_parent(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    payload = _yaml("valid_profile_v1.yaml")
+    profiles = tmp_path / "real_root" / "profiles"
+    profiles.mkdir(parents=True)
+    _write_pack(profiles / "profile.yaml", payload)
+    link_root = tmp_path / "link_root"
+    try:
+        link_root.symlink_to(tmp_path / "real_root", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation is unavailable")
+
+    monkeypatch.chdir(tmp_path)
+    _assert_profile_cli_path_rejected(
+        Path("link_root") / "profiles" / "profile.yaml",
+        tmp_path / "ancestor.nyx",
+        capsys,
+    )
 
 
 @pytest.mark.parametrize(

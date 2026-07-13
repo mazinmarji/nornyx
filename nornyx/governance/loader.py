@@ -251,22 +251,33 @@ def _path_contains(parent: Path, child: Path) -> bool:
     return child_text == parent_text or child_text.startswith(parent_text + os.sep)
 
 
-def _reject_symlink_components(candidate: Path, root: Path) -> None:
-    probe = candidate
-    ancestors = []
-    while True:
-        ancestors.append(probe)
-        if probe.parent == probe:
-            break
-        probe = probe.parent
-    for part in ancestors:
+def _absolute_without_resolving(path: Path) -> Path:
+    return Path(os.path.abspath(path))
+
+
+def _reject_symlink_components(candidate: Path, trust_root: Path) -> None:
+    raw_root = _absolute_without_resolving(trust_root)
+    raw_candidate = _absolute_without_resolving(candidate)
+    try:
+        relative = raw_candidate.relative_to(raw_root)
+    except ValueError as exc:
+        raise error(
+            "PACK_PATH_OUTSIDE_ROOT",
+            "Pack path must stay inside the symlink-inspection trust root.",
+            path=str(candidate),
+        ) from exc
+
+    probe = raw_root
+    components = [probe]
+    for name in relative.parts:
+        probe /= name
+        components.append(probe)
+    for part in components:
         try:
-            if not part.is_symlink():
-                continue
+            is_symlink = part.is_symlink()
         except OSError:
             continue
-        part_real = Path(os.path.realpath(part))
-        if _path_contains(root, part_real) or _path_contains(root, Path(os.path.normpath(str(part)))):
+        if is_symlink:
             raise error(
                 "PACK_SYMLINK_REJECTED",
                 "Symlinked pack paths are not allowed.",
@@ -278,16 +289,19 @@ def load_local_pack(
     path: str | Path,
     *,
     allowed_root: str | Path,
+    trust_root: str | Path | None = None,
     source_tier: PackSourceTier = "explicit_path",
 ) -> ProfilePack | GovernanceModule:
     raw_path = str(path)
     if raw_path.lower().startswith(URL_PREFIXES):
         raise error("PACK_REMOTE_SOURCE_REJECTED", "Network pack sources are not allowed.", path=raw_path)
-    root = Path(os.path.realpath(Path(allowed_root).resolve(strict=True)))
+    raw_root = _absolute_without_resolving(Path(allowed_root))
     candidate = Path(path)
     if not candidate.is_absolute():
-        candidate = root / candidate
-    _reject_symlink_components(candidate, root)
+        candidate = raw_root / candidate
+    inspection_root = raw_root if trust_root is None else Path(trust_root)
+    _reject_symlink_components(candidate, inspection_root)
+    root = Path(os.path.realpath(raw_root.resolve(strict=True)))
     resolved = Path(os.path.realpath(candidate))
     if not _path_contains(root, resolved):
         raise error(
