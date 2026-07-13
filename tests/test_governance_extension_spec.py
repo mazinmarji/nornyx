@@ -189,7 +189,8 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
 
     accountable_authority = source.get("accountable_authority")
     if accountable_authority is not None and (
-        not isinstance(accountable_authority, str) or not accountable_authority
+        not isinstance(accountable_authority, str)
+        or not accountable_authority.strip()
     ):
         diagnostics.append(
             _normalization_diagnostic(

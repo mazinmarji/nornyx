@@ -199,6 +199,35 @@ def test_check_rejects_symlinked_ancestor_above_project_root(
     assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
 
 
+def test_governance_inspection_rejects_symlinked_contract_ancestor(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    project = tmp_path / "real_root" / "project"
+    project.mkdir(parents=True)
+    (project / "project.nyx").write_text(
+        'nornyx: "0.1"\nproject:\n  name: SymlinkedReport\n  profile: minimal\n',
+        encoding="utf-8",
+    )
+    link_root = tmp_path / "link_root"
+    try:
+        link_root.symlink_to(tmp_path / "real_root", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation is unavailable")
+
+    monkeypatch.chdir(tmp_path)
+    assert main(
+        [
+            "governance",
+            "explain",
+            "link_root/project/project.nyx",
+            "--json",
+        ]
+    ) == 1
+    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
+
+
 def test_malformed_evidence_diagnostics_are_deterministic(tmp_path: Path) -> None:
     path = tmp_path / "malformed.yaml"
     path.write_text("records: [unterminated\n", encoding="utf-8")

@@ -646,6 +646,43 @@ def test_required_role_without_eligible_role_cannot_authorize() -> None:
     assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "expected_code"),
+    [
+        (
+            "exact_revision_required",
+            "yes",
+            "APPROVAL_EXACT_REVISION_REQUIREMENT_INVALID",
+        ),
+        ("expires_after", 24, "APPROVAL_EXPIRY_REQUIREMENT_INVALID"),
+        (
+            "accountable_authority",
+            "   ",
+            "APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID",
+        ),
+    ],
+)
+def test_approval_requirement_metadata_types_fail_closed(
+    field: str,
+    value: object,
+    expected_code: str,
+) -> None:
+    source = {
+        "name": "metadata-gate",
+        "required_roles": ["reviewer"],
+        "eligible_roles": ["reviewer"],
+        field: value,
+    }
+    normalized = normalize_approval(
+        source,
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="metadata-gate",
+    )
+    assert normalized.resolution == "invalid"
+    assert expected_code in {item.code for item in normalized.diagnostics}
+
+
 def _genuine_normalized_approval() -> dict[str, Any]:
     return normalize_approval(
         {

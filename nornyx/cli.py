@@ -832,9 +832,9 @@ _LOCK_ERROR_CODES = {
 
 
 def _governance_report_for_path(args: argparse.Namespace) -> dict[str, object]:
+    registry = registry_for_contract(args.file)
     document = load_nyx(args.file)
     contract_path = Path(args.file).resolve()
-    registry = registry_for_contract(contract_path)
     lock_candidate = contract_path.parent / "nornyx.profiles.lock"
     lock_path = lock_candidate if lock_candidate.is_file() else None
     as_of = args.as_of or datetime.now(timezone.utc).isoformat()
