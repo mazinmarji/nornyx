@@ -23,8 +23,8 @@ golden is not regenerated automatically.
 | Required surface | Classification | Executable evidence | Result |
 |---|---|---|---|
 | All profile starters | Byte/canonical-LF hashes from the established starter manifest | `test_current_main_starter_goldens_are_complete_hashed_and_deterministic` plus corpus delegation test | 11 established starters unchanged; architecture starter additive |
-| Existing governed-package examples | `byte_identical` | complete enumerated path/hash set in compatibility manifest | pinned |
-| Existing top-level `.nyx` examples | `byte_identical` | complete enumerated path/hash set in compatibility manifest | pinned |
+| Existing governed-package examples | `canonical_lf_identical` | complete enumerated canonical-LF path/hash set in compatibility manifest | pinned across Git text checkout modes |
+| Existing top-level `.nyx` examples | `canonical_lf_identical` | complete enumerated canonical-LF path/hash set in compatibility manifest | pinned across Git text checkout modes |
 | Legacy profile API output | `semantically_equivalent` | catalog/API tests plus pinned `ai_coding` v0.3 projection and loss report | pinned |
 | CLI stdout and exit codes | `semantically_equivalent` canonical JSON | six success/error cases with repository-root normalization | pinned |
 | Generated artifacts and manifests | `byte_identical` | both committed generated-drift baselines | pinned |

@@ -17,34 +17,34 @@
     "additive_profiles": ["architecture_governance"]
   },
   "nyx_examples": {
-    "classification": "byte_identical",
+    "classification": "canonical_lf_identical",
     "files": [
       {"path": "examples/architecture_governance.nyx", "sha256": "c704e7ea0942452a59e9f5ff12a114adc55f08f92ed529b53d8bf18a12dbacd8"},
-      {"path": "examples/email_triage.nyx", "sha256": "c44817ab2f0a4ccf79592b9e2574f3b5cbbf4d14694e1e9786f7ef68328d573c"},
+      {"path": "examples/email_triage.nyx", "sha256": "183538ab8635f3c66e2fcb147591abeec259798dcda40d3546df8f4f067e00f3"},
       {"path": "examples/governance_foundations.nyx", "sha256": "e49796639a56d5c79f9b1cc48226987235bed56b11c99a3b4d44ff05f5ecc3f9"},
-      {"path": "examples/governed_delivery_control_plane.nyx", "sha256": "ef6855401c93f5d7b566dc4509bffa29fa239b8376a992048b90e6ecd5b0366b"},
-      {"path": "examples/nornyx_decision_boundary_evidence_quality.nyx", "sha256": "d0db0c1370f0794a4fc77724e19160c2e57cf3314d8fc1b00b6a18ac45a7a33a"},
-      {"path": "examples/nornyx_distinct_language_showcase.nyx", "sha256": "56d8c4b540d2a4b830574f4c4e765d54a1126cb5b5a27e95ea9c93d5d91cf64f"},
-      {"path": "examples/nornyx_graph_demo.nyx", "sha256": "18eeb3f97290f74aeeea3915fbe95ada47648755de6c407c0dadb4252d37a58a"},
-      {"path": "examples/nornyx_graph_demo_expanded.nyx", "sha256": "4f34cc7b4df508fed53b242c0a07a62e5f158809227435abb7a3ff2efc784f3b"},
-      {"path": "examples/nornyx_handover_and_ambiguity.nyx", "sha256": "cf0e2fe1983a0af1d2646f7531632d262f47c8da115d68e9f927a2d88cc6dcda"},
-      {"path": "examples/nornyx_pattern_lifecycle.nyx", "sha256": "78ed60106eb0cc831eea2a5e5d41a45bf06dad3c35cf18871fbb76077c4948f7"},
-      {"path": "examples/nornyx_portal_contract.nyx", "sha256": "d5ac14f5fd7db394e820f4f102cb382b652978951c18e7a81ad1c0683f555856"},
-      {"path": "examples/nornyx_product_to_ops_lifecycle.nyx", "sha256": "dd2538aab2c95f85ee4f2fdd29d7143da545788b86f5fa4f7baecc916c22e4a5"},
-      {"path": "examples/nornyx_roadmap_goals.nyx", "sha256": "b400026f7f0fa1154b04c5ac7351a07273f057a30c6ee239bc539cd8e19682db"},
-      {"path": "examples/nornyx_v04_adapter_contracts.nyx", "sha256": "3eed1071e1b3afb1362d4f1f36c32a6beabbeca69c92af1cbbb5aee0811cea64"},
-      {"path": "examples/self_healing.nyx", "sha256": "760f183904960cfb9e53b3dbfc6448f573c87cabe042967a87fc96dc030c6bdf"}
+      {"path": "examples/governed_delivery_control_plane.nyx", "sha256": "3ea884c4afd2bbf76c8aae430c840ce5df2879d21ff2e2b237cebf7364030701"},
+      {"path": "examples/nornyx_decision_boundary_evidence_quality.nyx", "sha256": "cf387f406abea442bbba48ce188e194771d32f890aefb3d8f8305989aa58e9d3"},
+      {"path": "examples/nornyx_distinct_language_showcase.nyx", "sha256": "97a4ccc283d80b860ffe19c9430f6d54cdc1713808bf0eadcb918b1c2efc8cfa"},
+      {"path": "examples/nornyx_graph_demo.nyx", "sha256": "9d3e25998c4510a4bd1e7e1cf055152c760abf2f9be427ab528b8609e2b27293"},
+      {"path": "examples/nornyx_graph_demo_expanded.nyx", "sha256": "531814612702dfecc5332a373f81476629e14affee7471e948960a5044833829"},
+      {"path": "examples/nornyx_handover_and_ambiguity.nyx", "sha256": "a384a9420b1f0b6cefad0abc894d738db16245b13f6ed9ea209817918699bb97"},
+      {"path": "examples/nornyx_pattern_lifecycle.nyx", "sha256": "14603a52b280ac0be3b0fb6dfb77cbaa7a7bc02dc1485aa46e2c65de6a2fbc94"},
+      {"path": "examples/nornyx_portal_contract.nyx", "sha256": "e9a48164ca98f4f4755e9b41fbd2833794327e322cc4a51d25e641745ed69ee5"},
+      {"path": "examples/nornyx_product_to_ops_lifecycle.nyx", "sha256": "ed4f964297186c22e90cd73e559193a0a314aef4f4974f72389dc74cb788e391"},
+      {"path": "examples/nornyx_roadmap_goals.nyx", "sha256": "db95637371e990887e6d906e089e2a659a9f39c7c192a1561d3100af8da346a9"},
+      {"path": "examples/nornyx_v04_adapter_contracts.nyx", "sha256": "6fe50fab20d9aa850fa62b31928800b35f582b3fab3246ff03da3ddbf95533c6"},
+      {"path": "examples/self_healing.nyx", "sha256": "2fbd751dedf22e7fb97f61f12a7a3e9d5560306f8f65f26c59f23a1352130555"}
     ]
   },
   "governed_package_examples": {
-    "classification": "byte_identical",
+    "classification": "canonical_lf_identical",
     "files": [
-      {"path": "examples/governed_package/basic.nyx", "sha256": "9cd14eceb1109e919af32f38004aa0cf49c915d735d9190343b73f4997ad4d6e"},
-      {"path": "examples/governed_package/external_evidence_adapters.nyx", "sha256": "7a304666c4364f50e8044d9e04508c1f8c7d57e5cb20d6735e41f92ef2a95c7c"},
-      {"path": "examples/governed_package/invalid_ai_tool_approver.nyx", "sha256": "e486517135e5e4e9bee9f7d2ba73de033f8d12b653212207044ad034bb751a8a"},
-      {"path": "examples/governed_package/invalid_unsafe_flags.nyx", "sha256": "0994c35b6ff2cd609b8d096de7c9bb58085589d2c9703b0b08d9c71c5778c626"},
-      {"path": "examples/governed_package/register_existing.nyx", "sha256": "02c63575908edaebfd981963c91a1246211e4c9ced6a077c7d5b4f49e425bfbb"},
-      {"path": "examples/governed_package/software_change.nyx", "sha256": "bb4c7b48c2b09957608493dcaab4e80ff2b1aae952002c945d8150cd205abe26"}
+      {"path": "examples/governed_package/basic.nyx", "sha256": "e9992019e3bc3dc9a5bdcbcf78786bdf3434aba0a4dd03e9be706d606164da07"},
+      {"path": "examples/governed_package/external_evidence_adapters.nyx", "sha256": "cddd6dfeab90eb31176c2f296ce0b6bb21d41dd6e0f8f58622f1685916c739ce"},
+      {"path": "examples/governed_package/invalid_ai_tool_approver.nyx", "sha256": "1ef3d9047216318c7e530e44533133f2cd0aac312c1f71fa197082bebe0ca459"},
+      {"path": "examples/governed_package/invalid_unsafe_flags.nyx", "sha256": "7b5f7b3f6fe1c57c820308105f7619a8754627353ded170972d24acbb289e894"},
+      {"path": "examples/governed_package/register_existing.nyx", "sha256": "e05561a570209f5362a65814d86b1c856cc4ddf101ab466b91f750604107d39c"},
+      {"path": "examples/governed_package/software_change.nyx", "sha256": "9c51ec407a71bf45f7224317ad49ed4382a45e2eecb0ab1353ecd855608dab17"}
     ]
   },
   "generated_artifacts_and_manifests": {

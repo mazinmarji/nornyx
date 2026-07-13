@@ -30,6 +30,10 @@ def _sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _canonical_lf(raw: bytes) -> bytes:
+    return raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
 def _canonical_json(value: Any) -> bytes:
     return json.dumps(
         value,
@@ -81,7 +85,10 @@ def test_compatibility_corpus_pins_all_example_and_generated_bytes() -> None:
     )
     for category in categories:
         for entry in manifest[category]["files"]:
-            assert _sha256((ROOT / entry["path"]).read_bytes()) == entry["sha256"]
+            raw = (ROOT / entry["path"]).read_bytes()
+            if manifest[category]["classification"] == "canonical_lf_identical":
+                raw = _canonical_lf(raw)
+            assert _sha256(raw) == entry["sha256"]
 
     recorded_examples = {
         item["path"] for item in manifest["nyx_examples"]["files"]
