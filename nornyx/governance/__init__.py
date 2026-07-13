@@ -27,6 +27,7 @@ from .runtime import (
     registry_for_contract,
     registry_for_directory,
 )
+from .structural import change_scope_hash
 
 __all__ = [
     "CompositionResult",
@@ -42,6 +43,7 @@ __all__ = [
     "ProjectionResult",
     "Rule",
     "StarterFragment",
+    "change_scope_hash",
     "compose_document_governance",
     "compose_governance",
     "evaluate_document_governance",

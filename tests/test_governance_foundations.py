@@ -150,8 +150,8 @@ def _codes(diagnostics: tuple[Any, ...]) -> set[str]:
 
 def test_foundational_modules_are_packaged_integrity_locked_and_composable() -> None:
     registry = GovernanceRegistry.builtins()
-    assert registry.module_names == FOUNDATIONAL_MODULES
-    modules = [registry.resolve_module(name) for name in registry.module_names]
+    assert set(FOUNDATIONAL_MODULES) <= set(registry.module_names)
+    modules = [registry.resolve_module(name) for name in FOUNDATIONAL_MODULES]
     assert all(module.content_hash.startswith("sha256:") for module in modules)
     assert all(module.provenance.source_tier == "builtin" for module in modules)
     assert all(module.structural_checks for module in modules)

@@ -28,6 +28,8 @@ GOVERNANCE_SCHEMA_FILES = (
     "governance_evidence_v1.schema.json",
     "separation_of_duties_v1.schema.json",
     "governance_exception_v1.schema.json",
+    "change_v1.schema.json",
+    "governed_package.schema.json",
 )
 
 

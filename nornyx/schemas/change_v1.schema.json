@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/change_v1.schema.json",
+  "title": "Nornyx Shared Change Collection v1",
+  "description": "Additive shared change model. The compatibility minimum remains id and type.",
+  "x-nornyx-governance-block": "changes",
+  "type": "array",
+  "maxItems": 1000,
+  "items": {"$ref": "#/$defs/change"},
+  "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "identities": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {"$ref": "#/$defs/identity"},
+      "uniqueItems": true
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "proposed",
+        "approved",
+        "in_progress",
+        "completed",
+        "closed",
+        "rejected",
+        "rolled_back",
+        "cancelled"
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "revisionBinding": {
+      "type": "object",
+      "required": ["kind", "revision", "exact", "scope_hash"],
+      "properties": {
+        "kind": {"enum": ["git", "artifact_hash", "package_manifest", "other"]},
+        "revision": {"$ref": "#/$defs/nonEmpty"},
+        "exact": {"const": true},
+        "scope_hash": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "impacts": {
+      "type": "object",
+      "required": ["security", "architecture", "data", "dependency", "operational"],
+      "properties": {
+        "security": {"enum": ["none", "minor", "major", "critical"]},
+        "architecture": {"enum": ["none", "minor", "major", "critical"]},
+        "data": {"enum": ["none", "minor", "major", "critical"]},
+        "dependency": {"enum": ["none", "minor", "major", "critical"]},
+        "operational": {"enum": ["none", "minor", "major", "critical"]}
+      },
+      "additionalProperties": false
+    },
+    "dutyDeclaration": {
+      "type": "object",
+      "required": ["author_role", "approver_role", "disjoint"],
+      "properties": {
+        "author_role": {"$ref": "#/$defs/identity"},
+        "approver_role": {"$ref": "#/$defs/identity"},
+        "disjoint": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "required": ["from", "to", "evidence"],
+      "properties": {
+        "from": {"$ref": "#/$defs/status"},
+        "to": {"$ref": "#/$defs/status"},
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/identity"},
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "change": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "schema": {"const": "nornyx.change.v1"},
+        "id": {"$ref": "#/$defs/identity"},
+        "type": {"$ref": "#/$defs/identity"},
+        "purpose": {"$ref": "#/$defs/nonEmpty"},
+        "status": {"$ref": "#/$defs/status"},
+        "transition": {"$ref": "#/$defs/transition"},
+        "scope": {"$ref": "#/$defs/identities"},
+        "excluded_scope": {"$ref": "#/$defs/identities"},
+        "affected_assets": {"$ref": "#/$defs/identities"},
+        "affected_systems": {"$ref": "#/$defs/identities"},
+        "affected_components": {"$ref": "#/$defs/identities"},
+        "expected_artifacts": {"$ref": "#/$defs/identities"},
+        "risk_tier": {"enum": ["low", "medium", "high", "critical"]},
+        "blast_radius": {"enum": ["component", "service", "system", "organization"]},
+        "reversibility": {"enum": ["reversible", "partially_reversible", "irreversible"]},
+        "rollback_required": {"type": "boolean"},
+        "rollback_plan_artifact": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        },
+        "irreversible_authority": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        },
+        "impacts": {"$ref": "#/$defs/impacts"},
+        "required_controls": {"$ref": "#/$defs/identities"},
+        "required_evaluations": {"$ref": "#/$defs/identities"},
+        "required_evidence": {"$ref": "#/$defs/identities"},
+        "approver_roles": {"$ref": "#/$defs/identities"},
+        "approval_ids": {"$ref": "#/$defs/identities"},
+        "separation_of_duties": {"$ref": "#/$defs/dutyDeclaration"},
+        "revision_binding": {"$ref": "#/$defs/revisionBinding"},
+        "approval_invalidated_on": {"$ref": "#/$defs/identities"},
+        "exceptions": {"$ref": "#/$defs/identities"},
+        "closure_evidence": {"$ref": "#/$defs/identities"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -3,7 +3,7 @@ project:
   name: GovernanceFoundationsExample
   profile: minimal
   modules:
-    - exception_management
+    - change_control
 
 approvals:
   - name: HumanGovernanceGate
@@ -17,13 +17,14 @@ approvals:
       - connector
       - generated_output
     required_evidence: [approval_record]
-    required_for: [merge]
+    required_for: [merge, "change:change-example"]
     timing: before_merge
     accountable_authority: governance_owner
     revision_binding:
       kind: git
       revision: git:0123456789abcdef
       exact: true
+      scope_hash: sha256:504ffabd3c23a84bf95a804201be8adcf0fe68c8914527d57b234751e89a2f07
     invalidation_conditions: [revision_changed, scope_changed]
     expires_at: "2099-01-01T00:00:00Z"
 
@@ -79,11 +80,67 @@ governance_evidence:
       expires_at: "2099-01-01T00:00:00Z"
       status: pass
       dependencies: [independent_review_record]
+    - id: change_record
+      type: change_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.change_owner, type: human}
+      artifact: governance_evidence/change_record.json
+      content_hash: sha256:5177bd8a38924285484bdf6d1886f4935c13b8298e374bc2932cd9676f43ca5d
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [exception_review_record]
+
+changes:
+  - schema: nornyx.change.v1
+    id: change-example
+    type: software
+    purpose: Demonstrate bounded declarative change governance.
+    status: proposed
+    transition:
+      from: draft
+      to: proposed
+      evidence: [change_record]
+    scope: [src/example.py]
+    excluded_scope: [secrets]
+    affected_assets: [artifact:example_patch]
+    affected_systems: [system:example]
+    affected_components: [component:example]
+    expected_artifacts: [artifact:example_patch]
+    risk_tier: high
+    blast_radius: component
+    reversibility: reversible
+    rollback_required: false
+    impacts:
+      security: minor
+      architecture: none
+      data: none
+      dependency: none
+      operational: minor
+    required_controls: [control:human_review]
+    required_evaluations: [evaluation:unit_tests]
+    required_evidence: [change_record]
+    approver_roles: [reviewer]
+    approval_ids: [HumanGovernanceGate]
+    separation_of_duties:
+      author_role: author
+      approver_role: reviewer
+      disjoint: true
+    revision_binding:
+      kind: git
+      revision: git:0123456789abcdef
+      exact: true
+      scope_hash: sha256:504ffabd3c23a84bf95a804201be8adcf0fe68c8914527d57b234751e89a2f07
+    approval_invalidated_on: [revision_change, scope_change]
+    exceptions: [EXC-EXAMPLE]
+    closure_evidence: []
 
 separation_of_duties:
   schema: nornyx.separation_of_duties.v1
   assignments:
-    - subject: change:example
+    - subject: change:change-example
       risk_tier: high
       author: user:author
       approvers: [user:reviewer]
@@ -101,7 +158,7 @@ exceptions:
     - id: EXC-EXAMPLE
       control: project.review_window
       reason: A bounded example exception for documentation execution.
-      scope: [change:example]
+      scope: [change:change-example]
       risk_tier: high
       requester: user:exception_requester
       accountable_owner: user:risk_owner

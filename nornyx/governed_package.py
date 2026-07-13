@@ -13,6 +13,7 @@ import yaml
 
 from . import __version__
 from .errors import Diagnostic
+from .governance.schemas import validate_governance_block
 from .package_scanner import SCANNER_NAME, SCANNER_VERSION, scan_package, write_scan_reports
 from .parser import load_nyx
 
@@ -539,6 +540,21 @@ def validate_governed_package(
                     f"governed_package.{block}",
                 )
             )
+
+    for item in validate_governance_block(
+        "changes",
+        package.get("changes"),
+        "https://nornyx.dev/schemas/change_v1.schema.json",
+        source_id="nornyx.governed_package",
+    ):
+        suffix = item.path.removeprefix("changes") if item.path else ""
+        diagnostics.append(
+            _diag(
+                "INVALID_GOVERNED_PACKAGE_CHANGE",
+                item.message,
+                f"governed_package.changes{suffix}",
+            )
+        )
 
     requirements = _evidence_requirements(package)
     requirement_ids = _id_values(requirements)

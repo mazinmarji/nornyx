@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime, timezone
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Callable
 
@@ -31,6 +32,17 @@ HIGH_IMPACT_ACTIONS = {
     "production_change",
     "promote",
     "release",
+}
+CHANGE_TRANSITIONS = {
+    "draft": {"proposed", "cancelled"},
+    "proposed": {"approved", "rejected", "cancelled"},
+    "approved": {"in_progress", "cancelled"},
+    "in_progress": {"completed", "rolled_back", "cancelled"},
+    "completed": {"closed", "rolled_back"},
+    "rolled_back": {"closed"},
+    "rejected": {"closed"},
+    "cancelled": {"closed"},
+    "closed": set(),
 }
 
 
@@ -65,6 +77,17 @@ def _parse_time(value: str | datetime | None) -> datetime | None:
 
 def _as_list(value: Any) -> list[Any] | None:
     return value if isinstance(value, list) else None
+
+
+def change_scope_hash(change: Mapping[str, Any]) -> str:
+    payload = {
+        "scope": sorted(str(item) for item in (_as_list(change.get("scope")) or [])),
+        "excluded_scope": sorted(
+            str(item) for item in (_as_list(change.get("excluded_scope")) or [])
+        ),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 def _normalize_document_approval(value: Any, index: int) -> NormalizedApproval | None:
@@ -616,8 +639,331 @@ def _exception_management(
     return tuple(diagnostics)
 
 
+def _change_control(
+    document: Mapping[str, Any],
+    composition: CompositionResult,
+    *,
+    as_of: datetime | None,
+    document_root: Path | None,
+) -> tuple[GovernanceDiagnostic, ...]:
+    del composition, as_of, document_root
+    source_id = "change_control.v1"
+    changes = _as_list(document.get("changes"))
+    if changes is None:
+        return ()
+    diagnostics: list[GovernanceDiagnostic] = []
+
+    evidence_block = document.get("governance_evidence")
+    evidence_records = (
+        _as_list(evidence_block.get("records"))
+        if isinstance(evidence_block, Mapping)
+        else []
+    ) or []
+    evidence_ids = {
+        str(value)
+        for record in evidence_records
+        if isinstance(record, Mapping)
+        for value in (record.get("id"), record.get("type"))
+        if value is not None
+    }
+    exception_block = document.get("exceptions")
+    exception_entries = (
+        _as_list(exception_block.get("entries"))
+        if isinstance(exception_block, Mapping)
+        else []
+    ) or []
+    exception_ids = {
+        str(item.get("id")) for item in exception_entries if isinstance(item, Mapping)
+    }
+    duty_block = document.get("separation_of_duties")
+    duty_assignments = (
+        _as_list(duty_block.get("assignments"))
+        if isinstance(duty_block, Mapping)
+        else []
+    ) or []
+    duty_subjects = {
+        str(item.get("subject")) for item in duty_assignments if isinstance(item, Mapping)
+    }
+    approval_values = _as_list(document.get("approvals")) or []
+    approvals = [
+        normalized
+        for index, value in enumerate(approval_values)
+        if (normalized := _normalize_document_approval(value, index)) is not None
+        and normalized.resolution == "complete"
+    ]
+
+    identifiers: set[str] = set()
+    for index, raw in enumerate(changes):
+        if not isinstance(raw, Mapping):
+            continue
+        path = f"changes[{index}]"
+        change_id = str(raw.get("id", ""))
+        if change_id in identifiers:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_DUPLICATE_ID",
+                    f"Change id {change_id!r} is duplicated.",
+                    path=f"{path}.id",
+                    source_id=source_id,
+                )
+            )
+        identifiers.add(change_id)
+
+        status = raw.get("status")
+        transition = raw.get("transition")
+        if status not in (None, "draft") and not isinstance(transition, Mapping):
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_TRANSITION_EVIDENCE_MISSING",
+                    "A non-draft change requires a declared transition and evidence.",
+                    path=f"{path}.transition",
+                    source_id=source_id,
+                )
+            )
+        if isinstance(transition, Mapping):
+            previous = str(transition.get("from", ""))
+            target = str(transition.get("to", ""))
+            if target != status or target not in CHANGE_TRANSITIONS.get(previous, set()):
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_LIFECYCLE_TRANSITION_INVALID",
+                        f"Transition {previous!r} -> {target!r} is invalid for "
+                        f"status {status!r}.",
+                        path=f"{path}.transition",
+                        source_id=source_id,
+                    )
+                )
+            transition_evidence = {
+                str(item) for item in (_as_list(transition.get("evidence")) or [])
+            }
+            if not transition_evidence or not transition_evidence <= evidence_ids:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_TRANSITION_EVIDENCE_MISSING",
+                        "Lifecycle transition evidence is missing from governance evidence.",
+                        path=f"{path}.transition.evidence",
+                        source_id=source_id,
+                    )
+                )
+
+        required_evidence = {
+            str(item) for item in (_as_list(raw.get("required_evidence")) or [])
+        }
+        missing_evidence = required_evidence - evidence_ids
+        if missing_evidence:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_EVIDENCE_MISSING",
+                    "Change-required evidence is missing: "
+                    + ", ".join(sorted(missing_evidence))
+                    + ".",
+                    path=f"{path}.required_evidence",
+                    source_id=source_id,
+                )
+            )
+
+        exception_refs = {str(item) for item in (_as_list(raw.get("exceptions")) or [])}
+        unknown_exceptions = exception_refs - exception_ids
+        if unknown_exceptions:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_EXCEPTION_UNKNOWN",
+                    "Change references unknown governed exceptions: "
+                    + ", ".join(sorted(unknown_exceptions))
+                    + ".",
+                    path=f"{path}.exceptions",
+                    source_id=source_id,
+                )
+            )
+
+        high_risk = raw.get("risk_tier") in {"high", "critical"}
+        approver_roles = {
+            str(item) for item in (_as_list(raw.get("approver_roles")) or [])
+        }
+        if high_risk and (not approver_roles or not required_evidence):
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_HIGH_RISK_GATES_MISSING",
+                    "High-risk changes require approver roles and evidence.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
+        if high_risk and not ({change_id, f"change:{change_id}"} & duty_subjects):
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_SOD_ASSIGNMENT_MISSING",
+                    "High-risk change lacks a separation-of-duties assignment.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
+
+        binding = raw.get("revision_binding")
+        expected_scope_hash = change_scope_hash(raw)
+        if high_risk and not isinstance(binding, Mapping):
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_REVISION_BINDING_REQUIRED",
+                    "High-risk change must bind approval to an exact revision and scope.",
+                    path=f"{path}.revision_binding",
+                    source_id=source_id,
+                )
+            )
+        if isinstance(binding, Mapping) and binding.get("scope_hash") != expected_scope_hash:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_SCOPE_HASH_MISMATCH",
+                    "Change scope hash does not match its included and excluded scope.",
+                    path=f"{path}.revision_binding.scope_hash",
+                    source_id=source_id,
+                )
+            )
+
+        invalidated_on = {
+            str(item) for item in (_as_list(raw.get("approval_invalidated_on")) or [])
+        }
+        if high_risk and not {"revision_change", "scope_change"} <= invalidated_on:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_APPROVAL_INVALIDATION_MISSING",
+                    "High-risk change must invalidate approval after revision or scope changes.",
+                    path=f"{path}.approval_invalidated_on",
+                    source_id=source_id,
+                )
+            )
+
+        if high_risk and isinstance(binding, Mapping):
+            approval_ids = {str(item) for item in (_as_list(raw.get("approval_ids")) or [])}
+            candidates = [
+                approval
+                for approval in approvals
+                if approval.id in approval_ids
+                or change_id in approval.actions_requiring_approval
+                or f"change:{change_id}" in approval.actions_requiring_approval
+            ]
+            if not candidates:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_APPROVAL_MISSING",
+                        "High-risk change has no matching human approval declaration.",
+                        path=f"{path}.approval_ids",
+                        source_id=source_id,
+                    )
+                )
+            else:
+                valid = False
+                revision_mismatch = False
+                scope_mismatch = False
+                for approval in candidates:
+                    approval_roles = set(approval.required_roles) | set(
+                        approval.eligible_roles
+                    )
+                    if not approver_roles & approval_roles:
+                        continue
+                    approval_binding = approval.revision_binding
+                    if not isinstance(approval_binding, Mapping):
+                        revision_mismatch = scope_mismatch = True
+                        continue
+                    if approval_binding.get("revision") != binding.get("revision"):
+                        revision_mismatch = True
+                        continue
+                    if approval_binding.get("scope_hash") != expected_scope_hash:
+                        scope_mismatch = True
+                        continue
+                    valid = True
+                    break
+                if not valid:
+                    if revision_mismatch:
+                        diagnostics.append(
+                            _diagnostic(
+                                "APPROVAL_STALE_FOR_REVISION",
+                                "Matching approval is absent or stale for the change revision.",
+                                path=f"{path}.revision_binding.revision",
+                                source_id=source_id,
+                            )
+                        )
+                    if scope_mismatch:
+                        diagnostics.append(
+                            _diagnostic(
+                                "APPROVAL_STALE_FOR_SCOPE",
+                                "Matching approval is stale for the current change scope.",
+                                path=f"{path}.revision_binding.scope_hash",
+                                source_id=source_id,
+                            )
+                        )
+                    if not revision_mismatch and not scope_mismatch:
+                        diagnostics.append(
+                            _diagnostic(
+                                "CHANGE_APPROVAL_MISSING",
+                                "Matching approval does not authorize a declared approver role.",
+                                path=f"{path}.approver_roles",
+                                source_id=source_id,
+                            )
+                        )
+
+        if raw.get("reversibility") == "irreversible":
+            authority = raw.get("irreversible_authority")
+            if authority is None or authority not in approver_roles:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_IRREVERSIBLE_AUTHORITY_MISSING",
+                        "Irreversible change requires explicit authority among approver roles.",
+                        path=f"{path}.irreversible_authority",
+                        source_id=source_id,
+                    )
+                )
+            if raw.get("rollback_required") is not True:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_ROLLBACK_REQUIRED",
+                        "Irreversible change must explicitly require rollback planning.",
+                        path=f"{path}.rollback_required",
+                        source_id=source_id,
+                    )
+                )
+        if raw.get("rollback_required") is True and raw.get("rollback_plan_artifact") is None:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_ROLLBACK_ARTIFACT_MISSING",
+                    "Rollback-required change must identify a rollback plan artifact.",
+                    path=f"{path}.rollback_plan_artifact",
+                    source_id=source_id,
+                )
+            )
+
+        impacts = raw.get("impacts")
+        architecture_impact = (
+            impacts.get("architecture") if isinstance(impacts, Mapping) else None
+        )
+        if architecture_impact in {"major", "critical"}:
+            if "architecture_decision_record" not in required_evidence:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_ARCHITECTURE_EVIDENCE_MISSING",
+                        "Major architecture impact requires architecture decision evidence.",
+                        path=f"{path}.required_evidence",
+                        source_id=source_id,
+                    )
+                )
+
+        if status == "closed":
+            closure = {str(item) for item in (_as_list(raw.get("closure_evidence")) or [])}
+            if not closure or not closure <= evidence_ids:
+                diagnostics.append(
+                    _diagnostic(
+                        "CHANGE_CLOSURE_EVIDENCE_MISSING",
+                        "Closed change requires available closure evidence.",
+                        path=f"{path}.closure_evidence",
+                        source_id=source_id,
+                    )
+                )
+    return tuple(diagnostics)
+
+
 StructuralCheck = Callable[..., tuple[GovernanceDiagnostic, ...]]
 STRUCTURAL_CHECKS: dict[str, StructuralCheck] = {
+    "change_control.v1": _change_control,
     "evidence_integrity.v1": _evidence_integrity,
     "exception_management.v1": _exception_management,
     "human_approval.v1": _human_approval,

@@ -33,6 +33,7 @@
     "evidence_integrity",
     "human_approval",
     "separation_of_duties",
-    "exception_management"
+    "exception_management",
+    "change_control"
   ]
 }

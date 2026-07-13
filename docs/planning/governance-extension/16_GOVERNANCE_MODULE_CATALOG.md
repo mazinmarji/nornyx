@@ -9,7 +9,7 @@ select only reviewed block schemas and fixed structural checks bundled with
 Nornyx. It cannot ship code, an inline schema, an expression evaluator, a
 network source, a custom validator, or approval authority.
 
-## Implemented Foundational Modules
+## Implemented Modules
 
 | Module | Dependencies | Blocks | Fixed checks | Purpose |
 |---|---|---|---|---|
@@ -17,8 +17,9 @@ network source, a custom validator, or approval authority.
 | `human_approval` | `evidence_integrity` | `approvals`, `governance_evidence` | `human_approval.v1` | Require accountable human roles, explicit non-human denials, exact revision binding, evidence, invalidation, and expiry |
 | `separation_of_duties` | `human_approval` | `separation_of_duties` | `separation_of_duties.v1` | Enforce author/approver, producer/approver, release, and exception role disjointness |
 | `exception_management` | `separation_of_duties` | `exceptions` | `exception_management.v1` | Keep exceptions project-owned, human-authorized, evidenced, compensated, expiring, and unable to weaken core safety |
+| `change_control` | `exception_management` | `changes` | `change_control.v1` | Enforce evidenced lifecycle transitions, risk gates, revision and scope binding, human approval, rollback readiness, architecture evidence, and explicit closure |
 
-Selecting `exception_management` resolves all four modules in the order shown.
+Selecting `change_control` resolves all five modules in the order shown.
 The complete executable contract is `examples/governance_foundations.nyx`.
 
 ## Evidence Semantics

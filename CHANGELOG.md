@@ -11,6 +11,9 @@ distribution version is independent of the Nornyx **language/schema** version
   integrity, separation of duties, and exception management, with packaged
   schemas, deterministic monotonic composition, fixed structural checks, an
   executable local-evidence example, and adversarial coverage.
+- Shared declarative change governance with evidenced lifecycle transitions,
+  risk-proportionate human approval, revision and scope binding, rollback and
+  closure checks, and one additive schema reused by governed packages.
 - Bounded module block-schema bindings. Packs may select only reviewed schemas
   bundled with Nornyx; inline schemas, remote references, custom validators,
   dynamic code, and unknown structural checks fail closed.
@@ -23,6 +26,9 @@ distribution version is independent of the Nornyx **language/schema** version
 - Selected modules now enforce their required blocks, block schemas, evidence
   contracts, and fixed relational checks. Legacy profile-only requirements
   remain compatibility-preserving unless a module is explicitly selected.
+- Governed-package changes now delegate shape validation to the shared change
+  schema while retaining their existing package-specific references and
+  compatibility behavior.
 
 ## [1.5.2] - 2026-07-13
 

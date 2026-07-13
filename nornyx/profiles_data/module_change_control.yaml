@@ -1,0 +1,142 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.change_control
+name: change_control
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies:
+  - nornyx.builtin.module.exception_management
+conflicts: []
+required_blocks:
+  - changes
+block_schemas:
+  - block: changes
+    schema_id: https://nornyx.dev/schemas/change_v1.schema.json
+structural_checks:
+  - change_control.v1
+policies:
+  - id: change_control_policy
+    description: Changes are revision-bound, evidenced, authorized, reversible, and closed explicitly.
+    deny:
+      - stale approval after revision or scope changes
+      - invalid lifecycle transitions
+      - irreversible change without explicit authority
+    require:
+      - risk-proportionate evidence and approval
+      - rollback planning where required
+      - closure evidence
+evidence_requirements:
+  - id: change_record
+    type: change_record
+    required: true
+    schema_id: nornyx.governance_evidence.v1
+    revision_bound: true
+approval_requirements:
+  - id: change_authority
+    required_roles:
+      - reviewer
+    eligible_roles:
+      - reviewer
+      - change_authority
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence:
+      - change_record
+    actions:
+      - approve_change
+    timing: before_action
+    accountable_authority: change_authority
+    exact_revision_required: true
+    invalidation_conditions:
+      - revision_change
+      - scope_change
+    expires_after: PT24H
+evaluations:
+  - id: change_control_evaluation
+    metrics:
+      - lifecycle_transition_valid
+      - approval_current_for_revision
+      - rollback_ready
+      - closure_evidence_present
+    required_evidence:
+      - change_record
+rules:
+  - id: CHG-010
+    description: High-risk changes require approver roles and evidence.
+    when:
+      path: changes[].risk_tier
+      in: [high, critical]
+    require:
+      - path: changes[].approver_roles
+        min_count: 1
+      - path: changes[].required_evidence
+        min_count: 1
+    severity: error
+    message: High-risk changes require approval roles and evidence.
+  - id: CHG-011
+    description: Major architecture impact requires an architecture decision record.
+    when:
+      path: changes[].impacts.architecture
+      in: [major, critical]
+    require:
+      - path: changes[].required_evidence
+        contains: architecture_decision_record
+    severity: error
+    message: Architecture-impacting change requires architecture decision evidence.
+  - id: CHG-020
+    description: Irreversible changes require rollback planning.
+    when:
+      path: changes[].reversibility
+      equals: irreversible
+    require:
+      - path: changes[].rollback_required
+        equals: true
+      - path: changes[].rollback_plan_artifact
+        exists: true
+    severity: error
+    message: Irreversible change requires an explicit rollback plan.
+  - id: CHG-030
+    description: Revision-bound changes invalidate approval on revision and scope changes.
+    when:
+      path: changes[].revision_binding
+      exists: true
+    require:
+      - path: changes[].approval_invalidated_on
+        contains_all: [revision_change, scope_change]
+    severity: error
+    message: Revision-bound change lacks approval invalidation conditions.
+  - id: CHG-040
+    description: Closed changes require closure evidence.
+    when:
+      path: changes[].status
+      equals: closed
+    require:
+      - path: changes[].closure_evidence
+        min_count: 1
+    severity: error
+    message: Closed change requires closure evidence.
+non_goals:
+  - watching repositories or systems continuously
+  - deploying, rolling back, or remediating a change
+  - creating a second governed-package change model
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-c
+integrity:
+  algorithm: sha256
+  content_hash: sha256:2af7bc5bff3da1111da4cb35a53aa792cd20a9fcc550e351398d138b05e454b4
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false
