@@ -27,9 +27,10 @@ distribution version is independent of the Nornyx **language/schema** version
   instead of silently skipping the rule. Ordinary missing-path non-matches
   remain silent. `all` conditions join across shared ancestor collections:
   predicates traversing the same collection at any depth must be satisfied by
-  the same ancestor element. Pre-normalized approval payloads are not trusted
-  blindly: an invalid resolution or a core-denied actor in the role lists
-  makes `references_role` fail closed.
+  the same ancestor element. Pre-normalized approval payloads are strictly
+  validated before their roles are read: `references_role` fails closed on an
+  invalid, unknown, or missing resolution, on role fields that are not lists
+  of strings, and on core-denied actors in the role lists.
 - Profile locks reject duplicate entry ids (`PACK_LOCK_DUPLICATE_ID`); packs
   are capped at 200 rules and compositions at 2000
   (`PACK_LIMIT_EXCEEDED`); duplicate item ids inside one pack are fatal

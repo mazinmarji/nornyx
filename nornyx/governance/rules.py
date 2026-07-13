@@ -29,6 +29,14 @@ STRUCTURAL_MATCH_REASONS = {
 # Actor categories that can never satisfy references_role, even in forged
 # pre-normalized approval payloads.
 CORE_DENIED_APPROVER_ACTORS = ("ai_tool", "execution_surface")
+# Resolutions under which a pre-normalized approval's role lists may be read.
+# "invalid", anything unknown, and a missing resolution all fail closed.
+TRUSTED_APPROVAL_RESOLUTIONS = {
+    "complete",
+    "reference_only",
+    "legacy_text_preserved",
+    "requirement_only",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,13 +182,22 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
         if not isinstance(item, Mapping):
             return None
         if item.get("schema") == "nornyx.normalized_approval.v1":
-            # A pre-normalized approval is only trusted when its own
-            # normalization succeeded, and never if it claims a core-denied
-            # actor as a role — a forged payload must fail closed.
-            if item.get("resolution") == "invalid":
+            # A pre-normalized approval is only trusted when its resolution is
+            # a known non-invalid value and its role fields are well-typed
+            # lists of strings. A missing or unknown resolution, a role field
+            # of the wrong type, or a core-denied actor in the role lists all
+            # fail closed — a forged payload must never satisfy references_role.
+            if item.get("resolution") not in TRUSTED_APPROVAL_RESOLUTIONS:
                 return None
-            values = [*item.get("required_roles", []), *item.get("eligible_roles", [])]
-            if any(str(value) in CORE_DENIED_APPROVER_ACTORS for value in values):
+            values = []
+            for field in ("required_roles", "eligible_roles"):
+                field_values = item.get(field, [])
+                if not isinstance(field_values, list) or not all(
+                    isinstance(entry, str) for entry in field_values
+                ):
+                    return None
+                values.extend(field_values)
+            if any(value in CORE_DENIED_APPROVER_ACTORS for value in values):
                 return None
         else:
             governed = "id" in item and (

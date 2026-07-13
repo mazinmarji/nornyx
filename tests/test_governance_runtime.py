@@ -392,6 +392,23 @@ def test_pre_normalized_approvals_are_not_trusted_blindly() -> None:
     reviewer_rule = _rule(requirement={"path": "approvals", "references_role": "reviewer"})
     assert evaluate_rule(legitimate, reviewer_rule) == ()
 
+    # Malformed pre-normalized payloads fail closed rather than being
+    # unpacked blindly: mapping role fields, null role fields, non-string
+    # role entries, and a missing resolution all reject.
+    base = legitimate["approvals"][0]
+    malformed_payloads = [
+        {**base, "eligible_roles": {"reviewer": False}},
+        {**base, "required_roles": None},
+        {**base, "eligible_roles": ["reviewer", 7]},
+        {key: value for key, value in base.items() if key != "resolution"},
+        {**base, "resolution": "definitely_fine"},
+    ]
+    for payload in malformed_payloads:
+        diagnostics = evaluate_rule({"approvals": [payload]}, reviewer_rule)
+        assert [item.code for item in diagnostics] == [
+            "RULE_REFERENCE_TYPE_ERROR"
+        ], payload
+
 
 def test_structural_errors_in_when_fail_closed() -> None:
     # F2: a malformed document must not silently disable a rule.
