@@ -1,0 +1,33 @@
+{
+  "schema": "nornyx.builtin_profile_catalog.v1",
+  "profiles": [
+    "minimal",
+    "standard",
+    "ai_coding",
+    "regulated",
+    "legacy_upgrade",
+    "nornyx_language",
+    "agentic_repo_harness",
+    "telecom_ops",
+    "business_ops",
+    "ai_governance",
+    "finance_ops"
+  ],
+  "base_profiles": [
+    "minimal",
+    "standard",
+    "ai_coding",
+    "regulated",
+    "legacy_upgrade",
+    "nornyx_language"
+  ],
+  "domain_profiles": [
+    "ai_coding",
+    "agentic_repo_harness",
+    "telecom_ops",
+    "business_ops",
+    "ai_governance",
+    "finance_ops"
+  ],
+  "modules": []
+}

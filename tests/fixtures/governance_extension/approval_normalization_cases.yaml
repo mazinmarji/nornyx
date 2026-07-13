@@ -115,3 +115,13 @@
     authorized_people: [reviewer]
   expected_resolution: invalid
   expected_diagnostic: APPROVAL_UNKNOWN_ROLE_FIELD
+- id: core_denied_actor_eligible
+  shape: governed_package_gate
+  path: governed_package.approval_gates[0]
+  source:
+    id: gate-ai
+    required_evidence: [review_record]
+    eligible_approver_roles: [ai_tool]
+    denied_approver_types: []
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE

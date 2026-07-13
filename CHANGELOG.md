@@ -7,6 +7,45 @@ distribution version is independent of the Nornyx **language/schema** version
 ## Unreleased
 
 ### Added
+- Declarative governance runtime for local profile/module loading, deterministic
+  monotonic composition, closed rule evaluation, approval normalization,
+  timestamp-free locks, and exact v1-to-v0.3 projection with separate reports.
+- Pack-aware `nornyx check`, explicit local profile initialization, and
+  `profiles list`, `inspect`, `validate`, `resolve`, and `compatibility`
+  subcommands. Discovery remains offline and data-only. A `project.profile`
+  value that does not match any governance pack keeps passing `nornyx check`
+  exactly as before (a `PACK_NOT_RESOLVED` warning is printed); explicit
+  `project.modules` selections remain fail-closed.
+- Every composed approval requirement carries the non-removable core denials
+  (`ai_tool`, `execution_surface`). The prohibition is intrinsic to approval
+  normalization: any document or pack declaring either as an eligible or
+  required approver normalizes as invalid
+  (`APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE`) and `references_role` fails closed.
+- Rule evaluation fails closed on malformed documents: structural errors while
+  resolving a `when` condition — including operator/value type mismatches such
+  as `equals` on a list or `contains` on a scalar — surface as diagnostics
+  instead of silently skipping the rule. Ordinary missing-path non-matches
+  remain silent. `all` conditions join across shared ancestor collections:
+  predicates traversing the same collection at any depth must be satisfied by
+  the same ancestor element. Pre-normalized approval payloads are re-validated
+  end to end before their roles are read: the payload must satisfy the
+  normalized-approval schema, carry no error diagnostics, expose roles only
+  under a `complete` resolution, and exactly match the canonical payload
+  regenerated from its retained raw source. Structural, semantic, diagnostic,
+  and provenance fields are therefore re-derived rather than believed. Any
+  failure makes `references_role` fail closed.
+- Profile locks reject duplicate entry ids (`PACK_LOCK_DUPLICATE_ID`); packs
+  are capped at 200 rules and compositions at 2000
+  (`PACK_LIMIT_EXCEEDED`); duplicate item ids inside one pack are fatal
+  (`PACK_DUPLICATE_ID`) — merge-by-id applies only across layers.
+- `nornyx profiles resolve` discovers project-local `.nornyx/{profiles,modules}`
+  packs, verifies an existing `nornyx.profiles.lock` (mismatch exits 2), and
+  only rewrites the lock when `--lock` is passed. Composed `required_blocks`,
+  evidence, and approval requirements remain advisory in this release: pack
+  rules carry enforcement, and independent structural diagnosis of contract
+  content is deliberately deferred for backward compatibility.
+- Authoritative packaged v1 data for all 11 built-in profiles while preserving
+  the existing starter golden hashes and legacy Python API shapes.
 - Governed package hardening: built-in deterministic package scanner, normalized
   evidence records, claim-vs-evidence reports, risk scoring, scanner-backed
   manifest/lock metadata, and portal-ready JSON/Markdown reports.

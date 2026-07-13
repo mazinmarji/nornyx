@@ -1,9 +1,0 @@
-name: regulated
-purpose: Enterprise, telecom, money, customer data, or compliance-sensitive project.
-includes:
-  - approval_matrix
-  - egress_control
-  - guardrails
-  - supply_chain
-  - incident_response
-  - audit_evidence

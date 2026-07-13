@@ -135,6 +135,16 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
             )
         )
 
+    core_conflict = (set(eligible) | set(required)) & {"ai_tool", "execution_surface"}
+    if core_conflict:
+        diagnostics.append(
+            _normalization_diagnostic(
+                "APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE",
+                "error",
+                "AI tools and execution surfaces can never be eligible or "
+                f"required approvers: {', '.join(sorted(core_conflict))}.",
+            )
+        )
     denied_all = set(denied_actors) | set(denied_surfaces)
     if set(eligible) & denied_all:
         diagnostics.append(
@@ -349,6 +359,9 @@ def test_rule_semantics_fixture_covers_every_normative_collection_case() -> None
         "collection_used_as_scalar",
         "same_prefix_when_selection",
         "different_prefix_no_join",
+        "nested_under_selected_prefix",
+        "when_type_errors_fail_closed",
+        "shared_ancestor_all_join",
     }
     assert ids == required
     assert next(item for item in cases if item["id"] == "empty_collection_require")["outcome"] == "fail_closed"

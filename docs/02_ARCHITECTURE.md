@@ -9,6 +9,7 @@ current processing path is:
 .nyx contract
   -> YAML-compatible safe parser
   -> hard-coded semantic checker
+  -> optional local profile/module composition and closed-rule checks
   -> deterministic compatibility-artifact generator
 ```
 
@@ -30,10 +31,10 @@ not turn Nornyx into an autonomous execution engine.
   they do not open live connectors, load credentials, or deploy software.
 - The governed-package scanner reads local payloads without executing them.
 
-## Planned governance extension
+## Declarative governance extension
 
-The Declarative Governance Extension Framework is planned as an additive,
-data-only layer:
+The Declarative Governance Extension Framework is implemented as an additive,
+data-only local layer:
 
 ```text
 local profile/module data
@@ -44,9 +45,13 @@ local profile/module data
   -> existing checker and generator surfaces
 ```
 
-In PR 1, this pipeline is a specification and test foundation only. No loader,
-registry, composition engine, rule evaluator, or starter renderer has been
-connected to `nornyx check`, `nornyx init`, or any public API.
+The runtime safely loads schema-validated local YAML, verifies canonical
+content hashes, resolves one profile plus additive modules, composes controls
+monotonically, normalizes approvals, and evaluates the closed rule language.
+`nornyx check` applies composed rules when a contract selects packs;
+`nornyx init` renders authoritative packaged profile fragments. Discovery is
+offline and local only: no network registry, Python entry point, pack-supplied
+code, command execution, or credential access is supported.
 
 ## Deferred and superseded descriptions
 
