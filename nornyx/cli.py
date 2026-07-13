@@ -576,6 +576,11 @@ def _print_pack_error(exc: GovernanceError, *, as_json: bool) -> None:
             print(f"{item.code}: {item.message}")
 
 
+def _absolute_path_without_resolving(path: str | Path) -> Path:
+    candidate = Path(path)
+    return candidate if candidate.is_absolute() else Path.cwd() / candidate
+
+
 def cmd_profiles(args: argparse.Namespace) -> int:
     command = getattr(args, "profiles_command", None)
     as_json = getattr(args, "json", False)
@@ -619,7 +624,7 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             )
             return 0
         if command == "validate":
-            path = Path(args.path).resolve()
+            path = _absolute_path_without_resolving(args.path)
             pack = load_local_pack(path, allowed_root=path.parent)
             payload = {
                 "status": "valid",
@@ -706,7 +711,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_init(args: argparse.Namespace) -> int:
     try:
         if args.profile_path:
-            source = Path(args.profile_path).resolve()
+            source = _absolute_path_without_resolving(args.profile_path)
             pack = load_local_pack(source, allowed_root=source.parent)
             if not isinstance(pack, ProfilePack):
                 raise ValueError("--profile-path must identify a profile pack, not a module.")

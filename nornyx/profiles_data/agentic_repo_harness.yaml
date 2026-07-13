@@ -189,7 +189,6 @@ starter_fragments:
       goal: Create initial Nornyx-governed development baseline.
       scope:
       - project.nyx
-      - profiles/agentic_repo_harness.yaml
       - docs/qa/evidence/GOAL-001/
       non_goals:
       - production deployment
@@ -378,4 +377,4 @@ provenance:
   source_revision: governance-extension-runtime-pr2
 integrity:
   algorithm: sha256
-  content_hash: sha256:a8b3b8bf47ebeb9c509190464949a500237781ac00547fb67dfcca78f1c18b05
+  content_hash: sha256:a49a21ab085d888bb5e5f5eb3aaf29a79b384e0a9b94213065afab4d6120670e
