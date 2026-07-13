@@ -117,7 +117,6 @@ goals:
   goal: Create initial Nornyx-governed development baseline.
   scope:
   - project.nyx
-  - profiles/business_ops.yaml
   - docs/qa/evidence/GOAL-001/
   non_goals:
   - production deployment

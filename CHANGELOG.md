@@ -6,6 +6,19 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## Unreleased
 
+## [1.5.1] - 2026-07-13
+
+### Fixed
+- Explicit profile paths passed to `profiles validate` and
+  `init --profile-path` retain unresolved path components so symlinked files
+  and directories are rejected by the governance pack loader.
+- Pre-normalized approval revalidation catches governance schema errors and
+  fails closed with `RULE_REFERENCE_TYPE_ERROR` instead of aborting
+  `nornyx check`.
+- Generated starters no longer include scope entries for the deleted root
+  `profiles/*.yaml` mirrors. The six affected starter goldens were refreshed
+  as an explicitly approved intentional migration.
+
 ## [1.5.0] - 2026-07-13
 
 ### Added
