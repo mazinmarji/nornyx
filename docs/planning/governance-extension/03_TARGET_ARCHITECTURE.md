@@ -31,7 +31,7 @@ Evaluation of candidate core additions (per brief §3):
 | `Exception` | **Module** (`exception_management`) | Exceptions are only meaningful relative to a rule/control — they belong beside the rules engine, not in the concept dozen. Composition engine understands a *generic* exceptions block shape (doc 06 §6) without making Exception a core concept. |
 | `Risk` | **Attribute, not concept** | risk_tier already appears as a field (governed packages). A Risk noun invites a risk-management product. Rejected. |
 | `Control` | **Rejected** | "Control" is what Policy + Approval + Evidence already jointly express. A separate concept would create two vocabularies for the same thing. |
-| `Architecture` | **Profile** (doc 08) | Domain-specific; fails the universality test. |
+| `Architecture` | **Profile + module** (doc 08, ADR-0030) | Domain-specific; fails the universality test. The optional profile binds declarations while one reusable module supplies shared conformance controls. |
 
 **Conclusion: zero core-concept additions.** The 12 concepts stand. What the
 core *does* gain is engine capability: pack loading, composition, rule
@@ -42,8 +42,8 @@ evaluation — mechanisms, not vocabulary.
 Modules use `nornyx.governance_module.v1`, separate from the profile-pack
 schema. They are declarative and composable; they carry required-block names,
 default policies, required evidence types, approval requirements, structured
-rules, and non-goals. No code. Extension block-schema fragments are deferred
-until the Change Governance PR demonstrates the exact safe contract needed.
+rules, reviewed block-schema bindings, fixed structural checks, and non-goals.
+No code. Inline schemas and custom validators are prohibited.
 
 MVP module set (deliberately small — see audit finding F-07):
 
@@ -54,11 +54,13 @@ MVP module set (deliberately small — see audit finding F-07):
 | `separation_of_duties` | author≠approver rules, role-disjointness constraints |
 | `evidence_integrity` | evidence hash/revision-binding requirements, staleness rules |
 | `exception_management` | governed exception shape: authority, reason, scope, compensating controls, expiry |
+| `architecture_conformance` | declared architecture plus bounded, revision-bound evidence imported from external specialist tools |
 
-Deferred to post-MVP (defined in packs when a profile actually needs them):
-`supply_chain` (should reconcile with the scanner branch's evidence records
-first), `architecture_conformance` (with doc 08), `data_protection`,
-`lifecycle_management`, `release_control`, `incident_response`.
+Stage E closed the remaining candidate list through GSA and ADR-0031. Supply
+chain stays in governed-package scanning and external evidence integration;
+release control is superseded by existing release tooling and shared modules;
+data protection, lifecycle management, and incident response are not required
+after GSA. No seventh module is justified in this program.
 
 ## Layer 3 — Optional domain profiles
 

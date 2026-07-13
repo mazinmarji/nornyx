@@ -1,13 +1,13 @@
 # Appendix — CLI and Developer Experience Specification
 
-Covers brief §11. Preserves all current commands; additions are namespaced
-under the existing `profiles` noun (mirroring how `package` grew subcommands).
+Covers the CLI/public-API workstream. Existing commands remain compatible;
+Stage H may add only bounded local inspection and validation namespaces.
 
 ## Commands
 
 | Command | Behavior | Exit codes |
 |---|---|---|
-| `nornyx profiles` | Unchanged: 11 names, one per line (compat alias for `list`) | 0 |
+| `nornyx profiles` | Current compatibility alias for `list`; 12 names, one per line | 0 |
 | `nornyx profiles list [--json]` | Names + version + status + source tier | 0 |
 | `nornyx profiles inspect <name> [--json]` | Full validated v1 profile, provenance, hash, module deps | 0; 1 unknown name (`PACK_NOT_FOUND`) |
 | `nornyx profiles validate <path> [--json]` | Schema + structural + rule-language validation of one pack file | 0 valid; 1 invalid (diagnostics listed) |
@@ -15,7 +15,10 @@ under the existing `profiles` noun (mirroring how `package` grew subcommands).
 | `nornyx profiles compatibility <p> [<p>...]` | Composed compatibility verdict (conflicts fatal-listed, review-with warned) | 0 compatible; 1 conflicts |
 | `nornyx init --profile <name>` | Unchanged | unchanged |
 | `nornyx init --profile-path <file>` | New: scaffold from explicit pack (validate first, fail-closed) | 0; 1 invalid pack |
-| `nornyx governance analyze <contract>` | Deferred to PR 7 decision gate; not committed here | — |
+| `nornyx modules {list,inspect,validate}` | Stage H target: local module discovery, provenance, dependencies, and validation | 0 valid; 1 invalid/not found |
+| `nornyx governance {resolve,explain,matrix}` | Stage H target: effective controls, lock state, evidence, approvals, exceptions, and provenance | 0 valid; 1 invalid; 2 lock mismatch |
+| `nornyx evidence validate <file>` | Stage H target: bounded local governance-evidence validation | 0 valid; 1 invalid |
+| `nornyx governance analyze` | `not_required_after_GSA`; prohibited for the current program | not implemented |
 
 ## Conventions (matching existing CLI style)
 
@@ -35,5 +38,7 @@ under the existing `profiles` noun (mirroring how `package` grew subcommands).
   `as_posix()` for machine-read fields and native for human lines (current
   mixed behavior in `cli.py` should be normalized to this rule — small,
   documented UX fix).
-- No new top-level nouns beyond `profiles` (and possibly `governance` at PR 7);
-  reject flag proliferation — anything needing >2 new flags goes back to design.
+- New `modules`, `governance`, and `evidence` nouns are limited to the commands
+  above. There is no analysis, execution, network, approval, deployment, or
+  remediation command. Anything needing more than two new flags goes back to
+  design.

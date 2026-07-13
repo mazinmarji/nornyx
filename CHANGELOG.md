@@ -20,6 +20,9 @@ distribution version is independent of the Nornyx **language/schema** version
 - Bounded module block-schema bindings. Packs may select only reviewed schemas
   bundled with Nornyx; inline schemas, remote references, custom validators,
   dynamic code, and unknown structural checks fail closed.
+- Governance Surface Analysis dogfood, one validated advisory completeness
+  matrix for each profile, and a compatibility-preserving profile/module
+  mapping. GSA remains documentation, not a runtime schema or command.
 
 ### Changed
 - Approval authority now explicitly denies autonomous agents, models,
@@ -35,6 +38,11 @@ distribution version is independent of the Nornyx **language/schema** version
 - Architecture analysis remains external: Nornyx imports only a versioned
   local data envelope and never executes tools or infers repository structure.
   Architecture Radar is rejected for the current program by ADR-0030.
+- Specialist candidate placement is closed by ADR-0031: supply-chain controls
+  remain governed-package/external-evidence integrations, release control is
+  superseded by existing release tooling and shared modules, and data
+  protection, common lifecycle, and incident response are not required after
+  GSA. The module catalog is frozen at six for this program.
 
 ## [1.5.2] - 2026-07-13
 

@@ -68,27 +68,41 @@ defined there.
 
 ## Stage E - GSA and Candidate Decisions
 
-Status: in progress.
+Status: implemented.
 
 Complete Governance Surface Analysis for Nornyx and for supply chain, data
 protection, lifecycle, release, and incident response. Each candidate receives
 one final ADR placement: module, profile-local control, external evidence
 contract, existing-tool ownership, rejected, or not required.
 
+The completed matrices, dogfood analysis, priority tuples, and exact placement
+statuses are in docs 17-18 and ADR-0031. GSA remains a documented method with
+validated advisory templates; runtime schema and CLI tooling were not justified.
+
 ## Stage F - Approved Later Modules
 
-Status: blocked on Stage E by design.
+Status: implemented with no additional module.
 
 Implement only candidates that prove reuse by at least two profiles, reconcile
 duplicated existing semantics, close a high-priority control gap, or provide a
 stable evidence contract required by an existing feature.
 
+No candidate passed that gate. Supply-chain controls remain in governed-package
+scanning and external evidence integration; release control is superseded by
+existing release tooling and shared modules; the other candidates are not
+required after GSA. The catalog is frozen at six modules by ADR-0031.
+
 ## Stage G - Profile Integration
 
-Status: planned.
+Status: implemented.
 
 Map each of the 11 existing profiles and `architecture_governance` to only the
 modules justified by its GSA matrix. Preserve one primary profile plus modules.
+
+The 11 established profiles retain empty required-module lists to preserve
+their starters and contracts. Doc 17 records explicit project-level module
+recommendations; `architecture_governance` remains the sole profile with a
+required module because it was introduced with that contract.
 
 ## Stage H - Full Hardening
 

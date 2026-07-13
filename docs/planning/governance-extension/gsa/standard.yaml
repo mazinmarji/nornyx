@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: standard
+what_is_governed: [project_contract, routine_changes, human_review]
+why: Provide a general governed engineering baseline.
+owner: project_owner
+who_may_act: [contract_author, human_reviewer]
+allowed: [author_contract, validate_contract, propose_change]
+denied: [automatic_approval, unreviewed_high_impact_action, production_deployment]
+approval_required: [merge, release]
+evidence: [starter_evidence, review_record]
+stale_or_false_detection: [revision_review, rerun_validation]
+drift_detection: [version_control_diff, generated_drift]
+containment: [no_execution, stop_rules]
+authority_expiry: project_defined
+retirement: supersede_contract_and_archive_evidence
+required_modules: []
+recommended_modules: [human_approval]

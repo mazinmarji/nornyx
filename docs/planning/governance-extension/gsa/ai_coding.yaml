@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: ai_coding
+what_is_governed: [ai_assisted_change, repository_context, tool_plan]
+why: Bound AI-assisted engineering and retain human change authority.
+owner: repository_owner
+who_may_act: [author, reviewer, approved_tool]
+allowed: [plan, propose_patch, validate, review]
+denied: [secret_disclosure, automatic_approval, production_write]
+approval_required: [merge, policy_change, connector_write]
+evidence: [patch_diff, test_report, risk_update, approval_record]
+stale_or_false_detection: [revision_binding, scope_hash, artifact_hash]
+drift_detection: [ci_check, generated_drift]
+containment: [bounded_tools, rollback_plan, stop_rules]
+authority_expiry: approval_expiry_and_invalidation
+retirement: close_or_cancel_change_and_archive_evidence
+required_modules: []
+recommended_modules: [change_control]

@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: minimal
+what_is_governed: [project_contract, repository_edits]
+why: Preserve a small safe starter without implying domain enforcement.
+owner: project_owner
+who_may_act: [contract_author, human_reviewer]
+allowed: [author_contract, validate_contract, review_change]
+denied: [automatic_approval, production_deployment, secret_disclosure]
+approval_required: [high_impact_project_action]
+evidence: [starter_evidence, validation_result]
+stale_or_false_detection: [human_review, rerun_validation]
+drift_detection: [version_control_diff]
+containment: [no_execution, bounded_budget, stop_rules]
+authority_expiry: project_defined
+retirement: remove_or_supersede_contract_in_version_control
+required_modules: []
+recommended_modules: []

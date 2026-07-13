@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: regulated
+what_is_governed: [regulated_contract_change, evidence, approval, package_input]
+why: Preserve reviewable controls where external obligations apply.
+owner: accountable_governance_owner
+who_may_act: [author, independent_reviewer, risk_owner]
+allowed: [propose_change, validate, approve_with_evidence]
+denied: [self_approval, automatic_approval, unevidenced_release]
+approval_required: [merge, release, exception]
+evidence: [change_record, independent_review, external_compliance_evidence]
+stale_or_false_detection: [hash, revision_binding, expiry, independent_review]
+drift_detection: [ci_check, lock_verification, package_scan]
+containment: [fail_closed, rollback_plan, expiring_exception]
+authority_expiry: explicit_approval_and_exception_expiry
+retirement: close_change_and_retain_required_records
+required_modules: []
+recommended_modules: [change_control, architecture_conformance]

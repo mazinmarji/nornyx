@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: finance_ops
+what_is_governed: [finance_contract_change, segregation_of_duties, evidence]
+why: Bound optional finance governance without operating financial systems.
+owner: finance_governance_owner
+who_may_act: [change_author, independent_reviewer, accountable_authority]
+allowed: [propose_contract_change, validate, approve_with_evidence]
+denied: [financial_transaction, self_approval, automatic_release]
+approval_required: [high_risk_change, release, exception]
+evidence: [change_record, independent_review, external_finance_evidence]
+stale_or_false_detection: [revision_binding, expiry, disjoint_review]
+drift_detection: [ci_check, external_control_feedback]
+containment: [no_financial_operations, rollback, expiring_exception]
+authority_expiry: explicit_approval_and_exception_expiry
+retirement: close_change_and_retain_governance_records
+required_modules: []
+recommended_modules: [change_control]

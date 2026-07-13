@@ -24,6 +24,13 @@ Selecting `architecture_conformance` resolves all six modules in the order
 shown. Executable contracts are `examples/governance_foundations.nyx` and
 `examples/architecture_governance.nyx`.
 
+ADR-0031 freezes this catalog at six modules for the current program. GSA found
+no reusable seventh module: supply-chain controls retain their scanner and
+external-evidence owner, release control is superseded by existing tooling,
+and data protection, common lifecycle, and incident response are not required
+after GSA. Their documented re-entry conditions require new evidence and human
+review; none is merely deferred inside this roadmap.
+
 ## Evidence Semantics
 
 `nornyx.governance_evidence.v1` records producer identity, artifact location,

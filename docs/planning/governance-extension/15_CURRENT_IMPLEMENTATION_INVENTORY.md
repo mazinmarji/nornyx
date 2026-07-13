@@ -37,12 +37,12 @@ authority for real symlink behavior.
 | Exception model | Absent | planning semantics only | implement one non-core model |
 | Governance evidence model | Partial: scanner records and old evidence scaffold are separate | scanner and `evidence.py` | add one revision-bound normalized contract; preserve old scaffold API |
 | Architecture governance | Implemented in Stage D | module, optional profile, declaration/evidence/report schemas, neutral-envelope importer, starter, executable example, adversarial tests | retain boundary; Architecture Radar rejected by ADR-0030 |
-| Supply-chain placement | Partial inside governed packages/scanner | scanner and package evidence importers | GSA and final ADR; do not duplicate scanners |
-| Data-protection placement | Absent as composed governance | profile policy text only | GSA before module decision |
-| Lifecycle placement | Fragmented across existing object-specific models | lifecycle extension docs/tooling | GSA; avoid competing lifecycle fields |
-| Release placement | Existing local release-readiness tooling, no governance module | release readiness runtime/tests | GSA and reconcile, not parallelize |
-| Incident placement | Existing extension blocks/advisory docs, no composed module | checker extension list and incident docs | GSA before module decision |
-| GSA method | Planned/advisory | planning document 09 | complete method and dogfood; tooling only if justified |
+| Supply-chain placement | `implemented_as_external_evidence_integration` | scanner, governed-package gates, and package evidence importers | retained in its existing owner; no duplicate module |
+| Data-protection placement | `not_required_after_GSA` | profile-local no-secrets/no-PII/model-exposure controls | organizational privacy evidence remains external until a stable shared contract exists |
+| Lifecycle placement | `not_required_after_GSA` | object-specific change, approval, exception, architecture, package, and release states | no competing common state machine |
+| Release placement | `superseded` | local release-readiness/stabilization runtime plus shared governance modules | no parallel release module |
+| Incident placement | `not_required_after_GSA` | operational systems and existing advisory profile language | re-entry requires two profiles and a stable evidence envelope |
+| GSA method | Implemented as documented method and validated advisory matrices | docs 09, 17-18, `gsa/*.yaml`, ADR-0031, tests | no runtime schema or CLI justified |
 | Module CLI | Absent | only `profiles` commands exist | add only list/inspect/validate |
 | Governance explain/matrix CLI | Partial via `profiles resolve` | CLI and composition output | add only if needed for provenance/mapping |
 | Evidence validation CLI | Absent | package import is scanner-specific | add bounded local validation |
@@ -83,10 +83,12 @@ Every stage must be green before the next stage. A Critical or High finding,
 core revision, compatibility break, arbitrary expression requirement, external
 execution requirement, or unbound evidence requirement stops the program.
 
-## Progress Through Stage D
+## Progress Through Stage G
 
-Stages A through D are implemented. The branch now contains six reusable
+Stages A through G are implemented. The branch now contains six reusable
 modules, the shared change model, governed-package delegation, the optional
-`architecture_governance` profile, and bounded architecture evidence import.
-The initial 1.5.2 inventory above remains the baseline record; later rows are
-updated as program decisions close.
+`architecture_governance` profile, bounded architecture evidence import,
+complete GSA decisions, and a compatibility-preserving mapping for every
+profile. No later specialist module passed the proliferation gate. The initial
+1.5.2 inventory above remains the baseline record; later rows are updated as
+program decisions close.
