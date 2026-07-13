@@ -394,8 +394,8 @@ def test_approval_shapes_normalize_losslessly_to_the_draft_internal_contract() -
 
 def test_current_main_starter_goldens_are_complete_hashed_and_deterministic() -> None:
     manifest = _json(GOLDEN / "manifest.json")
-    assert manifest["source_commit"] == "5fc1806fedb46e221eaa48a5129174e9a1a9d6f4"
-    assert manifest["nornyx_version"] == __version__ == "1.4.0"
+    assert manifest["source_commit"] == "b919f6f21de416275e0f2687c47d17c663bf7c24"
+    assert manifest["nornyx_version"] == __version__ == "1.5.0"
     assert manifest["profile_order"] == PROFILE_NAMES
     assert {entry["profile"] for entry in manifest["profiles"]} == set(PROFILE_NAMES)
 
