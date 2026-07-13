@@ -97,6 +97,7 @@ complete GSA decisions, and a compatibility-preserving mapping for every
 profile. No later specialist module passed the proliferation gate. CLI/API,
 compatibility, security, build, and installed-wheel assurance are complete.
 The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
-the authoritative item-by-item final status record, and report 22 returns
-`GO`. Human approval of release candidate `2189bb3` was recorded explicitly on
-2026-07-13; operational release actions remain separately unauthorized.
+the authoritative item-by-item final status record. A later PR #30 review
+superseded the prior `GO` and candidate approval with four blocking findings;
+their corrections are implemented locally and await Linux verification plus a
+fresh audit. Operational release actions remain unauthorized.

@@ -182,6 +182,7 @@ def test_foundational_governance_accepts_a_complete_local_contract(tmp_path: Pat
         ("missing_revision", "APPROVAL_REVISION_BINDING_REQUIRED"),
         ("expired_approval", "APPROVAL_EXPIRED"),
         ("non_human_accountable", "APPROVAL_NON_HUMAN_AUTHORITY"),
+        ("non_string_accountable", "APPROVAL_DECLARATION_INVALID"),
         ("approval_evidence_reference", "APPROVAL_EVIDENCE_MISSING"),
         ("evidence_revision", "EVIDENCE_REVISION_MISMATCH"),
         ("evidence_hash", "EVIDENCE_ARTIFACT_HASH_MISMATCH"),
@@ -215,6 +216,8 @@ def test_foundational_checks_fail_closed(
         document["approvals"][0]["expires_at"] = "2026-05-01T00:00:00Z"
     elif mutation == "non_human_accountable":
         document["approvals"][0]["accountable_authority"] = "tool:approval_bot"
+    elif mutation == "non_string_accountable":
+        document["approvals"][0]["accountable_authority"] = 123
     elif mutation == "approval_evidence_reference":
         document["approvals"][0]["required_evidence"] = ["missing-approval-record"]
     elif mutation == "evidence_revision":

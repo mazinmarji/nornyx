@@ -13,9 +13,12 @@ prose goal fields, and boolean approval requirements use different shapes.
 
 A loss-aware internal `nornyx.normalized_approval.v1` representation records
 roles, denials, evidence, actions, timing, authority, revision binding,
-invalidation, expiry, diagnostics, and the full raw source. Known governed-
-package role aliases map deterministically. Unknown role-bearing fields and
-contradictions fail normalization. No default approver is invented.
+the independent exact-revision requirement, invalidation, relative and
+absolute expiry, diagnostics, and the full raw source. Known governed-package
+role aliases map deterministically. Unknown role-bearing fields, non-string
+accountable authority, and contradictions fail normalization. No default
+approver is invented. Composition intersects non-empty eligibility sets and
+fails when layers have no common eligible human role.
 
 ## Consequences
 

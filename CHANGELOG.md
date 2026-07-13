@@ -35,6 +35,15 @@ distribution version is independent of the Nornyx **language/schema** version
   trust boundary.
 
 ### Changed
+- Project contract checking now rejects every unresolved symlink component
+  before reading the contract or discovering project governance packs.
+- Approval composition intersects non-empty eligible human-role sets and fails
+  on disjoint or required-role conflicts instead of broadening authority.
+- Normalized approval output now retains `exact_revision_required` and
+  relative `expires_after` independently from concrete revision bindings and
+  absolute expiry timestamps.
+- Approval normalization rejects non-string or empty accountable authority
+  instead of coercing it into an apparent human identity.
 - Approval authority now explicitly denies autonomous agents, models,
   connectors, and generated output in addition to AI tools and execution
   surfaces. Claimed normalized approvals are still fully re-derived from their

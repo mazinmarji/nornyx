@@ -62,9 +62,10 @@ All accepted capabilities have a final placement. The six-module catalog is
 frozen for this program. No source-analysis engine, remote registry, executable
 plugin, automatic approval, deployment, or specialist-tool execution was added.
 
-Report 22 independently audits this matrix and returns `GO`. Release
+Report 22 records the original audit and the superseding PR #30 blocking
+review. The four corrections await external verification and fresh audit.
+Release
 publication, tagging, deployment, promotion, and PR merge are not program
 implementation items and remain prohibited without explicit human release
-authorization. The prepared release candidate records that approval as
-an explicit human decision for release review only. Merge, tag, publication,
-deployment, and promotion remain unauthorized.
+authorization. The prior candidate approval does not transfer to corrected
+code. Merge, tag, publication, deployment, and promotion remain unauthorized.

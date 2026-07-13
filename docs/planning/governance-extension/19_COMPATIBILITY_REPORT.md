@@ -40,6 +40,14 @@ records its new byte hash, additive classification, exact reason, approval
 context, and changelog location. The eleven 1.5.2 profile starters retain their
 existing hashes and semantics.
 
+The PR #30 blocking review required `exact_revision_required` and
+`expires_after` to appear in normalized effective approval reporting. The
+`governance_explain` canonical hash therefore changes from
+`651fd74c369080e28b6599e8ad608a6a59d40170d1c63c3d6507eeb56ac7afb8` to
+`dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3`.
+The corpus records the exact additive paths, unchanged exit code, reason,
+review approval, and changelog location. No field was removed.
+
 Governance modules, schemas, commands, examples, and advisory GSA matrices are
 additive. Existing free-form `project.profile` values retain warning-and-pass
 behavior; explicit module selection remains fail closed. Existing profile

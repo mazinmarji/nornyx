@@ -100,14 +100,16 @@ def test_final_audit_and_release_candidate_are_explicit() -> None:
     roadmap = ROADMAP.read_text(encoding="utf-8")
     candidate = RELEASE_CANDIDATE.read_text(encoding="utf-8")
 
-    assert "## Verdict\n\n`GO`" in audit
+    assert "## Verdict\n\n`NO-GO`" in audit
     assert (
-        "Status: implemented; human approval of the release candidate is recorded."
+        "Status: corrections implemented locally; external verification is pending."
         in roadmap
     )
-    assert "Human release-candidate approval: **recorded**." in candidate
-    assert "Approved candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`" in candidate
-    assert "readiness for human release review only" in candidate
+    assert (
+        "Human release-candidate approval: **not recorded for the corrected candidate**."
+        in candidate
+    )
+    assert "A-012" in audit and "A-015" in audit
     assert "532 passed" in audit and "522 passed, 10 skipped" in audit
 
 

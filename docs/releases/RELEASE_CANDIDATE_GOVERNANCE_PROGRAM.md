@@ -4,11 +4,12 @@
 
 - Package version: `1.5.2`
 - Baseline main: `95952226999327458c6fea81cb32d82539bcae5b`
-- Candidate commit: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
+- Superseded candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
+- Corrected candidate: pending committed review corrections
 - Branch: `codex/complete-governance-program`
 - Pull request: `https://github.com/mazinmarji/nornyx/pull/30`
-- Status: ready for human release review
-- Independent audit: `GO`
+- Status: blocked pending corrected Linux evidence and fresh audit
+- Independent audit: `NO-GO`
 
 ## Included Program
 
@@ -37,11 +38,11 @@ approval, deploy, publish, or remediate.
 | Twine | source and wheel pass |
 | Installed wheel | 12 profiles, 6 modules, network false, pass |
 | PR review threads | none |
-| Independent audit | `GO` |
+| Independent audit | `NO-GO` pending corrected external evidence |
 
-Approval-gated reruns report release readiness at 9 passed, RC stabilization
-at 15 passed, and stable-language validation at 24 passed, with zero warnings,
-blockers, or remaining approval requirements.
+Non-approved reruns report release readiness at 8 passed, RC stabilization at
+13 passed, and stable-language validation at 21 passed, with zero warnings or
+blockers and explicit human approval still required.
 
 ## Residual Maintenance
 
@@ -52,12 +53,12 @@ Both are Low, nonblocking maintenance observations in report 22.
 
 ## Approval Record
 
-Human release-candidate approval: **recorded**.
+Human release-candidate approval: **not recorded for the corrected candidate**.
 
 - Date: 2026-07-13
-- Approved candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
-- Scope: readiness for human release review only
-- Source: explicit approval in the authoritative Codex task
+- Superseded approval: candidate `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
+- Reason: later PR #30 blocking review found four mandatory corrections
+- Required next decision: fresh human review after corrected audit evidence
 
 This candidate does not authorize merging PR #30, tagging, PyPI publication,
 deployment, promotion, or any operational action. Those actions require an

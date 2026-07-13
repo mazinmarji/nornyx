@@ -187,6 +187,19 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
             )
         )
 
+    accountable_authority = source.get("accountable_authority")
+    if accountable_authority is not None and (
+        not isinstance(accountable_authority, str) or not accountable_authority
+    ):
+        diagnostics.append(
+            _normalization_diagnostic(
+                "APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID",
+                "error",
+                "Approval accountable authority must be a non-empty source string.",
+            )
+        )
+        accountable_authority = None
+
     if shape in {"ordinary_approval", "generated_profile_approval"}:
         normalized_id = str(source.get("name", case["id"]))
         resolution = "complete"
@@ -220,9 +233,11 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
         "required_evidence": evidence,
         "actions_requiring_approval": actions,
         "timing": timing,
-        "accountable_authority": source.get("accountable_authority"),
+        "accountable_authority": accountable_authority,
         "revision_binding": source.get("revision_binding"),
+        "exact_revision_required": source.get("exact_revision_required", False),
         "invalidation_conditions": list(source.get("invalidation_conditions", [])),
+        "expires_after": source.get("expires_after"),
         "expires_at": source.get("expires_at"),
         "resolution": resolution,
         "normalization_diagnostics": diagnostics,

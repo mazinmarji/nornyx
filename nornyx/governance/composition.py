@@ -179,7 +179,7 @@ def _normalize_pack_approval(item: Mapping[str, Any], *, source_id: str, index: 
 
 
 def _merge_approval(existing: NormalizedApproval, incoming: NormalizedApproval) -> NormalizedApproval:
-    for field in ("timing", "accountable_authority", "expires_at"):
+    for field in ("timing", "accountable_authority", "expires_after", "expires_at"):
         left = getattr(existing, field)
         right = getattr(incoming, field)
         if left not in (None, "unspecified") and right not in (None, "unspecified") and left != right:
@@ -192,7 +192,24 @@ def _merge_approval(existing: NormalizedApproval, incoming: NormalizedApproval) 
             "PACK_MONOTONICITY_APPROVAL",
             f"Approval {existing.id!r} has conflicting revision bindings.",
         )
-    eligible_roles = _ordered_union(existing.eligible_roles, incoming.eligible_roles)
+    if existing.eligible_roles and incoming.eligible_roles:
+        incoming_roles = set(incoming.eligible_roles)
+        eligible_roles = tuple(
+            role for role in existing.eligible_roles if role in incoming_roles
+        )
+        if not eligible_roles:
+            raise error(
+                "PACK_MONOTONICITY_APPROVAL",
+                f"Approval {existing.id!r} has disjoint eligible-role restrictions.",
+            )
+    else:
+        eligible_roles = existing.eligible_roles or incoming.eligible_roles
+    required_roles = _ordered_union(existing.required_roles, incoming.required_roles)
+    if required_roles and not set(required_roles) <= set(eligible_roles):
+        raise error(
+            "PACK_MONOTONICITY_APPROVAL",
+            f"Approval {existing.id!r} requires a role excluded by another layer.",
+        )
     denied_actor_types = _ordered_union(
         existing.denied_actor_types,
         incoming.denied_actor_types,
@@ -214,7 +231,7 @@ def _merge_approval(existing: NormalizedApproval, incoming: NormalizedApproval) 
     }
     return NormalizedApproval(
         id=existing.id,
-        required_roles=_ordered_union(existing.required_roles, incoming.required_roles),
+        required_roles=required_roles,
         eligible_roles=eligible_roles,
         denied_actor_types=denied_actor_types,
         denied_execution_surfaces=denied_execution_surfaces,
@@ -226,10 +243,14 @@ def _merge_approval(existing: NormalizedApproval, incoming: NormalizedApproval) 
         timing=existing.timing if existing.timing != "unspecified" else incoming.timing,
         accountable_authority=existing.accountable_authority or incoming.accountable_authority,
         revision_binding=existing.revision_binding or incoming.revision_binding,
+        exact_revision_required=(
+            existing.exact_revision_required or incoming.exact_revision_required
+        ),
         invalidation_conditions=_ordered_union(
             existing.invalidation_conditions,
             incoming.invalidation_conditions,
         ),
+        expires_after=existing.expires_after or incoming.expires_after,
         expires_at=existing.expires_at or incoming.expires_at,
         resolution="complete",
         diagnostics=existing.diagnostics + incoming.diagnostics,

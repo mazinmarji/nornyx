@@ -179,7 +179,9 @@ class NormalizedApproval:
     timing: str
     accountable_authority: str | None
     revision_binding: Mapping[str, Any] | None
+    exact_revision_required: bool
     invalidation_conditions: tuple[str, ...]
+    expires_after: str | None
     expires_at: str | None
     resolution: str
     diagnostics: tuple[GovernanceDiagnostic, ...]
@@ -201,7 +203,9 @@ class NormalizedApproval:
             "timing": self.timing,
             "accountable_authority": self.accountable_authority,
             "revision_binding": deepcopy(dict(self.revision_binding)) if self.revision_binding else None,
+            "exact_revision_required": self.exact_revision_required,
             "invalidation_conditions": list(self.invalidation_conditions),
+            "expires_after": self.expires_after,
             "expires_at": self.expires_at,
             "resolution": self.resolution,
             "normalization_diagnostics": [

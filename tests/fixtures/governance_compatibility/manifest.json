@@ -72,7 +72,7 @@
       {"id": "profiles_list", "argv": ["profiles", "list", "--json"], "exit": 0, "sha256": "345d53ab4d0bf714fca9bb2d72495f940ca66a0b583f6cfc2f0cac9dd3a760b6"},
       {"id": "modules_list", "argv": ["modules", "list", "--json"], "exit": 0, "sha256": "03a49a90f41514b4c4356df752167f38786e435f9b1a543776ad29552415b792"},
       {"id": "modules_inspect", "argv": ["modules", "inspect", "change_control", "--json"], "exit": 0, "sha256": "917eb65494dae367f1c6d6d13d2605999469744512d4cb918f250dbd9b779bfd"},
-      {"id": "governance_explain", "argv": ["governance", "explain", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "651fd74c369080e28b6599e8ad608a6a59d40170d1c63c3d6507eeb56ac7afb8"},
+      {"id": "governance_explain", "argv": ["governance", "explain", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3"},
       {"id": "governance_matrix", "argv": ["governance", "matrix", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "f15375cbbdccec43f49f8e342eb7076c35e591923deeef24728167ae6873dad1"},
       {"id": "module_not_found", "argv": ["modules", "inspect", "missing_module", "--json"], "exit": 1, "sha256": "7b46d935d67913bdb2c61ea9c31d9d7407dec759a88aec093b1e0c842a9fe0a1"}
     ]
@@ -85,6 +85,20 @@
       "new_hash": "sha256:0bc6b7e5c9363b6f95a0ef858b2abe57cc1fc4025d6dcb6c610f6d7e8dc5ada0",
       "reason": "Additive new profile; no prior starter existed.",
       "approval": "Approved architecture-governance program scope",
+      "changelog": "CHANGELOG.md#unreleased"
+    },
+    {
+      "surface": "governance_explain normalized approval requirements",
+      "classification": "intentional_migration_requiring_approval",
+      "old_hash": "sha256:651fd74c369080e28b6599e8ad608a6a59d40170d1c63c3d6507eeb56ac7afb8",
+      "new_hash": "sha256:dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3",
+      "diff": [
+        "Add exact_revision_required=true and expires_after=PT24H to the canonical change_authority, exception_authority, and governance_authority entries under approval_requirements.",
+        "Add the same two fields to those entries under effective.approval_requirements; source.raw already retained them.",
+        "Remove no field and preserve the command exit code at 0."
+      ],
+      "reason": "The PR #30 blocking review requires declared exact-revision and relative-expiry controls to remain visible in the normalized effective model and explain report.",
+      "approval": "PR #30 blocking review PRR_kwDOTG1_j88AAAABF17htA, submitted by the human repository owner on 2026-07-13.",
       "changelog": "CHANGELOG.md#unreleased"
     }
   ]

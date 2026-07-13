@@ -16,6 +16,7 @@ from nornyx.governance.locks import lock_for_packs
 from nornyx.governance.locks import write_lock
 from nornyx.governance.projection import project_profile_to_v03
 from nornyx.governance.registry import GovernanceRegistry
+from nornyx.governance.reporting import build_governance_report
 from nornyx.governance.rules import evaluate_rule
 from nornyx.governance.schemas import canonical_pack_hash, validate_payload
 from nornyx.cli import main
@@ -413,6 +414,104 @@ def test_composition_rejects_cross_module_approval_weakening(tmp_path: Path) -> 
     assert _codes(weakening.value) == {"APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE"}
 
 
+def test_composition_does_not_union_disjoint_human_eligibility(
+    tmp_path: Path,
+) -> None:
+    base = _yaml("valid_module_v1.yaml")
+    base["rules"] = []
+    for identity, role in (("a_architect", "architect"), ("b_reviewer", "reviewer")):
+        payload = deepcopy(base)
+        payload["id"] = f"org.example.{identity}"
+        payload["name"] = identity
+        payload["approval_requirements"] = [
+            {
+                "id": "merge_gate",
+                "required_roles": [role],
+                "eligible_roles": [role],
+                "denied_actor_types": [],
+                "required_evidence": [],
+                "actions": ["merge"],
+                "timing": "before_merge",
+            }
+        ]
+        _write_pack(tmp_path / f"{identity}.yaml", payload)
+
+    registry = GovernanceRegistry()
+    registry.register_directory(tmp_path, source_tier="project")
+    with pytest.raises(GovernanceError) as conflict:
+        compose_governance(
+            registry,
+            profile_identity=None,
+            module_ids=["a_architect", "b_reviewer"],
+        )
+    assert _codes(conflict.value) == {"PACK_MONOTONICITY_APPROVAL"}
+
+
+def test_composition_intersects_overlapping_human_eligibility(
+    tmp_path: Path,
+) -> None:
+    base = _yaml("valid_module_v1.yaml")
+    base["rules"] = []
+    for identity, eligible in (
+        ("a_broad", ["architect", "reviewer"]),
+        ("b_narrow", ["architect", "security_reviewer"]),
+    ):
+        payload = deepcopy(base)
+        payload["id"] = f"org.example.{identity}"
+        payload["name"] = identity
+        payload["approval_requirements"] = [
+            {
+                "id": "merge_gate",
+                "required_roles": ["architect"],
+                "eligible_roles": eligible,
+                "denied_actor_types": [],
+                "required_evidence": [],
+                "actions": ["merge"],
+                "timing": "before_merge",
+            }
+        ]
+        _write_pack(tmp_path / f"{identity}.yaml", payload)
+
+    registry = GovernanceRegistry()
+    registry.register_directory(tmp_path, source_tier="project")
+    composition = compose_governance(
+        registry,
+        profile_identity=None,
+        module_ids=["a_broad", "b_narrow"],
+    )
+    approval = next(
+        item for item in composition.approval_requirements if item.id == "merge_gate"
+    )
+    assert approval.eligible_roles == ("architect",)
+
+
+def test_effective_approval_retains_revision_and_relative_expiry_requirements() -> None:
+    registry = GovernanceRegistry.builtins()
+    composition = compose_governance(
+        registry,
+        profile_identity="architecture_governance",
+    )
+    approval = next(
+        item
+        for item in composition.approval_requirements
+        if item.id == "architecture_authority"
+    )
+    assert approval.exact_revision_required is True
+    assert approval.expires_after == "P7D"
+
+    report = build_governance_report(
+        {"project": {"name": "Architecture", "profile": "architecture_governance"}},
+        registry=registry,
+    )
+    reported = next(
+        item
+        for item in report["approval_requirements"]
+        if item["id"] == "architecture_authority"
+    )
+    assert reported["exact_revision_required"] is True
+    assert reported["expires_after"] == "P7D"
+
+
 def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
     # F1: an AI tool or execution surface can never normalize as an eligible
     # or required approver, so references_role fails closed on such gates.
@@ -556,6 +655,8 @@ def _genuine_normalized_approval() -> dict[str, Any]:
             "denied_approver_types": ["ai_tool"],
             "required_evidence": ["review_record"],
             "required_for": ["merge"],
+            "exact_revision_required": True,
+            "expires_after": "PT24H",
         },
         shape="generated_profile_approval",
         path="approvals[0]",
@@ -571,6 +672,8 @@ def _genuine_normalized_approval() -> dict[str, Any]:
         "missing_resolution",
         "missing_required_roles",
         "missing_eligible_roles",
+        "missing_exact_revision_required",
+        "missing_expires_after",
         "roles_as_mapping",
         "roles_as_null",
         "non_string_role_entry",
@@ -587,6 +690,7 @@ def _genuine_normalized_approval() -> dict[str, Any]:
         "source_roles_removed",
         "source_shape_diverges",
         "canonical_roles_diverge_from_source",
+        "canonical_requirement_diverges_from_source",
     ],
 )
 def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
@@ -610,6 +714,14 @@ def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
         },
         "missing_eligible_roles": {
             key: value for key, value in base.items() if key != "eligible_roles"
+        },
+        "missing_exact_revision_required": {
+            key: value
+            for key, value in base.items()
+            if key != "exact_revision_required"
+        },
+        "missing_expires_after": {
+            key: value for key, value in base.items() if key != "expires_after"
         },
         "roles_as_mapping": {**base, "eligible_roles": {"reviewer": False}},
         "roles_as_null": {**base, "required_roles": None},
@@ -649,6 +761,11 @@ def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
             **base,
             "required_roles": [],
             "eligible_roles": ["admin"],
+        },
+        "canonical_requirement_diverges_from_source": {
+            **base,
+            "exact_revision_required": False,
+            "expires_after": "P7D",
         },
     }
     payload = mutations[mutation_id]

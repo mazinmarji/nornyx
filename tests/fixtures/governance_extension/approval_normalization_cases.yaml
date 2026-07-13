@@ -47,7 +47,9 @@
       kind: git
       revision: abc123
       exact: true
+    exact_revision_required: true
     invalidation_conditions: [revision_change, scope_change]
+    expires_after: PT24H
     expires_at: "2026-12-31T23:59:59Z"
   expected_resolution: complete
 - id: contract_reference
@@ -55,6 +57,16 @@
   path: contracts[0].approval
   source: HumanMergeApproval
   expected_resolution: reference_only
+- id: invalid_accountable_authority
+  shape: ordinary_approval
+  path: approvals[0]
+  source:
+    name: InvalidAuthority
+    required_roles: [reviewer]
+    eligible_roles: [reviewer]
+    accountable_authority: 123
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID
 - id: goal_text
   shape: legacy_goal_text
   path: goals[0].approval

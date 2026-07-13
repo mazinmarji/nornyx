@@ -79,7 +79,11 @@ this permission surface requires a new ADR.
 - Required evidence: accumulate. Mandatory core evidence and module-required
   evidence cannot be dropped; contracts can add.
 - Approvals: accumulate; approval gates can gain required evidence and
-  approver restrictions, never lose them. `denied_approver_types` core set
+  approver restrictions, never lose them. Non-empty eligible-role sets
+  intersect; disjoint sets or required roles excluded by another layer are
+  fatal conflicts. Exact-revision requirements combine with logical OR, while
+  conflicting non-empty relative expiry requirements fail closed.
+  `denied_approver_types` core set
   (`ai_tool`, `execution_surface` — matching shipped governed-package
   semantics) is always present and non-removable.
 - Non-goals / safety boundary: the core safety non-goals list (today's

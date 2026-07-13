@@ -218,6 +218,46 @@ def normalize_approval(
             )
         )
 
+    accountable_authority = source.get("accountable_authority")
+    if accountable_authority is not None and (
+        not isinstance(accountable_authority, str) or not accountable_authority
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID",
+                "error",
+                "Approval accountable authority must be a non-empty source string.",
+                path,
+            )
+        )
+        accountable_authority = None
+
+    exact_revision_required = source.get("exact_revision_required", False)
+    if not isinstance(exact_revision_required, bool):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_EXACT_REVISION_REQUIREMENT_INVALID",
+                "error",
+                "exact_revision_required must be a boolean.",
+                path,
+            )
+        )
+        exact_revision_required = False
+
+    expires_after = source.get("expires_after")
+    if expires_after is not None and (
+        not isinstance(expires_after, str) or not expires_after
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_EXPIRY_REQUIREMENT_INVALID",
+                "error",
+                "expires_after must be a non-empty duration string.",
+                path,
+            )
+        )
+        expires_after = None
+
     if shape in {"ordinary_approval", "generated_profile_approval"}:
         normalized_id = str(source.get("name", fallback_id))
         resolution = "complete"
@@ -251,17 +291,15 @@ def normalize_approval(
         required_evidence=evidence,
         actions_requiring_approval=actions,
         timing=str(source.get("timing", timing)),
-        accountable_authority=(
-            str(source["accountable_authority"])
-            if source.get("accountable_authority") is not None
-            else None
-        ),
+        accountable_authority=accountable_authority,
         revision_binding=(
             immutable_mapping(revision_binding)
             if isinstance(revision_binding, Mapping)
             else None
         ),
+        exact_revision_required=exact_revision_required,
         invalidation_conditions=tuple(str(item) for item in _as_values(source.get("invalidation_conditions"))),
+        expires_after=expires_after,
         expires_at=str(source["expires_at"]) if source.get("expires_at") is not None else None,
         resolution=resolution,
         diagnostics=tuple(diagnostics),

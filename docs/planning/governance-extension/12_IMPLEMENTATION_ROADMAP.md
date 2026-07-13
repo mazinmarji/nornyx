@@ -124,14 +124,16 @@ nonblocking deprecation warning with a 2027 deadline.
 
 ## Stage I - Program Closure
 
-Status: implemented; human approval of the release candidate is recorded.
+Status: corrections implemented locally; external verification is pending.
 
 Reports 16-22 reconcile every roadmap item to an unambiguous final status. The
-release candidate is prepared without publication, report 22 returns exact
-`GO`, no mandatory roadmap remainder exists, and PR #30 has no review thread.
-Human release-candidate approval was recorded explicitly after the automated
-evidence and audit completed. It does not authorize an operational release
-action.
+release candidate was prepared without publication and no mandatory roadmap
+remainder exists. Report 22 now records the superseding PR #30 `NO-GO` review
+and its locally implemented corrections.
+The approval of candidate `2189bb3` was superseded by the later PR #30
+blocking review. A corrected candidate requires fresh Linux evidence,
+independent audit, and human review. No operational release action is
+authorized.
 
 ## Rollback and Review
 

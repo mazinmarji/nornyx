@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from .composition import compose_governance
 from .errors import GovernanceError, error
+from .loader import _reject_symlink_components
 from .locks import load_lock
 from .models import CompositionResult, GovernanceDiagnostic
 from .registry import GovernanceRegistry
@@ -13,11 +14,28 @@ from .schemas import validate_governance_block
 from .structural import evaluate_structural_checks
 
 
-def registry_for_directory(root: str | Path) -> GovernanceRegistry:
+def _absolute_without_resolving(path: Path) -> Path:
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def registry_for_directory(
+    root: str | Path,
+    *,
+    trust_root: str | Path | None = None,
+) -> GovernanceRegistry:
     registry = GovernanceRegistry.builtins()
-    project_root = Path(root)
-    if not project_root.is_absolute():
-        project_root = Path.cwd() / project_root
+    project_root = _absolute_without_resolving(Path(root))
+    inspection_root = (
+        project_root
+        if trust_root is None
+        else _absolute_without_resolving(Path(trust_root))
+    )
+    _reject_symlink_components(
+        project_root,
+        inspection_root,
+        code_prefix="PACK",
+        noun="Project",
+    )
     nornyx_root = project_root / ".nornyx"
     for directory_name in ("profiles", "modules"):
         directory = nornyx_root / directory_name
@@ -25,13 +43,22 @@ def registry_for_directory(root: str | Path) -> GovernanceRegistry:
             registry.register_directory(
                 directory,
                 source_tier="project",
-                trust_root=project_root,
+                trust_root=inspection_root,
             )
     return registry
 
 
 def registry_for_contract(path: str | Path) -> GovernanceRegistry:
-    return registry_for_directory(Path(path).resolve().parent)
+    supplied = Path(path)
+    contract = _absolute_without_resolving(supplied)
+    trust_root = Path(contract.anchor) if supplied.is_absolute() else Path.cwd()
+    _reject_symlink_components(
+        contract,
+        trust_root,
+        code_prefix="PACK",
+        noun="Contract",
+    )
+    return registry_for_directory(contract.parent, trust_root=trust_root)
 
 
 def compose_document_governance(

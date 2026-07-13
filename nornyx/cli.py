@@ -92,13 +92,18 @@ REMOTE_SOURCE_PREFIXES = ("http://", "https://", "ftp://", "git://", "ssh://")
 
 def cmd_check(args: argparse.Namespace) -> int:
     try:
+        registry = registry_for_contract(args.file)
+    except GovernanceError as exc:
+        for diag in exc.diagnostics:
+            print(json.dumps(diag.to_dict(), indent=2))
+        return 1
+    try:
         doc = load_nyx(args.file)
     except NornyxParseError as exc:
         print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
         return 2
     diagnostics = list(check_document(doc))
     try:
-        registry = registry_for_contract(args.file)
         lock_candidate = Path(args.file).resolve().parent / "nornyx.profiles.lock"
         lock_path = lock_candidate if lock_candidate.is_file() else None
         composition = compose_document_governance(

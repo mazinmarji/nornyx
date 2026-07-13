@@ -19,7 +19,9 @@ actions_requiring_approval
 timing
 accountable_authority
 revision_binding (exact)
+exact_revision_required
 invalidation_conditions
+expires_after
 expires_at
 resolution
 normalization_diagnostics
@@ -48,8 +50,10 @@ approver or grant authority.
 | `approval_required` / `requires_approval` booleans | `requirement_only`; raw boolean and path retained, no authority inferred |
 
 Structured fields map directly: `required_roles`,
-`accountable_authority`, exact `revision_binding`,
-`invalidation_conditions`, and `expires_at`. Ordinary contract schemas allow
+`accountable_authority`, exact `revision_binding`, the independent
+`exact_revision_required` requirement, `invalidation_conditions`, relative
+`expires_after`, and absolute `expires_at`. Relative and absolute expiry are
+never collapsed into one field. Ordinary contract schemas allow
 open named mappings, so unknown non-role fields remain in `source.raw`. Unknown
 role-bearing fields are errors until added to this table by an ADR.
 
@@ -59,6 +63,10 @@ role-bearing fields are errors until added to this table by an ADR.
   produce an informational diagnostic.
 - Role, denial, evidence, and action values must be non-empty strings;
   malformed values are omitted and make normalization invalid.
+- `accountable_authority` must be a non-empty source string. It is never
+  stringified from another YAML type.
+- `exact_revision_required` must be boolean and `expires_after` must be a
+  non-empty duration string when present.
 - Every required role must appear in the eligible-role set; required roles
   with an empty eligible-role set are invalid.
 - Governed-package gates missing all known eligible-role fields are errors.
@@ -72,6 +80,9 @@ role-bearing fields are errors until added to this table by an ADR.
   role is invented.
 - Contradictions fail normalization. The loader and evaluator do not compose
   or authorize an invalid normalized approval.
+- Across composition layers, non-empty eligible-role sets intersect. A
+  disjoint intersection or a required role excluded by another layer is a
+  fatal monotonicity conflict; authority sets are never unioned.
 
 `references_role` operates only on normalized `required_roles` and
 `eligible_roles`. Approval names, action names, prose, and accountable

@@ -27,6 +27,23 @@ closure ledger. It did not treat implementer summaries as proof.
 
 No corrected finding remains open. No Critical finding was observed.
 
+## Superseding PR Review
+
+The human repository owner submitted blocking PR #30 review
+`PRR_kwDOTG1_j88AAAABF17htA` after the original audit. That review supersedes
+the earlier closure verdict and candidate approval.
+
+| ID | Severity | Finding | Correction | Current status |
+|---|---|---|---|---|
+| A-012 | High | `registry_for_contract()` resolved the contract before inspecting higher symlink ancestors. | Preserve the unresolved path, inspect from an independent trust root, and reject before parsing. | corrected locally; Linux symlink proof pending |
+| A-013 | High | Approval composition unioned non-empty eligible-role sets and broadened human authority. | Intersect non-empty sets; fail on disjoint or required-role conflicts. | corrected locally; external verification pending |
+| A-014 | High | `exact_revision_required` and `expires_after` disappeared during normalization and reporting. | Represent, schema-validate, merge, and report both fields independently. | corrected locally; approved compatibility migration recorded |
+| A-015 | Medium | Non-string accountable authority was coerced into an apparent identity. | Require a non-empty source string and fail normalization otherwise. | corrected locally; external verification pending |
+
+Required closure evidence remains fresh Linux CI and a new read-only audit of
+the corrected commit. Until both complete, the review verdict remains
+authoritative.
+
 ## Audit Matrix
 
 | Dimension | Evidence reviewed | Result |
@@ -102,6 +119,9 @@ release review. This satisfies the program's release-candidate approval
 criterion. It does not authorize PR merge, tagging, package publication,
 deployment, promotion, or any other operational action.
 
+The later blocking review invalidated that candidate approval. Approval does
+not transfer to the corrected candidate.
+
 ## Verdict
 
-`GO`
+`NO-GO`

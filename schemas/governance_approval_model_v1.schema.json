@@ -14,7 +14,12 @@
     "required_evidence",
     "actions_requiring_approval",
     "timing",
+    "accountable_authority",
+    "revision_binding",
+    "exact_revision_required",
     "invalidation_conditions",
+    "expires_after",
+    "expires_at",
     "resolution",
     "normalization_diagnostics",
     "source"
@@ -55,7 +60,12 @@
         }
       ]
     },
+    "exact_revision_required": {"type": "boolean"},
     "invalidation_conditions": {"$ref": "#/$defs/uniqueStrings"},
+    "expires_after": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
     "expires_at": {
       "type": ["string", "null"],
       "format": "date-time"
