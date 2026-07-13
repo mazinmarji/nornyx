@@ -402,6 +402,10 @@ def test_pre_normalized_approvals_are_not_trusted_blindly() -> None:
         {**base, "eligible_roles": ["reviewer", 7]},
         {key: value for key, value in base.items() if key != "resolution"},
         {**base, "resolution": "definitely_fine"},
+        # Both role fields are required by the normalized schema; an absent
+        # field must not default to a valid empty list.
+        {key: value for key, value in base.items() if key != "required_roles"},
+        {key: value for key, value in base.items() if key != "eligible_roles"},
     ]
     for payload in malformed_payloads:
         diagnostics = evaluate_rule({"approvals": [payload]}, reviewer_rule)

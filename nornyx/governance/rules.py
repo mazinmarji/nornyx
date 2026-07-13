@@ -191,7 +191,12 @@ def _approval_roles(value: Any) -> tuple[str, ...] | None:
                 return None
             values = []
             for field in ("required_roles", "eligible_roles"):
-                field_values = item.get(field, [])
+                # Both role fields are required by the normalized schema; an
+                # absent field marks an incomplete payload and fails closed
+                # rather than defaulting to a valid empty list.
+                if field not in item:
+                    return None
+                field_values = item[field]
                 if not isinstance(field_values, list) or not all(
                     isinstance(entry, str) for entry in field_values
                 ):
