@@ -1,0 +1,196 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import Any, Mapping
+
+from .models import GovernanceDiagnostic, NormalizedApproval, immutable_mapping
+from .schemas import validate_payload
+
+
+ROLE_FIELDS = (
+    "eligible_roles",
+    "eligible_approver_roles",
+    "approver_roles",
+    "approvers",
+    "eligible_approvers",
+)
+ROLE_MARKERS = ("role", "approver", "authorized", "people")
+
+
+def _as_values(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def _unique(values: list[Any]) -> tuple[tuple[str, ...], bool]:
+    result: list[str] = []
+    duplicate = False
+    for value in values:
+        text = str(value)
+        if text in result:
+            duplicate = True
+        else:
+            result.append(text)
+    return tuple(result), duplicate
+
+
+def _diagnostic(code: str, level: str, message: str, path: str) -> GovernanceDiagnostic:
+    return GovernanceDiagnostic(level, code, message, path=path)  # type: ignore[arg-type]
+
+
+def normalize_approval(
+    source_value: Mapping[str, Any] | str | bool,
+    *,
+    shape: str,
+    path: str,
+    fallback_id: str,
+) -> NormalizedApproval:
+    raw = deepcopy(dict(source_value)) if isinstance(source_value, Mapping) else deepcopy(source_value)
+    source = deepcopy(dict(source_value)) if isinstance(source_value, Mapping) else {}
+    role_field = next((field for field in ROLE_FIELDS if field in source), "none")
+    eligible_values: list[Any] = []
+    for field in ROLE_FIELDS:
+        eligible_values.extend(_as_values(source.get(field)))
+    eligible, duplicate_eligible = _unique(eligible_values)
+    required, duplicate_required = _unique(_as_values(source.get("required_roles")))
+    denied, duplicate_denied = _unique(
+        _as_values(source.get("denied_approver_types"))
+        + _as_values(source.get("denied_actor_types"))
+        + _as_values(source.get("denied_execution_surfaces"))
+    )
+    evidence, duplicate_evidence = _unique(_as_values(source.get("required_evidence")))
+    actions, duplicate_actions = _unique(
+        _as_values(source.get("required_for"))
+        + _as_values(source.get("actions"))
+        + _as_values(source.get("actions_requiring_approval"))
+    )
+    explicit_surfaces = set(_as_values(source.get("denied_execution_surfaces")))
+    denied_surfaces = tuple(
+        item for item in denied if item == "execution_surface" or item in explicit_surfaces
+    )
+    denied_actors = tuple(item for item in denied if item not in set(denied_surfaces))
+    diagnostics: list[GovernanceDiagnostic] = []
+
+    if any((duplicate_eligible, duplicate_required, duplicate_denied, duplicate_evidence, duplicate_actions)):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_DUPLICATE_ROLE_NORMALIZED",
+                "info",
+                "Duplicate approval values were removed in first-seen order.",
+                path,
+            )
+        )
+
+    known_role_fields = set(ROLE_FIELDS) | {
+        "required_roles",
+        "denied_approver_types",
+        "denied_actor_types",
+        "denied_execution_surfaces",
+    }
+    unknown = sorted(
+        key
+        for key in source
+        if key not in known_role_fields and any(marker in key for marker in ROLE_MARKERS)
+    )
+    if unknown:
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_UNKNOWN_ROLE_FIELD",
+                "error",
+                f"Unknown role-bearing fields: {', '.join(unknown)}.",
+                path,
+            )
+        )
+    denied_all = set(denied_actors) | set(denied_surfaces)
+    if set(eligible) & denied_all:
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_ACTOR_ELIGIBLE_AND_DENIED",
+                "error",
+                "An actor category cannot be both eligible and denied.",
+                path,
+            )
+        )
+    if eligible and required and not set(required) <= set(eligible):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE",
+                "error",
+                "Every required role must also be eligible.",
+                path,
+            )
+        )
+    if shape == "governed_package_gate" and not eligible:
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_MISSING_ELIGIBLE_ROLES",
+                "error",
+                "Governed-package approval gates require an eligible role field.",
+                path,
+            )
+        )
+    if shape == "governed_package_gate" and not (eligible or required or evidence or actions):
+        diagnostics.append(
+            _diagnostic(
+                "APPROVAL_EMPTY_REQUIREMENT",
+                "error",
+                "An approval gate with no roles, evidence, or actions is invalid.",
+                path,
+            )
+        )
+
+    if shape in {"ordinary_approval", "generated_profile_approval"}:
+        normalized_id = str(source.get("name", fallback_id))
+        resolution = "complete"
+        timing = "unspecified"
+    elif shape == "governed_package_gate":
+        normalized_id = str(source.get("id", fallback_id))
+        resolution = "complete"
+        timing = "unspecified"
+    elif shape == "legacy_contract_reference":
+        normalized_id = f"reference:{source_value}"
+        resolution = "reference_only"
+        timing = "unspecified"
+    elif shape == "legacy_goal_text":
+        normalized_id = fallback_id
+        resolution = "legacy_text_preserved"
+        timing = "legacy_text"
+    else:
+        normalized_id = fallback_id
+        resolution = "requirement_only"
+        timing = "unspecified"
+    if any(item.level == "error" for item in diagnostics):
+        resolution = "invalid"
+
+    revision_binding = source.get("revision_binding")
+    normalized = NormalizedApproval(
+        id=normalized_id,
+        required_roles=required,
+        eligible_roles=eligible,
+        denied_actor_types=denied_actors,
+        denied_execution_surfaces=denied_surfaces,
+        required_evidence=evidence,
+        actions_requiring_approval=actions,
+        timing=str(source.get("timing", timing)),
+        accountable_authority=(
+            str(source["accountable_authority"])
+            if source.get("accountable_authority") is not None
+            else None
+        ),
+        revision_binding=(
+            immutable_mapping(revision_binding)
+            if isinstance(revision_binding, Mapping)
+            else None
+        ),
+        invalidation_conditions=tuple(str(item) for item in _as_values(source.get("invalidation_conditions"))),
+        expires_at=str(source["expires_at"]) if source.get("expires_at") is not None else None,
+        resolution=resolution,
+        diagnostics=tuple(diagnostics),
+        source_shape=shape,
+        source_path=path,
+        source_raw=raw,
+        role_field=role_field,
+    )
+    validate_payload(normalized.to_dict(), "governance_approval_model_v1.schema.json")
+    return normalized

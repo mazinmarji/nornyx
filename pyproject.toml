@@ -24,7 +24,7 @@ classifiers = [
   "Topic :: Software Development :: Code Generators",
   "Topic :: Software Development :: Quality Assurance",
 ]
-dependencies = ["PyYAML>=6.0"]
+dependencies = ["PyYAML>=6.0", "jsonschema>=4.21", "referencing>=0.31"]
 
 [project.urls]
 Homepage = "https://github.com/mazinmarji/nornyx"
@@ -35,7 +35,7 @@ Changelog = "https://github.com/mazinmarji/nornyx/blob/main/CHANGELOG.md"
 Issues = "https://github.com/mazinmarji/nornyx/issues"
 
 [project.optional-dependencies]
-dev = ["jsonschema>=4.21", "pytest>=8.0", "ruff>=0.4"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [project.scripts]
 nornyx = "nornyx.cli:main"
@@ -45,7 +45,7 @@ where = ["."]
 include = ["nornyx*"]
 
 [tool.setuptools.package-data]
-nornyx = ["examples/*.nyx", "schemas/*.json"]
+nornyx = ["examples/*.nyx", "schemas/*.json", "profiles_data/*.json", "profiles_data/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
