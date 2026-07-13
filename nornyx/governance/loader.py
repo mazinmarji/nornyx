@@ -252,7 +252,7 @@ def _path_contains(parent: Path, child: Path) -> bool:
 
 
 def _absolute_without_resolving(path: Path) -> Path:
-    return Path(os.path.abspath(path))
+    return path if path.is_absolute() else Path.cwd() / path
 
 
 def _reject_symlink_components(candidate: Path, trust_root: Path) -> None:
@@ -270,7 +270,16 @@ def _reject_symlink_components(candidate: Path, trust_root: Path) -> None:
     probe = raw_root
     components = [probe]
     for name in relative.parts:
-        probe /= name
+        if name == os.pardir:
+            if probe == raw_root:
+                raise error(
+                    "PACK_PATH_OUTSIDE_ROOT",
+                    "Pack path must stay inside the symlink-inspection trust root.",
+                    path=str(candidate),
+                )
+            probe = probe.parent
+        else:
+            probe /= name
         components.append(probe)
     for part in components:
         try:

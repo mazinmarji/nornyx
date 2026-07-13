@@ -209,6 +209,56 @@ def test_loader_checks_trust_root_components_before_resolving(
     assert _codes(symlink.value) == {"PACK_SYMLINK_REJECTED"}
 
 
+def test_loader_preserves_parent_traversal_before_symlink_inspection(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    payload = _yaml("valid_profile_v1.yaml")
+    root = tmp_path / "root"
+    link = root / "link"
+    real = root / "real"
+    real.mkdir(parents=True)
+    _write_pack(real / "profile.yaml", payload)
+    candidate = link / ".." / "profile.yaml"
+
+    original_is_symlink = Path.is_symlink
+
+    def simulated_traversed_symlink(path: Path) -> bool:
+        return path == link or original_is_symlink(path)
+
+    def unexpected_resolve(*args: Any, **kwargs: Any) -> Path:
+        raise AssertionError("path resolution ran before symlink inspection")
+
+    monkeypatch.setattr(Path, "is_symlink", simulated_traversed_symlink)
+    monkeypatch.setattr(Path, "resolve", unexpected_resolve)
+    with pytest.raises(GovernanceError) as symlink:
+        load_local_pack(
+            candidate,
+            allowed_root=candidate.parent,
+            trust_root=tmp_path,
+        )
+    assert _codes(symlink.value) == {"PACK_SYMLINK_REJECTED"}
+
+
+def test_loader_parent_traversal_cannot_escape_trust_root(tmp_path: Path) -> None:
+    payload = _yaml("valid_profile_v1.yaml")
+    trust_root = tmp_path / "trust"
+    trust_root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    pack_path = outside / "profile.yaml"
+    _write_pack(pack_path, payload)
+    traversing_path = trust_root / ".." / "outside" / "profile.yaml"
+
+    with pytest.raises(GovernanceError) as traversal:
+        load_local_pack(
+            traversing_path,
+            allowed_root=traversing_path.parent,
+            trust_root=trust_root,
+        )
+    assert _codes(traversal.value) == {"PACK_PATH_OUTSIDE_ROOT"}
+
+
 def test_registry_precedence_is_deterministic_and_cycles_fail_closed(tmp_path: Path) -> None:
     payload = _yaml("valid_profile_v1.yaml")
     project_path = tmp_path / "project.yaml"
@@ -972,6 +1022,30 @@ def test_profile_cli_entrypoints_reject_symlinked_ancestor_above_pack_parent(
     _assert_profile_cli_path_rejected(
         Path("link_root") / "profiles" / "profile.yaml",
         tmp_path / "ancestor.nyx",
+        capsys,
+    )
+
+
+def test_profile_cli_entrypoints_reject_symlink_before_parent_traversal(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    payload = _yaml("valid_profile_v1.yaml")
+    root = tmp_path / "root"
+    real = root / "real"
+    (real / "subdir").mkdir(parents=True)
+    _write_pack(real / "profile.yaml", payload)
+    link = root / "link"
+    try:
+        link.symlink_to(real / "subdir", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation is unavailable")
+
+    monkeypatch.chdir(tmp_path)
+    _assert_profile_cli_path_rejected(
+        Path("root") / "link" / ".." / "profile.yaml",
+        tmp_path / "parent-traversal.nyx",
         capsys,
     )
 
