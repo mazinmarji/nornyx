@@ -15,11 +15,18 @@ from .structural import evaluate_structural_checks
 
 def registry_for_directory(root: str | Path) -> GovernanceRegistry:
     registry = GovernanceRegistry.builtins()
-    nornyx_root = Path(root).resolve() / ".nornyx"
+    project_root = Path(root)
+    if not project_root.is_absolute():
+        project_root = Path.cwd() / project_root
+    nornyx_root = project_root / ".nornyx"
     for directory_name in ("profiles", "modules"):
         directory = nornyx_root / directory_name
         if directory.is_dir():
-            registry.register_directory(directory, source_tier="project")
+            registry.register_directory(
+                directory,
+                source_tier="project",
+                trust_root=project_root,
+            )
     return registry
 
 

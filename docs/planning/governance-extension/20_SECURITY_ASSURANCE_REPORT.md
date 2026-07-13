@@ -18,7 +18,7 @@ network content.
 | Malicious module/profile | Closed schemas, integrity hash, safe YAML, safety constants, no executable fields | module security/invalid profile fixtures; loader adversarial tests | mitigated |
 | Duplicate identities | Same-tier identity collision fatal before composition | `test_registry_order_duplicate_detection_composition_and_locks` | mitigated |
 | Namespace squatting | Non-bundled `nornyx.builtin.*` rejected | `test_loader_rejects_reserved_namespaces_and_resource_abuse` | mitigated |
-| Path, parent, and symlink traversal | Inspect unresolved components from independent trust root, then real-path containment | loader, both profile CLI entry points, module CLI, evidence CLI tests | mitigated; real symlinks authoritative on Linux CI |
+| Path, parent, and symlink traversal | Inspect unresolved components from independent trust root, then real-path containment | loader, project discovery, both profile CLI entry points, module CLI, evidence CLI tests | mitigated; real symlinks authoritative on Linux CI |
 | YAML exhaustion | 512 KiB, depth, node, and alias caps before semantic loading | pack and evidence resource-abuse tests | mitigated |
 | Schema bombs, local cycles, remote `$ref` | Only bundled reviewed block schemas; bounded subset; local cycle and remote-ref rejection | `test_governance_block_schema_subset_rejects_unsafe_references` | mitigated |
 | Malformed/unknown rule | Closed schema/operators/path grammar; structural type errors fail closed | normative rule fixtures and runtime adversarial tests | mitigated |

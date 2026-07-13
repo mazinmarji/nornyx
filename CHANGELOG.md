@@ -56,6 +56,9 @@ distribution version is independent of the Nornyx **language/schema** version
 - Local evidence-file loading now reuses the pack loader's unresolved-component
   symlink inspection, containment, resource limits, and safe YAML parser with
   evidence-specific fail-closed diagnostics.
+- Project-local `.nornyx` discovery now preserves the unresolved project trust
+  root and rejects symlinked ancestor components before enumerating profile or
+  module packs.
 
 ## [1.5.2] - 2026-07-13
 

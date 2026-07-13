@@ -15,6 +15,7 @@ import yaml
 from nornyx.cli import main
 from nornyx.governance import GovernanceError, validate_governance_evidence_file
 from nornyx.governance.loader import load_local_pack
+from nornyx.governance.runtime import registry_for_directory
 from nornyx.governance.schemas import canonical_pack_hash
 from nornyx.governed_package import validate_governed_package
 from nornyx.parser import load_nyx
@@ -153,6 +154,27 @@ def test_modules_validate_rejects_symlinked_module_paths(
     assert main(["modules", "validate", link.name, "--json"]) == 1
     payload = json.loads(capsys.readouterr().out)
     assert payload["diagnostics"][0]["code"] == "PACK_SYMLINK_REJECTED"
+
+
+def test_project_discovery_rejects_symlinked_nornyx_ancestor(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    outside_profiles = tmp_path / "outside" / ".nornyx" / "profiles"
+    outside_profiles.mkdir(parents=True)
+    _write_pack(outside_profiles / "profile.yaml", _fixture("valid_profile_v1.yaml"))
+    try:
+        (project / ".nornyx").symlink_to(
+            outside_profiles.parent,
+            target_is_directory=True,
+        )
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation is unavailable")
+
+    with pytest.raises(GovernanceError) as caught:
+        registry_for_directory(project)
+    assert _error_codes(caught.value) == {"PACK_SYMLINK_REJECTED"}
 
 
 def test_malformed_evidence_diagnostics_are_deterministic(tmp_path: Path) -> None:

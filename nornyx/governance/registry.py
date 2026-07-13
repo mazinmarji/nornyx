@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Iterable
 
 from .errors import error
-from .loader import load_bundled_pack, load_local_pack
+from .loader import _reject_symlink_components, load_bundled_pack, load_local_pack
 from .models import GovernanceModule, PackSourceTier, ProfilePack
 from .versions import core_range_allows
 
@@ -148,9 +148,15 @@ class GovernanceRegistry:
         path: str | Path,
         *,
         allowed_root: str | Path,
+        trust_root: str | Path | None = None,
         source_tier: PackSourceTier = "explicit_path",
     ) -> ProfilePack | GovernanceModule:
-        pack = load_local_pack(path, allowed_root=allowed_root, source_tier=source_tier)
+        pack = load_local_pack(
+            path,
+            allowed_root=allowed_root,
+            trust_root=trust_root,
+            source_tier=source_tier,
+        )
         if isinstance(pack, ProfilePack):
             self.register_profile(pack)
         else:
@@ -162,14 +168,32 @@ class GovernanceRegistry:
         root: str | Path,
         *,
         source_tier: PackSourceTier,
+        trust_root: str | Path | None = None,
     ) -> tuple[ProfilePack | GovernanceModule, ...]:
         raw_directory = Path(root)
-        if raw_directory.is_symlink():
-            raise error("PACK_SYMLINK_REJECTED", "Symlinked pack directories are not allowed.", path=str(root))
-        directory = raw_directory.resolve(strict=True)
+        inspection_root = raw_directory if trust_root is None else Path(trust_root)
+        _reject_symlink_components(
+            raw_directory,
+            inspection_root,
+            code_prefix="PACK",
+            noun="Pack",
+        )
+        if not raw_directory.is_dir():
+            raise error(
+                "PACK_NOT_FOUND",
+                "Pack directory does not exist.",
+                path=str(root),
+            )
         loaded = []
-        for path in sorted(directory.glob("*.yaml"), key=lambda item: item.name):
-            loaded.append(self.register_path(path, allowed_root=directory, source_tier=source_tier))
+        for path in sorted(raw_directory.glob("*.yaml"), key=lambda item: item.name):
+            loaded.append(
+                self.register_path(
+                    path,
+                    allowed_root=raw_directory,
+                    trust_root=inspection_root,
+                    source_tier=source_tier,
+                )
+            )
         return tuple(loaded)
 
     def resolve_profile(self, identity: str) -> ProfilePack:
