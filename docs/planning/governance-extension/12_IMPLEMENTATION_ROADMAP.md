@@ -1,111 +1,118 @@
-# 12 — Implementation Roadmap
+# 12 - Implementation Roadmap
 
-Sequencing decision: PR 1 may proceed against main. The locally available
-scanner-hardening branch does not change profile generation or the existing
-`changes` shape. It must merge before the future Change Governance integration
-PR so approval/evidence/schema reconciliation targets a settled governed-
-package surface. See `appendix_SCANNER_INTEGRATION_DECISION.md`. No branch is
-merged by PR 1. The CLI UX is spread across later PRs 2–3.
+## Reconciled Status
 
-Common to every PR: CI green, full existing suite passes, no commits to
-`main` without review, no version bumps except at release PRs, CHANGELOG entry,
-rollback = revert the single PR (each is self-contained).
+The original PR 1 through PR 4 sequence shipped across Nornyx 1.5.0-1.5.2:
+pack schemas, loader, registry, deterministic locks, composition, the closed
+rule evaluator, approval normalization, profile migration, scanner hardening,
+and symlink trust-root corrections are implemented. The old roadmap text that
+described those components as future work is historical, not current state.
 
----
+The authoritative baseline and gap table are in
+`15_CURRENT_IMPLEMENTATION_INVENTORY.md`. Work continues in independently
+testable stages; no stage permits a release, tag, publication, deployment, or
+operational action.
 
-## PR 1 — Architecture decisions, schemas, and test foundations
+## Stage A - Program Reconciliation
 
-- **Objective**: finalize docs and ADRs; close F-01 through F-04; add draft
-  profile, module, approval-normalization, and timestamp-free lock schemas;
-  capture all 11 current-main starter baselines; add schema/specification
-  fixtures and tests.
-- **Files**: planning docs and appendices, repository ADRs, root and bundled
-  draft schemas, golden fixtures, specification fixtures/tests, and a guarded
-  baseline-capture script; `docs/40` and `docs/02` truth corrections.
-- **Tests**: JSON-Schema meta-validation, root/bundled copy synchronization,
-  valid/invalid v0.3 and v1 fixtures, projection, collection semantics,
-  approval normalization, module safety, and deterministic starter goldens.
-- **Non-goals**: loader/registry code, runtime composition or rule evaluation,
-  profile migration, new profiles/modules, or stable core changes.
-- **Acceptance**: F-01 through F-04 closed with evidence and tests; audit
-  conditions F-05/F-06/F-10/F-11/F-12/F-13 incorporated; full validation green
-  or any environment artifact explicitly blocks readiness. **Rollback**:
-  revert the specification/test-foundation PR.
+Status: in progress.
 
-## PR 2 — Declarative profile/module loader and registry (built-ins only)
+- verify current implementation and green baseline;
+- reconcile stale planning and ADR statuses;
+- accept the bounded block-schema and fixed structural-check ADRs;
+- establish the exact closure matrix and implementation sequence.
 
-- **Objective**: `nornyx/packs/{loader,registry,lock}.py`; built-in packs
-  authored in `nornyx/packs_data/` for the 6 domain profiles; `profiles.py`
-  API re-backed by loaded packs; constants preserved (doc 11 §2).
-- **CLI**: `nornyx profiles list` (alias of existing `profiles`, adds `--json`),
-  `nornyx profiles inspect <name> [--json]`, `nornyx profiles validate <path>`.
-- **Security**: loader hardening T-02..T-05, T-09, T-11 (doc 10).
-- **Tests**: consume the golden starter baselines captured in PR 1; loader
-  abuse corpus; registry precedence with explicit path + `.nornyx/profiles/`.
-- **Backward compat**: `nornyx profiles` unchanged; `init` unchanged.
-- **Non-goals**: composition, rules, org tier. **Rollback**: revert; constants
-  return to dicts.
+Acceptance: no implementation starts without an explicit owner for every new
+schema and relational check.
 
-## PR 3 — Composition engine and constrained rule evaluator
+## Stage B - Foundational Modules
 
-- **Objective**: `nornyx/packs/{compose,rules}.py`; governance modules;
-  the 5 MVP module packs (doc 03) authored; `nornyx check` runs composed rules
-  when a contract selects a profile/modules; org tier + `profiles resolve
-  [--lock]`, `profiles compatibility <p...>`; exceptions block semantics.
-- **Schemas**: rule-language portion of pack schema finalized (draft → active).
-- **Security**: T-01, T-06..T-08, T-13..T-18 tests.
-- **Tests**: deterministic merge (property-based order-invariance where inputs
-  are permuted), monotonicity adversarial suite, exception expiry, golden
-  resolution traces.
-- **Backward compat**: contracts without packs behave identically (explicit
-  regression test).
-- **Non-goals**: migrating base profiles' starter internals. **Rollback**:
-  compose path is behind "contract declares profile/modules AND packs
-  resolvable"; revert restores advisory-only.
+Status: planned.
 
-## PR 4 — Migration of built-in profiles (single source of truth)
+- `human_approval`;
+- `evidence_integrity`;
+- `separation_of_duties`;
+- `exception_management`;
+- bounded block-schema composition and fixed checks required by them.
 
-- **Objective**: all 11 profiles authoritative as packs; `profile_document`
-  rebuilt on fragment renderer; repo-root `profiles/*.yaml` become generated
-  exports or removed; packaging gains `packs_data`; deprecation warning on
-  dict access (doc 11 §3).
-- **Tests**: doc 11 §6 in full.
-- **Acceptance**: zero Python profile-content literals remain except the
-  renderer skeleton; `git grep DOMAIN_PROFILE_PACKS` shows only the
-  compatibility accessor.
-- **Rollback**: revert to PR 3 state (packs still load; Python dicts return).
+Acceptance: modules are packaged, integrity-locked, deterministic, local-only,
+monotonic, documented, and covered by unit/integration/adversarial tests.
 
-## PR 5 — `change_control` module + governed-package reconciliation
+## Stage C - Generalized Change Governance
 
-- **Objective**: doc 07 in full; `nornyx.change.v1` block schema; governed
-  package profile requires the module; `governed_package.py` delegates
-  change-shape validation.
-- **Depends**: PR 0 (scanner branch settled), PR 3.
-- **Tests**: every existing governed-package example unchanged; new
-  change-lifecycle rule fixtures; approval-staleness structural check.
-- **Rollback**: module is opt-in; revert detaches it.
+Status: planned.
 
-## PR 6 — `architecture_governance` profile
+- `nornyx.change.v1` with additive `id`/`type` compatibility;
+- `change_control` module;
+- lifecycle, revision, approval, rollback, closure, exception, and separation
+  checks;
+- governed-package delegation to the shared change validator;
+- explicitly approved golden migration only if unavoidable.
 
-- **Objective**: doc 08; `architecture_conformance` module;
-  `nornyx.architecture_evidence.v1` schema + importer (report-parsing only,
-  scanner-branch adapter pattern); examples + starter.
-- **Tests**: evidence revision binding, stale-evidence detection, golden starter.
-- **Non-goals**: radar, any code analysis. **Rollback**: profile is opt-in.
+Acceptance: every existing governed-package example retains meaning and all
+new lifecycle/staleness diagnostics fail closed.
 
-## PR 7 — Governance Surface Analysis framework
+## Stage D - Architecture Governance
 
-- **Objective**: doc 09 method as `docs/`; GSA applied to Nornyx itself;
-  `nornyx.gsa_report.v1` schema **only if** the dogfood exercise shows tooling
-  value — otherwise explicitly record "method only, no tooling" (pre-committed
-  decision gate against tool sprawl).
-- **Rollback**: docs.
+Status: planned.
 
-## PR 8 — Hardening and release prep
+- `architecture_conformance` module;
+- `architecture_governance` optional profile;
+- declaration and evidence schemas;
+- bounded report import only, with no external tool execution;
+- starter, examples, docs, and revision/freshness tests.
 
-- **Objective**: full doc 13 matrix green (incl. cross-platform, oversized,
-  unicode, adversarial corpus), docs/40+02 rewritten to describe reality,
-  migration guide, pack-authoring guide, CHANGELOG, release-readiness report;
-  independent re-audit against doc 14 conditions.
-- **Acceptance**: doc 14 conditions all closed; release decision (minor bump)
-  made by a human, per invariant.
+Architecture Radar remains rejected unless separately justified by evidence.
+
+## Stage E - GSA and Candidate Decisions
+
+Status: planned.
+
+Complete Governance Surface Analysis for Nornyx and for supply chain, data
+protection, lifecycle, release, and incident response. Each candidate receives
+one final ADR placement: module, profile-local control, external evidence
+contract, existing-tool ownership, rejected, or not required.
+
+## Stage F - Approved Later Modules
+
+Status: blocked on Stage E by design.
+
+Implement only candidates that prove reuse by at least two profiles, reconcile
+duplicated existing semantics, close a high-priority control gap, or provide a
+stable evidence contract required by an existing feature.
+
+## Stage G - Profile Integration
+
+Status: planned.
+
+Map each of the 11 existing profiles and `architecture_governance` to only the
+modules justified by its GSA matrix. Preserve one primary profile plus modules.
+
+## Stage H - Full Hardening
+
+Status: planned.
+
+- stable CLI/API and diagnostics;
+- malicious pack/schema/evidence/exception corpus;
+- compatibility corpus and approved migration records;
+- deterministic/permutation/resource tests;
+- build, wheel install, documentation execution, and Linux symlink tests;
+- public-boundary and repository-specific assurance.
+
+## Stage I - Program Closure
+
+Status: planned.
+
+Produce reports 16-21, reconcile every roadmap item to an unambiguous final
+status, prepare a human-reviewed release candidate without publishing it, and
+run the independent audit in report 22. Completion requires an exact `GO`, no
+mandatory roadmap remainder, and no unresolved review thread.
+
+## Rollback and Review
+
+Each stage is a logical commit or PR-sized group with its own tests. Reverting a
+stage must restore the prior green state. Do not continue past an unresolved
+Critical or High finding. Any core-language revision, compatibility break,
+arbitrary-expression requirement, network/external execution requirement, or
+evidence that cannot bind to a governed revision is a stop condition requiring
+human review.

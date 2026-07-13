@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for specification; production migration deferred.
+Accepted and implemented in Nornyx 1.5.x.
 
 ## Context
 
@@ -19,6 +19,6 @@ contradictions fail normalization. No default approver is invented.
 
 ## Consequences
 
-Future `references_role` semantics can be consistent without changing current
-runtime structures. Legacy text and booleans remain representable but cannot
+`references_role` semantics are consistent without changing legacy source
+structures. Legacy text and booleans remain representable but cannot
 be misrepresented as complete authority declarations.

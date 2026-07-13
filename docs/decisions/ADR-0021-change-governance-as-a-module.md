@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for specification; implementation deferred.
+Accepted; implementation is mandatory in governance-program Stage C.
 
 ## Context
 
