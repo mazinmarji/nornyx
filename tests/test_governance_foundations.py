@@ -181,17 +181,24 @@ def test_foundational_governance_accepts_a_complete_local_contract(tmp_path: Pat
         ("ai_approver", "APPROVAL_DECLARATION_INVALID"),
         ("missing_revision", "APPROVAL_REVISION_BINDING_REQUIRED"),
         ("expired_approval", "APPROVAL_EXPIRED"),
+        ("non_human_accountable", "APPROVAL_NON_HUMAN_AUTHORITY"),
+        ("approval_evidence_reference", "APPROVAL_EVIDENCE_MISSING"),
         ("evidence_revision", "EVIDENCE_REVISION_MISMATCH"),
         ("evidence_hash", "EVIDENCE_ARTIFACT_HASH_MISMATCH"),
         ("evidence_stale", "EVIDENCE_STALE"),
         ("evidence_dependency", "EVIDENCE_DEPENDENCY_INVALID"),
         ("self_approval", "SOD_SELF_APPROVAL"),
         ("producer_approval", "SOD_EVIDENCE_PRODUCER_SOLE_APPROVER"),
+        ("non_human_sod_approver", "SOD_NON_HUMAN_APPROVER"),
         ("release_conflict", "SOD_RELEASE_AUTHORITY_CONFLICT"),
         ("core_exception", "EXCEPTION_CORE_CONTROL_FORBIDDEN"),
         ("self_exception", "EXCEPTION_SELF_APPROVAL"),
+        ("non_human_exception", "EXCEPTION_NON_HUMAN_AUTHORITY"),
+        ("non_human_exception_owner", "EXCEPTION_NON_HUMAN_AUTHORITY"),
         ("expired_exception", "EXCEPTION_EXPIRED"),
+        ("exception_evidence_reference", "EXCEPTION_EVIDENCE_MISSING"),
         ("missing_closure", "EXCEPTION_CLOSURE_EVIDENCE_MISSING"),
+        ("unknown_closure", "EXCEPTION_CLOSURE_EVIDENCE_MISSING"),
     ],
 )
 def test_foundational_checks_fail_closed(
@@ -206,6 +213,10 @@ def test_foundational_checks_fail_closed(
         document["approvals"][0].pop("revision_binding")
     elif mutation == "expired_approval":
         document["approvals"][0]["expires_at"] = "2026-05-01T00:00:00Z"
+    elif mutation == "non_human_accountable":
+        document["approvals"][0]["accountable_authority"] = "tool:approval_bot"
+    elif mutation == "approval_evidence_reference":
+        document["approvals"][0]["required_evidence"] = ["missing-approval-record"]
     elif mutation == "evidence_revision":
         document["governance_evidence"]["records"][0]["subject_revision"] = "other"
     elif mutation == "evidence_hash":
@@ -218,6 +229,10 @@ def test_foundational_checks_fail_closed(
         document["separation_of_duties"]["assignments"][0]["approvers"] = ["user:author"]
     elif mutation == "producer_approval":
         document["separation_of_duties"]["assignments"][0]["approvers"] = ["tool:test_tool"]
+    elif mutation == "non_human_sod_approver":
+        document["separation_of_duties"]["assignments"][0]["approvers"] = [
+            "tool:approval_bot"
+        ]
     elif mutation == "release_conflict":
         document["separation_of_duties"]["assignments"][0]["final_release_approver"] = (
             "user:release_requester"
@@ -228,8 +243,21 @@ def test_foundational_checks_fail_closed(
         document["exceptions"]["entries"][0]["approving_authority"] = (
             "user:exception_requester"
         )
+    elif mutation == "non_human_exception":
+        document["exceptions"]["entries"][0]["approving_authority"] = (
+            "tool:exception_bot"
+        )
+    elif mutation == "non_human_exception_owner":
+        document["exceptions"]["entries"][0]["accountable_owner"] = (
+            "system:risk_service"
+        )
     elif mutation == "expired_exception":
         document["exceptions"]["entries"][0]["expires_at"] = "2026-05-15T00:00:00Z"
+    elif mutation == "exception_evidence_reference":
+        document["exceptions"]["entries"][0]["evidence"] = ["missing-exception-record"]
+    elif mutation == "unknown_closure":
+        document["exceptions"]["entries"][0]["status"] = "closed"
+        document["exceptions"]["entries"][0]["closure_evidence"] = ["missing-closure-record"]
     else:
         document["exceptions"]["entries"][0]["status"] = "closed"
 

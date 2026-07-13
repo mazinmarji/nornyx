@@ -63,7 +63,15 @@ distribution version is independent of the Nornyx **language/schema** version
   and dangling local references, not only direct `$defs` aliases.
 - Raw approval role lookup now fails closed on normalization/schema errors;
   non-string or empty authority values cannot normalize as roles, evidence, or
-  governed actions, and offset timestamp formats are checked explicitly.
+  governed actions, required roles must always be eligible, and offset
+  timestamp formats are checked explicitly.
+- Architecture report import now inspects unresolved path components from an
+  independent trust root and rejects symlinked ancestors before reading.
+- Approval and exception evidence names now resolve against actual governance
+  evidence records; closed exceptions require available closure evidence.
+- Explicit non-human actor identities such as `tool:*`, `agent:*`, `model:*`,
+  `connector:*`, and `system:*` are denied approval, separation-of-duties, and
+  exception authority in addition to the existing category denials.
 
 ## [1.5.2] - 2026-07-13
 

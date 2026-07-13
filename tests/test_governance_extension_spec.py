@@ -162,7 +162,7 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
                 "An actor category cannot be both eligible and denied.",
             )
         )
-    if eligible and required and not set(required) <= set(eligible):
+    if required and not set(required) <= set(eligible):
         diagnostics.append(
             _normalization_diagnostic(
                 "APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE",

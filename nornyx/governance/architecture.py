@@ -4,11 +4,11 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 import hashlib
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 from .errors import GovernanceError, error
+from .loader import _reject_symlink_components
 from .models import CompositionResult, GovernanceDiagnostic
 from .schemas import validate_governance_block, validate_payload
 
@@ -62,37 +62,26 @@ def _absolute_without_resolving(path: Path) -> Path:
 
 
 def _safe_local_file(path: str | Path, *, allowed_root: str | Path) -> tuple[Path, str]:
-    raw_root = _absolute_without_resolving(Path(allowed_root))
+    supplied_root = Path(allowed_root)
+    raw_root = _absolute_without_resolving(supplied_root)
     candidate = Path(path)
     if not candidate.is_absolute():
         candidate = raw_root / candidate
     try:
-        relative = candidate.relative_to(raw_root)
+        candidate.relative_to(raw_root)
     except ValueError as exc:
         raise error(
             "ARCH_REPORT_PATH_OUTSIDE_ROOT",
             "Architecture report must stay inside the permitted local root.",
             path=str(path),
         ) from exc
-
-    probe = raw_root
-    for name in relative.parts:
-        if name == os.pardir:
-            if probe == raw_root:
-                raise error(
-                    "ARCH_REPORT_PATH_OUTSIDE_ROOT",
-                    "Architecture report must stay inside the permitted local root.",
-                    path=str(path),
-                )
-            probe = probe.parent
-        else:
-            probe /= name
-        if probe.is_symlink():
-            raise error(
-                "ARCH_REPORT_SYMLINK_REJECTED",
-                "Symlinked architecture report paths are not allowed.",
-                path=str(path),
-            )
+    trust_root = Path(raw_root.anchor) if supplied_root.is_absolute() else Path.cwd()
+    _reject_symlink_components(
+        candidate,
+        trust_root,
+        code_prefix="ARCH_REPORT",
+        noun="Architecture report",
+    )
 
     try:
         resolved_root = raw_root.resolve(strict=True)

@@ -96,6 +96,14 @@
     denied_approver_types: [execution_surface, ai_tool]
   expected_resolution: invalid
   expected_diagnostic: APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE
+- id: required_role_without_eligible_roles
+  shape: ordinary_approval
+  path: approvals[0]
+  source:
+    name: required-only-gate
+    required_roles: [reviewer]
+  expected_resolution: invalid
+  expected_diagnostic: APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE
 - id: empty_gate
   shape: governed_package_gate
   path: governed_package.approval_gates[0]

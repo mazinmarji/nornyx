@@ -59,13 +59,17 @@ role-bearing fields are errors until added to this table by an ADR.
   produce an informational diagnostic.
 - Role, denial, evidence, and action values must be non-empty strings;
   malformed values are omitted and make normalization invalid.
-- A required role absent from a non-empty eligible-role set is an error.
+- Every required role must appear in the eligible-role set; required roles
+  with an empty eligible-role set are invalid.
 - Governed-package gates missing all known eligible-role fields are errors.
-- `ai_tool` and `execution_surface` can never be eligible approvers. If an
-  actor category is both eligible and denied, normalization is invalid.
+- Non-human categories and explicit identities such as `ai_tool`,
+  `execution_surface`, `tool:*`, `agent:*`, `model:*`, `connector:*`, and
+  `system:*` can never be eligible approvers. If an actor category is both
+  eligible and denied, normalization is invalid.
 - Governed-package gates with no roles, evidence, or actions are invalid.
-- Missing eligible roles in ordinary or legacy reference shapes remain an
-  explicit unresolved fact; no default human role is invented.
+- Missing eligible roles in ordinary or legacy reference shapes with no
+  required-role claim remain an explicit unresolved fact; no default human
+  role is invented.
 - Contradictions fail normalization. The loader and evaluator do not compose
   or authorize an invalid normalized approval.
 

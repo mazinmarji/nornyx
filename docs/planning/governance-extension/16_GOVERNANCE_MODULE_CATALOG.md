@@ -40,7 +40,7 @@ SHA-256 content binding, subject revision, tool/version, generation and expiry
 times, status, and dependencies. Validation reads only declared local files
 under the trusted document root and rejects symlinks, traversal, missing files,
 hash substitution, revision mismatch, stale/future evidence, duplicate IDs,
-and dependency errors.
+dependency errors, and approval or exception references to absent records.
 
 A valid hash proves that reviewed bytes match the declaration. It does not
 prove the evidence claim is correct, complete, unbiased, or produced by the

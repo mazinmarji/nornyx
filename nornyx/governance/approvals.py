@@ -26,12 +26,34 @@ CORE_DENIED_ACTOR_TYPES = (
     "connector",
     "generated_output",
 )
+NON_HUMAN_AUTHORITY_PREFIXES = (
+    "ai_tool:",
+    "execution_surface:",
+    "autonomous_agent:",
+    "agent:",
+    "model:",
+    "connector:",
+    "generated_output:",
+    "tool:",
+    "system:",
+    "service:",
+    "external_service:",
+)
 TRUSTED_APPROVAL_RESOLUTIONS = {
     "complete",
     "reference_only",
     "legacy_text_preserved",
     "requirement_only",
 }
+
+
+def is_non_human_authority(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    normalized = value.casefold()
+    return normalized in CORE_DENIED_ACTOR_TYPES or normalized.startswith(
+        NON_HUMAN_AUTHORITY_PREFIXES
+    )
 
 
 def _as_values(value: Any) -> list[Any]:
@@ -145,7 +167,9 @@ def normalize_approval(
                 path,
             )
         )
-    core_conflict = (set(eligible) | set(required)) & set(CORE_DENIED_ACTOR_TYPES)
+    core_conflict = {
+        item for item in (*eligible, *required) if is_non_human_authority(item)
+    }
     if core_conflict:
         diagnostics.append(
             _diagnostic(
@@ -166,7 +190,7 @@ def normalize_approval(
                 path,
             )
         )
-    if eligible and required and not set(required) <= set(eligible):
+    if required and not set(required) <= set(eligible):
         diagnostics.append(
             _diagnostic(
                 "APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE",

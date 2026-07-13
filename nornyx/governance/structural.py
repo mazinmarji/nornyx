@@ -10,6 +10,7 @@ from typing import Any, Callable
 from .architecture import architecture_conformance_check
 from .approvals import (
     CORE_DENIED_ACTOR_TYPES,
+    is_non_human_authority,
     normalize_approval,
     trusted_normalized_approval,
 )
@@ -80,6 +81,18 @@ def _as_list(value: Any) -> list[Any] | None:
     return value if isinstance(value, list) else None
 
 
+def _evidence_references(document: Mapping[str, Any]) -> set[str]:
+    block = document.get("governance_evidence")
+    records = _as_list(block.get("records")) if isinstance(block, Mapping) else []
+    return {
+        value
+        for record in records or []
+        if isinstance(record, Mapping)
+        for value in (record.get("id"), record.get("type"))
+        if isinstance(value, str)
+    }
+
+
 def change_scope_hash(change: Mapping[str, Any]) -> str:
     payload = {
         "scope": sorted(str(item) for item in (_as_list(change.get("scope")) or [])),
@@ -140,6 +153,7 @@ def _human_approval(
         )
     diagnostics: list[GovernanceDiagnostic] = []
     denied_required = set(CORE_DENIED_ACTOR_TYPES)
+    evidence_references = _evidence_references(document)
     for index, source in enumerate(approvals):
         path = f"approvals[{index}]"
         normalized = _normalize_document_approval(source, index)
@@ -186,11 +200,32 @@ def _human_approval(
                     source_id=source_id,
                 )
             )
+        missing_evidence = set(normalized.required_evidence) - evidence_references
+        if missing_evidence:
+            diagnostics.append(
+                _diagnostic(
+                    "APPROVAL_EVIDENCE_MISSING",
+                    "Approval prerequisite evidence is missing: "
+                    + ", ".join(sorted(missing_evidence))
+                    + ".",
+                    path=f"{path}.required_evidence",
+                    source_id=source_id,
+                )
+            )
         if normalized.accountable_authority is None:
             diagnostics.append(
                 _diagnostic(
                     "APPROVAL_AUTHORITY_MISSING",
                     "Approval must identify an accountable human authority.",
+                    path=f"{path}.accountable_authority",
+                    source_id=source_id,
+                )
+            )
+        elif is_non_human_authority(normalized.accountable_authority):
+            diagnostics.append(
+                _diagnostic(
+                    "APPROVAL_NON_HUMAN_AUTHORITY",
+                    "Approval accountable authority must identify a human role or actor.",
                     path=f"{path}.accountable_authority",
                     source_id=source_id,
                 )
@@ -498,6 +533,20 @@ def _separation_of_duties(
         subjects.add(subject)
         author = raw.get("author")
         approvers = set(_as_list(raw.get("approvers")) or [])
+        non_human_approvers = sorted(
+            str(item) for item in approvers if is_non_human_authority(item)
+        )
+        if non_human_approvers:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_NON_HUMAN_APPROVER",
+                    "Separation-of-duties approvers must be human actors: "
+                    + ", ".join(non_human_approvers)
+                    + ".",
+                    path=f"{path}.approvers",
+                    source_id=source_id,
+                )
+            )
         if raw.get("risk_tier") in {"high", "critical"} and author in approvers:
             diagnostics.append(
                 _diagnostic(
@@ -523,6 +572,15 @@ def _separation_of_duties(
         ):
             requester = raw.get(requester_field)
             approver = raw.get(approver_field)
+            if is_non_human_authority(approver):
+                diagnostics.append(
+                    _diagnostic(
+                        "SOD_NON_HUMAN_APPROVER",
+                        f"{approver_field} must identify a human actor.",
+                        path=f"{path}.{approver_field}",
+                        source_id=source_id,
+                    )
+                )
             if requester is not None and requester == approver:
                 diagnostics.append(
                     _diagnostic(
@@ -552,6 +610,7 @@ def _exception_management(
         return ()
     diagnostics: list[GovernanceDiagnostic] = []
     identifiers: set[str] = set()
+    evidence_references = _evidence_references(document)
     for index, raw in enumerate(entries):
         if not isinstance(raw, Mapping):
             continue
@@ -586,15 +645,56 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-        if raw.get("status") == "closed" and not (_as_list(raw.get("closure_evidence")) or []):
+        if is_non_human_authority(raw.get("approving_authority")):
             diagnostics.append(
                 _diagnostic(
-                    "EXCEPTION_CLOSURE_EVIDENCE_MISSING",
-                    "A closed exception requires closure evidence.",
-                    path=f"{path}.closure_evidence",
+                    "EXCEPTION_NON_HUMAN_AUTHORITY",
+                    "Exception approving authority must identify a human actor.",
+                    path=f"{path}.approving_authority",
                     source_id=source_id,
                 )
             )
+        if is_non_human_authority(raw.get("accountable_owner")):
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_NON_HUMAN_AUTHORITY",
+                    "Exception accountable owner must identify a human actor.",
+                    path=f"{path}.accountable_owner",
+                    source_id=source_id,
+                )
+            )
+        declared_evidence = {
+            item
+            for item in (_as_list(raw.get("evidence")) or [])
+            if isinstance(item, str)
+        }
+        missing_evidence = declared_evidence - evidence_references
+        if missing_evidence:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_EVIDENCE_MISSING",
+                    "Exception evidence is missing: "
+                    + ", ".join(sorted(missing_evidence))
+                    + ".",
+                    path=f"{path}.evidence",
+                    source_id=source_id,
+                )
+            )
+        if raw.get("status") == "closed":
+            closure_evidence = {
+                item
+                for item in (_as_list(raw.get("closure_evidence")) or [])
+                if isinstance(item, str)
+            }
+            if not closure_evidence or not closure_evidence <= evidence_references:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_CLOSURE_EVIDENCE_MISSING",
+                        "A closed exception requires available closure evidence.",
+                        path=f"{path}.closure_evidence",
+                        source_id=source_id,
+                    )
+                )
         if as_of is None:
             diagnostics.append(
                 _diagnostic(

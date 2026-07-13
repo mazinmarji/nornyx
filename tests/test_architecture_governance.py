@@ -266,6 +266,30 @@ def test_architecture_importer_rejects_duplicate_keys_and_traversal(tmp_path: Pa
     }
 
 
+def test_architecture_importer_rejects_symlinked_root_ancestor(
+    tmp_path: Path,
+) -> None:
+    real_root = tmp_path / "real_root"
+    report_root = real_root / "reports"
+    report_root.mkdir(parents=True)
+    report = report_root / "report.json"
+    report.write_text("{}", encoding="utf-8")
+    link_root = tmp_path / "link_root"
+    try:
+        link_root.symlink_to(real_root, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation is unavailable")
+
+    with pytest.raises(GovernanceError) as caught:
+        import_architecture_evidence(
+            link_root / "reports" / report.name,
+            allowed_root=link_root / "reports",
+        )
+    assert {item.code for item in caught.value.diagnostics} == {
+        "ARCH_REPORT_SYMLINK_REJECTED"
+    }
+
+
 def test_architecture_importer_rejects_resource_exhaustion(tmp_path: Path) -> None:
     report = tmp_path / "large.json"
     report.write_bytes(b" " * (4 * 1024 * 1024 + 1))

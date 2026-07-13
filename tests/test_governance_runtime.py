@@ -437,6 +437,39 @@ def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
 
 
 @pytest.mark.parametrize(
+    "role",
+    ["tool:approval_bot", "system:approval_service"],
+)
+def test_non_human_actor_identity_fails_at_the_normalization_boundary(
+    role: str,
+) -> None:
+    approval = {
+        "name": "automation-gate",
+        "required_roles": [role],
+        "eligible_roles": [role],
+    }
+    normalized = normalize_approval(
+        approval,
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="automation-gate",
+    )
+    assert normalized.resolution == "invalid"
+    assert {item.code for item in normalized.diagnostics} == {
+        "APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE"
+    }
+
+    rule = _rule(
+        requirement={
+            "path": "approvals",
+            "references_role": role,
+        }
+    )
+    diagnostics = evaluate_rule({"approvals": [approval]}, rule)
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
+
+
+@pytest.mark.parametrize(
     "mutation",
     [
         {"timing": "during"},
@@ -489,6 +522,29 @@ def test_non_string_approval_values_cannot_normalize_as_authority() -> None:
     assert {item.code for item in normalized.diagnostics} == {
         "APPROVAL_VALUE_TYPE_INVALID"
     }
+
+
+def test_required_role_without_eligible_role_cannot_authorize() -> None:
+    approval = {
+        "name": "required-only-gate",
+        "required_roles": ["reviewer"],
+    }
+    normalized = normalize_approval(
+        approval,
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="required-only-gate",
+    )
+    assert normalized.resolution == "invalid"
+    assert {item.code for item in normalized.diagnostics} == {
+        "APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE"
+    }
+
+    rule = _rule(
+        requirement={"path": "approvals", "references_role": "reviewer"}
+    )
+    diagnostics = evaluate_rule({"approvals": [approval]}, rule)
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
 
 
 def _genuine_normalized_approval() -> dict[str, Any]:
