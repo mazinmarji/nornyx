@@ -6,6 +6,15 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## Unreleased
 
+## [1.5.2] - 2026-07-13
+
+### Fixed
+- Explicit profile paths now use a trust root independent of the pack's
+  immediate parent. Every unresolved component between that root and the pack
+  is inspected before path resolution, including components followed by `..`,
+  so symlinked higher ancestors are rejected by both `profiles validate` and
+  `init --profile-path`.
+
 ## [1.5.1] - 2026-07-13
 
 ### Fixed

@@ -576,9 +576,12 @@ def _print_pack_error(exc: GovernanceError, *, as_json: bool) -> None:
             print(f"{item.code}: {item.message}")
 
 
-def _absolute_path_without_resolving(path: str | Path) -> Path:
+def _explicit_pack_path_and_trust_root(path: str | Path) -> tuple[Path, Path]:
     candidate = Path(path)
-    return candidate if candidate.is_absolute() else Path.cwd() / candidate
+    if candidate.is_absolute():
+        return candidate, Path(candidate.anchor)
+    trust_root = Path.cwd()
+    return trust_root / candidate, trust_root
 
 
 def cmd_profiles(args: argparse.Namespace) -> int:
@@ -624,8 +627,12 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             )
             return 0
         if command == "validate":
-            path = _absolute_path_without_resolving(args.path)
-            pack = load_local_pack(path, allowed_root=path.parent)
+            path, trust_root = _explicit_pack_path_and_trust_root(args.path)
+            pack = load_local_pack(
+                path,
+                allowed_root=path.parent,
+                trust_root=trust_root,
+            )
             payload = {
                 "status": "valid",
                 "kind": "profile" if isinstance(pack, ProfilePack) else "module",
@@ -711,8 +718,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_init(args: argparse.Namespace) -> int:
     try:
         if args.profile_path:
-            source = _absolute_path_without_resolving(args.profile_path)
-            pack = load_local_pack(source, allowed_root=source.parent)
+            source, trust_root = _explicit_pack_path_and_trust_root(args.profile_path)
+            pack = load_local_pack(
+                source,
+                allowed_root=source.parent,
+                trust_root=trust_root,
+            )
             if not isinstance(pack, ProfilePack):
                 raise ValueError("--profile-path must identify a profile pack, not a module.")
             target = Path(args.out)
