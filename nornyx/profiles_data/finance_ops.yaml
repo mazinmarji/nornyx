@@ -186,7 +186,6 @@ starter_fragments:
       goal: Create initial Nornyx-governed development baseline.
       scope:
       - project.nyx
-      - profiles/finance_ops.yaml
       - docs/qa/evidence/GOAL-001/
       non_goals:
       - production deployment
@@ -372,4 +371,4 @@ provenance:
   source_revision: governance-extension-runtime-pr2
 integrity:
   algorithm: sha256
-  content_hash: sha256:65f339f024362c82571604798dc77f8651d8e399a8ab92b61b212c32d85e3ff6
+  content_hash: sha256:5fd2c86af6026a7451e0cfbd94a36833b484e9aa7600f465464b07933a9f5c65

@@ -197,7 +197,7 @@ def _trusted_normalized_roles(item: Mapping[str, Any]) -> tuple[str, ...] | None
             path=str(source["path"]),
             fallback_id=str(item["id"]),
         )
-    except (AttributeError, TypeError, ValueError):
+    except (GovernanceError, AttributeError, TypeError, ValueError):
         return None
     if renormalized.to_dict() != dict(item):
         return None

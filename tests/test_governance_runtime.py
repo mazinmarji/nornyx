@@ -819,6 +819,14 @@ def test_packaged_builtin_authority_and_public_v1_api() -> None:
         payload = yaml.safe_load((root / f"{name}.yaml").read_text(encoding="utf-8"))
         assert payload["integrity"]["content_hash"] == canonical_pack_hash(payload)
         assert profile_pack_v1(name) == payload
+        stale_scopes = [
+            scope
+            for fragment in payload["starter_fragments"]
+            for goal in fragment["content"].get("goals", [])
+            for scope in goal.get("scope", [])
+            if scope.startswith("profiles/")
+        ]
+        assert stale_scopes == [], name
 
 
 def test_profiles_cli_and_explicit_profile_init(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -859,6 +867,103 @@ def test_profiles_cli_and_explicit_profile_init(tmp_path: Path, monkeypatch, cap
     resolved = json.loads(capsys.readouterr().out)
     assert resolved["status"] == "resolved"
     assert (tmp_path / "nornyx.profiles.lock").is_file()
+
+
+@pytest.mark.parametrize("link_kind", ["file", "directory"])
+def test_profile_cli_entrypoints_reject_symlinked_pack_paths(
+    link_kind: str,
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    payload = _yaml("valid_profile_v1.yaml")
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    pack_path = real_dir / "profile.yaml"
+    _write_pack(pack_path, payload)
+    try:
+        if link_kind == "file":
+            requested = tmp_path / "profile-link.yaml"
+            requested.symlink_to(pack_path)
+        else:
+            linked_dir = tmp_path / "profile-dir-link"
+            linked_dir.symlink_to(real_dir, target_is_directory=True)
+            requested = linked_dir / "profile.yaml"
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation is unavailable")
+
+    monkeypatch.chdir(tmp_path)
+    relative_path = requested.relative_to(tmp_path)
+    assert main(["profiles", "validate", str(relative_path), "--json"]) == 1
+    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
+
+    target = tmp_path / f"{link_kind}.nyx"
+    assert main(
+        [
+            "init",
+            "--profile-path",
+            str(relative_path),
+            "--name",
+            "SymlinkRejected",
+            "--out",
+            str(target),
+        ]
+    ) == 1
+    assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
+    assert not target.exists()
+
+
+@pytest.mark.parametrize(
+    "source_mutation",
+    [
+        "invalid_raw",
+        "invalid_timing",
+        "malformed_revision_binding",
+        "inconsistent_shape",
+    ],
+)
+def test_check_fails_closed_on_adversarial_retained_approval_source(
+    source_mutation: str,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    approval = _genuine_normalized_approval()
+    if source_mutation == "invalid_raw":
+        approval["source"]["raw"] = ["not", "an", "approval"]
+    elif source_mutation == "invalid_timing":
+        approval["source"]["raw"]["timing"] = "after_everything"
+    elif source_mutation == "malformed_revision_binding":
+        approval["source"]["raw"]["revision_binding"] = {"kind": "git"}
+    else:
+        approval["source"]["shape"] = "legacy_goal_text"
+
+    module = _yaml("valid_module_v1.yaml")
+    module["rules"] = [
+        {
+            "id": "APPROVAL-001",
+            "description": "A reviewer must be authorized.",
+            "require": [
+                {
+                    "path": "experimental.normalized_approvals",
+                    "references_role": "reviewer",
+                }
+            ],
+            "severity": "error",
+            "message": "A reviewer is required.",
+        }
+    ]
+    module_dir = tmp_path / ".nornyx" / "modules"
+    module_dir.mkdir(parents=True)
+    _write_pack(module_dir / "evidence_integrity.yaml", module)
+
+    document = profile_document("minimal", "ApprovalBoundary")
+    document["project"]["modules"] = ["evidence_integrity"]
+    document.setdefault("experimental", {})["normalized_approvals"] = [approval]
+    contract = tmp_path / "project.nyx"
+    contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+
+    assert main(["check", str(contract)]) == 1
+    assert "RULE_REFERENCE_TYPE_ERROR" in capsys.readouterr().out
 
 
 def test_check_runs_project_local_module_rules(tmp_path: Path, capsys) -> None:
