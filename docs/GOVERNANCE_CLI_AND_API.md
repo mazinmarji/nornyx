@@ -112,5 +112,12 @@ are authenticated against packaged packs; non-built-in leaves require the
 same independently established registry as a keyword argument to
 `trusted_effective_approval`.
 
+For 1.x downstream consumers, the original positional constructor fields of
+`GovernanceModule`, `NormalizedApproval`, and `CompositionResult` remain the
+unchanged leading fields. Additive fields are trailing defaults. The source
+compatibility suite exercises both positional and keyword construction and
+compares the complete v1 serialized payloads; the installed-wheel smoke runs
+the same legacy consumer outside the source tree.
+
 Installed-wheel resources and the CLI implementation are checked locally
 without network access by `python scripts/test_wheel_install.py <wheel>`.

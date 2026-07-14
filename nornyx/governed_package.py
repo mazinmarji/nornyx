@@ -19,7 +19,6 @@ from .governance.loader import (
     read_local_file_bytes,
     reject_remote_or_device_path,
 )
-from .governance.schemas import validate_governance_block
 from .package_scanner import SCANNER_NAME, SCANNER_VERSION, scan_package, write_scan_reports
 from .parser import load_nyx
 
@@ -236,6 +235,59 @@ def _diag(
     level: str = "error",
 ) -> Diagnostic:
     return Diagnostic(level, code, message, path, hint)
+
+
+def _validate_governed_package_changes(changes: Any) -> list[Diagnostic]:
+    """Validate the unchanged governed-package 1.x change projection.
+
+    Governed-package 1.x accepted the full JSON string domain for change
+    ``id``, ``type``, and ``expected_artifacts`` entries and permitted arbitrary
+    extension properties.  The generalized change schema deliberately uses a
+    narrower identity type, but it governs only the separate top-level
+    ``changes`` block when the change-control module is selected.  Reinterpreting
+    a legacy package extension property as an opt-in would narrow formerly valid
+    packages, so this compatibility adapter never does so.
+    """
+
+    if not isinstance(changes, list):
+        return []
+
+    diagnostics: list[Diagnostic] = []
+    for index, change in enumerate(changes):
+        path = f"governed_package.changes[{index}]"
+        if not isinstance(change, dict):
+            diagnostics.append(
+                _diag(
+                    "INVALID_GOVERNED_PACKAGE_CHANGE",
+                    "governed_package change must be a mapping",
+                    path,
+                )
+            )
+            continue
+
+        for field in ("id", "type"):
+            if field not in change or not isinstance(change[field], str):
+                diagnostics.append(
+                    _diag(
+                        "INVALID_GOVERNED_PACKAGE_CHANGE",
+                        f"governed_package change {field!r} must be a string",
+                        f"{path}.{field}",
+                    )
+                )
+
+        expected_artifacts = change.get("expected_artifacts")
+        if "expected_artifacts" in change and (
+            not isinstance(expected_artifacts, list)
+            or any(not isinstance(item, str) for item in expected_artifacts)
+        ):
+            diagnostics.append(
+                _diag(
+                    "INVALID_GOVERNED_PACKAGE_CHANGE",
+                    "governed_package change expected_artifacts must be a list of strings",
+                    f"{path}.expected_artifacts",
+                )
+            )
+    return diagnostics
 
 
 def _risk_rank(tier: str) -> int:
@@ -547,20 +599,7 @@ def validate_governed_package(
                 )
             )
 
-    for item in validate_governance_block(
-        "changes",
-        package.get("changes"),
-        "https://nornyx.dev/schemas/change_v1.schema.json",
-        source_id="nornyx.governed_package",
-    ):
-        suffix = item.path.removeprefix("changes") if item.path else ""
-        diagnostics.append(
-            _diag(
-                "INVALID_GOVERNED_PACKAGE_CHANGE",
-                item.message,
-                f"governed_package.changes{suffix}",
-            )
-        )
+    diagnostics.extend(_validate_governed_package_changes(package.get("changes")))
 
     requirements = _evidence_requirements(package)
     requirement_ids = _id_values(requirements)

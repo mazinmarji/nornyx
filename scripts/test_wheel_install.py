@@ -116,6 +116,62 @@ def main(argv: list[str] | None = None) -> int:
             "validator": True,
         }:
             raise RuntimeError(f"installed-wheel resource probe failed: {payload!r}")
+        legacy_consumer = _run(
+            [
+                str(python),
+                "-I",
+                "-c",
+                """
+import json
+from nornyx.governance import CompositionResult, GovernanceModule, NormalizedApproval
+from nornyx.governance.models import PackProvenance
+
+provenance = PackProvenance("human", "project", "git:base", "module.yaml")
+legacy_binding = {
+    "kind": "git", "revision": "base-revision", "exact": True,
+    "scope_hash": "sha256:" + "a" * 64,
+}
+module = GovernanceModule(
+    "org.example.module", "module", "1.0.0", ">=1.0,<2.0",
+    (), (), (), (), (), (), (), (), (), provenance, "sha256:" + "0" * 64, {},
+)
+approval = NormalizedApproval(
+    "HumanGate", ("reviewer",), ("reviewer",), ("ai_tool",),
+    ("execution_surface",), ("review",), ("merge",), "before_merge",
+    "user:owner", legacy_binding, ("revision_changed",), None, "complete", (),
+    "ordinary_approval", "approvals[0]", {"name": "HumanGate"}, "eligible_roles",
+)
+composition = CompositionResult(
+    None, (module,), (), (), (), (approval,), (), (), (), (), (),
+)
+approval_payload = approval.to_dict()
+composition_payload = composition.to_dict()
+assert module.block_schemas == () and module.structural_checks == ()
+assert approval.exact_revision_required is None and approval.expires_after is None
+assert composition.block_schemas is None and composition.structural_checks is None
+assert approval_payload["schema"] == "nornyx.normalized_approval.v1"
+assert approval_payload["revision_binding"] == legacy_binding
+assert "exact_revision_required" not in approval_payload
+assert "expires_after" not in approval_payload
+assert composition_payload["schema"] == "nornyx.effective_governance.v1"
+assert "block_schemas" not in composition_payload
+assert "structural_checks" not in composition_payload
+print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["schema"],
+                  "composition_schema": composition_payload["schema"]}))
+""",
+            ],
+            cwd=root,
+            env=env,
+        )
+        consumer_payload = json.loads(legacy_consumer.stdout)
+        if consumer_payload != {
+            "legacy_consumer": True,
+            "approval_schema": "nornyx.normalized_approval.v1",
+            "composition_schema": "nornyx.effective_governance.v1",
+        }:
+            raise RuntimeError(
+                f"installed-wheel legacy consumer failed: {consumer_payload!r}"
+            )
         cli = _run(
             [str(python), "-I", "-m", "nornyx.cli", "modules", "list", "--json"],
             cwd=root,
@@ -133,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
                 "version": payload["version"],
                 "profiles": payload["profiles"],
                 "modules": payload["modules"],
+                "legacy_consumer": consumer_payload["legacy_consumer"],
                 "network_used": False,
             },
             sort_keys=True,

@@ -75,8 +75,8 @@ do not select governance modules remain compatibility anchors.
 1. Add bounded block-schema bindings and fixed structural-check declarations.
 2. Implement and test human approval, evidence integrity, separation of duties,
    and exception management modules.
-3. Add the shared change schema and `change_control`; reconcile governed
-   packages without changing the minimum compatibility tier.
+3. Add the strict shared change schema and `change_control`; reconcile governed
+   packages through their frozen 1.x compatibility projection.
 4. Add architecture schemas, evidence importer, module, profile, starter, and
    examples.
 5. Complete GSA and ADR decisions for every later candidate.
@@ -96,7 +96,7 @@ execution requirement, or unbound evidence requirement stops the program.
 Stages A through I are implemented. Stage I reconciles the documentation,
 closure matrix, release-candidate evidence, and independent audit. The branch
 contains six reusable
-modules, the shared change model, governed-package delegation, the optional
+modules, the shared change model, the governed-package compatibility adapter, the optional
 `architecture_governance` profile, bounded architecture evidence import,
 complete GSA decisions, and a compatibility-preserving mapping for every
 profile. No later specialist module passed the proliferation gate. CLI/API,

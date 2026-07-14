@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/change_v1.schema.json",
   "title": "Nornyx Shared Change Collection v1",
-  "description": "Additive shared change model. The compatibility minimum remains id and type.",
+  "description": "Strict generalized change model for an explicitly selected top-level change_control block.",
   "x-nornyx-governance-block": "changes",
   "type": "array",
   "maxItems": 1000,

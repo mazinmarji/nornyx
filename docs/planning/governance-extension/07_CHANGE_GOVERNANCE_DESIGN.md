@@ -14,8 +14,9 @@ governed-package projection.
 
 ## 1. Shared change schema (`nornyx.change.v1`, defined by the module)
 
-Required fields kept to the **existing governed-package minimum** so every
-shipped contract remains valid:
+The generalized, module-selected model requires `id` and `type` and uses
+bounded governance identities. It is intentionally stricter than the frozen
+nested governed-package 1.x projection described in section 3:
 
 ```yaml
 changes:
@@ -74,28 +75,34 @@ revision or scope mismatch produces `APPROVAL_STALE_FOR_REVISION` or
 
 ## 3. Reconciliation with `governed_package.changes`
 
-Governed packages retain their existing minimum (`id` and `type`) while using
-the same shared schema. Package-specific task and artifact references remain
-in the governed-package validator.
+Governed packages retain the exact 1.x compatibility projection: `id` and
+`type` must be JSON strings across the full string domain,
+`expected_artifacts` remains an optional array of unrestricted JSON strings,
+and additional properties remain permitted. `nornyx/governed_package.py` and
+both governed-package schema copies implement that frozen boundary.
 
-Approach — **one schema, two required-field tiers**:
-1. `change_control` owns `nornyx.change.v1` (above). Only `id` and `type` are
-   required by the shared shape; selected modules impose stronger governance.
-2. `governed_package.py` validation delegates change-shape checks to the shared
-   schema; its package-specific rules (task→change references,
-   expected_artifacts→artifact ids) remain in the profile.
-3. No existing `.nyx` file changes meaning: additive optional fields only.
-4. Compatibility test: every `examples/governed_package/*.nyx` validates
-   unchanged, and the golden manifests are byte-identical.
+`change_control` separately owns the strict top-level `nornyx.change.v1`
+schema. A project opts into those semantics by selecting the module and
+declaring the module-governed top-level `changes` block. Fields placed only in
+the nested legacy package projection are package metadata and do not acquire
+generalized change authority.
+
+This compatibility adapter is not a second generalized change model: it is a
+frozen input projection at the governed-package boundary. Mutation-based
+base-vs-head tests compare its accept/reject domain with the 1.5.2 schema,
+while generalized-change tests independently prove the strict schema remains
+fail-closed.
 
 Rejected alternatives: (a) renaming `expected_artifacts` → `affected_assets`
 (breaks shipped contracts; they mean different things — outputs vs touched
-assets — keep both); (b) making governed-package changes a *sub*type with its
-own schema id (two ids for one concept = the forbidden fork).
+assets — keep both); (b) silently applying the strict generalized identity
+domain to nested package data (breaks the 1.x contract); (c) treating an
+arbitrary legacy extension property as an opt-in (additional properties were
+already valid and cannot safely be reinterpreted).
 
 ## 4. Migration approach
 
 Implemented in Stage C: module pack, shared schema, fixed checks, rules,
-governed-package delegation, executable example, and adversarial tests. No
-deprecations are needed; the schema is strictly additive for existing package
-contracts.
+governed-package compatibility adapter, executable example, and adversarial
+tests. No governed-package deprecation is needed because its accepted 1.x
+domain is preserved rather than migrated.

@@ -177,36 +177,36 @@
       "original_severity": "Medium",
       "root_cause": "Raw-byte-hashed evidence and architecture artifacts are treated as Git text and converted by autocrlf.",
       "reproducer": "tests/test_governance_audit_cross_platform.py::test_aud014_hash_bound_artifacts_are_checkout_stable",
-      "affected_files": [".gitattributes", "examples/governance_evidence", "examples/architecture_reports"],
+      "affected_files": [".gitattributes", "examples/governance_evidence", "examples/architecture_reports", "tests/fixtures/governance_compatibility", "tests/fixtures/generated_drift", "tests/test_governance_audit_cross_platform.py"],
       "correction": "Mark every raw-byte-hashed artifact as non-text and validate a fresh autocrlf checkout.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_cross_platform.py::test_aud014_hash_bound_artifacts_are_checkout_stable"],
-      "validation": {"status": "reproduced_failing", "evidence": "Fresh autocrlf checkout caused five hash-bound validation failures."},
-      "final_status": "open"
+      "implementation_reference": [".gitattributes", "tests/test_governance_audit_cross_platform.py::test_aud014_fresh_autocrlf_checkout_preserves_hash_bound_behavior"],
+      "tests": ["tests/test_governance_audit_cross_platform.py::test_aud014_hash_bound_artifacts_are_checkout_stable", "tests/test_governance_audit_cross_platform.py::test_aud014_fresh_autocrlf_checkout_preserves_hash_bound_behavior"],
+      "validation": {"status": "stage_passed", "evidence": "The protected inventory covers all governance evidence, architecture reports, direct compatibility JSON, generated-drift JSON, and pre-existing binary starter goldens. A real autocrlf clone compares checkout bytes with immutable HEAD blobs, runs both hash-bound examples, resolve/explain/matrix, and the compatibility corpus without weakening raw-byte hash verification."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-015",
       "original_severity": "Medium",
       "root_cause": "Governed-package validation delegates legacy change id/type strings to a newly narrowed shared identity schema.",
       "reproducer": "tests/test_governance_audit_compatibility.py::test_aud015_governed_package_legacy_change_strings_remain_valid",
-      "affected_files": ["nornyx/governed_package.py", "schemas/change_v1.schema.json", "nornyx/schemas/change_v1.schema.json"],
-      "correction": "Preserve the base governed-package string domain with an explicit compatibility adapter.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_compatibility.py::test_aud015_governed_package_legacy_change_strings_remain_valid"],
-      "validation": {"status": "reproduced_failing", "evidence": "Spaces, leading underscore and non-ASCII legacy strings became invalid."},
-      "final_status": "open"
+      "affected_files": ["nornyx/governed_package.py", "schemas/governed_package.schema.json", "nornyx/schemas/governed_package.schema.json", "schemas/change_v1.schema.json", "nornyx/schemas/change_v1.schema.json", "docs/decisions/ADR-0021-change-governance-as-a-module.md", "docs/planning/governance-extension/07_CHANGE_GOVERNANCE_DESIGN.md"],
+      "correction": "Preserve the complete base governed-package string and extension domain with a frozen compatibility adapter; enforce the strict shared model only for an explicitly selected top-level change-control block.",
+      "implementation_reference": ["nornyx/governed_package.py::_validate_governed_package_changes", "schemas/governed_package.schema.json::properties.changes", "nornyx/schemas/governed_package.schema.json::properties.changes", "docs/decisions/ADR-0021-change-governance-as-a-module.md"],
+      "tests": ["tests/test_governance_audit_compatibility.py::test_aud015_governed_package_legacy_change_strings_remain_valid", "tests/test_governance_audit_compatibility.py::test_aud015_head_matches_base_string_domain", "tests/test_governance_audit_compatibility.py::test_aud015_head_matches_base_rejection_domain", "tests/test_governance_audit_compatibility.py::test_aud015_seeded_base_vs_head_string_differential", "tests/test_governance_audit_compatibility.py::test_aud015_generalized_change_schema_remains_strict_when_selected", "tests/test_governance_audit_compatibility.py::test_aud015_governed_package_schema_mirrors_pin_the_base_oracle"],
+      "validation": {"status": "stage_passed", "evidence": "Reported cases plus empty, whitespace, long, punctuation-leading, newline, emoji, CJK, arbitrary extension, and 250 seeded mutation values per field match the frozen 1.5.2 schema oracle with no narrowing or broadening. Missing and non-string base-invalid shapes still fail, while strict generalized change identities remain fail-closed."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-016",
       "original_severity": "Medium",
       "root_cause": "Required fields were inserted into exported dataclass constructors and existing to_dict shapes changed.",
       "reproducer": "tests/test_governance_audit_compatibility.py::test_aud016_base_public_dataclass_constructors_remain_valid",
-      "affected_files": ["nornyx/governance/models.py", "docs/GOVERNANCE_CLI_AND_API.md"],
+      "affected_files": ["nornyx/governance/models.py", "nornyx/governance/__init__.py", "scripts/test_wheel_install.py", "docs/GOVERNANCE_CLI_AND_API.md"],
       "correction": "Restore base-valid constructors with defaults and preserve legacy serialization through compatible output methods.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_compatibility.py::test_aud016_base_public_dataclass_constructors_remain_valid"],
-      "validation": {"status": "reproduced_failing", "evidence": "Base-compatible downstream construction raised TypeError at unchanged version 1.5.2."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/governance/models.py::GovernanceModule", "nornyx/governance/models.py::NormalizedApproval.to_legacy_dict", "nornyx/governance/models.py::CompositionResult.to_dict", "scripts/test_wheel_install.py::main"],
+      "tests": ["tests/test_governance_audit_compatibility.py::test_aud016_base_public_dataclass_constructors_remain_valid", "tests/test_governance_audit_compatibility.py::test_aud016_base_positional_constructor_prefixes_remain_valid", "tests/test_governance_audit_compatibility.py::test_aud016_base_serialized_payloads_are_exactly_preserved", "tests/test_governance_audit_compatibility.py::test_aud016_base_nested_values_and_diagnostics_are_preserved", "tests/test_governance_audit_compatibility.py::test_aud016_base_public_exports_are_not_removed", "scripts/test_wheel_install.py::main"],
+      "validation": {"status": "stage_passed", "evidence": "Every base field remains an unchanged positional prefix; additive fields are trailing defaults; complete normalized-approval and composition v1 payloads, nested consumer mappings, retained source and diagnostics match the base contract; base public exports remain a subset; the isolated wheel smoke executes the legacy positional consumer."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-017",

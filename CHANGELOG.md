@@ -41,6 +41,13 @@ distribution version is independent of the Nornyx **language/schema** version
 - Structural enum handling is fail-closed and crash-safe: mappings, arrays,
   booleans, and numbers cannot reach hash-based lifecycle, risk, architecture,
   or claimed-approval-schema comparisons.
+- Stage 5 closes AUD-014 through AUD-016 pending final integration: every
+  repository artifact whose raw bytes are hash-bound is protected from Git
+  line-ending conversion and a real `core.autocrlf=true` clone exercises the
+  affected commands and corpus; governed-package changes retain the exact
+  1.5.2 accept/reject domain through a compatibility adapter; public 1.x
+  constructor prefixes and v1 serializers remain unchanged and are exercised
+  by a downstream installed-wheel consumer.
 - The additive architecture example now attributes its decision record to the
   change author rather than its approving architect, preserving the declared
   evidence/approval separation; the compatibility corpus pins the corrected
@@ -92,9 +99,11 @@ distribution version is independent of the Nornyx **language/schema** version
 - Selected modules now enforce their required blocks, block schemas, evidence
   contracts, and fixed relational checks. Legacy profile-only requirements
   remain compatibility-preserving unless a module is explicitly selected.
-- Governed-package changes now delegate shape validation to the shared change
-  schema while retaining their existing package-specific references and
-  compatibility behavior.
+- Governed-package changes retain the exact 1.x input domain through a frozen
+  compatibility adapter and matching package schemas. The strict shared
+  `nornyx.change.v1` identity and lifecycle rules apply only to an explicitly
+  selected top-level `change_control` block; legacy nested extension metadata
+  is not reinterpreted as governance authority.
 - Architecture analysis remains external: Nornyx imports only a versioned
   local data envelope and never executes tools or infers repository structure.
   Architecture Radar is rejected for the current program by ADR-0030.

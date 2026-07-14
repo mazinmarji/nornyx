@@ -46,11 +46,11 @@ monotonic, documented, and covered by unit/integration/adversarial tests.
 
 Status: implemented.
 
-- `nornyx.change.v1` with additive `id`/`type` compatibility;
+- strict top-level `nornyx.change.v1` for explicitly selected change control;
 - `change_control` module;
 - lifecycle, revision, approval, rollback, closure, exception, and separation
   checks;
-- governed-package delegation to the shared change validator;
+- exact governed-package 1.x compatibility projection at the package boundary;
 - explicitly approved golden migration only if unavoidable.
 
 Acceptance: every existing governed-package example retains meaning and all

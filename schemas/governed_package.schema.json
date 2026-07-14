@@ -114,7 +114,16 @@
     },
     "changes": {
       "type": "array",
-      "items": {"$ref": "change_v1.schema.json#/$defs/change"}
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string"},
+          "expected_artifacts": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": true
+      }
     },
     "evidence": {
       "type": "object",

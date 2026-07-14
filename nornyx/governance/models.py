@@ -203,7 +203,11 @@ class NormalizedApproval:
             if self.revision_binding
             else None
         )
-        if legacy_revision_binding is not None:
+        # A base-style public constructor call has no v2 requirement marker;
+        # preserve its mapping byte-for-byte as the original serializer did.
+        # Newly normalized approvals always carry the boolean marker, so their
+        # v1 compatibility view omits the v2-only scope hash.
+        if legacy_revision_binding is not None and self.exact_revision_required is not None:
             legacy_revision_binding.pop("scope_hash", None)
         return {
             "id": self.id,

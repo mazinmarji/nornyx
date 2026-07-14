@@ -15,9 +15,10 @@ validation prematurely.
 
 The scanner hardening merged first. The completed `change_control` stage then
 re-audited and reconciled the settled governed-package schema, scanner evidence,
-approval aliases, task/change references, and examples. Governed packages now
-delegate compatible change validation to the shared `nornyx.change.v1` model
-without weakening the historical `id`/`type` minimum.
+approval aliases, and examples. Governed packages preserve their complete 1.x
+change-string domain through a frozen compatibility adapter. The narrower
+`nornyx.change.v1` model is enforced only for an explicitly selected top-level
+`change_control` block; it is not applied to nested legacy package input.
 
 Architecture evidence import follows the same bounded, local report-import
 boundary: Nornyx validates supplied evidence and does not execute scanners or
