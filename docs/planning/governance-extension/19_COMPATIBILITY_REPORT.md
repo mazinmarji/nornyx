@@ -1,84 +1,58 @@
 # 19 - Backward Compatibility Report
 
-Status: **superseded for candidate assurance by the independent NO-GO audit of
-`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation is in progress.**
+Status: **remediated locally and ready for an exact-head independent audit.**
 
-The results below are retained as historical implementation evidence only.
-They are not current proof of backward compatibility or release readiness.
+This report applies to the candidate selected by the checked-out `HEAD`, based
+on `95952226999327458c6fea81cb32d82539bcae5b`. The audited failing candidate
+was `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; its earlier compatibility
+claims are historical and are not reused as evidence.
+The remediated implementation through Stage 6 is
+`6c0732c1be916a802e20bffce6eabf4bd7309703`.
 
-## Baseline and Policy
+## Compatibility Contract
 
-The formal corpus is
-`tests/fixtures/governance_compatibility/manifest.json`, anchored to Nornyx
-1.5.2 and baseline main commit
-`95952226999327458c6fea81cb32d82539bcae5b`. It distinguishes:
+The machine-readable corpus is
+`tests/fixtures/governance_compatibility/manifest.json`. It pins:
 
-- `byte_identical`;
-- `canonical_lf_identical`;
-- `semantically_equivalent`;
-- `intentional_migration_requiring_approval`.
+- all established starters and the one additive architecture starter;
+- all top-level and governed-package examples;
+- generated drift artifacts, locks, legacy projections, CLI output and exit
+  codes;
+- the base-compatible public dataclass constructor and v1 serializer surface;
+- source and packaged schema behavior; and
+- five intentional migrations with immutable before/after artifacts.
 
-Tests fail on unrecorded additions, removals, byte changes, canonical JSON
-changes, exit-code changes, or missing migration approval metadata. A failed
-golden is not regenerated automatically.
+Each migration proof binds the complete manifest record, old and new raw
+SHA-256 hashes, exact deterministic JSON-pointer operations or unified text
+diff, reason, human-request metadata, and changelog marker. The verifier also
+checks closed artifact inventory, ordered chains, and the current terminal
+output. `python scripts/check_compatibility_migrations.py` is the executable
+entry point.
 
-## Corpus Coverage
+## Results
 
-| Required surface | Classification | Executable evidence | Result |
-|---|---|---|---|
-| All profile starters | Byte/canonical-LF hashes from the established starter manifest | `test_current_main_starter_goldens_are_complete_hashed_and_deterministic` plus corpus delegation test | 11 established starters unchanged; architecture starter additive |
-| Existing governed-package examples | `canonical_lf_identical` | complete enumerated canonical-LF path/hash set in compatibility manifest | pinned across Git text checkout modes |
-| Existing top-level `.nyx` examples | `canonical_lf_identical` | complete enumerated canonical-LF path/hash set in compatibility manifest | pinned across Git text checkout modes |
-| Legacy profile API output | `semantically_equivalent` | catalog/API tests plus pinned `ai_coding` v0.3 projection and loss report | pinned |
-| CLI stdout and exit codes | `semantically_equivalent` canonical JSON | six success/error cases with repository-root normalization | pinned |
-| Generated artifacts and manifests | `canonical_lf_identical` | both committed generated-drift baselines | pinned across Git text checkout modes |
-| Governance locks | `canonical_lf_identical` | canonical minimal-profile lock hash and existing permutation tests | pinned |
-| Governed-package locks/manifests | `semantically_equivalent` plus deterministic scanner anchors | governed-package generation, tamper, and byte-determinism tests | retained |
-| Projection reports | `semantically_equivalent` | normative projection cases and pinned report hash | pinned |
+| Surface | Result |
+|---|---|
+| Eleven established profile starters | byte-identical |
+| Architecture-governance starter | additive, recorded separately |
+| Governed-package 1.5.2 change domain | preserved by compatibility adapter |
+| Public 1.x constructor prefixes/defaults | preserved |
+| Public v1 serializers | preserved; v2/verifiable output is explicit |
+| CLI semantic corpus | pinned, including five exact migrations |
+| Raw hash-bound artifacts | protected by `.gitattributes` and real `core.autocrlf=true` clone test |
+| Installed wheel downstream consumer | passes with 12 profiles and 6 modules |
 
-## Approved Migration Record
+The explain migrations are a two-step chain: declared revision/expiry fields,
+then bounded verifiable effective-approval provenance. The SOD module-list and
+matrix changes are recorded independently. The architecture example migration
+contains one producer-identity line change preserving evidence/approval
+separation.
 
-The program changed no established starter golden. It added one new
-`architecture_governance` starter, for which no old hash existed. The corpus
-records its new byte hash, additive classification, exact reason, approval
-context, and changelog location. The eleven 1.5.2 profile starters retain their
-existing hashes and semantics.
+## Release Boundary
 
-The PR #30 blocking review required `exact_revision_required` and
-`expires_after` to appear in normalized effective approval reporting. The
-`governance_explain` canonical hash therefore changes from
-`651fd74c369080e28b6599e8ad608a6a59d40170d1c63c3d6507eeb56ac7afb8` to
-`dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3`.
-The corpus records the exact additive paths, unchanged exit code, reason,
-review approval, and changelog location. No field was removed.
-
-Governance modules, schemas, commands, examples, and advisory GSA matrices are
-additive. Existing free-form `project.profile` values retain warning-and-pass
-behavior; explicit module selection remains fail closed. Existing profile
-projection and lock formats are unchanged.
-
-## Residual Compatibility Risk
-
-Security corrections may reject malformed or untrusted inputs previously
-accepted accidentally; this is an intentional tightening, not supported input
-breakage. CLI reports contain current validation time unless `--as-of` is
-provided. Absolute repository paths are normalized only for corpus comparison,
-not in real CLI output.
-
-The compatibility corpus is a release gate. Any future changed golden requires
-old hash, new hash, exact diff, reason, classification, approval, and changelog
-entry before the test can be updated.
-
-Wheel packaging is checked separately by `scripts/test_wheel_install.py`. The
-probe installs one local wheel with `--no-deps` into a temporary environment,
-runs outside the repository with isolated Python path handling, and verifies
-all packaged profiles, modules, governance schemas, the public evidence API,
-and the installed CLI without network access.
-
-## Final Execution Evidence
-
-At audited commit `16f8eb350e61966d37000f34b8ebdd720aa741af`, the
-Windows suite passes 532 tests with 12 platform symlink skips. Linux CI run
-`29272686337` passes all 544 tests. A fresh 1.5.2 source distribution and wheel
-pass Twine, and the isolated wheel probe reports 12 profiles, 6 modules, no
-network use, and status pass.
+Security hardening intentionally rejects malformed and untrusted inputs that
+were never supported authority. No unapproved supported-input narrowing was
+accepted. A hosted Linux CI run for this local head is not claimed: PR #30 is
+still at the old remote head because pushing is outside this remediation's
+authorization. Hosted CI is pending. Local Windows and Ubuntu/WSL results are
+recorded in report 22.

@@ -1,8 +1,8 @@
 # 12 - Implementation Roadmap
 
-Status: **remediation in progress after the independent NO-GO audit of
-`35ee69359599af7887f6b9b58ae0a4cd06a48d25`. Earlier closure statements in
-this roadmap are superseded.**
+Status: **AUD-001 through AUD-022 are locally remediated after the independent
+`NO-GO` audit of `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; Stage I is ready
+for exact-head independent audit and hosted CI.**
 
 ## Reconciled Status
 
@@ -119,21 +119,20 @@ Status: implemented.
 - build, wheel install, documentation execution, and Linux symlink tests;
 - public-boundary and repository-specific assurance.
 
-Reports 19-20 and the formal compatibility manifest record the results. The
-final expanded suite passes 532 tests with 12 platform skips on Windows; Linux
-CI passes all 544 tests, including real symlink cases. Ruff, public-boundary,
-key examples, source/sdist/wheel build, Twine checks, and an isolated
-no-network installed-wheel probe pass. Setuptools license metadata emits a
-nonblocking deprecation warning with a 2027 deadline.
+Reports 19-20 and the formal compatibility manifest record the results. Stage
+6 focused Windows validation, Ruff, public-boundary, compatibility,
+fresh-checkout, source/sdist/wheel build, and the socket-denied installed-wheel
+probe pass. The Stage 7 Windows suite passes `913 passed, 45 skipped`; the
+Ubuntu/WSL result is recorded after the committed candidate runs. Hosted current-head CI requires an authorized
+push and is not claimed by this local record.
 
 ## Stage I - Program Closure
 
-Status: superseded; AUD-001 through AUD-022 remain under remediation.
+Status: implemented locally; exact-head external audit and hosted CI pending.
 
-Reports 19-22 and the release-candidate record are retained as historical
-evidence but are not current closure proof. The machine-readable remediation
-ledger is authoritative while the findings are open. No operational release
-action is authorized.
+Reports 19-22 and the candidate record distinguish verified local evidence
+from pending external gates. The machine-readable remediation ledger is the
+finding-level authority. No operational release action is authorized.
 
 ## Rollback and Review
 

@@ -95,20 +95,18 @@ def test_required_program_records_and_catalog_counts_exist() -> None:
     assert len(profile_packs) == 12
 
 
-def test_superseded_audit_and_release_candidate_are_explicit() -> None:
+def test_current_audit_and_candidate_preserve_external_gate_boundary() -> None:
     audit = FINAL_AUDIT.read_text(encoding="utf-8")
     roadmap = ROADMAP.read_text(encoding="utf-8")
     candidate = RELEASE_CANDIDATE.read_text(encoding="utf-8")
 
-    assert "Status: **superseded.**" in audit
+    assert "Status: **ready for a fresh independent read-only audit.**" in audit
     assert "AUD-001 through AUD-022" in audit
-    assert "Status: superseded; AUD-001 through AUD-022" in roadmap
-    assert (
-        "Human release-candidate approval: **not recorded for the corrected candidate**."
-        in candidate
-    )
+    assert "Status: implemented locally; exact-head external audit" in roadmap
+    assert "Human candidate approval | not recorded" in candidate
     assert "35ee69359599af7887f6b9b58ae0a4cd06a48d25" in audit
-    assert "NO-GO" in candidate
+    assert "current-head hosted CI result is claimed" in candidate
+    assert "PR state: draft" in candidate
 
 
 def test_current_specs_do_not_claim_the_runtime_is_unimplemented() -> None:

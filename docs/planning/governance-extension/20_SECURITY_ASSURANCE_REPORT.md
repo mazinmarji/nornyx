@@ -1,83 +1,46 @@
 # 20 - Security Assurance Report
 
-Status: **superseded for candidate assurance by the independent NO-GO audit of
-`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation is in progress.**
+Status: **AUD-001 through AUD-022 remediated locally; external exact-head audit
+and hosted Linux CI remain release gates.**
 
-The threat matrix below is historical and must not be treated as evidence that
-the current candidate closes the reported trust-boundary findings.
+The audit baseline is `95952226999327458c6fea81cb32d82539bcae5b`; the failing
+candidate is `35ee69359599af7887f6b9b58ae0a4cd06a48d25`. Evidence is taken from the
+current checkout, schemas, packaged mirrors, fixtures, executable tests, built
+wheel, and machine-readable remediation ledger—not the prior reports.
+The remediated implementation through Stage 6 is
+`6c0732c1be916a802e20bffce6eabf4bd7309703`.
 
-## Scope
+## Security Invariants
 
-This report covers governance packs, composition, approvals, evidence,
-exceptions, changes, architecture evidence, governed packages, locks, the new
-inspection CLI, and public validation API. Nornyx remains local-only,
-data-only, deterministic where promised, and unable to approve, deploy,
-publish, remediate, analyze source, execute specialist tools, or retrieve
-network content.
+| Boundary | Current enforcement |
+|---|---|
+| Filesystem | lexical remote/device rejection; independent trust root; unresolved ancestor inspection before existence, resolution, discovery, or reads; containment and bounded strict input |
+| Pack identity and locks | one profile/module namespace; collision-safe construction; strict UTF-8/JSON/schema/set/hash verification; all lock failures use governance exit 2 |
+| Approval authority | source-derived canonical identity; string-only authority metadata; intrinsic non-human rejection; intersecting eligibility; exact revision/scope/expiry; bounded verifiable composition |
+| Evidence | local contained artifacts; hash, revision, freshness, dependency and passing-chain verification; stale/forged references fail closed |
+| Structural governance | SOD actors are non-empty human identities joined to changes, evidence and gates; high-risk self-approval fails; exception interval, overlap, expiry, closure and renewal rules fail closed |
+| Schema safety | reviewed local schemas only; bounded keyword subset; complete local-reference target/cycle checks; no remote schemas or pack-supplied validators |
+| Execution | governance inspection has no network, subprocess, connector, dynamic Python, automatic approval, deployment, publication or remediation surface |
+| Packaging | installed-wheel smoke clears network configuration, uses only the local wheel with `--no-index`, denies DNS/connect calls, and derives `network_used` from the observed attempt log |
 
-## Threat Closure Matrix
+## Adversarial Coverage
 
-| Threat | Mitigation | Executable proof | Status |
-|---|---|---|---|
-| Malicious module/profile | Closed schemas, integrity hash, safe YAML, safety constants, no executable fields | module security/invalid profile fixtures; loader adversarial tests | mitigated |
-| Duplicate identities | Same-tier identity collision fatal before composition | `test_registry_order_duplicate_detection_composition_and_locks` | mitigated |
-| Namespace squatting | Non-bundled `nornyx.builtin.*` rejected | `test_loader_rejects_reserved_namespaces_and_resource_abuse` | mitigated |
-| Path, parent, and symlink traversal | Inspect unresolved components from independent trust root, then real-path containment | loader, project discovery, both profile CLI entry points, module CLI, evidence CLI, and architecture report importer tests | mitigated; real symlinks authoritative on Linux CI |
-| YAML exhaustion | 512 KiB, depth, node, and alias caps before semantic loading | pack and evidence resource-abuse tests | mitigated |
-| Schema bombs, local cycles, dangling/remote `$ref` | Only bundled reviewed block schemas; bounded subset; complete nested reference-graph cycle and target validation | `test_governance_block_schema_subset_rejects_unsafe_references` | mitigated |
-| Malformed/unknown rule | Closed schema/operators/path grammar; structural type errors fail closed | normative rule fixtures and runtime adversarial tests | mitigated |
-| Forged or malformed approval | Full schema validation, exact re-normalization from retained source, and fail-closed raw-normalization errors | normalized invariant matrix, raw mutation matrix, and adversarial `nornyx check` tests | mitigated |
-| Stale approval | Exact revision/scope, invalidation, and expiry checks | change/foundational mutation matrices | mitigated |
-| Forged, stale, or substituted evidence | Schema, artifact containment, SHA-256, revision, dependency, freshness, and approval/exception reference checks | foundational and evidence CLI tests | mitigated |
-| Lock substitution | Set, id, version, tier, and content hash verified; duplicates fatal | runtime and governance CLI tamper tests | mitigated |
-| Exception weakening/expiry | Core exclusion set, disjoint human authority, evidence, interval, expiry, closure | foundational exception mutation matrix | mitigated |
-| Self-approved change | Author/approver disjointness and matching high-risk approval checks | foundational and change mutation matrices | mitigated |
-| Profile/module removes evidence or approval | No removal syntax; unknown removal fields rejected; union-only composition | `test_packs_cannot_declare_governance_removal_operations` and composition tests | mitigated |
-| Project overrides a denial | Core non-human denials injected and normalization rejects eligible denied actors | approval normalization and composed-denial tests | mitigated |
-| Package approves itself | Its own execution-surface id cannot be an eligible approver; payload never executes | `test_governed_package_cannot_approve_itself_through_its_execution_surface` | mitigated |
-| Architecture evidence wrong revision | Neutral envelope and artifact hash/revision/freshness checks | architecture fail-closed matrix | mitigated |
-| Release evidence wrong revision | Shared governance evidence contract rejects record/subject mismatch | `test_release_evidence_for_the_wrong_revision_fails_closed` | mitigated |
-| Unicode/confusable identity | ASCII identifier grammar in pack schemas | `test_confusable_pack_identities_fail_schema_validation` | mitigated |
-| Nondeterministic errors/output | Canonical pack/lock/report order, permutation tests, byte/hash corpus, repeated-error equality | runtime determinism, compatibility corpus, malformed evidence repetition | mitigated |
-| Hidden network/process/connector activation | No runtime source fields or execution API; remote sources rejected; monkeypatched APIs remain untouched | `test_governance_inspection_invokes_no_process_or_network_api` | mitigated |
+The AUD suites exercise dangling/live symlinks, inaccessible and wrong-type
+components, UNC/device strings without filesystem probes, cross-kind identity
+permutations, forged locks, duplicate keys, malformed encodings, forged
+normalized/effective approvals, authority coercion, revision conflicts,
+high-risk role smuggling, SOD overlap, stale/forged evidence, exception renewal
+and overlap, schema reference cycles, governed-package differential behavior,
+public API consumers, checkout conversion, installed resources, and CLI
+text/JSON exit codes.
 
-## Boundary Proofs
+## Residual Risk and Authorization
 
-- Governance packs contain YAML data only and must assert all safety constants.
-- Block schemas are bundled resources; packs cannot introduce inline or remote
-  schemas, Python, validators, templates, or expressions.
-- The inspection report builder is private and read-only. Commands verify an
-  existing lock but never create or rewrite one.
-- Evidence validation reads the declared file and relative artifacts only
-  under explicit roots. Hash integrity proves byte binding, not truth.
-- Architecture and package specialist tools remain outside Nornyx. Importers
-  accept bounded local reports and do not invoke producers.
-- High-impact authority remains human. AI tools, execution surfaces,
-  autonomous agents, models, connectors, systems, services, generated output,
-  and their explicit actor identities are intrinsically denied approval
-  authority.
+Hashes bind bytes, not truth or author intent. Human identity authentication,
+evidence quality, dependency maintenance, and final release authorization
+remain external responsibilities. Prompt-like prose remains inert data.
 
-## Residual Risks
-
-- A reviewed project-tier pack is trusted like other repository data. Locks and
-  provenance expose changes but cannot determine author intent.
-- Validly hashed evidence may still be false, incomplete, biased, or produced
-  by a compromised tool. Human and specialist-system review remains required.
-- Prose can contain prompt-injection text. It remains inert data and is never
-  interpreted as policy, permission, code, or instruction.
-- Real symlink behavior varies by platform and privilege. Windows tests skip
-  only when symlink creation is unavailable; Linux CI is required for closure.
-- Resource limits bound accepted data but cannot prove total resistance to all
-  parser/library implementation defects. Dependency updates remain a normal
-  supply-chain responsibility.
-
-No finding justifies network loading, executable plugins, source analysis,
-automatic approval, deployment, or autonomous remediation.
-
-## Final Execution Evidence
-
-The final local adversarial and regression suite passes 532 tests with 12
-platform symlink skips. Linux CI run `29272686337` passes all 544 tests,
-including the real ancestor-symlink cases for packs, project discovery,
-evidence, and architecture reports. Report 22 records every independently
-discovered finding and its correction.
+The GitHub review-thread query currently returns zero threads and PR #30 is
+still draft. The remote PR head remains the failing candidate, so this report
+does not claim current-head hosted CI. Hosted CI is pending. No merge, tag,
+release, publication, or deployment is authorized.

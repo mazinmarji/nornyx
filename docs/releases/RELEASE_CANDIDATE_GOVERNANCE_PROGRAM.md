@@ -1,69 +1,51 @@
-# Nornyx Governance Program Release Candidate
+# Nornyx Governance Program Candidate Record
 
 ## Candidate
 
 - Package version: `1.5.2`
-- Baseline main: `95952226999327458c6fea81cb32d82539bcae5b`
-- Superseded candidate: `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
-- Corrected implementation: `5417b1a32b9e0258ca0fbe55b80e23b6604faaf9`
+- Baseline: `95952226999327458c6fea81cb32d82539bcae5b`
+- Audited failing head: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`
+- Remediated implementation through Stage 6:
+  `6c0732c1be916a802e20bffce6eabf4bd7309703`
+- Final local candidate: clean checked-out `HEAD` containing this record
 - Branch: `codex/complete-governance-program`
-- Pull request: `https://github.com/mazinmarji/nornyx/pull/30`
-- Status: superseded candidate; remediation in progress; PR remains draft
-- Independent audit: `NO-GO` at `35ee69359599af7887f6b9b58ae0a4cd06a48d25`
+- PR: `https://github.com/mazinmarji/nornyx/pull/30`
+- PR state: draft
 
-This record is not current release readiness evidence. Merge, release, tag,
-publication, and deployment remain unauthorized.
+This is a candidate evidence record, not a release approval. The old remote PR
+head and its `NO-GO` remain visible until a separately authorized push. No
+current-head hosted CI result is claimed.
 
 ## Included Program
 
-The candidate adds six bounded governance modules, the shared change model,
-the optional architecture-governance profile, evidence import/validation,
-profile/module/governance CLI inspection, the public evidence API, all 12
-profile GSA mappings, compatibility/security assurance, and final placement
-decisions for every accepted candidate.
+The candidate contains six bounded data-only governance modules, twelve
+profiles, one shared generalized change model with a governed-package 1.5.2
+compatibility adapter, local evidence validation, deterministic composition
+and locks, governance inspection CLIs, a stable public API, architecture
+evidence integration, GSA dispositions, and the AUD-001 through AUD-022
+security/compatibility corrections.
 
-The stable Nornyx core remains unchanged. Packs are local, data-only,
-deterministic, monotonic, and unable to execute tools, access networks, grant
-approval, deploy, publish, or remediate.
+It adds no remote registry, executable pack/plugin surface, arbitrary policy
+evaluator, external-tool invocation, network loading, automatic approval,
+publication, deployment, or autonomous remediation.
 
-## Release Gates
+## Gate State
 
-| Gate | Result |
+| Gate | State |
 |---|---|
-| Windows full suite | `532 passed, 12 skipped` |
-| Linux CI | run `29272686337`, `544 passed` |
-| Ruff | pass |
-| Public boundary | pass |
-| Diff check | pass |
-| Governed examples | pass |
-| Governed-package examples | pass |
-| Build | source and wheel pass |
-| Twine | source and wheel pass |
-| Installed wheel | 12 profiles, 6 modules, network false, pass |
-| PR review threads | none |
-| Independent audit | `GO` |
+| Focused AUD-001 through AUD-022 suites | passed locally |
+| Compatibility migration proof | five migrations passed |
+| Fresh `core.autocrlf=true` checkout | passed locally |
+| Build and installed-wheel no-network smoke | passed locally |
+| Full Windows suite | `913 passed, 45 skipped` |
+| Real Linux filesystem suite | final Ubuntu/WSL rerun required |
+| Hosted Linux CI for exact local head | pending authorized push; not run |
+| GitHub review threads | zero |
+| Fresh independent exact-head audit | pending |
+| Human candidate approval | not recorded |
 
-Non-approved reruns report release readiness at 8 passed, RC stabilization at
-13 passed, and stable-language validation at 21 passed, with zero warnings or
-blockers and explicit human approval still required.
+## Authorization Boundary
 
-## Residual Maintenance
-
-- Convert setuptools license metadata to SPDX form before 2027-02-18.
-- Upgrade GitHub action majors that still target Node 20 when supported.
-
-Both are Low, nonblocking maintenance observations in report 22.
-
-## Approval Record
-
-Human release-candidate approval: **not recorded for the corrected candidate**.
-
-- Date: 2026-07-13
-- Superseded approval: candidate `2189bb3e2941fb35ee46680dfe8ded2f9c8b6088`
-- Reason: later PR #30 blocking review found four mandatory corrections
-- Required next decision: fresh human review after corrected audit evidence
-
-This candidate does not authorize merging PR #30, tagging, PyPI publication,
-deployment, promotion, or any operational action. Those actions require an
-explicit human decision after review of the ADRs, schemas, module semantics,
-compatibility evidence, security report, and final audit.
+PR #30 remains draft. Merge, release, tag, publication, and deployment are not
+authorized. The earlier approval of candidate `2189bb3` was invalidated by the
+blocking review and does not transfer to this candidate.

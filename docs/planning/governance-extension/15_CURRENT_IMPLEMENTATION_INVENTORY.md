@@ -1,8 +1,8 @@
 # 15 - Current Implementation Inventory
 
-Status: **the prior closure inventory is superseded for candidate assurance by
-the independent NO-GO audit of
-`35ee69359599af7887f6b9b58ae0a4cd06a48d25`. See
+Status: **reconciled after the independent `NO-GO` audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; AUD-001 through AUD-022 are
+locally remediated and awaiting exact-head external gates. See
 `AUDIT_REMEDIATION_LEDGER.json`.**
 
 ## Baseline
@@ -94,16 +94,17 @@ execution requirement, or unbound evidence requirement stops the program.
 ## Current Implementation State
 
 Stages A through I are implemented. Stage I reconciles the documentation,
-closure matrix, release-candidate evidence, and independent audit. The branch
+closure matrix, and candidate evidence. The branch
 contains six reusable
 modules, the shared change model, the governed-package compatibility adapter, the optional
 `architecture_governance` profile, bounded architecture evidence import,
 complete GSA decisions, and a compatibility-preserving mapping for every
 profile. No later specialist module passed the proliferation gate. CLI/API,
-compatibility, security, build, and installed-wheel assurance are complete.
+compatibility, security, build, and installed-wheel assurance are implemented.
 The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
 the authoritative item-by-item final status record. A later PR #30 review
-superseded the prior `GO` and candidate approval with four blocking findings.
-Corrected implementation commit `5417b1a` passes fresh Linux verification and
-a new independent audit returns `GO`. Human approval of the corrected
-candidate and all operational release actions remain pending.
+superseded the prior `GO` and candidate approval. The complete 22-finding
+remediation now extends through Stage 6 commit
+`6c0732c1be916a802e20bffce6eabf4bd7309703`. Current-head hosted CI, the fresh
+independent verdict, human approval, and all operational release actions remain
+pending.

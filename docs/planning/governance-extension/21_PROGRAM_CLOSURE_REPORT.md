@@ -1,11 +1,15 @@
 # 21 - Governance Program Closure Report
 
-Status: **superseded for candidate assurance by the independent NO-GO audit of
-`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; the program is not closed.**
+Status: **implementation closure reconciled after the independent `NO-GO`
+audit of `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; external candidate gates
+remain pending.**
 
-The item matrix is preserved as historical planning disposition. Runtime and
-release closure now depend on `AUDIT_REMEDIATION_LEDGER.json` and a new
-independent exact-head audit.
+The item matrix remains the planning disposition. Finding closure is recorded
+in `AUDIT_REMEDIATION_LEDGER.json`; release readiness additionally requires a
+new independent exact-head audit and hosted current-head CI.
+The audit base is `95952226999327458c6fea81cb32d82539bcae5b`; the remediated
+implementation through Stage 6 is
+`6c0732c1be916a802e20bffce6eabf4bd7309703`.
 
 ## Authority and Status Vocabulary
 
@@ -69,11 +73,10 @@ All accepted capabilities have a final placement. The six-module catalog is
 frozen for this program. No source-analysis engine, remote registry, executable
 plugin, automatic approval, deployment, or specialist-tool execution was added.
 
-Report 22 records the original audit, the superseding PR #30 blocking review,
-all four corrections, fresh external verification, and a new exact `GO` audit.
-Release
-publication, tagging, deployment, promotion, and PR merge are not program
+Report 22 records the original audit identity, all 22 remediation targets, the
+current local evidence boundary, and the exact requirements for a fresh
+external audit. Release publication, tagging, deployment, promotion, and PR merge are not program
 implementation items and remain prohibited without explicit human release
-authorization. The prior candidate approval does not transfer to corrected
-implementation commit `5417b1a`; fresh human review remains pending. Merge,
+authorization. The prior candidate approval does not transfer to the remediated
+candidate; hosted CI, independent audit and fresh human review remain pending. Merge,
 tag, publication, deployment, and promotion remain unauthorized.

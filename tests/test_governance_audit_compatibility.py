@@ -438,7 +438,7 @@ def test_aud016_base_public_exports_are_not_removed() -> None:
     assert BASE_PUBLIC_GOVERNANCE_EXPORTS <= set(governance.__all__)
 
 
-def test_aud017_current_docs_are_marked_superseded_during_remediation() -> None:
+def test_aud017_current_docs_state_exact_evidence_and_authorization_boundary() -> None:
     paths = [
         ROOT / "docs" / "planning" / "governance-extension" / name
         for name in (
@@ -450,11 +450,14 @@ def test_aud017_current_docs_are_marked_superseded_during_remediation() -> None:
     ] + [ROOT / "docs" / "releases" / "RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"]
     for path in paths:
         text = path.read_text(encoding="utf-8")
-        assert "superseded" in text.lower(), path
         assert "35ee69359599af7887f6b9b58ae0a4cd06a48d25" in text, path
+        assert "95952226999327458c6fea81cb32d82539bcae5b" in text, path
+        assert "6c0732c1be916a802e20bffce6eabf4bd7309703" in text, path
+        assert "hosted" in text.lower() and "pending" in text.lower(), path
     candidate = paths[-1].read_text(encoding="utf-8")
-    assert "PR remains draft" in candidate
-    assert "unauthorized" in candidate
+    assert "PR state: draft" in candidate
+    assert "are not\nauthorized" in candidate
+    assert "Human candidate approval | not recorded" in candidate
 
 
 def _sha256(raw: bytes) -> str:
