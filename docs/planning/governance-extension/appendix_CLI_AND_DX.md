@@ -11,7 +11,7 @@ Stage H may add only bounded local inspection and validation namespaces.
 | `nornyx profiles list [--json]` | Names + version + status + source tier | 0 |
 | `nornyx profiles inspect <name> [--json]` | Full validated v1 profile, provenance, hash, module deps | 0; 1 unknown name (`PACK_NOT_FOUND`) |
 | `nornyx profiles validate <path> [--json]` | Schema + structural + rule-language validation of one pack file | 0 valid; 1 invalid (diagnostics listed) |
-| `nornyx profiles resolve <name> [--lock] [--json]` | Full resolution: precedence trace, dependency order, hashes; `--lock` writes `nornyx.profiles.lock` | 0; 1 resolution failure; 2 lock mismatch |
+| `nornyx profiles resolve <name> [--lock] [--json]` | Full resolution: precedence trace, dependency order, hashes; `--lock` writes `nornyx.profiles.lock` | 0; 1 resolution failure; 2 invalid lock or lock mismatch |
 | `nornyx profiles compatibility <p> [<p>...]` | Composed compatibility verdict (conflicts fatal-listed, review-with warned) | 0 compatible; 1 conflicts |
 | `nornyx init --profile <name>` | Unchanged | unchanged |
 | `nornyx init --profile-path <file>` | New: scaffold from explicit pack (validate first, fail-closed) | 0; 1 invalid pack |

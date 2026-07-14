@@ -50,4 +50,3 @@ No Stage F module is justified. The module catalog freezes at the six modules
 implemented through Architecture Governance. This avoids duplicate scanners,
 privacy-platform scope, competing lifecycle and release models, and operational
 incident execution while giving every candidate an unambiguous final status.
-

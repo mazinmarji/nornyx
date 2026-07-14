@@ -26,5 +26,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest -q
+      - name: Check candidate diff hygiene
+        run: git diff --check 95952226999327458c6fea81cb32d82539bcae5b...HEAD
       - name: Check a bundled example contract
         run: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx

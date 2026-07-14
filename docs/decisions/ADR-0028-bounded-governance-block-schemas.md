@@ -46,4 +46,3 @@ schema behavior is deterministic and wheel-installable, and old contracts that
 do not select modules retain their current meaning. The tradeoff is deliberate:
 external pack authors cannot invent new validation languages or ship arbitrary
 schemas in v1.
-

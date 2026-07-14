@@ -239,22 +239,22 @@
       "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_uses_documented_exit_code",
       "affected_files": ["nornyx/cli.py"],
       "correction": "Map all schema and semantic lock validation failures to documented exit code 2.",
-      "implementation_reference": [],
-      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_uses_documented_exit_code"],
-      "validation": {"status": "reproduced_failing", "evidence": "Schema-invalid lock returned exit code 1 instead of 2."},
-      "final_status": "open"
+      "implementation_reference": ["nornyx/cli.py::_optional_profile_lock", "nornyx/cli.py::_is_lock_failure", "nornyx/cli.py::cmd_profiles", "nornyx/cli.py::cmd_governance"],
+      "tests": ["tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_uses_documented_exit_code", "tests/test_governance_audit_path_and_lock_security.py::test_aud019_all_invalid_lock_classes_use_exit_two", "tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_path_type_uses_exit_two", "tests/test_governance_audit_path_and_lock_security.py::test_aud019_profiles_resolve_uses_the_same_lock_exit_contract", "tests/test_governance_audit_path_and_lock_security.py::test_aud019_schema_invalid_pack_remains_exit_one"],
+      "validation": {"status": "stage_passed", "evidence": "Resolve, explain, matrix and profiles resolve return 2 in text and JSON modes for path, encoding, JSON, schema and semantic lock failures; schema-invalid packs remain ordinary exit 1 and check remains exit 1."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-020",
       "original_severity": "Low",
       "root_cause": "Migration tests assert metadata presence without proving the immutable old artifact or exact diff.",
       "reproducer": "tests/test_governance_audit_compatibility.py::test_aud020_migration_record_is_mechanically_bound_to_artifacts",
-      "affected_files": ["tests/fixtures/governance_compatibility/manifest.json", "tests/test_governance_compatibility_corpus.py"],
+      "affected_files": ["tests/fixtures/governance_compatibility/manifest.json", "tests/fixtures/governance_compatibility/migrations/", "scripts/check_compatibility_migrations.py", "tests/test_governance_compatibility_corpus.py"],
       "correction": "Commit immutable before/after artifacts and mechanically verify both hashes and the exact structural diff.",
-      "implementation_reference": [],
+      "implementation_reference": ["scripts/check_compatibility_migrations.py::verify_manifest", "scripts/check_compatibility_migrations.py::json_operations", "scripts/check_compatibility_migrations.py::text_diff", "tests/fixtures/governance_compatibility/manifest.json::intentional_migrations"],
       "tests": ["tests/test_governance_audit_compatibility.py::test_aud020_migration_record_is_mechanically_bound_to_artifacts"],
-      "validation": {"status": "reproduced_failing", "evidence": "The old hash and claimed diff are not exercised by the test suite."},
-      "final_status": "open"
+      "validation": {"status": "stage_passed", "evidence": "Five migrations bind canonical immutable before/after bytes, exact JSON-pointer operations or unified text diff, proof-record hash, approval/reason/changelog metadata, closed artifact inventory, ordered chains and current terminal output."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-021",
@@ -263,10 +263,10 @@
       "reproducer": "tests/test_governance_audit_cross_platform.py::test_aud021_wheel_smoke_enforces_observed_no_network",
       "affected_files": ["scripts/test_wheel_install.py"],
       "correction": "Install with no-index, clear network environment and derive network_used from an enforced socket-denial observation.",
-      "implementation_reference": [],
+      "implementation_reference": ["scripts/test_wheel_install.py::_network_attempts", "scripts/test_wheel_install.py::_run", "scripts/test_wheel_install.py::main"],
       "tests": ["tests/test_governance_audit_cross_platform.py::test_aud021_wheel_smoke_enforces_observed_no_network"],
-      "validation": {"status": "reproduced_failing", "evidence": "The script asserts rather than measures no-network behavior."},
-      "final_status": "open"
+      "validation": {"status": "stage_passed", "evidence": "The isolated smoke clears index/proxy configuration, uses pip --no-index/--no-deps, injects a socket-denial guard, fails on recorded address-resolution or connection attempts, and derives network_used from the attempt log while exercising imports, resources, legacy consumers and CLIs."},
+      "final_status": "corrected_pending_full_validation"
     },
     {
       "id": "AUD-022",
@@ -275,10 +275,10 @@
       "reproducer": "tests/test_governance_audit_cross_platform.py::test_aud022_candidate_diff_is_clean",
       "affected_files": ["CODEX_GOAL.md", "docs/decisions/ADR-0028-bounded-governance-block-schemas.md", "docs/decisions/ADR-0029-fixed-structural-governance-checks.md", "docs/decisions/ADR-0031-specialist-governance-placement-after-gsa.md", ".github/workflows/ci.yml"],
       "correction": "Remove candidate whitespace defects and run the base-to-head check in CI/release assurance.",
-      "implementation_reference": [],
+      "implementation_reference": [".github/workflows/ci.yml::Check candidate diff hygiene", "CODEX_GOAL.md", "docs/decisions/ADR-0028-bounded-governance-block-schemas.md", "docs/decisions/ADR-0031-specialist-governance-placement-after-gsa.md"],
       "tests": ["tests/test_governance_audit_cross_platform.py::test_aud022_candidate_diff_is_clean"],
-      "validation": {"status": "reproduced_failing", "evidence": "Candidate-aware diff check reports four trailing spaces and three EOF blank lines."},
-      "final_status": "open"
+      "validation": {"status": "stage_passed", "evidence": "Known candidate whitespace defects are removed and Linux CI runs git diff --check from audited base 95952226999327458c6fea81cb32d82539bcae5b through HEAD."},
+      "final_status": "corrected_pending_full_validation"
     }
   ]
 }

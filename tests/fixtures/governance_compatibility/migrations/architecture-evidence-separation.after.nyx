@@ -1,0 +1,330 @@
+nornyx: "0.2"
+project:
+  name: ArchitectureGovernanceExample
+  profile: architecture_governance
+
+approvals:
+  - name: ArchitectureAuthority
+    required_roles: [architect]
+    eligible_roles: [architect, architecture_reviewer]
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence: [approval_record, architecture_conformance_report]
+    required_for: [merge, approve_architecture, "change:architecture-example"]
+    timing: before_merge
+    accountable_authority: architecture_owner
+    revision_binding:
+      kind: git
+      revision: git:0123456789abcdef
+      exact: true
+      scope_hash: sha256:08f01d2461b5f3f616853a75c855cb24bc971c1ecad280b44c18d856a4f497c5
+    invalidation_conditions: [revision_changed, scope_changed]
+    expires_at: "2099-01-01T00:00:00Z"
+
+governance_evidence:
+  schema: nornyx.governance_evidence.v1
+  subject_revision: git:0123456789abcdef
+  records:
+    - id: evidence_manifest
+      type: evidence_manifest
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: local.example, type: tool}
+      artifact: governance_evidence/evidence_manifest.json
+      content_hash: sha256:a9cf03996a56895a694c8b5f151063fc8a6915198ffad3fe3426ba15ec93cb4f
+      subject_revision: git:0123456789abcdef
+      tool: {name: example_tool, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: []
+    - id: approval_record
+      type: approval_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.architect, type: human}
+      artifact: governance_evidence/approval_record.json
+      content_hash: sha256:6ad40fdf451d274730cd9315dfae772a300175817e1b116dbea07cd0903b23db
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [evidence_manifest]
+    - id: independent_review_record
+      type: independent_review_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.architecture_reviewer, type: human}
+      artifact: governance_evidence/independent_review_record.json
+      content_hash: sha256:b302df1f03b34094e303bd2e8ee702078e4d7abb765eebc7932d6065d90fc8ec
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [approval_record]
+    - id: exception_review_record
+      type: exception_review_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.risk_owner, type: human}
+      artifact: governance_evidence/exception_review_record.json
+      content_hash: sha256:01e0983fc5848dfe94d75d8a2cb331ddae6412e1f06146917a6df5cba0421ec3
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [independent_review_record]
+    - id: change_record
+      type: change_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.change_owner, type: human}
+      artifact: governance_evidence/change_record.json
+      content_hash: sha256:5177bd8a38924285484bdf6d1886f4935c13b8298e374bc2932cd9676f43ca5d
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [exception_review_record]
+    - id: architecture_decision_record
+      type: architecture_decision_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.author, type: human}
+      artifact: governance_evidence/architecture_decision_record.json
+      content_hash: sha256:61fea5bd7a91f78c66a4a5daccfeda66df1b0839d056f948dfbc91995cb25774
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [change_record]
+    - id: architecture_conformance_report
+      type: architecture_evidence
+      schema_id: nornyx.architecture_evidence.v1
+      producer: {id: dependency-cruiser, type: tool}
+      artifact: architecture_reports/dependency_boundaries.json
+      content_hash: sha256:9b50ba3a949d614a9d0fd63ebc03a714ea64ae8ab787e754f3cdfac2ffdf785c
+      subject_revision: git:0123456789abcdef
+      tool: {name: dependency-cruiser, version: 16.10.4}
+      generated_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      status: pass
+      dependencies: [architecture_decision_record]
+
+changes:
+  - schema: nornyx.change.v1
+    id: architecture-example
+    type: software
+    purpose: Introduce the bounded architecture governance surface.
+    status: proposed
+    transition:
+      from: draft
+      to: proposed
+      evidence: [change_record]
+    scope: [nornyx/governance]
+    excluded_scope: [generated]
+    affected_assets: [artifact:architecture-governance]
+    affected_systems: [system:nornyx]
+    affected_components: [component:governance]
+    expected_artifacts: [artifact:architecture-governance]
+    risk_tier: high
+    blast_radius: component
+    reversibility: reversible
+    rollback_required: false
+    impacts:
+      security: minor
+      architecture: major
+      data: none
+      dependency: minor
+      operational: minor
+    required_controls: [control:architecture-conformance]
+    required_evaluations: [evaluation:architecture-readiness]
+    required_evidence: [change_record, architecture_decision_record]
+    approver_roles: [architect]
+    approval_ids: [ArchitectureAuthority]
+    separation_of_duties:
+      author_role: author
+      approver_role: architect
+      disjoint: true
+    revision_binding:
+      kind: git
+      revision: git:0123456789abcdef
+      exact: true
+      scope_hash: sha256:08f01d2461b5f3f616853a75c855cb24bc971c1ecad280b44c18d856a4f497c5
+    approval_invalidated_on: [revision_change, scope_change]
+    exceptions: [EXC-ARCH-EXAMPLE]
+    closure_evidence: []
+
+separation_of_duties:
+  schema: nornyx.separation_of_duties.v1
+  assignments:
+    - subject: change:architecture-example
+      risk_tier: high
+      author: user:author
+      approvers: [user:architect]
+      evidence_producers: [tool:dependency-cruiser]
+      require_evidence_independence: true
+      release_requester: user:release_requester
+      final_release_approver: user:release_approver
+      exception_requester: user:exception_requester
+      exception_approver: user:exception_approver
+
+exceptions:
+  schema: nornyx.governance_exceptions.v1
+  source: project_contract
+  entries:
+    - id: EXC-ARCH-EXAMPLE
+      control: architecture.interface_migration
+      reason: Demonstrate a bounded, expiring architecture exception.
+      scope: [change:architecture-example]
+      risk_tier: high
+      requester: user:exception_requester
+      accountable_owner: user:architecture_owner
+      approving_authority: user:exception_approver
+      compensating_controls: [control:independent_architecture_review]
+      evidence: [exception_review_record]
+      starts_at: "2026-01-01T00:00:00Z"
+      expires_at: "2099-01-01T00:00:00Z"
+      renewal_policy: manual_reapproval
+      closure_evidence: []
+      status: active
+
+architecture:
+  schema: nornyx.architecture.v1
+  subject_revision: git:0123456789abcdef
+  descriptions:
+    - id: architecture.overview
+      title: Nornyx governance architecture example
+      viewpoints: [viewpoint.logical, viewpoint.security]
+      artifact: architecture_artifacts/overview.md
+  viewpoints:
+    - id: viewpoint.logical
+      name: Logical architecture
+      concerns: [components, dependency_direction]
+    - id: viewpoint.security
+      name: Security architecture
+      concerns: [trust_boundaries, data_boundaries]
+  systems:
+    - id: system.nornyx
+      name: Nornyx
+      components: [component.api, component.governance, component.domain]
+  components:
+    - id: component.api
+      name: Public API
+      system: system.nornyx
+      layer: layer.interface
+      bounded_context: context.governance
+      canonical: true
+      modules: [module.api]
+      depends_on: [component.governance]
+    - id: component.governance
+      name: Governance engine
+      system: system.nornyx
+      layer: layer.application
+      bounded_context: context.governance
+      canonical: true
+      modules: [module.governance]
+      depends_on: [component.domain]
+    - id: component.domain
+      name: Governance domain model
+      system: system.nornyx
+      layer: layer.domain
+      bounded_context: context.governance
+      canonical: true
+      modules: [module.domain]
+      depends_on: []
+  modules:
+    - id: module.api
+      name: Governance API module
+      component: component.api
+      layer: layer.interface
+      depends_on: [module.governance]
+    - id: module.governance
+      name: Governance application module
+      component: component.governance
+      layer: layer.application
+      depends_on: [module.domain]
+    - id: module.domain
+      name: Governance domain module
+      component: component.domain
+      layer: layer.domain
+      depends_on: []
+  layers:
+    - id: layer.interface
+      name: Interface
+      may_depend_on: [layer.application]
+    - id: layer.application
+      name: Application
+      may_depend_on: [layer.domain]
+    - id: layer.domain
+      name: Domain
+      may_depend_on: []
+  bounded_contexts:
+    - id: context.governance
+      name: Governance
+      description: Declarative governance composition and validation.
+  interfaces:
+    - id: interface.governance_api
+      provider: component.governance
+      consumers: [component.api]
+      contract_artifact: architecture_artifacts/governance-api.md
+      trust_boundary: boundary.local_process
+      data_boundary: boundary.governance_data
+      deployment_boundary: boundary.library
+  boundaries:
+    trust:
+      - id: boundary.local_process
+        name: Local process
+        description: Governance input remains inside the local Nornyx process.
+        crossing_requires: [control:validated_input]
+    data:
+      - id: boundary.governance_data
+        name: Governance data
+        description: Contracts and evidence remain data-only.
+        crossing_requires: [control:content_hash]
+    deployment:
+      - id: boundary.library
+        name: Library boundary
+        description: Nornyx validates but does not deploy or remediate.
+        crossing_requires: [control:human_authority]
+  decisions:
+    - id: ADR-ARCH-EXAMPLE
+      status: accepted
+      artifact: architecture_artifacts/ADR-ARCH-EXAMPLE.md
+      supersedes: []
+  principles:
+    - id: principle.external_analysis
+      statement: Specialist tools analyze source and supply revision-bound evidence.
+    - id: principle.human_authority
+      statement: Humans retain architecture decision authority.
+  constraints:
+    - id: constraint.dependency_direction
+      statement: Interface depends on application and application depends on domain.
+      verified_by: dependency-boundaries
+    - id: constraint.human_decision
+      statement: Major architecture changes receive human review.
+      verified_by: human_review
+  required_checks:
+    - id: dependency-boundaries
+      tool: dependency-cruiser
+      evidence_schema: nornyx.architecture_evidence.v1
+      frequency: per_change
+      required: true
+  architecture_exceptions: [EXC-ARCH-EXAMPLE]
+
+architecture_evidence:
+  - schema: nornyx.architecture_evidence.v1
+    check_id: dependency-boundaries
+    tool: dependency-cruiser
+    tool_version: 16.10.4
+    status: pass
+    subject_revision: git:0123456789abcdef
+    generated_at: "2026-01-01T00:00:00Z"
+    expires_at: "2099-01-01T00:00:00Z"
+    violations: []
+    artifact: architecture_reports/dependency_boundaries.json
+    artifact_sha256: sha256:9b50ba3a949d614a9d0fd63ebc03a714ea64ae8ab787e754f3cdfac2ffdf785c

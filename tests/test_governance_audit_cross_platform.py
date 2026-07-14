@@ -12,6 +12,7 @@ RAW_HASH_GLOBS = (
     "examples/governance_evidence/*.json",
     "examples/architecture_reports/*.json",
     "tests/fixtures/governance_compatibility/*.json",
+    "tests/fixtures/governance_compatibility/migrations/*",
     "tests/fixtures/generated_drift/*.json",
     "tests/fixtures/governance_extension/starter_golden/*.nyx",
 )
@@ -26,6 +27,9 @@ def test_aud014_hash_bound_artifacts_are_checkout_stable() -> None:
     assert "examples/governance_evidence/*.json -text" in attributes
     assert "examples/architecture_reports/*.json -text" in attributes
     assert "tests/fixtures/governance_compatibility/*.json -text" in attributes
+    assert (
+        "tests/fixtures/governance_compatibility/migrations/** -text" in attributes
+    )
     assert "tests/fixtures/generated_drift/*.json -text" in attributes
 
 

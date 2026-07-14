@@ -462,34 +462,7 @@ def _sha256(raw: bytes) -> str:
 
 
 def test_aud020_migration_record_is_mechanically_bound_to_artifacts() -> None:
-    manifest = json.loads((CORPUS / "manifest.json").read_text(encoding="utf-8"))
-    migration = next(
-        item
-        for item in manifest["intentional_migrations"]
-        if item["surface"] == "governance_explain normalized approval requirements"
-    )
-    for key in ("before_artifact", "after_artifact", "expected_diff_artifact"):
-        assert migration.get(key), key
-        assert (ROOT / migration[key]).is_file(), key
+    from scripts.check_compatibility_migrations import verify_manifest
 
-    before = (ROOT / migration["before_artifact"]).read_bytes()
-    after = (ROOT / migration["after_artifact"]).read_bytes()
-    assert _sha256(before) == migration["old_hash"]
-    assert _sha256(after) == migration["new_hash"]
-
-    expected_diff = json.loads(
-        (ROOT / migration["expected_diff_artifact"]).read_text(encoding="utf-8")
-    )
-    before_payload = json.loads(before)
-    after_payload = json.loads(after)
-    observed = {
-        "before_only": sorted(set(before_payload) - set(after_payload)),
-        "after_only": sorted(set(after_payload) - set(before_payload)),
-        "changed": sorted(
-            key
-            for key in set(before_payload) & set(after_payload)
-            if before_payload[key] != after_payload[key]
-        ),
-    }
-    assert observed == expected_diff
-    assert migration["reason"] and migration["approval"] and migration["changelog"]
+    manifest = verify_manifest(CORPUS / "manifest.json")
+    assert len(manifest["intentional_migrations"]) == 5

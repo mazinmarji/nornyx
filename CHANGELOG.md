@@ -52,6 +52,20 @@ distribution version is independent of the Nornyx **language/schema** version
   change author rather than its approving architect, preserving the declared
   evidence/approval separation; the compatibility corpus pins the corrected
   canonical bytes for later migration-proof validation.
+- Stage 6 closes AUD-019 through AUD-022 pending full integration: every lock
+  loading or validation failure on governance inspection surfaces uses exit
+  code 2; five intentional output/example migrations have immutable before and
+  after artifacts plus exact machine-verified diffs; the installed-wheel smoke
+  denies and records socket use while installing only the local wheel; and CI
+  checks whitespace across the complete candidate range from the audited base.
+- Approved migration evidence is bound by the markers
+  `migration:explain-declared-controls-v1`,
+  `migration:explain-effective-approval-v1`,
+  `migration:modules-sod-contract-v1`,
+  `migration:matrix-sod-contract-v1`,
+  `migration:architecture-evidence-separation-v1`, and the additive
+  `migration:architecture-governance-starter-v1` record. These records reflect
+  the human-requested audit remediation; they do not grant runtime authority.
 
 ### Added
 - Foundational data-only governance modules for human approval, evidence

@@ -1,9 +1,9 @@
 # CODEX GOAL — Complete the Nornyx Governance Program
 
-**Status:** Active implementation goal  
-**Repository:** `mazinmarji/nornyx`  
-**Target baseline:** Current `main` at task start  
-**Execution owner:** Codex  
+**Status:** Active implementation goal
+**Repository:** `mazinmarji/nornyx`
+**Target baseline:** Current `main` at task start
+**Execution owner:** Codex
 **Closure authority:** Human review after independent audit
 
 Codex must read this file in full before beginning implementation.

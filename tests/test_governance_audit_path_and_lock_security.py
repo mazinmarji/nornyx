@@ -321,18 +321,19 @@ def test_aud010_atomic_lock_write_preserves_posix_modes(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "argv_prefix",
+    ("argv_prefix", "expected_exit"),
     [
-        ("check",),
-        ("governance", "resolve"),
-        ("governance", "explain"),
-        ("governance", "matrix"),
+        (("check",), 1),
+        (("governance", "resolve"), 2),
+        (("governance", "explain"), 2),
+        (("governance", "matrix"), 2),
     ],
 )
 def test_aud010_cli_lock_symlink_fails_all_governance_consumers(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     argv_prefix: tuple[str, ...],
+    expected_exit: int,
 ) -> None:
     contract = tmp_path / "contract.nyx"
     contract.write_text(
@@ -350,7 +351,7 @@ def test_aud010_cli_lock_symlink_fails_all_governance_consumers(
     argv = [*argv_prefix, str(contract)]
     if argv_prefix[0] == "governance":
         argv.extend(["--as-of", "2026-07-14T00:00:00Z", "--json"])
-    assert main(argv) != 0
+    assert main(argv) == expected_exit
     assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
 
 
@@ -608,6 +609,136 @@ def test_aud019_invalid_lock_uses_documented_exit_code(
         argv.append("--json")
 
     assert main(argv) == 2
+    assert "PACK_SCHEMA_INVALID" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("command", ["resolve", "explain", "matrix"])
+@pytest.mark.parametrize("as_json", [False, True])
+@pytest.mark.parametrize(
+    ("lock_bytes", "expected_code"),
+    [
+        (b"{}\n", "PACK_SCHEMA_INVALID"),
+        (
+            b'{"schema":"nornyx.profiles_lock.v1",'
+            b'"schema":"nornyx.profiles_lock.v1","resolved":[]}\n',
+            "PACK_LOCK_DUPLICATE_KEY",
+        ),
+        (b"\xff\n", "PACK_ENCODING_INVALID"),
+        (
+            b'{"schema":"nornyx.profiles_lock.v1","resolved":[]}\n',
+            "PACK_LOCK_SET_MISMATCH",
+        ),
+    ],
+)
+def test_aud019_all_invalid_lock_classes_use_exit_two(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+    as_json: bool,
+    lock_bytes: bytes,
+    expected_code: str,
+) -> None:
+    contract = tmp_path / "contract.nyx"
+    contract.write_text(
+        "nornyx: '0.1'\nproject:\n  name: Audit\n  profile: minimal\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    (tmp_path / "nornyx.profiles.lock").write_bytes(lock_bytes)
+    argv = [
+        "governance",
+        command,
+        str(contract),
+        "--as-of",
+        "2026-07-14T00:00:00Z",
+    ]
+    if as_json:
+        argv.append("--json")
+
+    assert main(argv) == 2
+    output = capsys.readouterr().out
+    assert expected_code in output
+    if as_json:
+        payload = json.loads(output)
+        assert expected_code in {item["code"] for item in payload["diagnostics"]}
+
+
+@pytest.mark.parametrize("command", ["resolve", "explain", "matrix"])
+def test_aud019_invalid_lock_path_type_uses_exit_two(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+) -> None:
+    contract = tmp_path / "contract.nyx"
+    contract.write_text(
+        "nornyx: '0.1'\nproject:\n  name: Audit\n  profile: minimal\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    (tmp_path / "nornyx.profiles.lock").mkdir()
+
+    assert main(
+        [
+            "governance",
+            command,
+            str(contract),
+            "--as-of",
+            "2026-07-14T00:00:00Z",
+            "--json",
+        ]
+    ) == 2
+    assert "PACK_PATH_TYPE_INVALID" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("as_json", [False, True])
+@pytest.mark.parametrize(
+    ("lock_bytes", "expected_code"),
+    [
+        (b"{}\n", "PACK_SCHEMA_INVALID"),
+        (
+            b'{"schema":"nornyx.profiles_lock.v1",'
+            b'"schema":"nornyx.profiles_lock.v1","resolved":[]}\n',
+            "PACK_LOCK_DUPLICATE_KEY",
+        ),
+        (b"\xff\n", "PACK_ENCODING_INVALID"),
+        (
+            b'{"schema":"nornyx.profiles_lock.v1","resolved":[]}\n',
+            "PACK_LOCK_SET_MISMATCH",
+        ),
+    ],
+)
+def test_aud019_profiles_resolve_uses_the_same_lock_exit_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    as_json: bool,
+    lock_bytes: bytes,
+    expected_code: str,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "nornyx.profiles.lock").write_bytes(lock_bytes)
+    argv = ["profiles", "resolve", "minimal"]
+    if as_json:
+        argv.append("--json")
+
+    assert main(argv) == 2
+    output = capsys.readouterr().out
+    assert expected_code in output
+    if as_json:
+        payload = json.loads(output)
+        assert expected_code in {item["code"] for item in payload["diagnostics"]}
+
+
+def test_aud019_schema_invalid_pack_remains_exit_one(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    pack = tmp_path / "not-a-lock.yaml"
+    payload = _payload("valid_profile_v1.yaml")
+    payload.pop("name")
+    _write_pack(pack, payload)
+
+    assert main(["profiles", "validate", str(pack), "--json"]) == 1
     assert "PACK_SCHEMA_INVALID" in capsys.readouterr().out
 
 

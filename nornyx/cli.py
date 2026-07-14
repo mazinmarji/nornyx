@@ -54,6 +54,7 @@ from .governance import (
 )
 from .governance.errors import error as governance_error
 from .governance.loader import inspect_local_file, reject_remote_or_device_path
+from .governance.locks import GovernanceLockError
 from .governance.reporting import build_governance_report
 from .governed_package import (
     generate_governed_package,
@@ -100,14 +101,17 @@ def _absolute_contract_path(path: str | Path) -> tuple[Path, Path]:
 
 
 def _optional_profile_lock(directory: Path, *, trust_root: Path) -> Path | None:
-    return inspect_local_file(
-        directory / "nornyx.profiles.lock",
-        allowed_root=directory,
-        trust_root=trust_root,
-        code_prefix="PACK",
-        noun="Profile lock",
-        allow_missing=True,
-    )
+    try:
+        return inspect_local_file(
+            directory / "nornyx.profiles.lock",
+            allowed_root=directory,
+            trust_root=trust_root,
+            code_prefix="PACK",
+            noun="Profile lock",
+            allow_missing=True,
+        )
+    except GovernanceError as exc:
+        raise GovernanceLockError(*exc.diagnostics) from exc
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -731,8 +735,7 @@ def cmd_profiles(args: argparse.Namespace) -> int:
                 )
             except GovernanceError as exc:
                 _print_pack_error(exc, as_json=as_json)
-                lock_codes = {"PACK_LOCK_MISMATCH", "PACK_LOCK_SET_MISMATCH", "PACK_LOCK_DUPLICATE_ID", "PACK_LOCK_INVALID"}
-                return 2 if any(item.code in lock_codes for item in exc.diagnostics) else 1
+                return 2 if _is_lock_failure(exc) else 1
             payload = result.to_dict()
             payload["status"] = "resolved"
             payload["resolution_trace"] = list(resolve_registry.resolution_trace)
@@ -775,7 +778,7 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             return 1 if conflicts else 0
     except GovernanceError as exc:
         _print_pack_error(exc, as_json=as_json)
-        return 1
+        return 2 if _is_lock_failure(exc) else 1
     raise ValueError(f"Unsupported profiles command {command!r}")
 
 
@@ -865,6 +868,12 @@ _LOCK_ERROR_CODES = {
 }
 
 
+def _is_lock_failure(exc: GovernanceError) -> bool:
+    return isinstance(exc, GovernanceLockError) or any(
+        item.code in _LOCK_ERROR_CODES for item in exc.diagnostics
+    )
+
+
 def _governance_report_for_path(args: argparse.Namespace) -> dict[str, object]:
     registry = registry_for_contract(args.file)
     document = load_nyx(args.file)
@@ -903,7 +912,7 @@ def cmd_governance(args: argparse.Namespace) -> int:
         return 2
     except GovernanceError as exc:
         _print_pack_error(exc, as_json=as_json)
-        return 2 if any(item.code in _LOCK_ERROR_CODES for item in exc.diagnostics) else 1
+        return 2 if _is_lock_failure(exc) else 1
 
     if args.governance_command == "resolve":
         payload = report

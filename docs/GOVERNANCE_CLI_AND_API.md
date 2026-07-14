@@ -50,7 +50,7 @@ Text output is YAML-shaped except for a one-line successful evidence result.
 |---|---|
 | `0` | Valid or no governance selected. |
 | `1` | Invalid pack, governance diagnostic, invalid evidence, or unresolved identity. |
-| `2` | Contract parse failure or governance lock mismatch/invalid lock. |
+| `2` | Contract parse failure or governance lock path, encoding, JSON, schema, set, hash, or semantic validation failure. |
 
 Diagnostic codes retain their existing namespaces: `PACK_*`, `RULE_*`,
 `GOVERNANCE_*`, `APPROVAL_*`, `EVIDENCE_*`, `SOD_*`, `EXCEPTION_*`, `CHANGE_*`,

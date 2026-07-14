@@ -10,21 +10,49 @@ import tempfile
 import venv
 
 
-def _run(command: list[str], *, cwd: Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
-    try:
-        return subprocess.run(
-            command,
-            cwd=cwd,
-            env=env,
-            check=True,
-            text=True,
-            capture_output=True,
-        )
-    except subprocess.CalledProcessError as exc:
+NETWORK_ENVIRONMENT = (
+    "ALL_PROXY",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "NO_PROXY",
+    "PIP_EXTRA_INDEX_URL",
+    "PIP_INDEX_URL",
+    "PIP_TRUSTED_HOST",
+    "UV_EXTRA_INDEX_URL",
+    "UV_INDEX_URL",
+)
+
+
+def _network_attempts(path: Path | None) -> list[dict[str, str]]:
+    if path is None or not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def _run(
+    command: list[str],
+    *,
+    cwd: Path,
+    env: dict[str, str],
+    attempt_log: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    attempts = _network_attempts(attempt_log)
+    if attempts:
+        raise RuntimeError(f"network access attempted by {' '.join(command)}: {attempts!r}")
+    if result.returncode:
         raise RuntimeError(
-            f"command failed ({exc.returncode}): {' '.join(command)}\n"
-            f"stdout:\n{exc.stdout}\nstderr:\n{exc.stderr}"
-        ) from exc
+            f"command failed ({result.returncode}): {' '.join(command)}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+    return result
 
 
 def _venv_python(root: Path) -> Path:
@@ -49,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     if wheel.suffix != ".whl":
         parser.error("wheel must identify a .whl file")
 
+    network_attempts: list[dict[str, str]] = []
     with tempfile.TemporaryDirectory(prefix="nornyx-wheel-smoke-") as raw_tmp:
         root = Path(raw_tmp)
         venv_root = root / "venv"
@@ -56,6 +85,11 @@ def main(argv: list[str] | None = None) -> int:
         python = _venv_python(venv_root)
         env = dict(os.environ)
         env.pop("PYTHONPATH", None)
+        for name in NETWORK_ENVIRONMENT:
+            env.pop(name, None)
+            env.pop(name.lower(), None)
+        env["PIP_NO_INDEX"] = "1"
+        env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
         purelib_probe = _run(
             [
                 str(python),
@@ -71,6 +105,45 @@ def main(argv: list[str] | None = None) -> int:
             "".join(f"{item}\n" for item in _dependency_roots()),
             encoding="utf-8",
         )
+        attempt_log = root / "network-attempts.jsonl"
+        guard_module = purelib / "nornyx_wheel_network_guard.py"
+        guard_module.write_text(
+            """from __future__ import annotations
+import json
+import os
+import socket
+
+_LOG = os.environ["NORNYX_NETWORK_ATTEMPT_LOG"]
+
+def _deny(operation, address):
+    with open(_LOG, "a", encoding="utf-8") as stream:
+        stream.write(json.dumps({"operation": operation, "address": repr(address)}, sort_keys=True) + "\\n")
+    raise RuntimeError(f"network disabled during wheel smoke: {operation} {address!r}")
+
+def _connect(self, address):
+    return _deny("socket.connect", address)
+
+def _connect_ex(self, address):
+    return _deny("socket.connect_ex", address)
+
+def _create_connection(address, *args, **kwargs):
+    return _deny("socket.create_connection", address)
+
+def _getaddrinfo(host, port, *args, **kwargs):
+    return _deny("socket.getaddrinfo", (host, port))
+
+socket.socket.connect = _connect
+socket.socket.connect_ex = _connect_ex
+socket.create_connection = _create_connection
+socket.getaddrinfo = _getaddrinfo
+""",
+            encoding="utf-8",
+        )
+        (purelib / "nornyx-wheel-smoke-network-guard.pth").write_text(
+            "import nornyx_wheel_network_guard\n",
+            encoding="utf-8",
+        )
+        env["NORNYX_NETWORK_ATTEMPT_LOG"] = str(attempt_log)
         _run(
             [
                 str(python),
@@ -78,12 +151,14 @@ def main(argv: list[str] | None = None) -> int:
                 "-m",
                 "pip",
                 "install",
+                "--no-index",
                 "--no-deps",
                 "--disable-pip-version-check",
                 str(wheel),
             ],
             cwd=root,
             env=env,
+            attempt_log=attempt_log,
         )
         probe = _run(
             [
@@ -98,14 +173,18 @@ def main(argv: list[str] | None = None) -> int:
                     "validate_governance_evidence_file; "
                     "from nornyx.profiles import PROFILE_NAMES; "
                     "r=GovernanceRegistry.builtins(); "
-                    "s=resources.files('nornyx')/'schemas'/'governance_evidence_v1.schema.json'; "
+                    "root=resources.files('nornyx'); "
+                    "s=root/'schemas'/'governance_evidence_v1.schema.json'; "
+                    "p=root/'profiles_data'; "
                     "print(json.dumps({'version':nornyx.__version__,"
                     "'profiles':len(PROFILE_NAMES),'modules':len(r.module_names),"
-                    "'schema':s.is_file(),'validator':callable(validate_governance_evidence_file)}))"
+                    "'schema':s.is_file(),'profile_resources':len(list(p.iterdir())),"
+                    "'validator':callable(validate_governance_evidence_file)}))"
                 ),
             ],
             cwd=root,
             env=env,
+            attempt_log=attempt_log,
         )
         payload = json.loads(probe.stdout)
         if payload != {
@@ -113,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
             "profiles": 12,
             "modules": 6,
             "schema": True,
+            "profile_resources": 19,
             "validator": True,
         }:
             raise RuntimeError(f"installed-wheel resource probe failed: {payload!r}")
@@ -162,6 +242,7 @@ print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["
             ],
             cwd=root,
             env=env,
+            attempt_log=attempt_log,
         )
         consumer_payload = json.loads(legacy_consumer.stdout)
         if consumer_payload != {
@@ -176,10 +257,23 @@ print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["
             [str(python), "-I", "-m", "nornyx.cli", "modules", "list", "--json"],
             cwd=root,
             env=env,
+            attempt_log=attempt_log,
         )
         modules = json.loads(cli.stdout)["modules"]
         if len(modules) != 6 or {item["source_tier"] for item in modules} != {"builtin"}:
             raise RuntimeError("installed-wheel CLI did not resolve six bundled modules")
+        profiles_cli = _run(
+            [str(python), "-I", "-m", "nornyx.cli", "profiles", "list", "--json"],
+            cwd=root,
+            env=env,
+            attempt_log=attempt_log,
+        )
+        if len(json.loads(profiles_cli.stdout)["profiles"]) != 12:
+            raise RuntimeError("installed-wheel CLI did not resolve twelve bundled profiles")
+        network_attempts = _network_attempts(attempt_log)
+        network_used = bool(network_attempts)
+        if network_used:
+            raise RuntimeError(f"wheel smoke observed network attempts: {network_attempts!r}")
 
     print(
         json.dumps(
@@ -190,7 +284,8 @@ print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["
                 "profiles": payload["profiles"],
                 "modules": payload["modules"],
                 "legacy_consumer": consumer_payload["legacy_consumer"],
-                "network_used": False,
+                "network_used": network_used,
+                "network_attempts": network_attempts,
             },
             sort_keys=True,
         )

@@ -16,6 +16,7 @@ from nornyx.governance import (
     project_profile_to_v03,
 )
 from nornyx.profiles import PROFILE_NAMES
+from scripts.check_compatibility_migrations import verify_manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -157,19 +158,6 @@ def test_compatibility_corpus_pins_cli_stdout_and_exit_codes() -> None:
 
 
 def test_every_intentional_migration_has_the_required_approval_record() -> None:
-    for migration in _manifest()["intentional_migrations"]:
-        assert migration["classification"] == "intentional_migration_requiring_approval"
-        assert "old_hash" in migration and migration["new_hash"]
-        assert migration["reason"]
-        assert migration["approval"]
-        assert migration["changelog"]
-        if migration["surface"] == "architecture_governance starter":
-            starter = (
-                ROOT
-                / "tests"
-                / "fixtures"
-                / "governance_extension"
-                / "starter_golden"
-                / "architecture_governance.nyx"
-            )
-            assert migration["new_hash"] == "sha256:" + _sha256(starter.read_bytes())
+    manifest = verify_manifest()
+    assert len(manifest["intentional_migrations"]) == 5
+    assert len(manifest["profile_starters"]["additions"]) == 1
