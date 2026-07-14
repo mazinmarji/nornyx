@@ -26,6 +26,25 @@ distribution version is independent of the Nornyx **language/schema** version
   never coerced, standalone approvals bind to one governed revision,
   high-risk roles are checked as a strict authorized subset, and effective
   approvals retain bounded verifiable source lineage under ADR-0032.
+- Stage 4 closes AUD-008 and AUD-013 pending full integration: declared SOD
+  approvers are non-empty, human, joined to the exact change, restrictive
+  approval gates, and corresponding evidence, with high-risk self-approval and
+  declared-independence overlap rejected. The SOD module now declares its
+  shared `changes` block/schema dependency. Exception expiry, overlap, closure,
+  lifecycle, core-target, and explicit renewal semantics now fail closed;
+  renewal approval proof is exact-type, authority-bound, fresh before
+  activation, unique across artifacts and predecessor chains, and matched
+  exactly by its renewal-action gate.
+- An adjacent evidence-authority bypass found during Stage 4 is also closed:
+  only `pass` records whose complete dependency chains pass may satisfy module,
+  approval, change, exception, closure, or renewal evidence requirements.
+- Structural enum handling is fail-closed and crash-safe: mappings, arrays,
+  booleans, and numbers cannot reach hash-based lifecycle, risk, architecture,
+  or claimed-approval-schema comparisons.
+- The additive architecture example now attributes its decision record to the
+  change author rather than its approving architect, preserving the declared
+  evidence/approval separation; the compatibility corpus pins the corrected
+  canonical bytes for later migration-proof validation.
 
 ### Added
 - Foundational data-only governance modules for human approval, evidence

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any, Callable
 
 from .architecture import architecture_conformance_check
@@ -33,6 +34,30 @@ CORE_NON_EXCEPTABLE_CONTROLS = {
     "no_network_loading",
     "pack_integrity",
 }
+CORE_NON_EXCEPTABLE_NAMESPACES = ("nornyx.builtin", "nornyx.core")
+CORE_DIAGNOSTIC_PREFIXES = (
+    "APPROVAL_",
+    "ARCH_",
+    "CHANGE_",
+    "EVIDENCE_",
+    "EXCEPTION_",
+    "GOVERNANCE_",
+    "LOCK_",
+    "PACK_",
+    "PATH_",
+    "RULE_",
+    "SCHEMA_",
+    "SOD_",
+)
+CORE_NON_EXCEPTABLE_DIAGNOSTICS = frozenset(
+    {
+        "FILE_ATTRIBUTE_REPARSE_POINT",
+        "PROFILE_PROJECTION_LOSS_REPORTED",
+        "PROFILE_PROJECTION_REQUIRED_FIELD_OMITTED",
+        "PROFILE_PROJECTION_UNSUPPORTED",
+    }
+)
+APPROVAL_EVIDENCE_TYPE = "approval_record"
 HIGH_IMPACT_ACTIONS = {
     "deploy",
     "external_write",
@@ -52,6 +77,16 @@ CHANGE_TRANSITIONS = {
     "cancelled": {"closed"},
     "closed": set(),
 }
+EXCEPTION_STATUSES = {
+    "requested",
+    "approved",
+    "active",
+    "expired",
+    "closed",
+    "rejected",
+}
+RISK_TIERS = {"low", "medium", "high", "critical"}
+ARCHITECTURE_IMPACTS = {"none", "minor", "major", "critical"}
 
 
 def _diagnostic(
@@ -74,30 +109,160 @@ def _diagnostic(
 def _parse_time(value: str | datetime | None) -> datetime | None:
     if value is None:
         return None
-    if isinstance(value, datetime):
-        parsed = value
-    elif isinstance(value, str):
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    else:
-        raise ValueError("timestamp must be a source string or datetime")
-    if parsed.tzinfo is None:
-        raise ValueError("timestamp must include a UTC offset")
-    return parsed.astimezone(timezone.utc)
+    try:
+        if isinstance(value, datetime):
+            parsed = value
+        elif isinstance(value, str):
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        else:
+            raise ValueError("timestamp must be a source string or datetime")
+        if parsed.tzinfo is None:
+            raise ValueError("timestamp must include a UTC offset")
+        return parsed.astimezone(timezone.utc)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise ValueError("timestamp is outside the supported UTC range") from exc
 
 
 def _as_list(value: Any) -> list[Any] | None:
     return value if isinstance(value, list) else None
 
 
-def _evidence_references(document: Mapping[str, Any]) -> set[str]:
+def _canonical_source_string(value: Any) -> str | None:
+    if (
+        isinstance(value, str)
+        and value.strip()
+        and value == value.strip()
+    ):
+        return value
+    return None
+
+
+def _is_core_non_exceptable_control(
+    control: str,
+    *,
+    selected_builtin_controls: frozenset[str] = frozenset(),
+) -> bool:
+    source_candidate = (
+        control[len("control:") :]
+        if control.casefold().startswith("control:")
+        else control
+    )
+    candidate = source_candidate.casefold()
+    if candidate in CORE_NON_EXCEPTABLE_CONTROLS:
+        return True
+    if candidate in selected_builtin_controls:
+        return True
+    if any(
+        candidate == namespace
+        or candidate.startswith(f"{namespace}.")
+        or candidate.startswith(f"{namespace}:")
+        or candidate.startswith(f"{namespace}/")
+        for namespace in CORE_NON_EXCEPTABLE_NAMESPACES
+    ):
+        return True
+    return (
+        source_candidate in CORE_NON_EXCEPTABLE_DIAGNOSTICS
+        or source_candidate.startswith(CORE_DIAGNOSTIC_PREFIXES)
+    )
+
+
+def _selected_builtin_control_ids(
+    composition: CompositionResult,
+) -> frozenset[str]:
+    controls: set[str] = set()
+    for module in composition.modules:
+        if module.provenance.source_tier != "builtin":
+            continue
+        controls.update({module.id, module.name, *module.structural_checks})
+        controls.update(rule.id for rule in module.rules)
+        controls.update(rule.namespaced_id for rule in module.rules)
+        for collection in (
+            module.policies,
+            module.evidence_requirements,
+            module.approval_requirements,
+            module.evaluations,
+        ):
+            for item in collection:
+                for field in ("id", "name"):
+                    value = _source_identity(item.get(field))
+                    if value is not None:
+                        controls.add(value)
+        for evaluation in module.evaluations:
+            controls.update(
+                metric
+                for metric in (_as_list(evaluation.get("metrics")) or [])
+                if _source_identity(metric) is not None
+            )
+    return frozenset(control.casefold() for control in controls)
+
+
+def _usable_evidence_records(
+    document: Mapping[str, Any],
+) -> tuple[Mapping[str, Any], ...]:
+    """Return uniquely identified passing records with passing dependency chains."""
+
     block = document.get("governance_evidence")
     records = _as_list(block.get("records")) if isinstance(block, Mapping) else []
+    by_id: dict[str, Mapping[str, Any]] = {}
+    duplicate_ids: set[str] = set()
+    for record in records or []:
+        if not isinstance(record, Mapping):
+            continue
+        identifier = _canonical_source_string(record.get("id"))
+        if identifier is None:
+            continue
+        if identifier in by_id:
+            duplicate_ids.add(identifier)
+        else:
+            by_id[identifier] = record
+    for identifier in duplicate_ids:
+        by_id.pop(identifier, None)
+
+    dependencies_by_id: dict[str, tuple[str, ...]] = {}
+    dependents: dict[str, set[str]] = {identifier: set() for identifier in by_id}
+    for identifier, record in by_id.items():
+        dependencies, invalid = _strict_source_strings(record.get("dependencies"))
+        if (
+            record.get("status") != "pass"
+            or invalid
+            or any(dependency not in by_id for dependency in dependencies)
+        ):
+            continue
+        dependencies_by_id[identifier] = dependencies
+        for dependency in dependencies:
+            dependents[dependency].add(identifier)
+
+    usable: set[str] = set()
+    queued = {
+        identifier
+        for identifier, dependencies in dependencies_by_id.items()
+        if not dependencies
+    }
+    pending = sorted(queued, reverse=True)
+    while pending:
+        identifier = pending.pop()
+        usable.add(identifier)
+        for dependent in sorted(dependents[identifier]):
+            dependencies = dependencies_by_id.get(dependent)
+            if (
+                dependencies is not None
+                and dependent not in usable
+                and dependent not in queued
+                and set(dependencies) <= usable
+            ):
+                queued.add(dependent)
+                pending.append(dependent)
+        pending.sort(reverse=True)
+
+    return tuple(by_id[identifier] for identifier in sorted(usable))
+
+
+def _evidence_references(document: Mapping[str, Any]) -> set[str]:
     return {
         value
-        for record in records or []
-        if isinstance(record, Mapping)
+        for record in _usable_evidence_records(document)
         for value in (record.get("id"), record.get("type"))
-        if isinstance(value, str) and value.strip() and value == value.strip()
+        if _canonical_source_string(value) is not None
     }
 
 
@@ -117,6 +282,136 @@ def _strict_source_strings(value: Any) -> tuple[tuple[str, ...], bool]:
             continue
         result.append(item)
     return tuple(result), invalid
+
+
+_SOURCE_IDENTITY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@/-]*$")
+_HUMAN_ACTOR_PREFIXES = frozenset({"human", "person", "user"})
+
+
+def _source_identity(value: Any) -> str | None:
+    source = _canonical_source_string(value)
+    if source is None or len(source) > 128 or _SOURCE_IDENTITY_RE.fullmatch(source) is None:
+        return None
+    return source
+
+
+def _human_actor_role(value: Any) -> str | None:
+    actor = _source_identity(value)
+    if actor is None or is_non_human_authority(actor):
+        return None
+    if ":" not in actor:
+        return actor
+    prefix, role = actor.split(":", 1)
+    if prefix.casefold() not in _HUMAN_ACTOR_PREFIXES or not role or ":" in role:
+        return None
+    return role
+
+
+def _actor_equivalence_key(value: Any) -> tuple[str, str] | None:
+    actor = _source_identity(value)
+    if actor is None:
+        return None
+    role = _human_actor_role(actor)
+    if role is not None:
+        return ("human_role", role.casefold())
+    return ("actor", actor.casefold())
+
+
+def _producer_actor_aliases(record: Mapping[str, Any]) -> set[str]:
+    aliases: set[str] = set()
+    producer = record.get("producer")
+    if not isinstance(producer, Mapping):
+        return aliases
+    producer_id = _source_identity(producer.get("id"))
+    producer_type = _source_identity(producer.get("type"))
+    if producer_id is None or producer_type is None:
+        return aliases
+    aliases.add(producer_id)
+    kind = producer_type.casefold()
+    aliases.add(f"{kind}:{producer_id}")
+    if kind == "human":
+        human_id = producer_id
+        if human_id.casefold().startswith("human."):
+            human_id = human_id.split(".", 1)[1]
+        aliases.add(f"user:{human_id}")
+    if kind == "tool":
+        tool = record.get("tool")
+        tool_name = (
+            _source_identity(tool.get("name"))
+            if isinstance(tool, Mapping)
+            else None
+        )
+        if tool_name is not None:
+            aliases.update({tool_name, f"tool:{tool_name}"})
+    return aliases
+
+
+def _evidence_component_resolver(
+    document: Mapping[str, Any],
+) -> Callable[[set[str]], tuple[Mapping[str, Any], ...]]:
+    records = _usable_evidence_records(document)
+    by_id = {
+        identifier: record
+        for record in records
+        if (identifier := _source_identity(record.get("id"))) is not None
+    }
+    graph: dict[str, set[str]] = {identifier: set() for identifier in by_id}
+    for identifier, record in by_id.items():
+        dependencies, invalid = _strict_source_strings(record.get("dependencies"))
+        if invalid:
+            continue
+        for dependency in dependencies:
+            if dependency in graph:
+                graph[identifier].add(dependency)
+                graph[dependency].add(identifier)
+    component_by_id: dict[str, frozenset[str]] = {}
+    remaining = set(by_id)
+    while remaining:
+        start = min(remaining)
+        connected: set[str] = set()
+        pending = [start]
+        while pending:
+            identifier = pending.pop()
+            if identifier in connected:
+                continue
+            connected.add(identifier)
+            pending.extend(sorted(graph[identifier] - connected, reverse=True))
+        component = frozenset(connected)
+        for identifier in component:
+            component_by_id[identifier] = component
+        remaining -= component
+
+    identifiers_by_reference: dict[str, set[str]] = {}
+    for identifier, record in by_id.items():
+        identifiers_by_reference.setdefault(identifier, set()).add(identifier)
+        evidence_type = _source_identity(record.get("type"))
+        if evidence_type is not None:
+            identifiers_by_reference.setdefault(evidence_type, set()).add(identifier)
+
+    cache: dict[frozenset[str], tuple[Mapping[str, Any], ...]] = {}
+
+    def resolve(references: set[str]) -> tuple[Mapping[str, Any], ...]:
+        if not references:
+            return records
+        key = frozenset(references)
+        if key not in cache:
+            connected: set[str] = set()
+            for reference in sorted(references):
+                for identifier in identifiers_by_reference.get(reference, set()):
+                    connected.update(component_by_id[identifier])
+            cache[key] = tuple(
+                by_id[identifier] for identifier in sorted(connected)
+            )
+        return cache[key]
+
+    return resolve
+
+
+def _evidence_component(
+    document: Mapping[str, Any],
+    references: set[str],
+) -> tuple[Mapping[str, Any], ...]:
+    return _evidence_component_resolver(document)(references)
 
 
 def _governed_subject_revision(
@@ -233,7 +528,12 @@ def _normalize_document_approval(
     if not isinstance(value, Mapping):
         return None
     schema = value.get("schema")
-    if schema in {"nornyx.normalized_approval.v1", "nornyx.normalized_approval.v2"}:
+    if "schema" in value and not isinstance(schema, str):
+        return None
+    if isinstance(schema, str) and schema in {
+        "nornyx.normalized_approval.v1",
+        "nornyx.normalized_approval.v2",
+    }:
         return trusted_normalized_approval(value, expected_path=f"approvals[{index}]")
     if schema == "nornyx.effective_approval.v1":
         # Effective approvals are reporting output. Authenticating their pack
@@ -661,22 +961,49 @@ def _evidence_integrity(
                         source_id=source_id,
                     )
                 )
+            elif (
+                record.get("status") == "pass"
+                and by_id[dependency].get("status") != "pass"
+            ):
+                diagnostics.append(
+                    _diagnostic(
+                        "EVIDENCE_DEPENDENCY_UNSATISFIED",
+                        f"Passing evidence depends on non-passing evidence {dependency!r}.",
+                        path=f"governance_evidence.records.{evidence_id}.dependencies",
+                        source_id=source_id,
+                    )
+                )
         graph[evidence_id] = list(dependencies)
-    visiting: set[str] = set()
-    visited: set[str] = set()
+    dependency_counts = {
+        evidence_id: sum(dependency in graph for dependency in dependencies)
+        for evidence_id, dependencies in graph.items()
+    }
+    graph_dependents: dict[str, set[str]] = {
+        evidence_id: set() for evidence_id in graph
+    }
+    for evidence_id, dependencies in graph.items():
+        for dependency in dependencies:
+            if dependency in graph_dependents:
+                graph_dependents[dependency].add(evidence_id)
+    pending = sorted(
+        (
+            evidence_id
+            for evidence_id, count in dependency_counts.items()
+            if count == 0
+        ),
+        reverse=True,
+    )
+    visited_count = 0
+    while pending:
+        evidence_id = pending.pop()
+        visited_count += 1
+        for dependent in sorted(graph_dependents[evidence_id]):
+            dependency_counts[dependent] -= 1
+            if dependency_counts[dependent] == 0:
+                pending.append(dependent)
+        pending.sort(reverse=True)
 
-    def visit(evidence_id: str) -> bool:
-        if evidence_id in visiting:
-            return True
-        if evidence_id in visited:
-            return False
-        visiting.add(evidence_id)
-        cyclic = any(item in graph and visit(item) for item in graph[evidence_id])
-        visiting.remove(evidence_id)
-        visited.add(evidence_id)
-        return cyclic
-
-    if any(visit(evidence_id) for evidence_id in sorted(graph)):
+    if visited_count != len(graph):
         diagnostics.append(
             _diagnostic(
                 "EVIDENCE_DEPENDENCY_CYCLE",
@@ -686,14 +1013,7 @@ def _evidence_integrity(
             )
         )
 
-    available = set(by_id)
-    available.update(
-        value
-        for record in by_id.values()
-        if isinstance((value := record.get("type")), str)
-        and value.strip()
-        and value == value.strip()
-    )
+    available = _evidence_references(document)
     module_requirements = (
         requirement
         for module in composition.modules
@@ -735,28 +1055,124 @@ def _separation_of_duties(
         return ()
     assignments = _as_list(block.get("assignments"))
     if assignments is None:
-        return ()
+        return (
+            _diagnostic(
+                "SOD_ASSIGNMENT_INVALID",
+                "Separation-of-duties assignments must be a source array.",
+                path="separation_of_duties.assignments",
+                source_id=source_id,
+            ),
+        )
+    if not assignments:
+        return (
+            _diagnostic(
+                "SOD_ASSIGNMENT_REQUIRED",
+                "At least one separation-of-duties assignment is required.",
+                path="separation_of_duties.assignments",
+                source_id=source_id,
+            ),
+        )
+
+    changes = _as_list(document.get("changes"))
+    changes_by_subject: dict[str, list[Mapping[str, Any]]] = {}
+    for change in changes or []:
+        if not isinstance(change, Mapping):
+            continue
+        change_id = _source_identity(change.get("id"))
+        if change_id is None:
+            continue
+        changes_by_subject.setdefault(change_id, []).append(change)
+        changes_by_subject.setdefault(f"change:{change_id}", []).append(change)
+
+    approval_values = _as_list(document.get("approvals")) or []
+    approvals = [
+        approval
+        for approval_index, value in enumerate(approval_values)
+        if (
+            approval := _normalize_document_approval(value, approval_index)
+        ) is not None
+        and approval.resolution == "complete"
+    ]
+    resolve_evidence_component = _evidence_component_resolver(document)
+    evidence_context_cache: dict[
+        tuple[frozenset[str], frozenset[str]],
+        tuple[set[str], set[tuple[str, str]]],
+    ] = {}
+
     diagnostics: list[GovernanceDiagnostic] = []
-    subjects: set[str] = set()
+    resolved_subjects: set[str] = set()
     for index, raw in enumerate(assignments):
         if not isinstance(raw, Mapping):
-            continue
-        path = f"separation_of_duties.assignments[{index}]"
-        subject = str(raw.get("subject", ""))
-        if subject in subjects:
             diagnostics.append(
                 _diagnostic(
-                    "SOD_DUPLICATE_SUBJECT",
-                    f"Separation assignment for {subject!r} is duplicated.",
+                    "SOD_ASSIGNMENT_INVALID",
+                    "Each separation-of-duties assignment must be an object.",
+                    path=f"separation_of_duties.assignments[{index}]",
+                    source_id=source_id,
+                )
+            )
+            continue
+        path = f"separation_of_duties.assignments[{index}]"
+        subject = _source_identity(raw.get("subject"))
+        if subject is None:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_SUBJECT_INVALID",
+                    "Assignment subjects must be canonical source identities.",
                     path=f"{path}.subject",
                     source_id=source_id,
                 )
             )
-        subjects.add(subject)
-        author = raw.get("author")
-        approvers = set(_as_list(raw.get("approvers")) or [])
+
+        author = _source_identity(raw.get("author"))
+        author_role = _human_actor_role(author)
+        if author is None or author_role is None:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_AUTHOR_INVALID",
+                    "The assignment author must be a canonical human identity.",
+                    path=f"{path}.author",
+                    source_id=source_id,
+                )
+            )
+
+        approver_values, approvers_invalid = _strict_source_strings(
+            raw.get("approvers")
+        )
+        approvers = tuple(
+            value for value in approver_values if _source_identity(value) is not None
+        )
+        approver_roles = tuple(
+            role
+            for value in approvers
+            if (role := _human_actor_role(value)) is not None
+        )
+        if not approver_values and not approvers_invalid:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_APPROVER_REQUIRED",
+                    "A separation-of-duties assignment requires at least one approver.",
+                    path=f"{path}.approvers",
+                    source_id=source_id,
+                )
+            )
+        if (
+            approvers_invalid
+            or len(approvers) != len(approver_values)
+            or len(set(role.casefold() for role in approver_roles)) != len(approver_roles)
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_APPROVER_INVALID",
+                    "Approvers must be unique canonical human source identities.",
+                    path=f"{path}.approvers",
+                    source_id=source_id,
+                )
+            )
         non_human_approvers = sorted(
-            str(item) for item in approvers if is_non_human_authority(item)
+            item
+            for item in approvers
+            if is_non_human_authority(item) or _human_actor_role(item) is None
         )
         if non_human_approvers:
             diagnostics.append(
@@ -769,7 +1185,18 @@ def _separation_of_duties(
                     source_id=source_id,
                 )
             )
-        if raw.get("risk_tier") in {"high", "critical"} and author in approvers:
+        author_key = _actor_equivalence_key(author)
+        approver_keys = {
+            key
+            for value in approvers
+            if (key := _actor_equivalence_key(value)) is not None
+        }
+        if (
+            isinstance(raw.get("risk_tier"), str)
+            and raw.get("risk_tier") in {"high", "critical"}
+            and author_key is not None
+            and author_key in approver_keys
+        ):
             diagnostics.append(
                 _diagnostic(
                     "SOD_SELF_APPROVAL",
@@ -778,12 +1205,44 @@ def _separation_of_duties(
                     source_id=source_id,
                 )
             )
-        producers = set(_as_list(raw.get("evidence_producers")) or [])
-        if raw.get("require_evidence_independence") is True and approvers and approvers <= producers:
+
+        producer_values, producers_invalid = _strict_source_strings(
+            raw.get("evidence_producers")
+        )
+        producers = tuple(
+            value for value in producer_values if _source_identity(value) is not None
+        )
+        if producers_invalid or len(producers) != len(producer_values):
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_EVIDENCE_PRODUCER_INVALID",
+                    "Evidence producers must be unique canonical source identities.",
+                    path=f"{path}.evidence_producers",
+                    source_id=source_id,
+                )
+            )
+        if raw.get("require_evidence_independence") is True and not producer_values:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_EVIDENCE_PRODUCER_REQUIRED",
+                    "Evidence independence requires at least one declared producer.",
+                    path=f"{path}.evidence_producers",
+                    source_id=source_id,
+                )
+            )
+        producer_keys = {
+            key
+            for value in producers
+            if (key := _actor_equivalence_key(value)) is not None
+        }
+        if (
+            raw.get("require_evidence_independence") is True
+            and approver_keys & producer_keys
+        ):
             diagnostics.append(
                 _diagnostic(
                     "SOD_EVIDENCE_PRODUCER_SOLE_APPROVER",
-                    "Evidence producers cannot be the only approvers when independence is required.",
+                    "Approvers and evidence producers must be disjoint when independence is required.",
                     path=path,
                     source_id=source_id,
                 )
@@ -794,7 +1253,7 @@ def _separation_of_duties(
         ):
             requester = raw.get(requester_field)
             approver = raw.get(approver_field)
-            if is_non_human_authority(approver):
+            if approver is not None and _human_actor_role(approver) is None:
                 diagnostics.append(
                     _diagnostic(
                         "SOD_NON_HUMAN_APPROVER",
@@ -803,7 +1262,13 @@ def _separation_of_duties(
                         source_id=source_id,
                     )
                 )
-            if requester is not None and requester == approver:
+            requester_key = _actor_equivalence_key(requester)
+            approver_key = _actor_equivalence_key(approver)
+            if (
+                requester_key is not None
+                and approver_key is not None
+                and requester_key == approver_key
+            ):
                 diagnostics.append(
                     _diagnostic(
                         code,
@@ -812,6 +1277,221 @@ def _separation_of_duties(
                         source_id=source_id,
                     )
                 )
+
+        if subject is None:
+            continue
+        if changes is None:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_SUBJECT_UNKNOWN",
+                    "A separation assignment requires a corresponding governed change.",
+                    path=f"{path}.subject",
+                    source_id=source_id,
+                )
+            )
+            continue
+        matching_changes = changes_by_subject.get(subject, [])
+        if len(matching_changes) != 1:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_SUBJECT_UNKNOWN",
+                    "Assignment subject must resolve to exactly one governed change.",
+                    path=f"{path}.subject",
+                    source_id=source_id,
+                )
+            )
+            continue
+        change = matching_changes[0]
+        change_id = _source_identity(change.get("id"))
+        if change_id is not None:
+            if change_id in resolved_subjects:
+                diagnostics.append(
+                    _diagnostic(
+                        "SOD_DUPLICATE_SUBJECT",
+                        f"Separation assignment for change {change_id!r} is duplicated.",
+                        path=f"{path}.subject",
+                        source_id=source_id,
+                    )
+                )
+            resolved_subjects.add(change_id)
+        if raw.get("risk_tier") != change.get("risk_tier"):
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_RISK_TIER_MISMATCH",
+                    "Assignment and governed change must declare the same risk tier.",
+                    path=f"{path}.risk_tier",
+                    source_id=source_id,
+                )
+            )
+
+        duty = change.get("separation_of_duties")
+        expected_author_role = (
+            _human_actor_role(duty.get("author_role"))
+            if isinstance(duty, Mapping)
+            else None
+        )
+        expected_inline_approver = (
+            _human_actor_role(duty.get("approver_role"))
+            if isinstance(duty, Mapping)
+            else None
+        )
+        if author_role is None or author_role != expected_author_role:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_AUTHOR_ROLE_MISMATCH",
+                    "Assignment author does not match the change author role.",
+                    path=f"{path}.author",
+                    source_id=source_id,
+                )
+            )
+        change_role_values, change_roles_invalid = _strict_source_strings(
+            change.get("approver_roles")
+        )
+        change_roles = {
+            role
+            for value in change_role_values
+            if (role := _human_actor_role(value)) is not None
+        }
+        assigned_roles = set(approver_roles)
+        if (
+            change_roles_invalid
+            or assigned_roles != change_roles
+            or expected_inline_approver is None
+            or expected_inline_approver not in assigned_roles
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_APPROVER_ROLE_MISMATCH",
+                    "Assignment approvers must exactly implement the change approver roles.",
+                    path=f"{path}.approvers",
+                    source_id=source_id,
+                )
+            )
+
+        approval_ids, approval_ids_invalid = _strict_source_strings(
+            change.get("approval_ids")
+        )
+        action_ids = {
+            value for value in (change_id, f"change:{change_id}") if value is not None
+        }
+        candidates = [
+            approval
+            for approval in approvals
+            if approval.id in set(approval_ids)
+            or action_ids & set(approval.actions_requiring_approval)
+        ]
+        linked_ids_valid = all(
+            sum(approval.id == approval_id for approval in approvals) == 1
+            for approval_id in approval_ids
+        )
+        gate_valid = (
+            not approval_ids_invalid
+            and linked_ids_valid
+            and bool(candidates)
+        )
+        if candidates:
+            eligible_roles = set(candidates[0].eligible_roles)
+            for approval in candidates[1:]:
+                eligible_roles &= set(approval.eligible_roles)
+            required_roles = {
+                role for approval in candidates for role in approval.required_roles
+            }
+            denied_roles = {
+                role
+                for approval in candidates
+                for role in (
+                    *approval.denied_actor_types,
+                    *approval.denied_execution_surfaces,
+                )
+            }
+            gate_valid = gate_valid and (
+                bool(eligible_roles)
+                and assigned_roles <= eligible_roles
+                and required_roles <= assigned_roles
+                and not assigned_roles & denied_roles
+            )
+        if not gate_valid:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_APPROVAL_GATE_MISMATCH",
+                    "Assignment approvers do not satisfy every linked approval gate.",
+                    path=f"{path}.approvers",
+                    source_id=source_id,
+                )
+            )
+
+        change_evidence_refs = {
+            value
+            for field in ("required_evidence", "closure_evidence")
+            for value in (_as_list(change.get(field)) or [])
+            if _source_identity(value) is not None
+        }
+        transition = change.get("transition")
+        if isinstance(transition, Mapping):
+            change_evidence_refs.update(
+                value
+                for value in (_as_list(transition.get("evidence")) or [])
+                if _source_identity(value) is not None
+            )
+        approval_evidence_refs = {
+            value
+            for approval in candidates
+            for value in approval.required_evidence
+        }
+        evidence_refs = change_evidence_refs | approval_evidence_refs
+        evidence_key = (
+            frozenset(change_evidence_refs),
+            frozenset(approval_evidence_refs),
+        )
+        if evidence_key not in evidence_context_cache:
+            relevant_records = resolve_evidence_component(evidence_refs)
+            producer_aliases = {
+                alias
+                for record in relevant_records
+                for alias in _producer_actor_aliases(record)
+            }
+            actual_producer_keys = {
+                key
+                for record in relevant_records
+                if not (
+                    record.get("type") == APPROVAL_EVIDENCE_TYPE
+                    and record.get("id") in approval_evidence_refs
+                    and record.get("id") not in change_evidence_refs
+                    and record.get("type") not in change_evidence_refs
+                )
+                for alias in _producer_actor_aliases(record)
+                if (key := _actor_equivalence_key(alias)) is not None
+            }
+            evidence_context_cache[evidence_key] = (
+                producer_aliases,
+                actual_producer_keys,
+            )
+        producer_aliases, actual_producer_keys = evidence_context_cache[evidence_key]
+        unknown_producers = set(producers) - producer_aliases
+        if unknown_producers:
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_EVIDENCE_PRODUCER_UNKNOWN",
+                    "Assignment evidence producers are not linked to the change evidence: "
+                    + ", ".join(sorted(unknown_producers))
+                    + ".",
+                    path=f"{path}.evidence_producers",
+                    source_id=source_id,
+                )
+            )
+        if (
+            raw.get("require_evidence_independence") is True
+            and approver_keys & actual_producer_keys
+            and not approver_keys & producer_keys
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    "SOD_EVIDENCE_PRODUCER_SOLE_APPROVER",
+                    "A linked evidence producer is also an approver despite required independence.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
     return tuple(diagnostics)
 
 
@@ -822,7 +1502,7 @@ def _exception_management(
     as_of: datetime | None,
     document_root: Path | None,
 ) -> tuple[GovernanceDiagnostic, ...]:
-    del composition, document_root
+    del document_root
     source_id = "exception_management.v1"
     block = document.get("exceptions")
     if not isinstance(block, Mapping):
@@ -831,21 +1511,52 @@ def _exception_management(
     if entries is None:
         return ()
     diagnostics: list[GovernanceDiagnostic] = []
-    identifiers: set[str] = set()
+    selected_builtin_controls = _selected_builtin_control_ids(composition)
     evidence_references = _evidence_references(document)
+    usable_evidence_records = _usable_evidence_records(document)
+    usable_evidence_by_id = {
+        identifier: record
+        for record in usable_evidence_records
+        if (identifier := _source_identity(record.get("id"))) is not None
+    }
+    usable_ids_by_type: dict[str, set[str]] = {}
+    artifact_counts: dict[str, int] = {}
+    content_hash_counts: dict[str, int] = {}
+    for identifier, record in usable_evidence_by_id.items():
+        evidence_type = _source_identity(record.get("type"))
+        if evidence_type is not None:
+            usable_ids_by_type.setdefault(evidence_type, set()).add(identifier)
+        for value, counts in (
+            (_canonical_source_string(record.get("artifact")), artifact_counts),
+            (_canonical_source_string(record.get("content_hash")), content_hash_counts),
+        ):
+            if value is not None:
+                counts[value] = counts.get(value, 0) + 1
+    approval_values = _as_list(document.get("approvals")) or []
+    document_approvals = [
+        approval
+        for approval_index, value in enumerate(approval_values)
+        if (
+            approval := _normalize_document_approval(value, approval_index)
+        ) is not None
+        and approval.resolution == "complete"
+    ]
+    identifier_counts: dict[str, int] = {}
+    parsed_entries: list[dict[str, Any]] = []
     for index, raw in enumerate(entries):
         if not isinstance(raw, Mapping):
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_ENTRY_INVALID",
+                    "Each governed exception must be an object.",
+                    path=f"exceptions.entries[{index}]",
+                    source_id=source_id,
+                )
+            )
             continue
         path = f"exceptions.entries[{index}]"
-        identifier_value = raw.get("id")
-        identifier = (
-            identifier_value
-            if isinstance(identifier_value, str)
-            and identifier_value.strip()
-            and identifier_value == identifier_value.strip()
-            else ""
-        )
-        if not identifier:
+        identifier = _source_identity(raw.get("id"))
+        if identifier is None:
             diagnostics.append(
                 _diagnostic(
                     "EXCEPTION_ID_INVALID",
@@ -854,25 +1565,20 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-        if identifier in identifiers:
-            diagnostics.append(
-                _diagnostic(
-                    "EXCEPTION_DUPLICATE_ID",
-                    f"Exception id {identifier!r} is duplicated.",
-                    path=f"{path}.id",
-                    source_id=source_id,
+        else:
+            identifier_counts[identifier] = identifier_counts.get(identifier, 0) + 1
+            if identifier_counts[identifier] > 1:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_DUPLICATE_ID",
+                        f"Exception id {identifier!r} is duplicated.",
+                        path=f"{path}.id",
+                        source_id=source_id,
+                    )
                 )
-            )
-        identifiers.add(identifier)
-        control_value = raw.get("control")
-        control = (
-            control_value
-            if isinstance(control_value, str)
-            and control_value.strip()
-            and control_value == control_value.strip()
-            else ""
-        )
-        if not control:
+
+        control = _source_identity(raw.get("control"))
+        if control is None:
             diagnostics.append(
                 _diagnostic(
                     "EXCEPTION_CONTROL_INVALID",
@@ -881,7 +1587,10 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-        if control.startswith("nornyx.core.") or control in CORE_NON_EXCEPTABLE_CONTROLS:
+        elif _is_core_non_exceptable_control(
+            control,
+            selected_builtin_controls=selected_builtin_controls,
+        ):
             diagnostics.append(
                 _diagnostic(
                     "EXCEPTION_CORE_CONTROL_FORBIDDEN",
@@ -890,17 +1599,30 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
+
+        scope_values, scope_invalid = _strict_source_strings(raw.get("scope"))
+        scope = frozenset(
+            value for value in scope_values if _source_identity(value) is not None
+        )
+        if scope_invalid or len(scope) != len(scope_values) or not scope:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_SCOPE_INVALID",
+                    "Exception scope must contain unique canonical source identities.",
+                    path=f"{path}.scope",
+                    source_id=source_id,
+                )
+            )
+
+        authorities: dict[str, str | None] = {}
         for authority_field in (
             "requester",
             "approving_authority",
             "accountable_owner",
         ):
-            authority = raw.get(authority_field)
-            if (
-                not isinstance(authority, str)
-                or not authority.strip()
-                or authority != authority.strip()
-            ):
+            authority = _source_identity(raw.get(authority_field))
+            authorities[authority_field] = authority
+            if authority is None:
                 diagnostics.append(
                     _diagnostic(
                         "EXCEPTION_AUTHORITY_INVALID",
@@ -909,7 +1631,22 @@ def _exception_management(
                         source_id=source_id,
                     )
                 )
-        if raw.get("requester") == raw.get("approving_authority"):
+            elif _human_actor_role(authority) is None:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_NON_HUMAN_AUTHORITY",
+                        f"Exception {authority_field} must identify a human actor.",
+                        path=f"{path}.{authority_field}",
+                        source_id=source_id,
+                    )
+                )
+        requester_key = _actor_equivalence_key(authorities["requester"])
+        approver_key = _actor_equivalence_key(authorities["approving_authority"])
+        if (
+            requester_key is not None
+            and approver_key is not None
+            and requester_key == approver_key
+        ):
             diagnostics.append(
                 _diagnostic(
                     "EXCEPTION_SELF_APPROVAL",
@@ -918,24 +1655,7 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-        if is_non_human_authority(raw.get("approving_authority")):
-            diagnostics.append(
-                _diagnostic(
-                    "EXCEPTION_NON_HUMAN_AUTHORITY",
-                    "Exception approving authority must identify a human actor.",
-                    path=f"{path}.approving_authority",
-                    source_id=source_id,
-                )
-            )
-        if is_non_human_authority(raw.get("accountable_owner")):
-            diagnostics.append(
-                _diagnostic(
-                    "EXCEPTION_NON_HUMAN_AUTHORITY",
-                    "Exception accountable owner must identify a human actor.",
-                    path=f"{path}.accountable_owner",
-                    source_id=source_id,
-                )
-            )
+
         declared_evidence_values, evidence_invalid = _strict_source_strings(
             raw.get("evidence")
         )
@@ -961,21 +1681,65 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-        if raw.get("status") == "closed":
-            closure_evidence = {
-                item
-                for item in (_as_list(raw.get("closure_evidence")) or [])
-                if isinstance(item, str)
-            }
-            if not closure_evidence or not closure_evidence <= evidence_references:
+
+        closure_values, closure_invalid = _strict_source_strings(
+            raw.get("closure_evidence")
+        )
+        closure_evidence = set(closure_values)
+        if closure_invalid:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_CLOSURE_EVIDENCE_INVALID",
+                    "Closure evidence must contain unique canonical source identities.",
+                    path=f"{path}.closure_evidence",
+                    source_id=source_id,
+                )
+            )
+
+        starts: datetime | None = None
+        expires: datetime | None = None
+        interval_valid = False
+        try:
+            starts = _parse_time(raw.get("starts_at"))
+            expires = _parse_time(raw.get("expires_at"))
+            if starts is None or expires is None:
+                raise ValueError("missing timestamp")
+            interval_valid = starts < expires
+            if not interval_valid:
                 diagnostics.append(
                     _diagnostic(
-                        "EXCEPTION_CLOSURE_EVIDENCE_MISSING",
-                        "A closed exception requires available closure evidence.",
-                        path=f"{path}.closure_evidence",
+                        "EXCEPTION_INTERVAL_INVALID",
+                        "Exception expiry must be after its start time.",
+                        path=path,
                         source_id=source_id,
                     )
                 )
+        except (TypeError, ValueError):
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_TIME_INVALID",
+                    "Exception timestamps must be valid offset timestamps.",
+                    path=path,
+                    source_id=source_id,
+                )
+            )
+
+        status_value = raw.get("status")
+        status = (
+            status_value
+            if isinstance(status_value, str)
+            and status_value in EXCEPTION_STATUSES
+            else None
+        )
+        if status is None:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_LIFECYCLE_INVALID",
+                    "Exception status must be a supported lifecycle value.",
+                    path=f"{path}.status",
+                    source_id=source_id,
+                )
+            )
         if as_of is None:
             diagnostics.append(
                 _diagnostic(
@@ -985,22 +1749,17 @@ def _exception_management(
                     source_id=source_id,
                 )
             )
-            continue
-        try:
-            starts = _parse_time(raw.get("starts_at"))
-            expires = _parse_time(raw.get("expires_at"))
-            if starts is None or expires is None:
-                raise ValueError("missing timestamp")
-            if starts >= expires:
+        elif interval_valid and starts is not None and expires is not None:
+            if status == "active" and as_of < starts:
                 diagnostics.append(
                     _diagnostic(
-                        "EXCEPTION_INTERVAL_INVALID",
-                        "Exception expiry must be after its start time.",
-                        path=path,
+                        "EXCEPTION_LIFECYCLE_INVALID",
+                        "An active exception cannot precede its declared start.",
+                        path=f"{path}.status",
                         source_id=source_id,
                     )
                 )
-            if raw.get("status") in {"approved", "active"} and expires <= as_of:
+            if status in {"approved", "active"} and expires <= as_of:
                 diagnostics.append(
                     _diagnostic(
                         "EXCEPTION_EXPIRED",
@@ -1009,15 +1768,378 @@ def _exception_management(
                         source_id=source_id,
                     )
                 )
-        except ValueError:
+            if status == "expired" and as_of < expires:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_LIFECYCLE_INVALID",
+                        "An exception cannot be declared expired before its expiry.",
+                        path=f"{path}.status",
+                        source_id=source_id,
+                    )
+                )
+
+        closure_required = status in {"closed", "expired"} or (
+            status in {"approved", "active"}
+            and as_of is not None
+            and expires is not None
+            and expires <= as_of
+        )
+        if closure_required and (
+            closure_invalid
+            or not closure_evidence
+            or not closure_evidence <= evidence_references
+        ):
             diagnostics.append(
                 _diagnostic(
-                    "EXCEPTION_TIME_INVALID",
-                    "Exception timestamps must be valid offset timestamps.",
-                    path=path,
+                    "EXCEPTION_CLOSURE_EVIDENCE_MISSING",
+                    "Closed or expired exceptions require available closure evidence.",
+                    path=f"{path}.closure_evidence",
                     source_id=source_id,
                 )
             )
+
+        parsed_entries.append(
+            {
+                "index": index,
+                "path": path,
+                "raw": raw,
+                "id": identifier,
+                "control": control,
+                "scope": scope,
+                "status": status,
+                "starts": starts,
+                "expires": expires,
+                "interval_valid": interval_valid,
+                "evidence": declared_evidence,
+            }
+        )
+
+    unique_by_id = {
+        entry["id"]: entry
+        for entry in parsed_entries
+        if entry["id"] is not None and identifier_counts.get(entry["id"]) == 1
+    }
+
+    renewal_evidence_usage: dict[str, int] = {}
+    for entry in parsed_entries:
+        renewal_values, _ = _strict_source_strings(
+            entry["raw"].get("renewal_approval_evidence")
+        )
+        for reference in renewal_values:
+            renewal_evidence_usage[reference] = (
+                renewal_evidence_usage.get(reference, 0) + 1
+            )
+
+    def evidence_dependency_closure(references: set[str]) -> set[str]:
+        pending: list[str] = []
+        for reference in sorted(references, reverse=True):
+            if reference in usable_evidence_by_id:
+                pending.append(reference)
+            else:
+                pending.extend(sorted(usable_ids_by_type.get(reference, ()), reverse=True))
+        resolved: set[str] = set()
+        while pending:
+            identifier = pending.pop()
+            if identifier in resolved:
+                continue
+            resolved.add(identifier)
+            record = usable_evidence_by_id[identifier]
+            dependencies, invalid = _strict_source_strings(
+                record.get("dependencies")
+            )
+            if not invalid:
+                pending.extend(
+                    dependency
+                    for dependency in reversed(dependencies)
+                    if dependency in usable_evidence_by_id
+                )
+        return resolved
+
+    def ancestor_evidence_ids(prior_id: str) -> set[str]:
+        references: set[str] = set()
+        visited: set[str] = set()
+        current: str | None = prior_id
+        while current is not None and current not in visited:
+            visited.add(current)
+            ancestor = unique_by_id.get(current)
+            if ancestor is None:
+                break
+            ancestor_raw = ancestor["raw"]
+            references.update(
+                value
+                for field in (
+                    "evidence",
+                    "closure_evidence",
+                    "renewal_approval_evidence",
+                )
+                for value in (_as_list(ancestor_raw.get(field)) or [])
+                if _source_identity(value) is not None
+            )
+            renews = _source_identity(ancestor_raw.get("renews"))
+            current = renews if renews in unique_by_id else None
+        return evidence_dependency_closure(references)
+
+    def is_human_approval_record(
+        record: Mapping[str, Any] | None,
+        authority_key: tuple[str, str] | None,
+        *,
+        approval_not_before: datetime | None,
+        approval_not_after: datetime | None,
+    ) -> bool:
+        if (
+            record is None
+            or authority_key is None
+            or approval_not_before is None
+            or approval_not_after is None
+        ):
+            return False
+        evidence_type = _source_identity(record.get("type"))
+        producer = record.get("producer")
+        artifact = _canonical_source_string(record.get("artifact"))
+        content_hash = _canonical_source_string(record.get("content_hash"))
+        try:
+            generated = _parse_time(record.get("generated_at"))
+        except ValueError:
+            generated = None
+        return (
+            evidence_type == APPROVAL_EVIDENCE_TYPE
+            and isinstance(producer, Mapping)
+            and producer.get("type") == "human"
+            and generated is not None
+            and approval_not_before <= generated <= approval_not_after
+            and artifact is not None
+            and artifact_counts.get(artifact) == 1
+            and content_hash is not None
+            and content_hash_counts.get(content_hash) == 1
+            and any(
+                _actor_equivalence_key(alias) == authority_key
+                for alias in _producer_actor_aliases(record)
+            )
+        )
+
+    renewal_targets: dict[str, list[dict[str, Any]]] = {}
+    renewal_edges: dict[str, str] = {}
+    for entry in parsed_entries:
+        raw = entry["raw"]
+        path = entry["path"]
+        renews_value = raw.get("renews")
+        renews = _source_identity(renews_value) if renews_value is not None else None
+        renewal_values, renewal_invalid = _strict_source_strings(
+            raw.get("renewal_approval_evidence")
+        )
+        if renews_value is not None and renews is None:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_RENEWAL_REFERENCE_INVALID",
+                    "Renewal references must be canonical exception identities.",
+                    path=f"{path}.renews",
+                    source_id=source_id,
+                )
+            )
+            continue
+        if renews is None:
+            if raw.get("renewal_approval_evidence") is not None:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_REFERENCE_INVALID",
+                        "Renewal approval evidence requires an explicit renewal reference.",
+                        path=f"{path}.renewal_approval_evidence",
+                        source_id=source_id,
+                    )
+                )
+            continue
+
+        current_id = entry["id"]
+        prior = unique_by_id.get(renews)
+        if current_id is None or renews == current_id or prior is None:
+            diagnostics.append(
+                _diagnostic(
+                    "EXCEPTION_RENEWAL_REFERENCE_INVALID",
+                    "Renewals must reference a distinct, uniquely identified prior exception.",
+                    path=f"{path}.renews",
+                    source_id=source_id,
+                )
+            )
+        else:
+            renewal_targets.setdefault(renews, []).append(entry)
+            renewal_edges[current_id] = renews
+            prior_raw = prior["raw"]
+            if prior["status"] not in {"approved", "active", "expired", "closed"}:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_REFERENCE_INVALID",
+                        "Only an approved, active, expired, or closed exception can be renewed.",
+                        path=f"{path}.renews",
+                        source_id=source_id,
+                    )
+                )
+            if prior_raw.get("renewal_policy") != "manual_reapproval":
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_NOT_ALLOWED",
+                        "The prior exception does not permit manual renewal.",
+                        path=f"{path}.renews",
+                        source_id=source_id,
+                    )
+                )
+            if entry["control"] != prior["control"] or entry["scope"] != prior["scope"]:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_REFERENCE_INVALID",
+                        "A renewal must preserve the prior exception control and scope.",
+                        path=f"{path}.renews",
+                        source_id=source_id,
+                    )
+                )
+            if (
+                entry["starts"] is not None
+                and prior["expires"] is not None
+                and entry["starts"] < prior["expires"]
+            ):
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_INTERVAL_INVALID",
+                        "A renewal cannot start before the prior exception expires.",
+                        path=f"{path}.starts_at",
+                        source_id=source_id,
+                    )
+                )
+
+            prior_evidence_ids = ancestor_evidence_ids(renews)
+            renewal_records = [
+                usable_evidence_by_id.get(reference)
+                for reference in renewal_values
+            ]
+            renewal_action = f"renew_exception:{current_id}"
+            renewal_gates = [
+                approval
+                for approval in document_approvals
+                if renewal_action in approval.actions_requiring_approval
+            ]
+            renewal_authority_role = _human_actor_role(
+                raw.get("approving_authority")
+            )
+            renewal_authority_key = _actor_equivalence_key(
+                raw.get("approving_authority")
+            )
+            gate_valid = bool(renewal_gates) and renewal_authority_role is not None
+            if renewal_gates:
+                eligible_roles = set(renewal_gates[0].eligible_roles)
+                for approval in renewal_gates[1:]:
+                    eligible_roles &= set(approval.eligible_roles)
+                required_roles = {
+                    role for approval in renewal_gates for role in approval.required_roles
+                }
+                denied_roles = {
+                    role
+                    for approval in renewal_gates
+                    for role in (
+                        *approval.denied_actor_types,
+                        *approval.denied_execution_surfaces,
+                    )
+                }
+                gate_evidence = {
+                    reference
+                    for approval in renewal_gates
+                    for reference in approval.required_evidence
+                }
+                gate_valid = gate_valid and (
+                    bool(eligible_roles)
+                    and renewal_authority_role in eligible_roles
+                    and required_roles <= {renewal_authority_role}
+                    and renewal_authority_role not in denied_roles
+                    and bool(gate_evidence)
+                    and gate_evidence == set(renewal_values)
+                )
+            renewal_is_separately_approved = (
+                not renewal_invalid
+                and bool(renewal_values)
+                and all(record is not None for record in renewal_records)
+                and not set(renewal_values) & prior_evidence_ids
+                and all(
+                    renewal_evidence_usage.get(reference) == 1
+                    for reference in renewal_values
+                )
+                and all(
+                    is_human_approval_record(
+                        record,
+                        renewal_authority_key,
+                        approval_not_before=prior["starts"],
+                        approval_not_after=entry["starts"],
+                    )
+                    for record in renewal_records
+                )
+                and gate_valid
+            )
+            if not renewal_is_separately_approved:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_APPROVAL_MISSING",
+                        "Renewal requires new passing human-approval evidence by record id.",
+                        path=f"{path}.renewal_approval_evidence",
+                        source_id=source_id,
+                    )
+                )
+
+    for target, renewals in sorted(renewal_targets.items()):
+        if len(renewals) > 1:
+            for renewal in renewals:
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_RENEWAL_FORK_INVALID",
+                        f"Prior exception {target!r} has multiple direct renewals.",
+                        path=f"{renewal['path']}.renews",
+                        source_id=source_id,
+                    )
+                )
+
+    cyclic_renewals: set[str] = set()
+    for start in sorted(renewal_edges):
+        chain: list[str] = []
+        positions: dict[str, int] = {}
+        current = start
+        while current in renewal_edges:
+            if current in positions:
+                cyclic_renewals.update(chain[positions[current] :])
+                break
+            positions[current] = len(chain)
+            chain.append(current)
+            current = renewal_edges[current]
+    for identifier in sorted(cyclic_renewals):
+        entry = unique_by_id[identifier]
+        diagnostics.append(
+            _diagnostic(
+                "EXCEPTION_RENEWAL_REFERENCE_INVALID",
+                "Exception renewal references contain a cycle.",
+                path=f"{entry['path']}.renews",
+                source_id=source_id,
+            )
+        )
+
+    active_entries = [
+        entry
+        for entry in parsed_entries
+        if entry["status"] in {"active", "approved"}
+        and entry["interval_valid"]
+        and entry["control"] is not None
+        and entry["scope"]
+    ]
+    for position, first in enumerate(active_entries):
+        for second in active_entries[position + 1 :]:
+            if (
+                first["control"] == second["control"]
+                and first["scope"] & second["scope"]
+                and first["starts"] < second["expires"]
+                and second["starts"] < first["expires"]
+            ):
+                diagnostics.append(
+                    _diagnostic(
+                        "EXCEPTION_SCOPE_OVERLAP",
+                        "Active exceptions for the same control overlap in scope and time.",
+                        path=second["path"],
+                        source_id=source_id,
+                    )
+                )
     return tuple(diagnostics)
 
 
@@ -1035,19 +2157,7 @@ def _change_control(
         return ()
     diagnostics: list[GovernanceDiagnostic] = []
 
-    evidence_block = document.get("governance_evidence")
-    evidence_records = (
-        _as_list(evidence_block.get("records"))
-        if isinstance(evidence_block, Mapping)
-        else []
-    ) or []
-    evidence_ids = {
-        value
-        for record in evidence_records
-        if isinstance(record, Mapping)
-        for value in (record.get("id"), record.get("type"))
-        if isinstance(value, str) and value.strip() and value == value.strip()
-    }
+    evidence_ids = _evidence_references(document)
     exception_block = document.get("exceptions")
     exception_entries = (
         _as_list(exception_block.get("entries"))
@@ -1194,7 +2304,22 @@ def _change_control(
                 )
             )
 
-        high_risk = raw.get("risk_tier") in {"high", "critical"}
+        risk_tier_value = raw.get("risk_tier")
+        risk_tier = (
+            risk_tier_value
+            if isinstance(risk_tier_value, str) and risk_tier_value in RISK_TIERS
+            else None
+        )
+        if risk_tier is None:
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_RISK_TIER_INVALID",
+                    "Change risk tier must be a supported source value.",
+                    path=f"{path}.risk_tier",
+                    source_id=source_id,
+                )
+            )
+        high_risk = risk_tier in {"high", "critical"}
         declared_roles, roles_invalid = _strict_source_strings(raw.get("approver_roles"))
         approver_roles = set(declared_roles)
         non_human_roles = {
@@ -1427,7 +2552,25 @@ def _change_control(
         architecture_impact = (
             impacts.get("architecture") if isinstance(impacts, Mapping) else None
         )
-        if architecture_impact in {"major", "critical"}:
+        if (
+            architecture_impact is not None
+            and (
+                not isinstance(architecture_impact, str)
+                or architecture_impact not in ARCHITECTURE_IMPACTS
+            )
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    "CHANGE_ARCHITECTURE_IMPACT_INVALID",
+                    "Architecture impact must be a supported source value.",
+                    path=f"{path}.impacts.architecture",
+                    source_id=source_id,
+                )
+            )
+        if (
+            isinstance(architecture_impact, str)
+            and architecture_impact in {"major", "critical"}
+        ):
             if "architecture_decision_record" not in required_evidence:
                 diagnostics.append(
                     _diagnostic(

@@ -67,6 +67,10 @@
         "starts_at": {"$ref": "#/$defs/timestamp"},
         "expires_at": {"$ref": "#/$defs/timestamp"},
         "renewal_policy": {"enum": ["prohibited", "manual_reapproval"]},
+        "renews": {
+          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+        },
+        "renewal_approval_evidence": {"$ref": "#/$defs/identities"},
         "closure_evidence": {
           "type": "array",
           "maxItems": 100,

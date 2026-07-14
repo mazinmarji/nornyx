@@ -42,9 +42,12 @@ fresh independent verdict will be recorded only after Stage 7.
   raising without permission — each must fail with its stable code
   (`PACK_MONOTONICITY_*`). Includes the composer-invariant backstop test
   (hand-built malicious effective model rejected).
-- Exceptions: valid full-field exception downgrades to warning; each missing
-  field invalidates; expiry (`EXCEPTION_EXPIRED`); core-checker codes not
-  exceptable; pack-supplied exceptions rejected.
+- Exceptions: full-field declarations validate without changing rule severity;
+  missing fields, invalid lifecycle states, overlapping active intervals, and
+  stale, reused, mistyped, post-activation, or gate-mismatched renewal proof
+  fails; expiry emits `EXCEPTION_EXPIRED`; reserved governance diagnostic
+  namespaces and selected built-in control/rule ids remain non-exceptable;
+  pack-supplied exceptions are rejected.
 
 **Rule evaluator**
 - Every operator: positive/negative/absent-path cases.

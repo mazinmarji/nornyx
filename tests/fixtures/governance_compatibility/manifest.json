@@ -19,7 +19,7 @@
   "nyx_examples": {
     "classification": "canonical_lf_identical",
     "files": [
-      {"path": "examples/architecture_governance.nyx", "sha256": "c704e7ea0942452a59e9f5ff12a114adc55f08f92ed529b53d8bf18a12dbacd8"},
+      {"path": "examples/architecture_governance.nyx", "sha256": "8184eb5b86a2e9f268ae1075b9ce3f4f428a19014234291505801186925bb781"},
       {"path": "examples/email_triage.nyx", "sha256": "183538ab8635f3c66e2fcb147591abeec259798dcda40d3546df8f4f067e00f3"},
       {"path": "examples/governance_foundations.nyx", "sha256": "e49796639a56d5c79f9b1cc48226987235bed56b11c99a3b4d44ff05f5ecc3f9"},
       {"path": "examples/governed_delivery_control_plane.nyx", "sha256": "3ea884c4afd2bbf76c8aae430c840ce5df2879d21ff2e2b237cebf7364030701"},
@@ -70,10 +70,10 @@
     "normalization": "canonical JSON with repository root replaced by <ROOT>",
     "cases": [
       {"id": "profiles_list", "argv": ["profiles", "list", "--json"], "exit": 0, "sha256": "345d53ab4d0bf714fca9bb2d72495f940ca66a0b583f6cfc2f0cac9dd3a760b6"},
-      {"id": "modules_list", "argv": ["modules", "list", "--json"], "exit": 0, "sha256": "03a49a90f41514b4c4356df752167f38786e435f9b1a543776ad29552415b792"},
+      {"id": "modules_list", "argv": ["modules", "list", "--json"], "exit": 0, "sha256": "4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02"},
       {"id": "modules_inspect", "argv": ["modules", "inspect", "change_control", "--json"], "exit": 0, "sha256": "917eb65494dae367f1c6d6d13d2605999469744512d4cb918f250dbd9b779bfd"},
-      {"id": "governance_explain", "argv": ["governance", "explain", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3"},
-      {"id": "governance_matrix", "argv": ["governance", "matrix", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "f15375cbbdccec43f49f8e342eb7076c35e591923deeef24728167ae6873dad1"},
+      {"id": "governance_explain", "argv": ["governance", "explain", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "b80c873604e1915dc1ae6e58f5ba8c7a7f088e04502544afa4d7e7e27c128cb9"},
+      {"id": "governance_matrix", "argv": ["governance", "matrix", "examples/governance_foundations.nyx", "--as-of", "2026-06-01T00:00:00Z", "--json"], "exit": 0, "sha256": "34892fe670ee94ce0fc67948872a0b3f43975e7e7c61da3e89b7af78dd767b0c"},
       {"id": "module_not_found", "argv": ["modules", "inspect", "missing_module", "--json"], "exit": 1, "sha256": "7b46d935d67913bdb2c61ea9c31d9d7407dec759a88aec093b1e0c842a9fe0a1"}
     ]
   },
@@ -99,6 +99,45 @@
       ],
       "reason": "The PR #30 blocking review requires declared exact-revision and relative-expiry controls to remain visible in the normalized effective model and explain report.",
       "approval": "PR #30 blocking review PRR_kwDOTG1_j88AAAABF17htA, submitted by the human repository owner on 2026-07-13.",
+      "changelog": "CHANGELOG.md#unreleased"
+    },
+    {
+      "surface": "modules_list separation-of-duties cross-block contract",
+      "classification": "intentional_migration_requiring_approval",
+      "old_hash": "sha256:03a49a90f41514b4c4356df752167f38786e435f9b1a543776ad29552415b792",
+      "new_hash": "sha256:4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02",
+      "diff": [
+        "Declare changes as a required separation_of_duties block and bind it to the existing shared change_v1 schema.",
+        "Update the module integrity hash without changing the six-module catalog or command exit code."
+      ],
+      "reason": "AUD-008 requires every separation-of-duties assignment to resolve to its governed change; the module metadata must expose that cross-block contract instead of leaving a hidden runtime dependency.",
+      "approval": "AUD-008 remediation explicitly requested by the human repository owner for PR #30 on 2026-07-14.",
+      "changelog": "CHANGELOG.md#unreleased"
+    },
+    {
+      "surface": "governance_explain separation-of-duties block contract",
+      "classification": "intentional_migration_requiring_approval",
+      "old_hash": "sha256:dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3",
+      "new_hash": "sha256:b80c873604e1915dc1ae6e58f5ba8c7a7f088e04502544afa4d7e7e27c128cb9",
+      "diff": [
+        "Add changes to the effective required_blocks set at the separation_of_duties layer.",
+        "Add the identical shared change_v1 block-schema binding at that layer and retain exit code 0."
+      ],
+      "reason": "AUD-008 requires the effective report to expose the change contract consumed by separation-of-duties validation.",
+      "approval": "AUD-008 remediation explicitly requested by the human repository owner for PR #30 on 2026-07-14.",
+      "changelog": "CHANGELOG.md#unreleased"
+    },
+    {
+      "surface": "governance_matrix separation-of-duties block contract",
+      "classification": "intentional_migration_requiring_approval",
+      "old_hash": "sha256:f15375cbbdccec43f49f8e342eb7076c35e591923deeef24728167ae6873dad1",
+      "new_hash": "sha256:34892fe670ee94ce0fc67948872a0b3f43975e7e7c61da3e89b7af78dd767b0c",
+      "diff": [
+        "Report changes as required by both separation_of_duties and change_control.",
+        "Preserve every existing module, dependency edge, compatibility result, and exit code 0."
+      ],
+      "reason": "AUD-008 requires matrix output to disclose the cross-block contract instead of hiding a runtime dependency.",
+      "approval": "AUD-008 remediation explicitly requested by the human repository owner for PR #30 on 2026-07-14.",
       "changelog": "CHANGELOG.md#unreleased"
     }
   ]

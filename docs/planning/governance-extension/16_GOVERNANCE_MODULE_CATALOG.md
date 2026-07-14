@@ -17,7 +17,7 @@ network source, a custom validator, or approval authority.
 |---|---|---|---|---|
 | `evidence_integrity` | none | `governance_evidence` | `evidence_integrity.v1` | Verify local artifact hashes, revision binding, freshness, dependencies, and mandatory evidence |
 | `human_approval` | `evidence_integrity` | `approvals`, `governance_evidence` | `human_approval.v1` | Require accountable human roles, explicit non-human denials, exact revision binding, evidence, invalidation, and expiry |
-| `separation_of_duties` | `human_approval` | `separation_of_duties` | `separation_of_duties.v1` | Enforce author/approver, producer/approver, release, and exception role disjointness |
+| `separation_of_duties` | `human_approval` | `separation_of_duties`, `changes` | `separation_of_duties.v1` | Join assignments to changes and gates; enforce high/critical author separation and producer separation when evidence independence is required, plus declared release/exception separation |
 | `exception_management` | `separation_of_duties` | `exceptions` | `exception_management.v1` | Keep exceptions project-owned, human-authorized, evidenced, compensated, expiring, and unable to weaken core safety |
 | `change_control` | `exception_management` | `changes` | `change_control.v1` | Enforce evidenced lifecycle transitions, risk gates, revision and scope binding, human approval, rollback readiness, architecture evidence, and explicit closure |
 | `architecture_conformance` | `change_control` | `architecture`, `architecture_evidence` | `architecture_conformance.v1` | Validate declared architecture, references and dependency directions, and revision-bound local evidence from external specialist tools |
@@ -60,9 +60,18 @@ denied authority.
 
 Exceptions cannot target the stable core safety namespace, pack integrity,
 data-only loading, no-executable-code, no-network, no-auto-approval,
-non-human-authority denial, or no-external-tool-execution controls. Nornyx
-validates declarations only; it never approves, renews, applies, or executes an
-exception or compensating control.
+non-human-authority denial, no-external-tool-execution controls, reserved
+governance diagnostic namespaces, or selected built-in control/rule ids.
+Nornyx validates declarations only; it never approves, renews, applies, or
+executes an exception or compensating control. Active intervals use half-open
+bounds and cannot overlap for the same control and intersecting scope. Expired
+and closed records require passing closure evidence. Renewal is a separate,
+non-overlapping record that references its predecessor and single-use,
+exactly typed human approval proof with a unique artifact/hash, no predecessor
+reuse, and a generation time between the predecessor start and renewal
+activation. The corresponding human approval gate must explicitly name the
+`renew_exception:<id>` action, authorize the renewal authority, and require
+exactly the declared proof set.
 
 ## Architecture Evidence Boundary
 

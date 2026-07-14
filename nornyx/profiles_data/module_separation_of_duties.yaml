@@ -9,9 +9,12 @@ dependencies:
 conflicts: []
 required_blocks:
   - separation_of_duties
+  - changes
 block_schemas:
   - block: separation_of_duties
     schema_id: https://nornyx.dev/schemas/separation_of_duties_v1.schema.json
+  - block: changes
+    schema_id: https://nornyx.dev/schemas/change_v1.schema.json
 structural_checks:
   - separation_of_duties.v1
 policies:
@@ -54,7 +57,7 @@ provenance:
   source_revision: governance-program-stage-b
 integrity:
   algorithm: sha256
-  content_hash: sha256:9f08e050cae6a59b0b03a461356f64243f8f3cee119e365c491ffacd1b036554
+  content_hash: sha256:98262e7fc55ee01673df06fe59d55b5fa698aa1a77c5d625e83853a16b5433bc
 safety:
   data_only: true
   local_only: true

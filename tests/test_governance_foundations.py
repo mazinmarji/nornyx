@@ -92,6 +92,21 @@ def _document(tmp_path: Path) -> dict[str, Any]:
             "subject_revision": REVISION,
             "records": records,
         },
+        "changes": [
+            {
+                "id": "foundation",
+                "type": "governance",
+                "risk_tier": "high",
+                "required_evidence": ["independent_review_record"],
+                "approver_roles": ["reviewer"],
+                "approval_ids": ["HumanGate"],
+                "separation_of_duties": {
+                    "author_role": "author",
+                    "approver_role": "reviewer",
+                    "disjoint": True,
+                },
+            }
+        ],
         "separation_of_duties": {
             "schema": "nornyx.separation_of_duties.v1",
             "assignments": [

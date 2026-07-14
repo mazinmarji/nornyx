@@ -1,1 +1,2 @@
 tests/fixtures/governance_extension/starter_golden/*.nyx binary
+examples/governance_evidence/renewal_approval_record.json -text

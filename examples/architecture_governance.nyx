@@ -93,7 +93,7 @@ governance_evidence:
     - id: architecture_decision_record
       type: architecture_decision_record
       schema_id: nornyx.example_evidence.v1
-      producer: {id: human.architect, type: human}
+      producer: {id: human.author, type: human}
       artifact: governance_evidence/architecture_decision_record.json
       content_hash: sha256:61fea5bd7a91f78c66a4a5daccfeda66df1b0839d056f948dfbc91995cb25774
       subject_revision: git:0123456789abcdef

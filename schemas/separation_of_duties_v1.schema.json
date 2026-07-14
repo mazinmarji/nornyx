@@ -27,6 +27,19 @@
       "items": {"$ref": "#/$defs/identity"},
       "uniqueItems": true
     },
+    "humanIdentity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?:(?:[Uu][Ss][Ee][Rr]|[Hh][Uu][Mm][Aa][Nn]|[Pp][Ee][Rr][Ss][Oo][Nn]):[A-Za-z0-9][A-Za-z0-9._@/-]*|[A-Za-z0-9][A-Za-z0-9._@/-]*)$"
+    },
+    "humanActors": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/humanIdentity"},
+      "uniqueItems": true
+    },
     "assignment": {
       "type": "object",
       "required": [
@@ -40,21 +53,21 @@
       "properties": {
         "subject": {"$ref": "#/$defs/identity"},
         "risk_tier": {"enum": ["low", "medium", "high", "critical"]},
-        "author": {"$ref": "#/$defs/identity"},
-        "approvers": {"$ref": "#/$defs/actors"},
+        "author": {"$ref": "#/$defs/humanIdentity"},
+        "approvers": {"$ref": "#/$defs/humanActors"},
         "evidence_producers": {"$ref": "#/$defs/actors"},
         "require_evidence_independence": {"type": "boolean"},
         "release_requester": {
-          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+          "oneOf": [{"$ref": "#/$defs/humanIdentity"}, {"type": "null"}]
         },
         "final_release_approver": {
-          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+          "oneOf": [{"$ref": "#/$defs/humanIdentity"}, {"type": "null"}]
         },
         "exception_requester": {
-          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+          "oneOf": [{"$ref": "#/$defs/humanIdentity"}, {"type": "null"}]
         },
         "exception_approver": {
-          "oneOf": [{"$ref": "#/$defs/identity"}, {"type": "null"}]
+          "oneOf": [{"$ref": "#/$defs/humanIdentity"}, {"type": "null"}]
         }
       },
       "additionalProperties": false
