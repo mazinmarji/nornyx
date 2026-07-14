@@ -45,8 +45,8 @@ Local evidence passes the focused AUD suites, real Windows
 `core.autocrlf=true` clone, exact migration verifier, Ruff, public-boundary
 check, source/wheel build, and socket-denied wheel smoke. The exact Stage 7
 Windows command `python -m pytest -q` passes `913 passed, 45 skipped`. The
-Ubuntu/WSL outcome is recorded only after the committed candidate executes
-there successfully.
+clean committed candidate cloned onto Ubuntu's native filesystem passes
+`958 passed`, including the real symlink cases.
 
 No hosted Linux CI result exists for the local remediation head because it has
 not been pushed. PR #30 remains draft at remote head `35ee693`; the thread-aware

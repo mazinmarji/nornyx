@@ -123,7 +123,7 @@ Reports 19-20 and the formal compatibility manifest record the results. Stage
 6 focused Windows validation, Ruff, public-boundary, compatibility,
 fresh-checkout, source/sdist/wheel build, and the socket-denied installed-wheel
 probe pass. The Stage 7 Windows suite passes `913 passed, 45 skipped`; the
-Ubuntu/WSL result is recorded after the committed candidate runs. Hosted current-head CI requires an authorized
+clean native-filesystem Ubuntu/WSL clone passes `958 passed`. Hosted current-head CI requires an authorized
 push and is not claimed by this local record.
 
 ## Stage I - Program Closure

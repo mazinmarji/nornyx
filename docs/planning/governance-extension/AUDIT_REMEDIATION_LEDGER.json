@@ -12,7 +12,7 @@
     "hosted_ci": "pending authorized push; not claimed",
     "stage_7_validation": {
       "windows_pytest": "913 passed, 45 skipped",
-      "linux_filesystem": "pending committed-candidate Ubuntu/WSL run",
+      "linux_filesystem": "958 passed in a clean native-filesystem Ubuntu/WSL clone",
       "independent_audit": "pending exact-head read-only audit"
     }
   },

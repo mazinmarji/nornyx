@@ -38,7 +38,7 @@ publication, deployment, or autonomous remediation.
 | Fresh `core.autocrlf=true` checkout | passed locally |
 | Build and installed-wheel no-network smoke | passed locally |
 | Full Windows suite | `913 passed, 45 skipped` |
-| Real Linux filesystem suite | final Ubuntu/WSL rerun required |
+| Real Linux filesystem suite | Ubuntu/WSL native clone: `958 passed` |
 | Hosted Linux CI for exact local head | pending authorized push; not run |
 | GitHub review threads | zero |
 | Fresh independent exact-head audit | pending |
