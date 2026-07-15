@@ -5,7 +5,6 @@ from dataclasses import replace
 import os
 from pathlib import Path
 import stat
-import sys
 from types import SimpleNamespace
 
 import pytest
@@ -19,6 +18,8 @@ from nornyx.governance.models import LockEntry, ProfileLock
 from nornyx.governance.registry import GovernanceRegistry
 from nornyx.governance.runtime import registry_for_directory
 from nornyx.governance.schemas import canonical_pack_hash
+
+from symlink_support import create_symlink_or_skip
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "governance_extension"
@@ -45,12 +46,7 @@ def _write_pack(path: Path, payload: dict[str, object]) -> None:
 
 
 def _symlink_or_skip(link: Path, target: Path) -> None:
-    try:
-        link.symlink_to(target, target_is_directory=True)
-    except (NotImplementedError, OSError) as exc:
-        if sys.platform.startswith("linux"):
-            pytest.fail(f"real Linux symlink creation failed: {exc}")
-        pytest.skip(f"symlink creation is unavailable: {exc}")
+    create_symlink_or_skip(link, target, target_is_directory=True)
 
 
 @pytest.mark.parametrize("component", [".nornyx", "profiles", "modules"])
@@ -221,12 +217,9 @@ def test_aud001_live_governance_symlink_targets_fail_closed(
     else:
         (tmp_path / ".nornyx").mkdir()
         link = tmp_path / ".nornyx" / component
-    try:
-        link.symlink_to(target, target_is_directory=target_kind == "directory")
-    except (NotImplementedError, OSError) as exc:
-        if sys.platform.startswith("linux"):
-            pytest.fail(f"real Linux symlink creation failed: {exc}")
-        pytest.skip(f"symlink creation is unavailable: {exc}")
+    create_symlink_or_skip(
+        link, target, target_is_directory=target_kind == "directory"
+    )
 
     with pytest.raises(GovernanceError) as caught:
         registry_for_directory(tmp_path)

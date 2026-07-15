@@ -52,6 +52,8 @@ from nornyx.package_scanner import (
 from nornyx.path_security import is_remote_or_device_path
 from nornyx.workspace import WorkspaceError, check_workspace
 
+from symlink_support import create_symlink_or_skip
+
 
 FIXTURES = Path(__file__).parent / "fixtures" / "governance_extension"
 
@@ -264,15 +266,6 @@ def _forbid_filesystem_probes(
     return probes
 
 
-def _directory_symlink_or_skip(link: Path, target: Path) -> None:
-    try:
-        link.symlink_to(target, target_is_directory=True)
-    except (NotImplementedError, OSError) as exc:
-        if sys.platform.startswith("linux"):
-            pytest.fail(f"real Linux symlink creation failed: {exc}")
-        pytest.skip(f"symlink creation is unavailable: {exc}")
-
-
 @pytest.mark.parametrize("api", ["registry", "loader"])
 def test_aud009_exported_api_rejects_symlink_ancestor(
     tmp_path: Path,
@@ -284,7 +277,7 @@ def test_aud009_exported_api_rejects_symlink_ancestor(
     profiles.mkdir(parents=True)
     _write_pack(profiles / "profile.yaml", _payload("valid_profile_v1.yaml"))
     alias = tmp_path / "alias"
-    _directory_symlink_or_skip(alias, real)
+    create_symlink_or_skip(alias, real, target_is_directory=True)
     aliased_project = alias / "project"
 
     with pytest.raises(GovernanceError) as caught:
@@ -315,7 +308,7 @@ def test_aud009_caller_supplied_weak_trust_root_cannot_hide_symlink(
     evidence_path = project / "evidence.yaml"
     evidence_path.write_text("subject_revision: rev\nrecords: []\n", encoding="utf-8")
     alias = tmp_path / "alias"
-    _directory_symlink_or_skip(alias, real)
+    create_symlink_or_skip(alias, real, target_is_directory=True)
     aliased_project = alias / "project"
     aliased_profiles = aliased_project / ".nornyx" / "profiles"
     aliased_pack = aliased_profiles / "profile.yaml"
@@ -410,15 +403,9 @@ def test_aud010_lock_loader_rejects_unsafe_inputs(
     if case == "symlink":
         outside = tmp_path / "outside.lock"
         outside.write_bytes(_valid_lock_bytes())
-        try:
-            lock_path.symlink_to(outside)
-        except (NotImplementedError, OSError) as exc:
-            pytest.skip(f"symlink creation is unavailable: {exc}")
+        create_symlink_or_skip(lock_path, outside)
     elif case == "dangling_symlink":
-        try:
-            lock_path.symlink_to(tmp_path / "missing.lock")
-        except (NotImplementedError, OSError) as exc:
-            pytest.skip(f"symlink creation is unavailable: {exc}")
+        create_symlink_or_skip(lock_path, tmp_path / "missing.lock")
     elif case == "duplicate_key":
         lock_path.write_bytes(
             b'{"schema":"nornyx.profiles_lock.v1",'
@@ -497,12 +484,7 @@ def test_aud010_write_lock_refuses_existing_symlink(tmp_path: Path) -> None:
     outside = tmp_path / "outside.lock"
     outside.write_text("unchanged\n", encoding="utf-8")
     target = tmp_path / "nornyx.profiles.lock"
-    try:
-        target.symlink_to(outside)
-    except (NotImplementedError, OSError) as exc:
-        if sys.platform.startswith("linux"):
-            pytest.fail(f"real Linux symlink creation failed: {exc}")
-        pytest.skip(f"symlink creation is unavailable: {exc}")
+    create_symlink_or_skip(target, outside)
     registry = GovernanceRegistry.builtins()
     lock = lock_for_packs([registry.resolve_profile("minimal")])
     with pytest.raises(GovernanceError) as caught:
@@ -551,12 +533,7 @@ def test_aud010_cli_lock_symlink_fails_all_governance_consumers(
     )
     outside = tmp_path / "outside.lock"
     outside.write_bytes(_valid_lock_bytes())
-    try:
-        (tmp_path / "nornyx.profiles.lock").symlink_to(outside)
-    except (NotImplementedError, OSError) as exc:
-        if sys.platform.startswith("linux"):
-            pytest.fail(f"real Linux symlink creation failed: {exc}")
-        pytest.skip(f"symlink creation is unavailable: {exc}")
+    create_symlink_or_skip(tmp_path / "nornyx.profiles.lock", outside)
     argv = [*argv_prefix, str(contract)]
     if argv_prefix[0] == "governance":
         argv.extend(["--as-of", "2026-07-14T00:00:00Z", "--json"])

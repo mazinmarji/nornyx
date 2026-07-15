@@ -15,6 +15,8 @@ from nornyx.governance.locks import lock_for_packs, write_lock
 from nornyx.governance.schemas import canonical_pack_hash
 from nornyx.profiles import profile_document
 
+from symlink_support import create_symlink_or_skip
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "governance_extension"
@@ -254,10 +256,7 @@ def test_evidence_validate_rejects_parent_and_symlink_traversal(
     assert traversal["diagnostics"][0]["code"] == "EVIDENCE_PATH_OUTSIDE_ROOT"
 
     link = trusted / "evidence-link.yaml"
-    try:
-        link.symlink_to(evidence_path)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link, evidence_path)
     assert main(
         ["evidence", "validate", str(link), "--as-of", AS_OF, "--json"]
     ) == 1

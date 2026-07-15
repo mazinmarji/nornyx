@@ -20,6 +20,8 @@ from nornyx.governance.schemas import canonical_pack_hash
 from nornyx.governed_package import validate_governed_package
 from nornyx.parser import load_nyx
 
+from symlink_support import create_symlink_or_skip
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "governance_extension"
@@ -145,10 +147,7 @@ def test_modules_validate_rejects_symlinked_module_paths(
     module = tmp_path / "module.yaml"
     _write_pack(module, _fixture("valid_module_v1.yaml"))
     link = tmp_path / "module-link.yaml"
-    try:
-        link.symlink_to(module)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link, module)
     monkeypatch.chdir(tmp_path)
 
     assert main(["modules", "validate", link.name, "--json"]) == 1
@@ -164,13 +163,11 @@ def test_project_discovery_rejects_symlinked_nornyx_ancestor(
     outside_profiles = tmp_path / "outside" / ".nornyx" / "profiles"
     outside_profiles.mkdir(parents=True)
     _write_pack(outside_profiles / "profile.yaml", _fixture("valid_profile_v1.yaml"))
-    try:
-        (project / ".nornyx").symlink_to(
-            outside_profiles.parent,
-            target_is_directory=True,
-        )
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(
+        project / ".nornyx",
+        outside_profiles.parent,
+        target_is_directory=True,
+    )
 
     with pytest.raises(GovernanceError) as caught:
         registry_for_directory(project)
@@ -189,10 +186,7 @@ def test_check_rejects_symlinked_ancestor_above_project_root(
         encoding="utf-8",
     )
     link_root = tmp_path / "link_root"
-    try:
-        link_root.symlink_to(tmp_path / "real_root", target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link_root, tmp_path / "real_root", target_is_directory=True)
 
     monkeypatch.chdir(tmp_path)
     assert main(["check", "link_root/project/project.nyx"]) == 1
@@ -211,10 +205,7 @@ def test_governance_inspection_rejects_symlinked_contract_ancestor(
         encoding="utf-8",
     )
     link_root = tmp_path / "link_root"
-    try:
-        link_root.symlink_to(tmp_path / "real_root", target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link_root, tmp_path / "real_root", target_is_directory=True)
 
     monkeypatch.chdir(tmp_path)
     assert main(

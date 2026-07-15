@@ -24,6 +24,8 @@ from nornyx.package_scanner import (
 )
 from nornyx.parser import load_nyx
 
+from symlink_support import create_symlink_or_skip
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples" / "governed_package"
@@ -511,12 +513,7 @@ def test_scanner_skips_symlink_cycles_without_hanging(tmp_path: Path) -> None:
     source.mkdir()
     (source / "README.md").write_text("# Docs\n", encoding="utf-8")
     loop = source / "loop"
-    try:
-        loop.symlink_to(source, target_is_directory=True)
-    except (OSError, NotImplementedError):
-        import pytest
-
-        pytest.skip("symlinks not permitted in this environment")
+    create_symlink_or_skip(loop, source, target_is_directory=True)
 
     report = scan_package(source, package_id="symlink")
     # The symlinked directory must not be traversed, so only README.md is inventoried.

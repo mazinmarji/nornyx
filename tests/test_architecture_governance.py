@@ -17,6 +17,8 @@ from nornyx.governance import (
 from nornyx.governance.runtime import evaluate_document_governance
 from nornyx.profiles import profile_document
 
+from symlink_support import create_symlink_or_skip
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples"
@@ -275,10 +277,7 @@ def test_architecture_importer_rejects_symlinked_root_ancestor(
     report = report_root / "report.json"
     report.write_text("{}", encoding="utf-8")
     link_root = tmp_path / "link_root"
-    try:
-        link_root.symlink_to(real_root, target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link_root, real_root, target_is_directory=True)
 
     with pytest.raises(GovernanceError) as caught:
         import_architecture_evidence(

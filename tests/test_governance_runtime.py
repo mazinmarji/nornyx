@@ -24,6 +24,8 @@ from nornyx.governance.schemas import canonical_pack_hash, validate_payload
 from nornyx.cli import main
 from nornyx.profiles import PROFILE_NAMES, profile_document, profile_pack_v1
 
+from symlink_support import create_symlink_or_skip
+
 
 FIXTURES = Path(__file__).parent / "fixtures" / "governance_extension"
 
@@ -180,10 +182,7 @@ def test_loader_rejects_symlinked_pack_files(tmp_path: Path) -> None:
     target = tmp_path / "target.yaml"
     link = tmp_path / "link.yaml"
     _write_pack(target, payload)
-    try:
-        link.symlink_to(target)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link, target)
     with pytest.raises(GovernanceError) as symlink:
         load_local_pack(link, allowed_root=tmp_path)
     assert _codes(symlink.value) == {"PACK_SYMLINK_REJECTED"}
@@ -1274,16 +1273,13 @@ def test_profile_cli_entrypoints_reject_symlinked_pack_paths(
     real_dir.mkdir()
     pack_path = real_dir / "profile.yaml"
     _write_pack(pack_path, payload)
-    try:
-        if link_kind == "file":
-            requested = tmp_path / "profile-link.yaml"
-            requested.symlink_to(pack_path)
-        else:
-            linked_dir = tmp_path / "profile-dir-link"
-            linked_dir.symlink_to(real_dir, target_is_directory=True)
-            requested = linked_dir / "profile.yaml"
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    if link_kind == "file":
+        requested = tmp_path / "profile-link.yaml"
+        create_symlink_or_skip(requested, pack_path)
+    else:
+        linked_dir = tmp_path / "profile-dir-link"
+        create_symlink_or_skip(linked_dir, real_dir, target_is_directory=True)
+        requested = linked_dir / "profile.yaml"
 
     monkeypatch.chdir(tmp_path)
     _assert_profile_cli_path_rejected(
@@ -1303,10 +1299,7 @@ def test_profile_cli_entrypoints_reject_symlinked_ancestor_above_pack_parent(
     profiles.mkdir(parents=True)
     _write_pack(profiles / "profile.yaml", payload)
     link_root = tmp_path / "link_root"
-    try:
-        link_root.symlink_to(tmp_path / "real_root", target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link_root, tmp_path / "real_root", target_is_directory=True)
 
     monkeypatch.chdir(tmp_path)
     _assert_profile_cli_path_rejected(
@@ -1327,10 +1320,7 @@ def test_profile_cli_entrypoints_reject_symlink_before_parent_traversal(
     (real / "subdir").mkdir(parents=True)
     _write_pack(real / "profile.yaml", payload)
     link = root / "link"
-    try:
-        link.symlink_to(real / "subdir", target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link, real / "subdir", target_is_directory=True)
 
     monkeypatch.chdir(tmp_path)
     _assert_profile_cli_path_rejected(
