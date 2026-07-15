@@ -117,6 +117,53 @@ def _write_pack(path: Path, payload: dict[str, object]) -> None:
     )
 
 
+def _is_gettext_locale_catalog_stat(path: object) -> bool:
+    """Identify argparse/gettext's host-owned locale existence probe."""
+    if not isinstance(path, (str, os.PathLike)):
+        return False
+    normalized = os.path.normcase(os.fspath(path)).replace("\\", "/")
+    catalog_suffix = os.path.normcase(
+        os.path.join("LC_MESSAGES", "messages.mo")
+    ).replace("\\", "/")
+    if (
+        not os.path.isabs(os.fspath(path))
+        or not normalized.endswith(f"/{catalog_suffix}")
+        or is_remote_or_device_path(path)
+    ):
+        return False
+    locale_roots = {
+        os.path.join(sys.prefix, "share", "locale"),
+        os.path.join(sys.base_prefix, "share", "locale"),
+    }
+    if sys.platform.startswith("linux"):
+        # Ubuntu's patched gettext.find() also checks this fixed system root.
+        locale_roots.add("/usr/share/locale-langpack")
+    normalized_roots = {
+        os.path.normcase(root).replace("\\", "/").rstrip("/")
+        for root in locale_roots
+    }
+    return any(normalized.startswith(f"{root}/") for root in normalized_roots)
+
+
+def test_aud011_probe_harness_locale_exemption_is_narrow() -> None:
+    locale_root = Path(sys.base_prefix) / "share" / "locale"
+    assert _is_gettext_locale_catalog_stat(
+        locale_root / "C.UTF-8" / "LC_MESSAGES" / "messages.mo"
+    )
+    for candidate in (
+        locale_root / "CONIN$" / "LC_MESSAGES" / "messages.mo",
+        Path(sys.base_prefix)
+        / "share"
+        / "locale"
+        / "LPT²"
+        / "LC_MESSAGES"
+        / "messages.mo",
+        Path("/usr/share/locale-langpack/CONOUT$/LC_MESSAGES/messages.mo"),
+        Path("/tmp/share/locale/C.UTF-8/LC_MESSAGES/messages.mo"),
+    ):
+        assert not _is_gettext_locale_catalog_stat(candidate)
+
+
 def _forbid_filesystem_probes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> list[tuple[str, str]]:
@@ -131,6 +178,13 @@ def _forbid_filesystem_probes(
             **kwargs: object,
         ) -> object:
             path = args[0] if args else ""
+            # On Linux, argparse/gettext checks for an interpreter-owned
+            # messages.mo while formatting CLI diagnostics. That operation is
+            # unrelated to the supplied candidate path and must not mask the
+            # invariant under test: no candidate-derived filesystem probe may
+            # occur before host-independent rejection.
+            if _name == "stat" and _is_gettext_locale_catalog_stat(path):
+                return _original(*args, **kwargs)  # type: ignore[operator]
             probes.append((f"os.{_name}", str(path)))
             if isinstance(path, (str, os.PathLike)) and is_remote_or_device_path(path):
                 raise AssertionError(f"unsafe path reached os.{_name}: {path}")
