@@ -1,21 +1,40 @@
 # 22 - Exact-Head Independent Audit Record
 
-Status: **ready for a fresh independent read-only audit.**
+Status: **historical audit and residual-remediation handoff; no in-tree record
+self-assigns a final candidate SHA or verdict.**
 
-The former `GO` record is superseded. It did not cover AUD-001 through AUD-022
-reported against `35ee69359599af7887f6b9b58ae0a4cd06a48d25` and must not be
-used as current evidence.
+## Audit Evidence History
 
-## Audit Identity
+- Repository: `mazinmarji/nornyx`; pull request: `#30`.
+- Audited base: `95952226999327458c6fea81cb32d82539bcae5b`.
+- Original NO-GO candidate: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`.
+- Main remediation implementation anchor:
+  `81899aaac5e54781dfe9c8002f557a874854c8b8`.
+- Historical exact-head CI candidate:
+  `3a0e840c3229dbf58959df1e3a161318bffd94ac`; this is not the final approved
+  candidate.
+- Historical hosted CI run: `29373272295`, conclusion `success`.
+- Historical Windows evidence on the `81899aa`/`3a0e840` lineage:
+  `913 passed, 45 skipped`.
+- Historical Linux evidence bound to `3a0e840` and run `29373272295`:
+  `958 passed, zero skipped`.
+- Historical wheel evidence: `12 profiles`, `6 modules`,
+  `network_attempts=[]`, `network_used=false`.
+- A later independent audit of `3a0e840` returned historical `NO-GO` and
+  reopened `AUD-011-R1`, `AUD-017-R1`, `AUD-021-R1`, and `PRMETA-001`.
+- Residual path and network remediation is anchored at
+  `1319613697b0e94d177ebe2c879f73107c366c7e`; documentation reconciliation is
+  implemented in the commit containing this record, whose SHA is intentionally
+  not embedded.
+- External final-head verification must resolve the containing commit from Git
+  and GitHub, run hosted CI on that exact head, and bind a fresh independent
+  audit to the same head.
+- Human authorization is not granted. PR #30 remains draft; merge, release,
+  tagging, publication, and deployment remain unauthorized.
 
-- Repository: `mazinmarji/nornyx`
-- Pull request: `#30`
-- Base: `95952226999327458c6fea81cb32d82539bcae5b`
-- Failing head: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`
-- Remediated implementation through Stage 6:
-  `6c0732c1be916a802e20bffce6eabf4bd7309703`
-- Final audit target: the clean checked-out `HEAD` containing this record
-- Authorization: read-only audit; no merge or release authority
+Any earlier positive audit language is historical, superseded, and valid only
+for the exact commit to which it was originally bound. It is not current
+evidence for this containing commit.
 
 ## Required Evidence
 
@@ -39,23 +58,29 @@ governed examples and packages, installed-wheel resources/no-network behavior,
 12 built-in profiles, 6 built-in modules, public API stability, and thread-aware
 GitHub review state.
 
-## Current Evidence Boundary
+## Residual Remediation Evidence Boundary
 
-Local evidence passes the focused AUD suites, real Windows
-`core.autocrlf=true` clone, exact migration verifier, Ruff, public-boundary
-check, source/wheel build, and socket-denied wheel smoke. The exact Stage 7
-Windows command `python -m pytest -q` passes `913 passed, 45 skipped`. The
-clean committed candidate cloned onto Ubuntu's native filesystem passes
-`958 passed`, including the real symlink cases.
+`AUD-011-R1` extends the central host-independent device classifier to
+`CONIN$`, `CONOUT$`, and superscript COM/LPT aliases, including case,
+extensions, ADS suffixes, nested components, mixed separators, and trailing
+dots/spaces. Before-probe tests cover parser, loaders, discovery, locks,
+evidence, architecture, governed-package/scanner source and output boundaries,
+embedded adapter reports, discovered artifacts, and CLI consumers.
 
-No hosted Linux CI result exists for the local remediation head because it has
-not been pushed. PR #30 remains draft at remote head `35ee693`; the thread-aware
-GitHub query returns zero review threads. Hosted CI is therefore a pending
-external release condition, not a claimed pass.
+`AUD-021-R1` replaces source-string assurance with a reusable executable guard.
+Its self-test records and rejects network-family construction, TCP connect,
+`connect_ex`, UDP `sendto`, conditional `sendmsg`, DNS, and
+`create_connection`; low-level/legacy DNS aliases and cached socket descriptors
+are audit-hook denied. Self-test and product logs are separate.
+
+`AUD-017-R1` is implemented by the containing documentation commit using this
+historical/external evidence model. `PRMETA-001` remains prepared but must not
+be published unless a fresh external audit returns exactly `GO`.
 
 ## Verdict Boundary
 
-This in-tree record does not self-authorize a verdict. The fresh auditor's
-exact-head result belongs in the task handoff. `GO` requires no unresolved
-finding and green hosted CI for the exact candidate. Human merge and release
-authorization remain separate in every case.
+This in-tree record does not self-authorize a verdict. The fresh auditor must
+resolve the actual PR head externally, verify hosted CI is bound to that exact
+SHA, independently recheck AUD-001 through AUD-022 and all four reopened items,
+and publish the verdict outside this self-referential commit record. Human merge
+and release authorization remain separate in every case.

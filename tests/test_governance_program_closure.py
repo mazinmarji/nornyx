@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
@@ -27,6 +28,13 @@ ROADMAP = (
 )
 RELEASE_CANDIDATE = (
     ROOT / "docs" / "releases" / "RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"
+)
+LEDGER = (
+    ROOT
+    / "docs"
+    / "planning"
+    / "governance-extension"
+    / "AUDIT_REMEDIATION_LEDGER.json"
 )
 
 ALLOWED_FINAL_STATUSES = {
@@ -99,14 +107,85 @@ def test_current_audit_and_candidate_preserve_external_gate_boundary() -> None:
     audit = FINAL_AUDIT.read_text(encoding="utf-8")
     roadmap = ROADMAP.read_text(encoding="utf-8")
     candidate = RELEASE_CANDIDATE.read_text(encoding="utf-8")
+    ledger = json.loads(LEDGER.read_text(encoding="utf-8"))
 
-    assert "Status: **ready for a fresh independent read-only audit.**" in audit
     assert "AUD-001 through AUD-022" in audit
-    assert "Status: implemented locally; exact-head external audit" in roadmap
-    assert "Human candidate approval | not recorded" in candidate
-    assert "35ee69359599af7887f6b9b58ae0a4cd06a48d25" in audit
-    assert "current-head hosted CI result is claimed" in candidate
+    assert "Status: residual remediation implemented; external final-head verification required." in roadmap
+    assert "3a0e840c3229dbf58959df1e3a161318bffd94ac" in audit
+    assert "29373272295" in audit
+    assert "not the final approved" in audit
+    assert "returns exactly `GO`" in audit
+    assert all(
+        finding in audit
+        for finding in ("AUD-011-R1", "AUD-017-R1", "AUD-021-R1", "PRMETA-001")
+    )
     assert "PR state: draft" in candidate
+    assert "## Prepared PR Description" in candidate
+    assert candidate.count("```markdown") == 1
+    prepared_body = candidate.split("```markdown", 1)[1].split("```", 1)[0]
+    assert all(
+        placeholder in prepared_body
+        for placeholder in (
+            "{{FINAL_HEAD}}",
+            "{{FINAL_CI_RUN_ID}}",
+            "{{FINAL_WINDOWS_RESULT}}",
+            "{{FINAL_LINUX_RESULT}}",
+            "{{FINAL_AUDIT_VERDICT}}",
+        )
+    )
+    assert "81899aaac5e54781dfe9c8002f557a874854c8b8" in prepared_body
+    assert "AUD-001 through AUD-022" in prepared_body
+    assert "now closed on the final exact head" in prepared_body
+    assert all(
+        finding in prepared_body
+        for finding in ("AUD-011-R1", "AUD-017-R1", "AUD-021-R1", "PRMETA-001")
+    )
+    assert "Candidate-aware diff" in prepared_body
+    assert "Source and wheel builds: passed" in prepared_body
+    assert "Twine checks: passed" in prepared_body
+    assert "network_attempts=[]" in prepared_body
+    assert "network_used=false" in prepared_body
+    assert "five verified migrations" in prepared_body
+    assert "separately\nrecorded additive architecture starter" in prepared_body
+    assert "PR #30 remains draft" in prepared_body
+    assert "does not\nauthorize merge" in prepared_body
+    assert all(
+        boundary in prepared_body
+        for boundary in (
+            "readiness transition",
+            "auto-merge",
+            "release",
+            "tagging",
+            "publication",
+            "deployment",
+        )
+    )
+    assert "29373272295" not in prepared_body
+    assert "913 passed" not in prepared_body
+    assert "958 passed" not in prepared_body
+    assert ledger["audit"]["historical_exact_head_ci"]["is_final_approved_candidate"] is False
+    assert ledger["audit"]["external_final_head_verification"] == {
+        "resolve_candidate_from": "git_and_github",
+        "hosted_ci": "required_for_resolved_exact_head",
+        "independent_audit": "required_after_green_exact_head_ci",
+    }
+    assert [item["reopened_id"] for item in ledger["reopened_findings"]] == [
+        "AUD-011-R1",
+        "AUD-017-R1",
+        "AUD-021-R1",
+        "PRMETA-001",
+    ]
+    assert set(ledger["authorization"]) == {
+        "approve",
+        "mark_ready",
+        "auto_merge",
+        "merge",
+        "release",
+        "tag",
+        "publish",
+        "deploy",
+    }
+    assert all(value is False for value in ledger["authorization"].values())
 
 
 def test_current_specs_do_not_claim_the_runtime_is_unimplemented() -> None:

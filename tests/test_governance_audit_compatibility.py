@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import random
+import re
 from typing import Any
 
 import pytest
@@ -439,25 +440,181 @@ def test_aud016_base_public_exports_are_not_removed() -> None:
 
 
 def test_aud017_current_docs_state_exact_evidence_and_authorization_boundary() -> None:
-    paths = [
+    markdown_paths = [
         ROOT / "docs" / "planning" / "governance-extension" / name
         for name in (
+            "12_IMPLEMENTATION_ROADMAP.md",
+            "15_CURRENT_IMPLEMENTATION_INVENTORY.md",
             "19_COMPATIBILITY_REPORT.md",
             "20_SECURITY_ASSURANCE_REPORT.md",
             "21_PROGRAM_CLOSURE_REPORT.md",
             "22_FINAL_INDEPENDENT_AUDIT.md",
         )
     ] + [ROOT / "docs" / "releases" / "RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"]
-    for path in paths:
+
+    audited_base = "95952226999327458c6fea81cb32d82539bcae5b"
+    original_candidate = "35ee69359599af7887f6b9b58ae0a4cd06a48d25"
+    implementation_anchor = "81899aaac5e54781dfe9c8002f557a874854c8b8"
+    historical_ci_candidate = "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+    residual_code_commit = "1319613697b0e94d177ebe2c879f73107c366c7e"
+    reopened_ids = ("AUD-011-R1", "AUD-017-R1", "AUD-021-R1", "PRMETA-001")
+    forbidden_current_state_claims = (
+        "remote head remains the failing candidate",
+        "still at the old remote head",
+        "not been pushed",
+        "pending authorized push",
+        "no hosted linux ci result exists",
+        "no current-head hosted ci result is claimed",
+        "old ci is the latest result",
+        "ready for a fresh independent read-only audit",
+        "final local candidate",
+        "29273126271",
+    )
+    forbidden_current_state_patterns = (
+        r"\bremote\s+(?:pr\s+)?head[\s\S]{0,80}\b(?:remains|is|still\s+at)\b"
+        r"[\s\S]{0,80}\b35ee693",
+        r"\b(?:branch|remediation|candidate|head)\b[\s\S]{0,80}"
+        r"\b(?:unpush(?:ed)?|not\s+(?:been\s+)?pushed)\b",
+        r"\b(?:no\s+)?(?:current-head\s+)?hosted(?:\s+linux)?"
+        r"(?:\s+ci|\s+run|\s+result)?[\s\S]{0,80}"
+        r"\b(?:does\s+not\s+exist|has\s+not\s+(?:been\s+)?run|"
+        r"is\s+unavailable|not\s+available|pending\s+authorized\s+push)\b",
+        r"\bcurrent(?:-state|-head)?(?:\s+audit)?\s+verdict\s*"
+        r"(?::|=|\bis\b)\s*[`*]*GO\b",
+        r"(?m)^\s*status\s*:\s*(?:\*\*)?\s*GO\b",
+        r"\bold\s+(?:hosted\s+)?ci[\s\S]{0,50}\b(?:latest|current)\b",
+    )
+
+    for path in markdown_paths:
         text = path.read_text(encoding="utf-8")
-        assert "35ee69359599af7887f6b9b58ae0a4cd06a48d25" in text, path
-        assert "95952226999327458c6fea81cb32d82539bcae5b" in text, path
-        assert "6c0732c1be916a802e20bffce6eabf4bd7309703" in text, path
-        assert "hosted" in text.lower() and "pending" in text.lower(), path
-    candidate = paths[-1].read_text(encoding="utf-8")
+        lowered = text.lower()
+        assert "## Audit Evidence History" in text, path
+        prefix, history_tail = text.split("## Audit Evidence History", 1)
+        history, separator, remainder = history_tail.partition("\n## ")
+        assert separator, path
+        current_state_text = prefix + separator + remainder
+        assert "conclusion `success`" in history, path
+        assert "returned historical `NO-GO`" in history, path
+        assert audited_base in text, path
+        assert original_candidate in text, path
+        assert implementation_anchor in text, path
+        assert historical_ci_candidate in text, path
+        assert residual_code_commit in text, path
+        assert "29373272295" in text, path
+        assert "913 passed, 45 skipped" in text, path
+        assert "958 passed, zero skipped" in text, path
+        assert "network_attempts=[]" in text and "network_used=false" in text, path
+        assert all(reopened_id in text for reopened_id in reopened_ids), path
+        assert "not the final approved" in lowered, path
+        assert "external final-head verification" in lowered, path
+        assert "containing commit" in lowered, path
+        assert "human authorization is not granted" in lowered, path
+        assert all(claim not in lowered for claim in forbidden_current_state_claims), path
+        assert all(
+            re.search(pattern, current_state_text, re.IGNORECASE) is None
+            for pattern in forbidden_current_state_patterns
+        ), path
+
+    ledger_path = (
+        ROOT
+        / "docs"
+        / "planning"
+        / "governance-extension"
+        / "AUDIT_REMEDIATION_LEDGER.json"
+    )
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    assert ledger["schema"] == "nornyx.audit_remediation_ledger.v2"
+    audit = ledger["audit"]
+    assert audit["audited_base"] == audited_base
+    assert audit["original_no_go_candidate"] == original_candidate
+    assert audit["main_remediation_implementation_anchor"] == implementation_anchor
+    historical_ci = audit["historical_exact_head_ci"]
+    assert historical_ci["candidate"] == historical_ci_candidate
+    assert historical_ci["is_final_approved_candidate"] is False
+    assert historical_ci["run_id"] == 29373272295
+    assert historical_ci["conclusion"] == "success"
+    assert historical_ci["windows"] == {
+        "source": "local_windows",
+        "passed": 913,
+        "skipped": 45,
+        "lineage_anchor": implementation_anchor,
+    }
+    assert historical_ci["linux"] == {
+        "source": "hosted_linux_ci",
+        "run_id": 29373272295,
+        "passed": 958,
+        "skipped": 0,
+    }
+    assert historical_ci["wheel"] == {
+        "source": "hosted_linux_ci",
+        "run_id": 29373272295,
+        "profiles": 12,
+        "modules": 6,
+        "network_attempts": [],
+        "network_used": False,
+    }
+    assert audit["later_reopening_audit"]["reopened_findings"] == list(reopened_ids)
+    assert audit["residual_remediation"]["code_commit"] == residual_code_commit
+    documentation_commit = audit["residual_remediation"]["documentation_commit"]
+    assert documentation_commit == {
+        "kind": "containing_commit",
+        "sha": None,
+        "self_embedding_avoided": True,
+    }
+    assert audit["external_final_head_verification"] == {
+        "resolve_candidate_from": "git_and_github",
+        "hosted_ci": "required_for_resolved_exact_head",
+        "independent_audit": "required_after_green_exact_head_ci",
+    }
+    assert set(ledger["authorization"]) == {
+        "approve",
+        "mark_ready",
+        "auto_merge",
+        "merge",
+        "release",
+        "tag",
+        "publish",
+        "deploy",
+    }
+    assert all(value is False for value in ledger["authorization"].values())
+
+    candidate = markdown_paths[-1].read_text(encoding="utf-8")
     assert "PR state: draft" in candidate
-    assert "are not\nauthorized" in candidate
-    assert "Human candidate approval | not recorded" in candidate
+    assert "## Prepared PR Description" in candidate
+    assert candidate.count("```markdown") == 1
+    prepared_body = candidate.split("```markdown", 1)[1].split("```", 1)[0]
+    required_body_facts = (
+        audited_base,
+        implementation_anchor,
+        "AUD-001 through AUD-022",
+        "now closed on the final exact head",
+        *reopened_ids,
+        "{{FINAL_HEAD}}",
+        "{{FINAL_CI_RUN_ID}}",
+        "{{FINAL_WINDOWS_RESULT}}",
+        "{{FINAL_LINUX_RESULT}}",
+        "{{FINAL_AUDIT_VERDICT}}",
+        "Candidate-aware diff",
+        "Source and wheel builds: passed",
+        "Twine checks: passed",
+        "12 profiles",
+        "6 modules",
+        "network_attempts=[]",
+        "network_used=false",
+        "five verified migrations",
+        "separately\nrecorded additive architecture starter",
+        "PR #30 remains draft",
+        "does not\nauthorize merge",
+        "auto-merge",
+        "release",
+        "tagging",
+        "publication",
+        "deployment",
+    )
+    assert all(fact in prepared_body for fact in required_body_facts)
+    assert "29373272295" not in prepared_body
+    assert "913 passed" not in prepared_body
+    assert "958 passed" not in prepared_body
 
 
 def _sha256(raw: bytes) -> str:

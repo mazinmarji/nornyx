@@ -1,15 +1,41 @@
 # 21 - Governance Program Closure Report
 
-Status: **implementation closure reconciled after the independent `NO-GO`
-audit of `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; external candidate gates
-remain pending.**
+Status: **program dispositions remain closed; later audit-assurance findings are
+remediated in recorded/containing commits and require external final-head
+verification.**
 
-The item matrix remains the planning disposition. Finding closure is recorded
-in `AUDIT_REMEDIATION_LEDGER.json`; release readiness additionally requires a
-new independent exact-head audit and hosted current-head CI.
-The audit base is `95952226999327458c6fea81cb32d82539bcae5b`; the remediated
-implementation through Stage 6 is
-`6c0732c1be916a802e20bffce6eabf4bd7309703`.
+## Audit Evidence History
+
+- Audited base: `95952226999327458c6fea81cb32d82539bcae5b`.
+- Original NO-GO candidate: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`.
+- Main remediation implementation anchor:
+  `81899aaac5e54781dfe9c8002f557a874854c8b8`.
+- Historical exact-head CI candidate:
+  `3a0e840c3229dbf58959df1e3a161318bffd94ac`; this is not the final approved
+  candidate.
+- Historical hosted CI run: `29373272295`, conclusion `success`.
+- Historical Windows evidence on the `81899aa`/`3a0e840` lineage:
+  `913 passed, 45 skipped`.
+- Historical Linux evidence bound to `3a0e840` and run `29373272295`:
+  `958 passed, zero skipped`.
+- Historical wheel evidence: `12 profiles`, `6 modules`,
+  `network_attempts=[]`, `network_used=false`.
+- A later independent audit of `3a0e840` returned historical `NO-GO` and
+  reopened `AUD-011-R1`, `AUD-017-R1`, `AUD-021-R1`, and `PRMETA-001`.
+- Residual path and network remediation is anchored at
+  `1319613697b0e94d177ebe2c879f73107c366c7e`; documentation reconciliation is
+  implemented in the commit containing this record, whose SHA is intentionally
+  not embedded.
+- External final-head verification must resolve the containing commit from Git
+  and GitHub, run hosted CI on that exact head, and bind a fresh independent
+  audit to the same head.
+- Human authorization is not granted. PR #30 remains draft; merge, release,
+  tagging, publication, and deployment remain unauthorized.
+
+The item matrix remains the planning disposition. Finding history and separate
+code, hosted-CI, independent-audit, and human-authorization states are recorded
+in `AUDIT_REMEDIATION_LEDGER.json`. The later assurance reopening does not
+change accepted program placement decisions.
 
 ## Authority and Status Vocabulary
 
@@ -29,7 +55,7 @@ Every final status is one of the six statuses authorized by `CODEX_GOAL.md`:
 | Stable-core discipline | Required invariant | `implemented` | `nornyx/schema_model.py`, frozen language schemas | `tests/test_schema_model.py`, full compatibility suite | docs 02-04, ADR-0010 | Optional extension blocks still require careful ownership | A core revision requires a separate ADR and human approval |
 | Four-layer single-profile composition | Planned architecture | `implemented` | `nornyx/governance/composition.py`, `runtime.py` | `tests/test_governance_runtime.py` | docs 03 and 06, ADR-0022 | Internal plural registries could invite scope pressure | Multi-profile semantics require a new ADR and compatibility proof |
 | V1 profile and module pack formats | Draft schemas | `implemented` | `schemas/profile_pack_v1.schema.json`, `schemas/governance_module_v1.schema.json` and packaged copies | `tests/test_governance_extension_spec.py` | doc 05, ADR-0026 | Schema evolution can create projection loss | New versions require explicit compatibility and migration rules |
-| Local pack loader and path trust boundary | Partially implemented | `implemented` | `nornyx/governance/loader.py` | loader, CLI, resource, and symlink tests in `test_governance_runtime.py` and `test_governance_cli.py` | docs 05 and 10, report 20 | Platform symlink behavior varies | Any new source tier must pass unresolved-component and containment review |
+| Local pack loader and path trust boundary | Partially implemented | `implemented` | `nornyx/path_security.py`, `nornyx/governance/loader.py` | loader, CLI, resource, symlink, complete DOS-device alias, and before-probe tests including `test_governance_audit_path_and_lock_security.py` | docs 05 and 10, report 20 | Platform symlink behavior varies | Any new source tier must pass unresolved-component and containment review |
 | Deterministic local registry and precedence | Planned | `implemented` | `nornyx/governance/registry.py` | `tests/test_governance_runtime.py`, `tests/test_governance_cli.py` | docs 05-06, ADR-0024 | Explicit organization registration remains operator-controlled | Ambient or remote discovery requires a new program and threat model |
 | Canonical integrity and timestamp-free governance locks | Planned | `implemented` | `nornyx/governance/locks.py` | runtime permutation, duplicate, and tamper tests | doc 05, ADR-0027 | Hashes prove bytes, not author intent | Lock format changes require deterministic golden migration review |
 | Monotonic deterministic composition | Planned | `implemented` | `nornyx/governance/composition.py` | composition and malicious-pack matrices | doc 06, ADR-0022 | New merge shapes may hide weakening | Any merge extension requires an ADR and monotonicity proof |
@@ -59,10 +85,10 @@ Every final status is one of the six statuses authorized by `CODEX_GOAL.md`:
 | Public governance API stability | Newly discovered release requirement | `implemented` | `nornyx/governance/__init__.py` | API export and compatibility corpus tests | `docs/GOVERNANCE_CLI_AND_API.md` | Private internals may still evolve | Public removal requires documented deprecation period |
 | Formal backward-compatibility corpus | Planned assurance | `implemented` | `tests/fixtures/governance_compatibility/manifest.json` | `tests/test_governance_compatibility_corpus.py` | report 19, starter appendix | Platform newline differences remain normalized | Golden changes require old/new hashes, diff, reason, approval, and changelog |
 | Security hardening and adversarial corpus | Planned assurance | `implemented` | governance runtime plus security fixtures | `tests/test_governance_security_assurance.py` and owning suites | threat model, report 20 | Parser and dependency defects cannot be fully eliminated | New attack surfaces require threat-model and adversarial-test updates |
-| Distribution and installed-wheel assurance | Newly discovered release requirement | `implemented` | package data configuration, `scripts/test_wheel_install.py` | build, Twine, and isolated wheel smoke | reports 19-20, roadmap | Setuptools license metadata has a nonblocking deprecation deadline | Packaging changes require installed-artifact resource and no-network verification |
+| Distribution and installed-wheel assurance | Newly discovered release requirement | `implemented` | package data configuration, `scripts/test_wheel_install.py`, `scripts/wheel_network_guard.py` | build, Twine, isolated wheel smoke, and executable construction/TCP/UDP/DNS/send observer tests | reports 19-20, roadmap | Setuptools license metadata has a nonblocking deprecation deadline | Packaging changes require installed-artifact resource and no-network verification |
 | Authoritative packaged profile source and mirror removal | Planned migration | `superseded` | `nornyx/profiles_data/`, compatibility facade in `nornyx/profiles.py` | catalog, projection, starter, wheel tests | doc 11 and domain-profile guide | Exported user copies can become stale but are not runtime sources | Restoring mirrors requires an ADR and concrete drift controls |
 | Scanner-hardening sequencing prerequisite | External branch dependency | `implemented` | scanner and governed-package runtime precede the strict change module and package compatibility adapter | governed-package and change suites | scanner integration appendix | Future incompatible scanner revisions can reopen coupling | Re-entry requires a scanner/change contract incompatibility |
-| Planning and status-document reconciliation | Contradictory historical/current text | `implemented` | planning docs 01-22 and ADR statuses | closure-document tests | docs 12, 15, and this report | Historical findings remain readable and can be misquoted without context | New roadmap work must use an authorized final status and explicit re-entry rule |
+| Planning and status-document reconciliation | Contradictory historical/current text | `implemented` | planning docs 01-22, ledger v2, release record, and ADR statuses | structured evidence-history and obsolete-assertion rejection tests | docs 12, 15, and this report | Historical findings remain readable and can be misquoted without context | New roadmap work must use an authorized final status and explicit re-entry rule |
 | V0.3 authoring/import shim | Possible later migration | `future_proposal_outside_current_program` | No import shim; exact v1-to-v0.3 projection only | projection and API compatibility tests | doc 11, legacy projection appendix | External v0.3 authors may need manual migration | Re-entry requires an identified consumer, provenance design, and migration approval |
 | Remote packs, entry-point discovery, and executable governance plugins | Rejected architecture alternatives | `rejected_with_ADR` | No implementation; schemas and loader prohibit them | loader, module-security, no-network/no-process tests | ADR-0010, ADR-0024, docs 03, 05, and 10 | Product pressure may recur | Re-entry requires a separate capability program and explicit human approval |
 | Native execution, connector runtime, self-healing, marketplace, and broad language tracks | Long-term roadmap ideas | `future_proposal_outside_current_program` | Research RFC only | existing boundary and no-execution tests | roadmap beyond v1, RFC-0003 | Future goals could conflict with current identity | Each track requires a new scoped goal, ADR, evidence, and human approval |
@@ -74,9 +100,9 @@ frozen for this program. No source-analysis engine, remote registry, executable
 plugin, automatic approval, deployment, or specialist-tool execution was added.
 
 Report 22 records the original audit identity, all 22 remediation targets, the
-current local evidence boundary, and the exact requirements for a fresh
-external audit. Release publication, tagging, deployment, promotion, and PR merge are not program
-implementation items and remain prohibited without explicit human release
-authorization. The prior candidate approval does not transfer to the remediated
-candidate; hosted CI, independent audit and fresh human review remain pending. Merge,
-tag, publication, deployment, and promotion remain unauthorized.
+historical `3a0e840` evidence, the later four-item reopening, and the exact
+external verification model for the containing commit. Release publication,
+tagging, deployment, promotion, and PR merge are not program implementation
+items and remain prohibited without explicit human authorization. Historical
+run `29373272295` does not transfer to the containing commit. Merge, tag,
+publication, deployment, and promotion remain unauthorized.

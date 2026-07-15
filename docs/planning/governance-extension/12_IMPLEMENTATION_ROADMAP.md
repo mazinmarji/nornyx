@@ -1,8 +1,35 @@
 # 12 - Implementation Roadmap
 
-Status: **AUD-001 through AUD-022 are locally remediated after the independent
-`NO-GO` audit of `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; Stage I is ready
-for exact-head independent audit and hosted CI.**
+Status: **historical implementation roadmap with residual remediation recorded
+in the containing commit and externally verifiable final-head gates.**
+
+## Audit Evidence History
+
+- Audited base: `95952226999327458c6fea81cb32d82539bcae5b`.
+- Original NO-GO candidate: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`.
+- Main remediation implementation anchor:
+  `81899aaac5e54781dfe9c8002f557a874854c8b8`.
+- Historical exact-head CI candidate:
+  `3a0e840c3229dbf58959df1e3a161318bffd94ac`; this is not the final approved
+  candidate.
+- Historical hosted CI run: `29373272295`, conclusion `success`.
+- Historical Windows evidence on the `81899aa`/`3a0e840` lineage:
+  `913 passed, 45 skipped`.
+- Historical Linux evidence bound to `3a0e840` and run `29373272295`:
+  `958 passed, zero skipped`.
+- Historical wheel evidence: `12 profiles`, `6 modules`,
+  `network_attempts=[]`, `network_used=false`.
+- A later independent audit of `3a0e840` returned historical `NO-GO` and
+  reopened `AUD-011-R1`, `AUD-017-R1`, `AUD-021-R1`, and `PRMETA-001`.
+- Residual path and network remediation is anchored at
+  `1319613697b0e94d177ebe2c879f73107c366c7e`; documentation reconciliation is
+  implemented in the commit containing this record, whose SHA is intentionally
+  not embedded.
+- External final-head verification must resolve the containing commit from Git
+  and GitHub, run hosted CI on that exact head, and bind a fresh independent
+  audit to the same head.
+- Human authorization is not granted. PR #30 remains draft; merge, release,
+  tagging, publication, and deployment remain unauthorized.
 
 ## Reconciled Status
 
@@ -119,20 +146,21 @@ Status: implemented.
 - build, wheel install, documentation execution, and Linux symlink tests;
 - public-boundary and repository-specific assurance.
 
-Reports 19-20 and the formal compatibility manifest record the results. Stage
-6 focused Windows validation, Ruff, public-boundary, compatibility,
-fresh-checkout, source/sdist/wheel build, and the socket-denied installed-wheel
-probe pass. The Stage 7 Windows suite passes `913 passed, 45 skipped`; the
-clean native-filesystem Ubuntu/WSL clone passes `958 passed`. Hosted current-head CI requires an authorized
-push and is not claimed by this local record.
+Reports 19-20 and the formal compatibility manifest record the results. The
+historical `81899aa`/`3a0e840` lineage passed the Windows and Linux results
+recorded above, and run `29373272295` passed exact-head checkout, candidate
+diff, build, Twine, wheel, and example gates. The later audit reopened the three
+AUD R1 items and PR metadata. Their implementation is recorded here without
+transferring the historical run to the containing commit.
 
 ## Stage I - Program Closure
 
-Status: implemented locally; exact-head external audit and hosted CI pending.
+Status: residual remediation implemented; external final-head verification required.
 
-Reports 19-22 and the candidate record distinguish verified local evidence
-from pending external gates. The machine-readable remediation ledger is the
-finding-level authority. No operational release action is authorized.
+Reports 19-22 and the candidate record distinguish historical commit-bound
+evidence from external dynamic verification. The machine-readable remediation
+ledger is the finding-level authority. No operational release action is
+authorized.
 
 ## Rollback and Review
 

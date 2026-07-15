@@ -1,22 +1,66 @@
 {
-  "schema": "nornyx.audit_remediation_ledger.v1",
+  "schema": "nornyx.audit_remediation_ledger.v2",
   "audit": {
     "repository": "mazinmarji/nornyx",
     "pull_request": 30,
-    "base": "95952226999327458c6fea81cb32d82539bcae5b",
-    "failing_head": "35ee69359599af7887f6b9b58ae0a4cd06a48d25",
-    "verdict": "NO-GO",
-    "status": "ready_for_independent_audit",
-    "implementation_through_stage_6": "6c0732c1be916a802e20bffce6eabf4bd7309703",
-    "final_target": "checked-out HEAD containing the Stage 7 evidence record",
-    "hosted_ci": "pending authorized push; not claimed",
-    "stage_7_validation": {
-      "windows_pytest": "913 passed, 45 skipped",
-      "linux_filesystem": "958 passed in a clean native-filesystem Ubuntu/WSL clone",
-      "independent_audit": "pending exact-head read-only audit"
+    "audited_base": "95952226999327458c6fea81cb32d82539bcae5b",
+    "original_no_go_candidate": "35ee69359599af7887f6b9b58ae0a4cd06a48d25",
+    "main_remediation_implementation_anchor": "81899aaac5e54781dfe9c8002f557a874854c8b8",
+    "historical_exact_head_ci": {
+      "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+      "is_final_approved_candidate": false,
+      "run_id": 29373272295,
+      "conclusion": "success",
+      "windows": {
+        "source": "local_windows",
+        "passed": 913,
+        "skipped": 45,
+        "lineage_anchor": "81899aaac5e54781dfe9c8002f557a874854c8b8"
+      },
+      "linux": {
+        "source": "hosted_linux_ci",
+        "run_id": 29373272295,
+        "passed": 958,
+        "skipped": 0
+      },
+      "wheel": {
+        "source": "hosted_linux_ci",
+        "run_id": 29373272295,
+        "profiles": 12,
+        "modules": 6,
+        "network_attempts": [],
+        "network_used": false
+      }
+    },
+    "later_reopening_audit": {
+      "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+      "verdict": "NO-GO",
+      "reopened_findings": [
+        "AUD-011-R1",
+        "AUD-017-R1",
+        "AUD-021-R1",
+        "PRMETA-001"
+      ]
+    },
+    "residual_remediation": {
+      "code_commit": "1319613697b0e94d177ebe2c879f73107c366c7e",
+      "documentation_commit": {
+        "kind": "containing_commit",
+        "sha": null,
+        "self_embedding_avoided": true
+      },
+      "status": "implemented_pending_external_final_head_verification"
+    },
+    "external_final_head_verification": {
+      "resolve_candidate_from": "git_and_github",
+      "hosted_ci": "required_for_resolved_exact_head",
+      "independent_audit": "required_after_green_exact_head_ci"
     }
   },
   "authorization": {
+    "approve": false,
+    "mark_ready": false,
+    "auto_merge": false,
     "merge": false,
     "release": false,
     "tag": false,
@@ -336,9 +380,20 @@
       ],
       "validation": {
         "status": "passed",
-        "evidence": "Host-independent URI, UNC, extended/device namespace and DOS-device matrix is rejected before mocked lstat/exists probes across public APIs and CLIs."
+        "evidence": "Historical tests covered URI, UNC, extended/device namespaces and standard DOS names before mocked probes; the later audit found omitted console and superscript aliases."
       },
-      "final_status": "closed"
+      "closure_history": [
+        {
+          "status": "closed",
+          "evidence_context": "Historical closure through exact-head candidate 3a0e840c3229dbf58959df1e3a161318bffd94ac."
+        },
+        {
+          "status": "reopened",
+          "reopened_id": "AUD-011-R1",
+          "audit_candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+        }
+      ],
+      "final_status": "reopened_as_AUD-011-R1"
     },
     {
       "id": "AUD-012",
@@ -550,9 +605,20 @@
       ],
       "validation": {
         "status": "passed",
-        "evidence": "Current reports identify the audited base, failing head and remediated implementation, distinguish local evidence from pending hosted CI and external audit, preserve the draft PR and no-authorization boundary, and do not reuse the superseded GO."
+        "evidence": "Historical records captured the pre-push state and authorization boundary; hosted run 29373272295 later made their mutable remote/CI assertions obsolete."
       },
-      "final_status": "closed"
+      "closure_history": [
+        {
+          "status": "closed",
+          "evidence_context": "Historical closure before hosted run 29373272295 changed the external facts."
+        },
+        {
+          "status": "reopened",
+          "reopened_id": "AUD-017-R1",
+          "audit_candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+        }
+      ],
+      "final_status": "reopened_as_AUD-017-R1"
     },
     {
       "id": "AUD-018",
@@ -658,9 +724,20 @@
       ],
       "validation": {
         "status": "passed",
-        "evidence": "The isolated smoke clears index/proxy configuration, uses pip --no-index/--no-deps, injects a socket-denial guard, fails on recorded address-resolution or connection attempts, and derives network_used from the attempt log while exercising imports, resources, legacy consumers and CLIs."
+        "evidence": "Historical smoke cleared index/proxy configuration, used pip --no-index/--no-deps, denied DNS/connect calls and derived network_used from its log; the later audit found unobserved UDP/send paths."
       },
-      "final_status": "closed"
+      "closure_history": [
+        {
+          "status": "closed",
+          "evidence_context": "Historical closure through exact-head run 29373272295."
+        },
+        {
+          "status": "reopened",
+          "reopened_id": "AUD-021-R1",
+          "audit_candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+        }
+      ],
+      "final_status": "reopened_as_AUD-021-R1"
     },
     {
       "id": "AUD-022",
@@ -689,6 +766,257 @@
         "evidence": "Known candidate whitespace defects are removed and Linux CI runs git diff --check from audited base 95952226999327458c6fea81cb32d82539bcae5b through HEAD."
       },
       "final_status": "closed"
+    }
+  ],
+  "reopened_findings": [
+    {
+      "original_finding": {
+        "id": "AUD-011"
+      },
+      "reopened_id": "AUD-011-R1",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Medium",
+        "classification": "defect",
+        "evidence": [
+          "CONIN$, CONOUT$, COM superscript 1/2/3 and LPT superscript 1/2/3 reached filesystem probes.",
+          "The existing host-independent classifier omitted the native Windows aliases and adjacent transformed variants.",
+          "Pre-remediation adjacent probes also reached filesystem operations through governed-package validation, generation, registration, radar, scanner, external-evidence and discovered-artifact boundaries.",
+          "Raw adapter URI and UNC references required classification before Path normalization so their remote identity could not be erased on Linux."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "exact_commit",
+          "sha": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "implementation_references": [
+          "nornyx/path_security.py::is_remote_or_device_path",
+          "nornyx/governed_package.py::validate_governed_package",
+          "nornyx/governed_package.py::generate_governed_package",
+          "nornyx/governed_package.py::register_existing_package",
+          "nornyx/governed_package.py::radar_governed_packages",
+          "nornyx/governed_package.py::load_governed_package_source",
+          "nornyx/governed_package.py::validate_governed_package_source",
+          "nornyx/package_scanner.py::_reject_unsafe_path",
+          "nornyx/package_scanner.py::iter_source_files",
+          "nornyx/package_scanner.py::scan_package",
+          "nornyx/cli.py::cmd_package_evidence_import",
+          "nornyx/governance/locks.py::write_lock"
+        ],
+        "test_references": [
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_classifier_rejects_complete_dos_device_matrix",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_safe_near_misses_remain_allowed",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_public_governance_path_apis_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_governed_package_boundaries_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_registered_artifact_rejects_before_unsafe_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_lock_write_rejects_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_policy_ref_rejects_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_contract_clis_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_all_governed_package_path_boundaries_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_embedded_package_lock_path_rejects_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_raw_adapter_paths_reject_before_normalization_or_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_discovered_artifact_rejects_before_entry_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_package_clis_reject_every_path_before_probe"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "implemented",
+          "evidence_commit": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "remediated_pending_external_exact_head_ci_and_independent_audit",
+      "external_exact_head_ci_requirement": true
+    },
+    {
+      "original_finding": {
+        "id": "AUD-017"
+      },
+      "reopened_id": "AUD-017-R1",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Medium",
+        "classification": "documentation issue",
+        "evidence": [
+          "Eight current-state records still said the branch was unpushed, the remote head was 35ee693 or hosted CI was unavailable.",
+          "Live PR state and run 29373272295 contradicted those mutable assertions."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "containing_commit",
+          "sha": null,
+          "self_embedding_avoided": true
+        },
+        "implementation_references": [
+          "docs/planning/governance-extension/12_IMPLEMENTATION_ROADMAP.md",
+          "docs/planning/governance-extension/15_CURRENT_IMPLEMENTATION_INVENTORY.md",
+          "docs/planning/governance-extension/19_COMPATIBILITY_REPORT.md",
+          "docs/planning/governance-extension/20_SECURITY_ASSURANCE_REPORT.md",
+          "docs/planning/governance-extension/21_PROGRAM_CLOSURE_REPORT.md",
+          "docs/planning/governance-extension/22_FINAL_INDEPENDENT_AUDIT.md",
+          "docs/planning/governance-extension/AUDIT_REMEDIATION_LEDGER.json",
+          "docs/releases/RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"
+        ],
+        "test_references": [
+          "tests/test_governance_audit_compatibility.py::test_aud017_current_docs_state_exact_evidence_and_authorization_boundary",
+          "tests/test_governance_audit_closure.py::test_every_audit_finding_has_executable_closure_evidence",
+          "tests/test_governance_program_closure.py::test_current_audit_and_candidate_preserve_external_gate_boundary"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "not_applicable",
+          "reason": "documentation evidence-model finding"
+        },
+        "documentation_closure": {
+          "status": "implemented_in_containing_commit",
+          "embedded_sha": null
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "remediated_pending_external_exact_head_ci_and_independent_audit",
+      "external_exact_head_ci_requirement": true
+    },
+    {
+      "original_finding": {
+        "id": "AUD-021"
+      },
+      "reopened_id": "AUD-021-R1",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Low",
+        "classification": "test gap",
+        "evidence": [
+          "The historical guard did not intercept AF_INET/AF_INET6 construction, UDP sendto or sendmsg.",
+          "The historical test only inspected source strings instead of exercising denial behavior.",
+          "Pre-remediation executable probes showed _socket and legacy DNS calls plus cached connect/send descriptors reaching the runtime with an empty attempt log."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "exact_commit",
+          "sha": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "implementation_references": [
+          "scripts/wheel_network_guard.py::NetworkGuard",
+          "scripts/wheel_network_guard.py::_audit_hook",
+          "scripts/wheel_network_guard.py::run_self_test",
+          "scripts/test_wheel_install.py::main"
+        ],
+        "test_references": [
+          "tests/test_wheel_network_guard.py::test_network_guard_self_test_records_and_rejects_every_primitive",
+          "tests/test_wheel_network_guard.py::test_network_guard_denies_constructor_aliases_before_socket_creation",
+          "tests/test_wheel_network_guard.py::test_network_guard_self_test_log_is_separate_from_product_log",
+          "tests/test_wheel_network_guard.py::test_network_guard_denies_low_level_and_legacy_dns_before_resolution",
+          "tests/test_wheel_network_guard.py::test_network_guard_audit_fallback_denies_cached_socket_methods",
+          "tests/test_governance_audit_cross_platform.py::test_aud021_wheel_smoke_enforces_observed_no_network"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "implemented",
+          "evidence_commit": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "remediated_pending_external_exact_head_ci_and_independent_audit",
+      "external_exact_head_ci_requirement": true
+    },
+    {
+      "original_finding": {
+        "id": "PRMETA-001",
+        "source": "later independent audit"
+      },
+      "reopened_id": "PRMETA-001",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Low",
+        "classification": "documentation issue",
+        "evidence": [
+          "The live PR body cited obsolete commits, test counts, run IDs, migration scope and audit language."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "containing_commit",
+          "sha": null,
+          "self_embedding_avoided": true
+        },
+        "implementation_references": [
+          "docs/releases/RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md::Prepared PR Description"
+        ],
+        "test_references": [
+          "tests/test_governance_program_closure.py::test_current_audit_and_candidate_preserve_external_gate_boundary"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "not_applicable",
+          "reason": "external pull-request metadata finding"
+        },
+        "metadata_closure": {
+          "status": "prepared_not_published",
+          "publication_condition": "fresh_independent_audit_GO"
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "prepared_pending_post_go_publication",
+      "external_exact_head_ci_requirement": true
     }
   ]
 }

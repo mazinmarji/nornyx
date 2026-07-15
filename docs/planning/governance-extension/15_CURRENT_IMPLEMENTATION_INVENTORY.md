@@ -1,9 +1,35 @@
 # 15 - Current Implementation Inventory
 
-Status: **reconciled after the independent `NO-GO` audit of
-`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; AUD-001 through AUD-022 are
-locally remediated and awaiting exact-head external gates. See
-`AUDIT_REMEDIATION_LEDGER.json`.**
+Status: **containing-commit implementation inventory with historical evidence
+anchors and an external final-head verification requirement.**
+
+## Audit Evidence History
+
+- Audited base: `95952226999327458c6fea81cb32d82539bcae5b`.
+- Original NO-GO candidate: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`.
+- Main remediation implementation anchor:
+  `81899aaac5e54781dfe9c8002f557a874854c8b8`.
+- Historical exact-head CI candidate:
+  `3a0e840c3229dbf58959df1e3a161318bffd94ac`; this is not the final approved
+  candidate.
+- Historical hosted CI run: `29373272295`, conclusion `success`.
+- Historical Windows evidence on the `81899aa`/`3a0e840` lineage:
+  `913 passed, 45 skipped`.
+- Historical Linux evidence bound to `3a0e840` and run `29373272295`:
+  `958 passed, zero skipped`.
+- Historical wheel evidence: `12 profiles`, `6 modules`,
+  `network_attempts=[]`, `network_used=false`.
+- A later independent audit of `3a0e840` returned historical `NO-GO` and
+  reopened `AUD-011-R1`, `AUD-017-R1`, `AUD-021-R1`, and `PRMETA-001`.
+- Residual path and network remediation is anchored at
+  `1319613697b0e94d177ebe2c879f73107c366c7e`; documentation reconciliation is
+  implemented in the commit containing this record, whose SHA is intentionally
+  not embedded.
+- External final-head verification must resolve the containing commit from Git
+  and GitHub, run hosted CI on that exact head, and bind a fresh independent
+  audit to the same head.
+- Human authorization is not granted. PR #30 remains draft; merge, release,
+  tagging, publication, and deployment remain unauthorized.
 
 ## Baseline
 
@@ -94,17 +120,16 @@ execution requirement, or unbound evidence requirement stops the program.
 ## Current Implementation State
 
 Stages A through I are implemented. Stage I reconciles the documentation,
-closure matrix, and candidate evidence. The branch
-contains six reusable
-modules, the shared change model, the governed-package compatibility adapter, the optional
-`architecture_governance` profile, bounded architecture evidence import,
-complete GSA decisions, and a compatibility-preserving mapping for every
-profile. No later specialist module passed the proliferation gate. CLI/API,
-compatibility, security, build, and installed-wheel assurance are implemented.
-The initial 1.5.2 matrix above remains the historical baseline. Report 21 is
-the authoritative item-by-item final status record. A later PR #30 review
-superseded the prior `GO` and candidate approval. The complete 22-finding
-remediation now extends through Stage 6 commit
-`6c0732c1be916a802e20bffce6eabf4bd7309703`. Current-head hosted CI, the fresh
-independent verdict, human approval, and all operational release actions remain
-pending.
+closure matrix, and candidate evidence. The branch contains six reusable
+modules, the shared change model, the governed-package compatibility adapter,
+the optional `architecture_governance` profile, bounded architecture evidence
+import, complete GSA decisions, and a compatibility-preserving mapping for
+every profile. No later specialist module passed the proliferation gate.
+CLI/API, compatibility, security, build, and installed-wheel assurance are
+implemented. The initial 1.5.2 matrix above remains the historical baseline.
+Report 21 is the authoritative item-by-item program status record. The main
+AUD-001 through AUD-022 implementation anchor is `81899aa`; a later audit of
+`3a0e840` reopened the four residual items listed above. Their code remediation
+is anchored exactly, while this document's correction is identified by its
+containing commit and requires external exact-head CI and audit verification.
+Human approval and every operational release action remain unauthorized.

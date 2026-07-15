@@ -1,13 +1,35 @@
 # 19 - Backward Compatibility Report
 
-Status: **remediated locally and ready for an exact-head independent audit.**
+Status: **historical compatibility evidence plus containing-commit residual
+remediation; external final-head verification required.**
 
-This report applies to the candidate selected by the checked-out `HEAD`, based
-on `95952226999327458c6fea81cb32d82539bcae5b`. The audited failing candidate
-was `35ee69359599af7887f6b9b58ae0a4cd06a48d25`; its earlier compatibility
-claims are historical and are not reused as evidence.
-The remediated implementation through Stage 6 is
-`6c0732c1be916a802e20bffce6eabf4bd7309703`.
+## Audit Evidence History
+
+- Audited base: `95952226999327458c6fea81cb32d82539bcae5b`.
+- Original NO-GO candidate: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`.
+- Main remediation implementation anchor:
+  `81899aaac5e54781dfe9c8002f557a874854c8b8`.
+- Historical exact-head CI candidate:
+  `3a0e840c3229dbf58959df1e3a161318bffd94ac`; this is not the final approved
+  candidate.
+- Historical hosted CI run: `29373272295`, conclusion `success`.
+- Historical Windows evidence on the `81899aa`/`3a0e840` lineage:
+  `913 passed, 45 skipped`.
+- Historical Linux evidence bound to `3a0e840` and run `29373272295`:
+  `958 passed, zero skipped`.
+- Historical wheel evidence: `12 profiles`, `6 modules`,
+  `network_attempts=[]`, `network_used=false`.
+- A later independent audit of `3a0e840` returned historical `NO-GO` and
+  reopened `AUD-011-R1`, `AUD-017-R1`, `AUD-021-R1`, and `PRMETA-001`.
+- Residual path and network remediation is anchored at
+  `1319613697b0e94d177ebe2c879f73107c366c7e`; documentation reconciliation is
+  implemented in the commit containing this record, whose SHA is intentionally
+  not embedded.
+- External final-head verification must resolve the containing commit from Git
+  and GitHub, run hosted CI on that exact head, and bind a fresh independent
+  audit to the same head.
+- Human authorization is not granted. PR #30 remains draft; merge, release,
+  tagging, publication, and deployment remain unauthorized.
 
 ## Compatibility Contract
 
@@ -52,7 +74,7 @@ separation.
 
 Security hardening intentionally rejects malformed and untrusted inputs that
 were never supported authority. No unapproved supported-input narrowing was
-accepted. A hosted Linux CI run for this local head is not claimed: PR #30 is
-still at the old remote head because pushing is outside this remediation's
-authorization. Hosted CI is pending. Local Windows and Ubuntu/WSL results are
-recorded in report 22.
+accepted. Run `29373272295` is historical evidence for `3a0e840` only and does
+not transfer to the containing commit. Compatibility closure for the containing
+commit must be established by external exact-head CI and a fresh independent
+audit. No human or operational authorization is implied.
