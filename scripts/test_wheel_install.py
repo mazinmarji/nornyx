@@ -105,45 +105,35 @@ def main(argv: list[str] | None = None) -> int:
             "".join(f"{item}\n" for item in _dependency_roots()),
             encoding="utf-8",
         )
-        attempt_log = root / "network-attempts.jsonl"
+        guard_source = Path(__file__).with_name("wheel_network_guard.py")
+        if not guard_source.is_file():
+            raise RuntimeError(f"wheel network guard is missing: {guard_source}")
         guard_module = purelib / "nornyx_wheel_network_guard.py"
-        guard_module.write_text(
-            """from __future__ import annotations
-import json
-import os
-import socket
-
-_LOG = os.environ["NORNYX_NETWORK_ATTEMPT_LOG"]
-
-def _deny(operation, address):
-    with open(_LOG, "a", encoding="utf-8") as stream:
-        stream.write(json.dumps({"operation": operation, "address": repr(address)}, sort_keys=True) + "\\n")
-    raise RuntimeError(f"network disabled during wheel smoke: {operation} {address!r}")
-
-def _connect(self, address):
-    return _deny("socket.connect", address)
-
-def _connect_ex(self, address):
-    return _deny("socket.connect_ex", address)
-
-def _create_connection(address, *args, **kwargs):
-    return _deny("socket.create_connection", address)
-
-def _getaddrinfo(host, port, *args, **kwargs):
-    return _deny("socket.getaddrinfo", (host, port))
-
-socket.socket.connect = _connect
-socket.socket.connect_ex = _connect_ex
-socket.create_connection = _create_connection
-socket.getaddrinfo = _getaddrinfo
-""",
-            encoding="utf-8",
+        guard_module.write_bytes(guard_source.read_bytes())
+        self_test_log = root / "network-guard-self-test.jsonl"
+        self_test = _run(
+            [
+                str(python),
+                "-I",
+                "-c",
+                (
+                    "import json, sys; "
+                    "from nornyx_wheel_network_guard import run_self_test; "
+                    "print(json.dumps(run_self_test(sys.argv[1]), sort_keys=True))"
+                ),
+                str(self_test_log),
+            ],
+            cwd=root,
+            env=env,
         )
-        (purelib / "nornyx-wheel-smoke-network-guard.pth").write_text(
-            "import nornyx_wheel_network_guard\n",
-            encoding="utf-8",
-        )
-        env["NORNYX_NETWORK_ATTEMPT_LOG"] = str(attempt_log)
+        self_test_payload = json.loads(self_test.stdout)
+        if self_test_payload != _network_attempts(self_test_log):
+            raise RuntimeError("wheel network guard self-test evidence is inconsistent")
+
+        # Pip imports its vendored HTTP stack even with --no-index; that stack
+        # performs an IPv6 capability socket construction during import. Keep
+        # installation offline with the explicit flags/environment below, then
+        # activate the construction-denying observer for installed-product use.
         _run(
             [
                 str(python),
@@ -158,8 +148,15 @@ socket.getaddrinfo = _getaddrinfo
             ],
             cwd=root,
             env=env,
-            attempt_log=attempt_log,
         )
+        (purelib / "nornyx-wheel-smoke-network-guard.pth").write_text(
+            "import nornyx_wheel_network_guard; "
+            "nornyx_wheel_network_guard.install_from_environment()\n",
+            encoding="utf-8",
+        )
+        attempt_log = root / "network-attempts.jsonl"
+        attempt_log.unlink(missing_ok=True)
+        env["NORNYX_NETWORK_ATTEMPT_LOG"] = str(attempt_log)
         probe = _run(
             [
                 str(python),

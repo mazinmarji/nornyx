@@ -297,14 +297,14 @@ def write_lock(
     trust_root: str | Path | None = None,
 ) -> Path:
     supplied_target = Path(path)
-    payload = lock.to_dict()
-    _reject_duplicate_entries(lock.resolved, path=str(path))
-    validate_payload(payload, "profiles_lock_v1.schema.json")
     target = _prepare_lock_output(
         path,
         allowed_root=allowed_root,
         trust_root=trust_root,
     )
+    payload = lock.to_dict()
+    _reject_duplicate_entries(lock.resolved, path=str(path))
+    validate_payload(payload, "profiles_lock_v1.schema.json")
     target.parent.mkdir(parents=True, exist_ok=True)
     target = _prepare_lock_output(
         target,

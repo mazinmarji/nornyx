@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 
 from . import __version__
+from .path_security import is_remote_or_device_path
 
 
 SCANNER_NAME = "nornyx-deterministic-package-scanner"
@@ -122,11 +123,17 @@ class TextSample:
     binary_like: bool
 
 
+def _reject_unsafe_path(path: str | os.PathLike[str], *, noun: str) -> None:
+    if is_remote_or_device_path(path):
+        raise ValueError(f"remote or Windows device-backed {noun.lower()} paths are not allowed: {path}")
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def write_text(path: Path, content: str) -> None:
+    _reject_unsafe_path(path, noun="scanner output")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8", newline="\n")
 
@@ -136,6 +143,7 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def sha256_file(path: Path) -> str:
+    _reject_unsafe_path(path, noun="scanner input")
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -159,28 +167,37 @@ def relative_to_root(path: Path, root: Path) -> str:
         return path.name
 
 
-def iter_source_files(source: Path) -> tuple[Path, list[Path]]:
+def iter_source_files(
+    source: Path,
+    *,
+    skip_dirs: set[str] | frozenset[str] = SKIP_DIRS,
+) -> tuple[Path, list[Path]]:
+    _reject_unsafe_path(source, noun="package scan source")
     if source.is_file():
         return source.parent, [source]
     files: list[Path] = []
-    # os.walk with followlinks=False does not descend into symlinked directories,
-    # so a symlink cycle inside an untrusted package cannot loop the scanner.
-    for dirpath, dirnames, filenames in os.walk(source, followlinks=False):
-        dirnames[:] = [name for name in dirnames if name not in SKIP_DIRS]
-        for filename in filenames:
-            candidate = Path(dirpath) / filename
-            # Skip symlinked files as well: they can point outside the package tree
-            # (e.g. at /etc/passwd) and must not be inventoried or read.
-            if candidate.is_symlink():
+    pending = [source]
+    while pending:
+        directory = pending.pop()
+        _reject_unsafe_path(directory, noun="package scan directory")
+        with os.scandir(directory) as entries:
+            ordered_entries = sorted(entries, key=lambda item: item.name)
+        subdirectories: list[Path] = []
+        for entry in ordered_entries:
+            candidate = directory / entry.name
+            _reject_unsafe_path(candidate, noun="package scan artifact")
+            if entry.name in skip_dirs or entry.is_symlink():
                 continue
-            if candidate.is_file() and not any(
-                part in SKIP_DIRS for part in candidate.relative_to(source).parts
-            ):
+            if entry.is_dir(follow_symlinks=False):
+                subdirectories.append(candidate)
+            elif entry.is_file(follow_symlinks=False):
                 files.append(candidate)
+        pending.extend(reversed(subdirectories))
     return source, sorted(files, key=lambda item: item.relative_to(source).as_posix())
 
 
 def read_text_sample(path: Path) -> TextSample:
+    _reject_unsafe_path(path, noun="package scan artifact")
     try:
         with path.open("rb") as handle:
             data = handle.read(TEXT_SAMPLE_LIMIT + 1)
@@ -730,6 +747,7 @@ def severity_counts(findings: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def parse_syft_report(report_path: Path, package_id: str) -> list[dict[str, Any]]:
+    _reject_unsafe_path(report_path, noun="Syft evidence report")
     payload = json.loads(report_path.read_text(encoding="utf-8"))
     artifacts = payload.get("artifacts", []) if isinstance(payload, dict) else []
     records: list[dict[str, Any]] = []
@@ -763,6 +781,7 @@ def parse_syft_report(report_path: Path, package_id: str) -> list[dict[str, Any]
 
 
 def parse_gitleaks_report(report_path: Path, package_id: str) -> list[dict[str, Any]]:
+    _reject_unsafe_path(report_path, noun="Gitleaks evidence report")
     payload = json.loads(report_path.read_text(encoding="utf-8"))
     leaks = payload if isinstance(payload, list) else payload.get("findings", []) if isinstance(payload, dict) else []
     records: list[dict[str, Any]] = []
@@ -811,12 +830,27 @@ def normalize_adapter_config(config: Any) -> list[dict[str, Any]]:
     return adapters
 
 
+def _reject_unsafe_adapter_paths(adapters_config: Any, *, source: Path) -> None:
+    for adapter in normalize_adapter_config(adapters_config):
+        report_path_value = adapter.get("report_path") or adapter.get("artifact_path")
+        if not report_path_value:
+            continue
+        raw_report_path = str(report_path_value)
+        _reject_unsafe_path(raw_report_path, noun="external adapter evidence report")
+        report_path = Path(raw_report_path)
+        if not report_path.is_absolute():
+            report_path = source / report_path
+        _reject_unsafe_path(report_path, noun="external adapter evidence report")
+
+
 def run_external_adapters(
     adapters_config: Any,
     *,
     package_id: str,
     source: Path,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]]]:
+    _reject_unsafe_path(source, noun="external adapter source")
+    _reject_unsafe_adapter_paths(adapters_config, source=source)
     records: list[dict[str, Any]] = []
     executions: list[dict[str, Any]] = []
     diagnostics: list[dict[str, Any]] = []
@@ -833,6 +867,12 @@ def run_external_adapters(
         parsed_records: list[dict[str, Any]] = []
         report_path_value = adapter.get("report_path") or adapter.get("artifact_path")
         command = str(adapter.get("command", name))
+        report_path = None
+        if report_path_value:
+            report_path = Path(str(report_path_value))
+            if not report_path.is_absolute():
+                report_path = source / report_path
+            _reject_unsafe_path(report_path, noun="external adapter evidence report")
         available = bool(shutil.which(command)) if command else False
         if not enabled:
             detail = "adapter disabled"
@@ -840,9 +880,7 @@ def run_external_adapters(
             status = "unavailable"
             detail = "network adapter requires explicit allow_network"
         elif report_path_value:
-            report_path = Path(str(report_path_value))
-            if not report_path.is_absolute():
-                report_path = source / report_path
+            assert report_path is not None
             parser = ADAPTER_PARSERS.get(name)
             if parser is None:
                 status = "unavailable"
@@ -967,7 +1005,11 @@ def scan_package(
     package_claims: dict[str, Any] | None = None,
     evidence_adapters: Any = None,
 ) -> dict[str, Any]:
+    _reject_unsafe_path(source_path, noun="package scan source")
+    if out_dir is not None:
+        _reject_unsafe_path(out_dir, noun="package scan output")
     source = Path(source_path)
+    _reject_unsafe_adapter_paths(evidence_adapters, source=source)
     if not source.exists():
         raise ValueError(f"package scan source does not exist: {source}")
     root, files = iter_source_files(source)
@@ -1161,6 +1203,7 @@ def scan_package(
 
 
 def report_hashes(out: Path, names: list[str]) -> list[dict[str, str]]:
+    _reject_unsafe_path(out, noun="scanner report directory")
     hashes: list[dict[str, str]] = []
     for name in names:
         path = out / name
@@ -1170,6 +1213,7 @@ def report_hashes(out: Path, names: list[str]) -> list[dict[str, str]]:
 
 
 def write_scan_reports(report: dict[str, Any], out_dir: str | Path) -> list[Path]:
+    _reject_unsafe_path(out_dir, noun="scanner report output")
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import builtins
 from copy import deepcopy
 from dataclasses import replace
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 
 import pytest
@@ -12,6 +14,14 @@ import yaml
 
 from nornyx.cli import main
 from nornyx.governed_package import (
+    GovernedPackageGenerator,
+    GovernedPackageValidator,
+    generate_governed_package,
+    load_governed_package_source,
+    radar_governed_packages,
+    register_existing_package,
+    validate_governed_package,
+    validate_governed_package_source,
     verify_package_lock,
     verify_registered_artifact_hashes,
 )
@@ -20,6 +30,8 @@ from nornyx.governance.architecture import import_architecture_evidence
 from nornyx.governance.evidence_validation import validate_governance_evidence_file
 from nornyx.governance.loader import (
     _load_bundled_pack,
+    inspect_local_directory,
+    inspect_local_file,
     load_local_pack,
     load_pack_bytes,
     read_local_file_bytes,
@@ -28,11 +40,61 @@ from nornyx.governance.locks import load_lock, lock_for_packs, write_lock
 from nornyx.governance.registry import GovernanceRegistry
 from nornyx.governance.runtime import registry_for_contract, registry_for_directory
 from nornyx.governance.schemas import canonical_pack_hash
-from nornyx.parser import NornyxParseError, load_nyx
+from nornyx.parser import NornyxParseError, _resolve_policy_refs, load_nyx
+from nornyx.package_scanner import (
+    iter_source_files,
+    parse_gitleaks_report,
+    parse_syft_report,
+    run_external_adapters,
+    scan_package,
+    write_scan_reports,
+)
+from nornyx.path_security import is_remote_or_device_path
 from nornyx.workspace import WorkspaceError, check_workspace
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "governance_extension"
+
+WINDOWS_DOS_DEVICE_VARIANTS = (
+    "CONIN$",
+    "conin$",
+    "CONOUT$",
+    "conout$",
+    "COM¹",
+    "COM²",
+    "COM³",
+    "LPT¹",
+    "LPT²",
+    "LPT³",
+    "CONOUT$.txt",
+    "COM¹.txt",
+    "LPT³.log",
+    "COM¹:stream",
+    "folder/CONIN$",
+    r"folder\LPT².txt",
+    "CONIN$.",
+    "CONOUT$...",
+    "COM¹ ",
+    "LPT³. ",
+    r"folder\nested/CoM².TxT:stream",
+)
+
+WINDOWS_DOS_DEVICE_BASENAMES = (
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "CONIN$",
+    "CONOUT$",
+    *(f"COM{index}" for index in range(1, 10)),
+    *(f"LPT{index}" for index in range(1, 10)),
+    "COM¹",
+    "COM²",
+    "COM³",
+    "LPT¹",
+    "LPT²",
+    "LPT³",
+)
 
 
 def _codes(exc: GovernanceError) -> set[str]:
@@ -53,6 +115,99 @@ def _write_pack(path: Path, payload: dict[str, object]) -> None:
         encoding="utf-8",
         newline="\n",
     )
+
+
+def _forbid_filesystem_probes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[tuple[str, str]]:
+    probes: list[tuple[str, str]] = []
+    for name in ("lstat", "stat", "listdir", "scandir", "open", "walk"):
+        original = getattr(os, name)
+
+        def os_probe(
+            *args: object,
+            _name: str = name,
+            _original: object = original,
+            **kwargs: object,
+        ) -> object:
+            path = args[0] if args else ""
+            probes.append((f"os.{_name}", str(path)))
+            if isinstance(path, (str, os.PathLike)) and is_remote_or_device_path(path):
+                raise AssertionError(f"unsafe path reached os.{_name}: {path}")
+            return _original(*args, **kwargs)  # type: ignore[operator]
+
+        monkeypatch.setattr(os, name, os_probe)
+    for name in (
+        "exists",
+        "is_dir",
+        "is_file",
+        "iterdir",
+        "glob",
+        "rglob",
+        "lstat",
+        "stat",
+        "open",
+        "read_text",
+        "read_bytes",
+        "resolve",
+        "mkdir",
+        "write_text",
+        "write_bytes",
+    ):
+        original = getattr(Path, name)
+
+        def path_probe(
+            *args: object,
+            _name: str = name,
+            _original: object = original,
+            **kwargs: object,
+        ) -> object:
+            path = args[0] if args else ""
+            probes.append((f"Path.{_name}", str(path)))
+            if isinstance(path, (str, os.PathLike)) and is_remote_or_device_path(path):
+                raise AssertionError(f"unsafe path reached Path.{_name}: {path}")
+            return _original(*args, **kwargs)  # type: ignore[operator]
+
+        monkeypatch.setattr(Path, name, path_probe)
+
+    original_realpath = os.path.realpath
+
+    def realpath_probe(
+        path: str | os.PathLike[str],
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        probes.append(("os.path.realpath", str(path)))
+        if is_remote_or_device_path(path):
+            raise AssertionError(f"unsafe path reached os.path.realpath: {path}")
+        return original_realpath(path, *args, **kwargs)
+
+    monkeypatch.setattr(os.path, "realpath", realpath_probe)
+    original_builtin_open = builtins.open
+
+    def builtin_open_probe(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        probes.append(("builtins.open", str(path)))
+        if isinstance(path, (str, os.PathLike)) and is_remote_or_device_path(path):
+            raise AssertionError(f"unsafe path reached builtins.open: {path}")
+        return original_builtin_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", builtin_open_probe)
+    original_which = shutil.which
+
+    def which_probe(
+        command: str,
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        probes.append(("shutil.which", command))
+        return original_which(command, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "which", which_probe)
+    return probes
 
 
 def _directory_symlink_or_skip(link: Path, target: Path) -> None:
@@ -355,6 +510,52 @@ def test_aud010_cli_lock_symlink_fails_all_governance_consumers(
     assert "PACK_SYMLINK_REJECTED" in capsys.readouterr().out
 
 
+def test_aud011_r1_classifier_rejects_complete_dos_device_matrix() -> None:
+    for device in WINDOWS_DOS_DEVICE_BASENAMES:
+        variants = (
+            device,
+            device.swapcase(),
+            f"{device}.txt",
+            f"{device}.txt:stream",
+            f"{device}:stream",
+            f"folder/{device}",
+            rf"folder\{device}.log",
+            rf"folder\nested/{device}.TxT:stream",
+            f"{device}.",
+            f"{device}...",
+            f"{device} ",
+            f"{device}. ",
+        )
+        for variant in variants:
+            assert is_remote_or_device_path(variant), (device, variant)
+
+
+@pytest.mark.parametrize(
+    "safe_path",
+    [
+        "CONSOLE",
+        "AUXILIARY",
+        "NULL",
+        "CONIN$x",
+        "xCONOUT$",
+        "COM0",
+        "COM10",
+        "LPT0",
+        "LPT10",
+        "COM⁴",
+        "LPT⁹",
+        "COM１",
+        "LPT１",
+        "COM¹backup.txt",
+        "CON .txt",
+        "COM1 .yaml",
+        r"C:\project\ordinary.yaml",
+    ],
+)
+def test_aud011_r1_safe_near_misses_remain_allowed(safe_path: str) -> None:
+    assert not is_remote_or_device_path(safe_path)
+
+
 @pytest.mark.parametrize(
     "remote_path",
     [
@@ -371,6 +572,7 @@ def test_aud010_cli_lock_symlink_fails_all_governance_consumers(
         "file://server/share/pack.yaml",
         "NUL",
         r"C:\project\COM1.txt",
+        *WINDOWS_DOS_DEVICE_VARIANTS,
     ],
 )
 def test_aud011_windows_remote_paths_are_rejected_before_filesystem_access(
@@ -424,11 +626,18 @@ def test_aud011_every_loader_boundary_is_lexically_screened_first(
 @pytest.mark.parametrize(
     ("api", "expected"),
     [
+        ("inspect_file", "PACK_REMOTE_SOURCE_REJECTED"),
+        ("inspect_directory", "PACK_REMOTE_SOURCE_REJECTED"),
+        ("local_pack", "PACK_REMOTE_SOURCE_REJECTED"),
+        ("register_path", "PACK_REMOTE_SOURCE_REJECTED"),
+        ("register_directory", "PACK_REMOTE_SOURCE_REJECTED"),
         ("registry_contract", "PACK_REMOTE_SOURCE_REJECTED"),
         ("registry_directory", "PACK_REMOTE_SOURCE_REJECTED"),
         ("lock", "PACK_REMOTE_SOURCE_REJECTED"),
         ("evidence", "EVIDENCE_REMOTE_SOURCE_REJECTED"),
         ("architecture", "ARCH_REPORT_REMOTE_SOURCE_REJECTED"),
+        ("governed_load", "PACKAGE_REMOTE_SOURCE_REJECTED"),
+        ("governed_validate", "PACKAGE_REMOTE_SOURCE_REJECTED"),
     ],
 )
 def test_aud011_public_governance_path_apis_reject_before_probe(
@@ -437,14 +646,34 @@ def test_aud011_public_governance_path_apis_reject_before_probe(
     api: str,
     expected: str,
 ) -> None:
-    unsafe = r"\\server\share\input.yaml"
-
-    def unexpected_filesystem_call(*args: object, **kwargs: object) -> os.stat_result:
-        raise AssertionError("filesystem inspection ran before lexical path rejection")
-
-    monkeypatch.setattr(os, "lstat", unexpected_filesystem_call)
+    unsafe = r"folder\CONOUT$.txt"
+    probes = _forbid_filesystem_probes(monkeypatch)
     with pytest.raises(GovernanceError) as caught:
-        if api == "registry_contract":
+        if api == "inspect_file":
+            inspect_local_file(
+                unsafe,
+                allowed_root=tmp_path,
+                code_prefix="PACK",
+                noun="Pack",
+            )
+        elif api == "inspect_directory":
+            inspect_local_directory(
+                unsafe,
+                allowed_root=tmp_path,
+                code_prefix="PACK",
+                noun="Pack",
+            )
+        elif api == "local_pack":
+            load_local_pack(unsafe, allowed_root=tmp_path)
+        elif api == "register_path":
+            GovernanceRegistry().register_path(
+                unsafe,
+                allowed_root=tmp_path,
+                source_tier="project",
+            )
+        elif api == "register_directory":
+            GovernanceRegistry().register_directory(unsafe, source_tier="project")
+        elif api == "registry_contract":
             registry_for_contract(unsafe)
         elif api == "registry_directory":
             registry_for_directory(unsafe)
@@ -452,30 +681,150 @@ def test_aud011_public_governance_path_apis_reject_before_probe(
             load_lock(unsafe)
         elif api == "evidence":
             validate_governance_evidence_file(unsafe, allowed_root=tmp_path)
-        else:
+        elif api == "architecture":
             import_architecture_evidence(unsafe, allowed_root=tmp_path)
+        elif api == "governed_load":
+            load_governed_package_source(unsafe)
+        else:
+            validate_governed_package_source(unsafe)
     assert _codes(caught.value) == {expected}
+    assert probes == []
+
+
+@pytest.mark.parametrize("api", ["package_lock", "registered_source"])
+def test_aud011_r1_governed_package_boundaries_reject_before_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    api: str,
+) -> None:
+    unsafe = r"folder\COM³.json"
+    probes = _forbid_filesystem_probes(monkeypatch)
+
+    if api == "package_lock":
+        diagnostics = verify_package_lock(unsafe)
+        assert [item.code for item in diagnostics] == ["UNSAFE_PACKAGE_PATH"]
+    else:
+        diagnostics = verify_registered_artifact_hashes(
+            {
+                "registration_mode": "existing",
+                "source_path": unsafe,
+                "artifacts": [],
+            },
+            tmp_path,
+        )
+        assert [item.code for item in diagnostics] == [
+            "UNSAFE_REGISTERED_SOURCE_PATH"
+        ]
+    assert "PACKAGE_REMOTE_SOURCE_REJECTED" in diagnostics[0].message
+    assert probes == []
+
+
+def test_aud011_r1_registered_artifact_rejects_before_unsafe_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "registered-source"
+    source.mkdir()
+    original_lstat = os.lstat
+
+    def guarded_lstat(
+        path: str | os.PathLike[str],
+        *args: object,
+        **kwargs: object,
+    ) -> os.stat_result:
+        if is_remote_or_device_path(path):
+            raise AssertionError("unsafe artifact reached os.lstat")
+        return original_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", guarded_lstat)
+    diagnostics = verify_registered_artifact_hashes(
+        {
+            "registration_mode": "existing",
+            "source_path": str(source),
+            "artifacts": [
+                {
+                    "path": r"artifacts\COM¹.txt",
+                    "sha256": "sha256:" + "0" * 64,
+                }
+            ],
+        },
+        tmp_path,
+    )
+    assert [item.code for item in diagnostics] == [
+        "UNSAFE_REGISTERED_ARTIFACT_PATH"
+    ]
+    assert "PACKAGE_REMOTE_SOURCE_REJECTED" in diagnostics[0].message
+
+
+def test_aud011_r1_lock_write_rejects_before_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry = GovernanceRegistry.builtins()
+    lock = lock_for_packs([registry.resolve_profile("minimal")])
+    probes = _forbid_filesystem_probes(monkeypatch)
+    with pytest.raises(GovernanceError) as caught:
+        write_lock(r"folder\CONIN$.lock", lock)
+    assert _codes(caught.value) == {"PACK_REMOTE_SOURCE_REJECTED"}
+    assert probes == []
 
 
 def test_aud011_direct_contract_parser_rejects_before_probe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    unsafe = r"\\server\share\contract.nyx"
-
-    def unexpected_filesystem_call(*args: object, **kwargs: object) -> bool:
-        raise AssertionError("filesystem inspection ran before lexical path rejection")
-
-    monkeypatch.setattr(Path, "exists", unexpected_filesystem_call)
+    unsafe = r"folder\CONIN$.nyx"
+    probes = _forbid_filesystem_probes(monkeypatch)
     with pytest.raises(NornyxParseError, match="remote or device-backed"):
         load_nyx(unsafe)
+    assert probes == []
+
+
+def test_aud011_r1_policy_ref_rejects_before_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probes = _forbid_filesystem_probes(monkeypatch)
+    with pytest.raises(NornyxParseError, match="remote or device-backed"):
+        _resolve_policy_refs(
+            {
+                "policies": [
+                    {
+                        "name": "UnsafeRef",
+                        "ref": r"folder\LPT².yaml#UnsafeRef",
+                    }
+                ]
+            },
+            tmp_path,
+        )
+    assert probes == []
 
 
 @pytest.mark.parametrize(
     "argv",
     [
-        ["profiles", "validate", r"\\server\share\profile.yaml"],
-        ["modules", "validate", r"\\server\share\module.yaml"],
-        ["evidence", "validate", r"\\server\share\evidence.yaml"],
+        ["check", r"folder\CONIN$.nyx"],
+        ["governance", "resolve", r"folder\CONOUT$.nyx", "--json"],
+        ["governance", "explain", r"folder\COM¹.nyx", "--json"],
+        ["governance", "matrix", r"folder\LPT³.nyx", "--json"],
+    ],
+)
+def test_aud011_r1_contract_clis_reject_before_probe(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> None:
+    probes = _forbid_filesystem_probes(monkeypatch)
+    assert main(argv) != 0
+    assert "PACK_REMOTE_SOURCE_REJECTED" in capsys.readouterr().out
+    assert probes == []
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["profiles", "validate", r"folder\COM¹.yaml"],
+        ["modules", "validate", r"folder\LPT².yaml"],
+        ["evidence", "validate", r"folder\CONOUT$.yaml"],
+        ["package", "validate", r"folder\COM³.json", "--json"],
     ],
 )
 def test_aud011_validation_clis_reject_before_probe(
@@ -483,12 +832,227 @@ def test_aud011_validation_clis_reject_before_probe(
     capsys: pytest.CaptureFixture[str],
     argv: list[str],
 ) -> None:
-    def unexpected_filesystem_call(*args: object, **kwargs: object) -> os.stat_result:
-        raise AssertionError("filesystem inspection ran before lexical path rejection")
-
-    monkeypatch.setattr(os, "lstat", unexpected_filesystem_call)
+    probes = _forbid_filesystem_probes(monkeypatch)
     assert main(argv) != 0
     assert "REMOTE_SOURCE_REJECTED" in capsys.readouterr().out
+    assert probes == []
+
+
+@pytest.mark.parametrize(
+    "api",
+    [
+        "validate_base",
+        "generate_source",
+        "generate_output",
+        "register_source",
+        "register_output",
+        "register_contract",
+        "radar_source",
+        "radar_output",
+        "scan_source",
+        "scan_output",
+        "write_reports_output",
+        "syft_report",
+        "gitleaks_report",
+        "adapter_source",
+        "adapter_report",
+        "scan_adapter_report",
+        "validator_class",
+        "generator_class_generate",
+        "generator_class_register",
+        "generator_class_radar",
+    ],
+)
+def test_aud011_r1_all_governed_package_path_boundaries_reject_before_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    api: str,
+) -> None:
+    unsafe = r"folder\CONIN$.json"
+    safe_source = tmp_path / "safe-source"
+    safe_output = tmp_path / "safe-output"
+    probes = _forbid_filesystem_probes(monkeypatch)
+
+    with pytest.raises((GovernanceError, ValueError)):
+        if api == "validate_base":
+            validate_governed_package(
+                {"package_lock": {"path": "package_lock.json"}},
+                base_dir=unsafe,
+            )
+        elif api == "generate_source":
+            generate_governed_package(unsafe, safe_output)
+        elif api == "generate_output":
+            generate_governed_package(safe_source, unsafe)
+        elif api == "register_source":
+            register_existing_package(unsafe, safe_output)
+        elif api == "register_output":
+            register_existing_package(safe_source, unsafe)
+        elif api == "register_contract":
+            register_existing_package(safe_source, safe_output, contract=unsafe)
+        elif api == "radar_source":
+            radar_governed_packages(unsafe, safe_output)
+        elif api == "radar_output":
+            radar_governed_packages(safe_source, unsafe)
+        elif api == "scan_source":
+            scan_package(unsafe)
+        elif api == "scan_output":
+            scan_package(safe_source, out_dir=unsafe)
+        elif api == "write_reports_output":
+            write_scan_reports({}, unsafe)
+        elif api == "syft_report":
+            parse_syft_report(Path(unsafe), "package")
+        elif api == "gitleaks_report":
+            parse_gitleaks_report(Path(unsafe), "package")
+        elif api == "adapter_source":
+            run_external_adapters([], package_id="package", source=Path(unsafe))
+        elif api == "adapter_report":
+            run_external_adapters(
+                [{"name": "syft", "report_path": unsafe}],
+                package_id="package",
+                source=safe_source,
+            )
+        elif api == "scan_adapter_report":
+            scan_package(
+                safe_source,
+                evidence_adapters=[{"name": "syft", "report_path": unsafe}],
+            )
+        elif api == "validator_class":
+            GovernedPackageValidator().validate(
+                {"package_lock": {"path": "package_lock.json"}},
+                base_dir=unsafe,
+            )
+        elif api == "generator_class_generate":
+            GovernedPackageGenerator().generate(unsafe, safe_output)
+        elif api == "generator_class_register":
+            GovernedPackageGenerator().register(unsafe, safe_output)
+        else:
+            GovernedPackageGenerator().radar(unsafe, safe_output)
+    assert probes == []
+
+
+def test_aud011_r1_embedded_package_lock_path_rejects_before_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probes = _forbid_filesystem_probes(monkeypatch)
+    with pytest.raises(GovernanceError):
+        validate_governed_package(
+            {"package_lock": {"path": r"artifacts\LPT².json"}},
+            base_dir=tmp_path,
+        )
+    assert probes == []
+
+
+@pytest.mark.parametrize(
+    "unsafe_report",
+    [
+        "https://example.invalid/report.json",
+        "file://server/share/report.json",
+        r"\\server\share\report.json",
+        "//server/share/report.json",
+    ],
+)
+@pytest.mark.parametrize("api", ["adapter", "scan"])
+def test_aud011_r1_raw_adapter_paths_reject_before_normalization_or_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    unsafe_report: str,
+    api: str,
+) -> None:
+    source = tmp_path / "safe-source"
+    config = [{"name": "syft", "report_path": unsafe_report}]
+    probes = _forbid_filesystem_probes(monkeypatch)
+
+    with pytest.raises(ValueError, match="device-backed"):
+        if api == "adapter":
+            run_external_adapters(config, package_id="package", source=source)
+        else:
+            scan_package(source, evidence_adapters=config)
+    assert probes == []
+
+
+@pytest.mark.parametrize("unsafe_name", ["COM¹.txt", "LPT³.log", "CONIN$"])
+def test_aud011_r1_discovered_artifact_rejects_before_entry_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    unsafe_name: str,
+) -> None:
+    class UnsafeEntry:
+        name = unsafe_name
+
+        def is_symlink(self) -> bool:
+            raise AssertionError("unsafe directory entry reached is_symlink")
+
+        def is_dir(self, *, follow_symlinks: bool = True) -> bool:
+            raise AssertionError("unsafe directory entry reached is_dir")
+
+        def is_file(self, *, follow_symlinks: bool = True) -> bool:
+            raise AssertionError("unsafe directory entry reached is_file")
+
+    class FakeScandir:
+        def __enter__(self) -> list[UnsafeEntry]:
+            return [UnsafeEntry()]
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    source = tmp_path / "safe-source"
+    monkeypatch.setattr(Path, "is_file", lambda self: False)
+    monkeypatch.setattr(os, "scandir", lambda path: FakeScandir())
+
+    with pytest.raises(ValueError, match="device-backed"):
+        iter_source_files(source)
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["package", "generate", r"folder\CONIN$.nyx", "--out", "safe-output"],
+        ["package", "generate", "safe.nyx", "--out", r"folder\COM¹"],
+        ["package", "register", r"folder\LPT²", "--out", "safe-output"],
+        ["package", "register", "safe-source", "--out", r"folder\CONOUT$"],
+        [
+            "package",
+            "register",
+            "safe-source",
+            "--contract",
+            r"folder\COM³.nyx",
+            "--out",
+            "safe-output",
+        ],
+        ["package", "radar", r"folder\CONIN$", "--out", "safe-output"],
+        ["package", "radar", "safe-source", "--out", r"folder\LPT¹.json"],
+        ["package", "scan", r"folder\COM²", "--out", "safe-output"],
+        ["package", "scan", "safe-source", "--out", r"folder\CONOUT$"],
+        [
+            "package",
+            "evidence",
+            "import",
+            "syft",
+            r"folder\COM¹.json",
+            "--out",
+            "safe-output",
+        ],
+        [
+            "package",
+            "evidence",
+            "import",
+            "gitleaks",
+            "safe-report.json",
+            "--out",
+            r"folder\LPT³.json",
+        ],
+    ],
+)
+def test_aud011_r1_package_clis_reject_every_path_before_probe(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> None:
+    probes = _forbid_filesystem_probes(monkeypatch)
+    assert main(argv) != 0
+    assert "device-backed" in capsys.readouterr().out.lower()
+    assert probes == []
 
 
 @pytest.mark.parametrize(

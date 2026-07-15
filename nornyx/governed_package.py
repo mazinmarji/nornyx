@@ -19,7 +19,13 @@ from .governance.loader import (
     read_local_file_bytes,
     reject_remote_or_device_path,
 )
-from .package_scanner import SCANNER_NAME, SCANNER_VERSION, scan_package, write_scan_reports
+from .package_scanner import (
+    SCANNER_NAME,
+    SCANNER_VERSION,
+    iter_source_files,
+    scan_package,
+    write_scan_reports,
+)
 from .parser import load_nyx
 
 
@@ -509,6 +515,11 @@ def _scan_report_hashes(out: Path) -> list[dict[str, str]]:
 
 
 def load_governed_package_source(source: str | Path) -> dict[str, Any]:
+    reject_remote_or_device_path(
+        source,
+        code_prefix="PACKAGE",
+        noun="Governed package source",
+    )
     path = Path(source)
     if path.suffix.lower() == ".json":
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -527,6 +538,12 @@ def validate_governed_package(
     *,
     base_dir: str | Path | None = None,
 ) -> list[Diagnostic]:
+    if base_dir is not None:
+        reject_remote_or_device_path(
+            base_dir,
+            code_prefix="PACKAGE",
+            noun="Governed package base directory",
+        )
     diagnostics: list[Diagnostic] = []
     if not isinstance(package, dict):
         return [_diag("INVALID_GOVERNED_PACKAGE", "governed_package must be a mapping", "governed_package")]
@@ -905,7 +922,13 @@ def validate_governed_package(
 
     package_lock = package.get("package_lock")
     if isinstance(package_lock, dict) and base_dir is not None:
-        lock_path = Path(base_dir) / str(package_lock.get("path", "package_lock.json"))
+        lock_reference = str(package_lock.get("path", "package_lock.json"))
+        reject_remote_or_device_path(
+            lock_reference,
+            code_prefix="PACKAGE",
+            noun="Package lock reference",
+        )
+        lock_path = Path(base_dir) / lock_reference
         if lock_path.exists():
             diagnostics.extend(verify_package_lock(lock_path.parent))
 
@@ -1020,9 +1043,18 @@ def _render_safety(package: dict[str, Any]) -> str:
 
 
 def generate_governed_package(source_file: str | Path, out_dir: str | Path) -> list[Path]:
+    reject_remote_or_device_path(
+        source_file,
+        code_prefix="PACKAGE",
+        noun="Governed package source",
+    )
+    reject_remote_or_device_path(
+        out_dir,
+        code_prefix="PACKAGE",
+        noun="Governed package output",
+    )
     source = Path(source_file)
     out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
     manifest = _manifest_from_source(source)
     scan = scan_package(
         source,
@@ -1314,9 +1346,8 @@ def verify_registered_artifact_hashes(
 
 def _inventory_existing(source_dir: Path) -> list[dict[str, Any]]:
     artifacts: list[dict[str, Any]] = []
-    for path in sorted(source_dir.rglob("*")):
-        if not path.is_file() or any(part in {".git", "__pycache__"} for part in path.parts):
-            continue
+    _, files = iter_source_files(source_dir, skip_dirs={".git", "__pycache__"})
+    for path in files:
         rel = path.relative_to(source_dir).as_posix()
         artifacts.append(
             {
@@ -1384,11 +1415,26 @@ def register_existing_package(
     *,
     contract: str | Path | None = None,
 ) -> list[Path]:
+    reject_remote_or_device_path(
+        source_dir,
+        code_prefix="PACKAGE",
+        noun="Existing package source",
+    )
+    reject_remote_or_device_path(
+        out_dir,
+        code_prefix="PACKAGE",
+        noun="Registered package output",
+    )
+    if contract is not None:
+        reject_remote_or_device_path(
+            contract,
+            code_prefix="PACKAGE",
+            noun="Governed package contract",
+        )
     source = Path(source_dir)
     if not source.is_dir():
         raise ValueError(f"existing package source is not a directory: {source}")
     out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
     manifest = _registration_manifest(source, contract)
     scan = scan_package(
         source,
@@ -1514,6 +1560,16 @@ def radar_governed_packages(
     *,
     suggest_contract: bool = False,
 ) -> dict[str, Any]:
+    reject_remote_or_device_path(
+        source_dir,
+        code_prefix="PACKAGE",
+        noun="Radar source",
+    )
+    reject_remote_or_device_path(
+        out,
+        code_prefix="PACKAGE",
+        noun="Radar output",
+    )
     source = Path(source_dir)
     if not source.is_dir():
         raise ValueError(f"radar source is not a directory: {source}")
@@ -1666,6 +1722,11 @@ def radar_governed_packages(
 
 
 def validate_governed_package_source(path: str | Path) -> list[Diagnostic]:
+    reject_remote_or_device_path(
+        path,
+        code_prefix="PACKAGE",
+        noun="Governed package source",
+    )
     source = Path(path)
     if source.is_dir():
         manifest = source / "package_manifest.json"

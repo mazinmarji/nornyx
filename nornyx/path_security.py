@@ -6,7 +6,8 @@ import re
 
 _URI_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _WINDOWS_DEVICE_COMPONENT = re.compile(
-    r"^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$",
+    r"^(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|"
+    r"COM[1-9\u00b9\u00b2\u00b3]|LPT[1-9\u00b9\u00b2\u00b3])(?:\..*)?$",
     re.IGNORECASE,
 )
 
@@ -37,14 +38,15 @@ def is_remote_or_device_path(path: str | os.PathLike[str]) -> bool:
     if lowered.startswith(("\\??\\", "\\device\\", "\\global??\\")):
         return True
 
-    # Windows device names retain their special meaning with extensions and
-    # when they occur below an otherwise ordinary directory.
+    # Windows device names retain their special meaning with extensions, ADS
+    # suffixes, and when they occur below an otherwise ordinary directory.
+    # Normalize each component in a host-independent order: remove the stream
+    # suffix, trim Windows-ignored trailing dots/spaces, then inspect the base
+    # component including an optional extension.
     for component in re.split(r"[\\/]", text):
-        candidate = component.rstrip(" .")
+        candidate = component.split(":", 1)[0].rstrip(" .")
         if not candidate:
             continue
-        # A stream suffix does not make a reserved DOS device safe.
-        candidate = candidate.split(":", 1)[0]
         if _WINDOWS_DEVICE_COMPONENT.fullmatch(candidate):
             return True
     return False

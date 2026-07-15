@@ -273,21 +273,31 @@ def cmd_package_evidence_import(args: argparse.Namespace) -> int:
         )
         return 1
     try:
+        reject_remote_or_device_path(
+            args.report_path,
+            code_prefix="PACKAGE",
+            noun="External evidence report",
+        )
+        reject_remote_or_device_path(
+            args.out,
+            code_prefix="PACKAGE",
+            noun="External evidence output",
+        )
         records = parser(Path(args.report_path), args.package_id)
+        payload = {
+            "status": "pass",
+            "tool": tool,
+            "package_id": args.package_id,
+            "evidence_count": len(records),
+            "evidence": records,
+        }
+        out_path = Path(args.out)
+        if out_path.suffix.lower() != ".json":
+            out_path = out_path / f"{tool}_normalized_evidence.json"
+        write_json(out_path, payload)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(json.dumps({"level": "error", "code": "EVIDENCE_IMPORT_ERROR", "message": str(exc)}, indent=2))
         return 1
-    payload = {
-        "status": "pass",
-        "tool": tool,
-        "package_id": args.package_id,
-        "evidence_count": len(records),
-        "evidence": records,
-    }
-    out_path = Path(args.out)
-    if out_path.suffix.lower() != ".json":
-        out_path = out_path / f"{tool}_normalized_evidence.json"
-    write_json(out_path, payload)
     print(json.dumps({"status": "pass", "out": out_path.as_posix(), "evidence_count": len(records)}, indent=2))
     return 0
 

@@ -5,6 +5,9 @@ import subprocess
 import sys
 import tempfile
 
+from scripts.test_wheel_install import NETWORK_ENVIRONMENT
+from scripts.wheel_network_guard import run_self_test
+
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "95952226999327458c6fea81cb32d82539bcae5b"
@@ -185,10 +188,23 @@ def test_aud014_fresh_autocrlf_checkout_preserves_hash_bound_behavior() -> None:
         )
 
 
-def test_aud021_wheel_smoke_enforces_observed_no_network() -> None:
+def test_aud021_wheel_smoke_enforces_observed_no_network(tmp_path: Path) -> None:
+    attempts = run_self_test(tmp_path / "network-guard-self-test.jsonl")
+    operations = {item["operation"] for item in attempts}
+    assert {
+        "socket.socket",
+        "socket.connect",
+        "socket.connect_ex",
+        "socket.sendto",
+        "socket.create_connection",
+        "socket.getaddrinfo",
+    } <= operations
     source = (ROOT / "scripts" / "test_wheel_install.py").read_text(encoding="utf-8")
     assert '"--no-index"' in source
-    assert "socket" in source
+    assert '"--no-deps"' in source
+    assert '"PIP_DISABLE_PIP_VERSION_CHECK"' in source
+    for name in NETWORK_ENVIRONMENT:
+        assert name in source
     assert '"network_used": False' not in source
     assert "network_attempts" in source
 
