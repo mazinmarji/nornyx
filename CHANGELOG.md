@@ -4,7 +4,7 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
-## Unreleased
+## [1.6.0] - 2026-07-16
 
 ### Audit remediation
 - The independent audit of candidate
