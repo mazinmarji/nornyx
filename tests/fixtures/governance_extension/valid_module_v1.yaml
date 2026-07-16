@@ -1,7 +1,7 @@
 schema: nornyx.governance_module.v1
 kind: module
-id: org.example.evidence_integrity
-name: evidence_integrity
+id: org.example.fixture_evidence_integrity
+name: fixture_evidence_integrity
 version: 1.0.0
 compatible_core: ">=0.2 <=1.0"
 dependencies: []

@@ -1,4 +1,8 @@
-# 14 — Final Independent Architecture Audit
+# 14 — Pre-Implementation Independent Architecture Audit
+
+Status: historical audit record. All conditions below were resolved during
+implementation. The current closure audit is report 22; the current placement
+decisions are ADR-0030 and ADR-0031.
 
 Role: independent, adversarial architecture review board. The design (docs
 01–13 + appendix) is examined against Nornyx's declared identity
@@ -28,9 +32,9 @@ resource-limit, lock-schema, and identity rules. F-07 remains a standing module
 freeze after PR 6. F-08 is resolved in favor of removing root mirrors when
 built-ins migrate.
 
-PR 1 readiness is determined only after the full validation matrix passes. No
-runtime loader, composition, migration, or new profile is implied by this
-closure review.
+This paragraph records the historical PR 1 boundary. It is not a statement of
+current implementation: loader, composition, migration, modules, and the
+architecture profile are now implemented and independently tested.
 
 ## Original findings
 
@@ -91,20 +95,23 @@ Project-tier packs are repo-trusted (mitigation: lock diffs in code review);
 prose fields as prompt-injection carriers (render-inert guidance); hash locks
 prove integrity, not intent.
 
-## Deferred risks
+## Historical deferred risks
 
 Multi-profile composition pressure (registry keeps plural internally);
 entry-point discovery demand from packaged-profile vendors; rule-language
-operator growth (ADR-gated); architecture radar heuristics.
+operator growth (ADR-gated). Architecture Radar was subsequently
+`rejected_with_ADR` by ADR-0030 and is not an open program risk.
 
 ## Rejected alternatives worth revisiting
 
 Profile inheritance (`extends:`) — rejected for diamond ambiguity; revisit if
 fragment duplication across the 11 built-ins becomes measurably painful.
 Python entry points — revisit only with a concrete multi-distribution use case.
-Architecture Radar — revisit post-PR 6 with real evidence corpora.
+Architecture Radar — historical candidate, now `rejected_with_ADR` by
+ADR-0030; re-entry is outside the current program and requires its stated
+evidence conditions.
 
-## MVP scope
+## Historical MVP scope
 
 PRs 1–4 (spec, loader/registry, composition/rules, migration). This alone
 delivers the headline: new domains without Python changes, single source of
@@ -114,9 +121,24 @@ truth, org distribution, locks.
 composition; overlays; architecture radar; GSA tooling; the six deferred
 modules; any rule operator beyond the closed set; `governance analyze`.
 
-## Recommended first implementation PR
+## Historical first implementation recommendation
 
 PR 1 exactly as scoped in doc 12, with conditions C1/C2/C5 spec text folded in
 before it is opened. It is documentation + draft schemas only, independently
 reviewable, and forces the contested semantics (quantifiers, projection,
 hashing) to be settled where they are cheapest — on paper.
+
+## Current closure of original findings
+
+| Finding set | Current status | Closure evidence |
+|---|---|---|
+| F-01 through F-06 | `implemented` | starter compatibility corpus, exact legacy projection, source-retained approval normalization, canonical pack hashes, deterministic locks, explicit org registration |
+| F-07 | `implemented` | ADR-0031 freezes the builtin module catalog at six after no later GSA candidate passed the proliferation gate |
+| F-08 | `superseded` | root profile mirrors were removed; packaged v1 packs are authoritative |
+| F-09 | `implemented` | scanner hardening preceded shared change reconciliation; see the scanner integration appendix |
+| F-10 through F-13 | `implemented` | scalar-only override rules, resource caps, timestamp-free lock schema, and strict identifier grammar are schema/runtime tested |
+| Architecture Radar | `rejected_with_ADR` | ADR-0030 records the specialist-tool and evidence-boundary decision |
+| Remaining specialist modules | final GSA placements | ADR-0031 and docs 17-18 record external, superseded, or not-required outcomes |
+
+No condition in this historical audit remains a mandatory roadmap item. Report
+22 performs the final independent audit against the completed implementation.

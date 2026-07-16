@@ -47,7 +47,7 @@ Profile names such as `telecom_ops`, `business_ops`, `ai_governance`, and
 
 ### Current source of truth
 
-The 11 structured v1 packs under `nornyx/profiles_data/` are authoritative and
+The 12 structured v1 packs under `nornyx/profiles_data/` are authoritative and
 are included in the wheel. They are loaded through the local-only governance
 registry by `nornyx init`, `nornyx profiles`, and pack-aware `nornyx check`.
 The old root `profiles/*.yaml` mirrors were removed to prevent dual-source
@@ -97,5 +97,7 @@ Profile validation covers:
 - non-goals that block runtime execution, automatic approvals, and production
   deployment.
 
-v0.6 is reserved for stricter domain-profile conformance after adapters and
-ecosystem boundaries are clearer.
+The v0.6 domain-profile conformance surface is implemented. The additive
+`architecture_governance` profile is v1-only and is not projected into the six
+historical v0.3 domain-pack catalog. New profile semantics remain optional and
+do not become stable core concepts.

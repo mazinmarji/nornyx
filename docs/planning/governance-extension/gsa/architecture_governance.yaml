@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: architecture_governance
+what_is_governed: [architecture_declaration, architecture_change, conformance_evidence, decision]
+why: Bind declared architecture and specialist evidence to human authority.
+owner: architecture_owner
+who_may_act: [architecture_author, architect, external_evidence_producer]
+allowed: [declare_architecture, import_evidence, propose_change, approve_decision]
+denied: [source_inference, tool_execution, automatic_approval, remediation]
+approval_required: [major_architecture_change, architecture_exception]
+evidence: [architecture_report, adr, change_record, approval_record]
+stale_or_false_detection: [artifact_hash, revision_binding, expiry, check_match]
+drift_detection: [ci_check, architecture_evidence_refresh]
+containment: [no_source_analysis, no_execution, rollback, expiring_exception]
+authority_expiry: approval_and_evidence_expiry
+retirement: supersede_decision_close_change_and_archive_evidence
+required_modules: [architecture_conformance]
+recommended_modules: []

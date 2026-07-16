@@ -1,5 +1,8 @@
 # 09 — Governance Surface Analysis (GSA) Method
 
+Status: implemented documented method with validated advisory matrices; runtime
+tooling is `not_required_after_GSA`.
+
 A repeatable, documented method for deciding what Nornyx should govern and
 where each control belongs. Inspired by STPA-style control analysis; it is a
 **prioritization method, not a mathematical proof of completeness**.
@@ -48,10 +51,10 @@ denied? What requires approval? What proves compliance? How is stale/false
 evidence detected? How is drift detected? How is failure contained? When does
 authority expire? How is the object retired?
 
-Deliverable format: one YAML matrix per profile in adjacent advisory docs
-(not embedded as enforceable pack data), plus a report schema
-`nornyx.gsa_report.v1` if PR 7 justifies tooling; the method is usable with no
-tooling at all.
+Deliverable format: one YAML matrix per profile in adjacent advisory docs,
+never embedded as enforceable pack data. Stage E found no need for a
+`nornyx.gsa_report.v1` schema or CLI; ADR-0031 records that runtime tooling is
+`not_required_after_GSA`.
 
 ## Prioritization model (auditable, ordinal)
 
@@ -66,7 +69,9 @@ coverage.
 
 ## Dogfood requirement
 
-PR 7 applies the method to Nornyx itself (the pack system is a new
-trust-boundary crossing — pack sources are step-9 entries) and records the
-matrix for: contracts, packs, governed packages, external evidence, generated
-artifacts. The doc 10 threat model is the step-12 output for the pack system.
+Stage E applied the method to Nornyx itself, including the pack system as a new
+trust-boundary crossing, and recorded contracts, packs, modules, governed
+packages, external evidence, generated artifacts, approvals, exceptions,
+changes, architecture, and release decisions in doc 18. The doc 10 threat
+model remains the step-12 output for the pack system. All twelve profile
+matrices are under `gsa/` and validated as advisory documents by tests.

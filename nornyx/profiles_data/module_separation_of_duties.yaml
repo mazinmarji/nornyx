@@ -1,0 +1,69 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.separation_of_duties
+name: separation_of_duties
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies:
+  - nornyx.builtin.module.human_approval
+conflicts: []
+required_blocks:
+  - separation_of_duties
+  - changes
+block_schemas:
+  - block: separation_of_duties
+    schema_id: https://nornyx.dev/schemas/separation_of_duties_v1.schema.json
+  - block: changes
+    schema_id: https://nornyx.dev/schemas/change_v1.schema.json
+structural_checks:
+  - separation_of_duties.v1
+policies:
+  - id: separation_of_duties_policy
+    description: Independent roles are required at high-impact decision boundaries.
+    deny:
+      - self approval of high-risk changes
+      - sole approval by evidence producers when independence is required
+    require:
+      - disjoint release and exception authorities where declared
+evidence_requirements:
+  - id: independent_review_record
+    type: independent_review_record
+    required: true
+    schema_id: nornyx.governance_evidence.v1
+    revision_bound: true
+approval_requirements: []
+evaluations:
+  - id: separation_of_duties_evaluation
+    metrics:
+      - self_approval_absent
+      - independent_approver_present
+    required_evidence:
+      - independent_review_record
+rules:
+  - id: SOD-001
+    description: At least one separation-of-duties assignment must exist.
+    require:
+      - path: separation_of_duties.assignments
+        min_count: 1
+    severity: error
+    message: Separation-of-duties assignments may not be empty.
+non_goals:
+  - resolving organizational identity
+  - changing permissions or role membership
+  - approving exceptions or releases
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-b
+integrity:
+  algorithm: sha256
+  content_hash: sha256:98262e7fc55ee01673df06fe59d55b5fa698aa1a77c5d625e83853a16b5433bc
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: nornyx_language
+what_is_governed: [language_change, schema_change, architecture_decision, release_candidate]
+why: Protect stable language and safety boundaries.
+owner: nornyx_maintainers
+who_may_act: [language_author, architect, independent_reviewer]
+allowed: [propose_spec_change, validate_schema, review_release_candidate]
+denied: [unapproved_core_change, automatic_release, executable_profile_code]
+approval_required: [stable_core_change, release, exception]
+evidence: [change_record, architecture_report, compatibility_report, release_report]
+stale_or_false_detection: [revision_hash, golden_corpus, independent_audit]
+drift_detection: [schema_sync_test, generated_drift, release_check]
+containment: [core_freeze, rollback_commit, no_publish_without_approval]
+authority_expiry: approval_invalidates_on_revision_or_scope_change
+retirement: deprecate_with_migration_and_superseding_decision
+required_modules: []
+recommended_modules: [architecture_conformance]

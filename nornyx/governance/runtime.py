@@ -5,24 +5,97 @@ from typing import Any, Mapping
 
 from .composition import compose_governance
 from .errors import GovernanceError, error
+from .loader import (
+    _reject_symlink_components,
+    inspect_local_directory,
+    reject_remote_or_device_path,
+)
 from .locks import load_lock
 from .models import CompositionResult, GovernanceDiagnostic
 from .registry import GovernanceRegistry
 from .rules import evaluate_rules
+from .schemas import validate_governance_block
+from .structural import evaluate_structural_checks
 
 
-def registry_for_directory(root: str | Path) -> GovernanceRegistry:
+def _absolute_without_resolving(path: Path) -> Path:
+    return path if path.is_absolute() else Path.cwd() / path
+
+
+def registry_for_directory(
+    root: str | Path,
+    *,
+    trust_root: str | Path | None = None,
+) -> GovernanceRegistry:
+    reject_remote_or_device_path(root, code_prefix="PACK", noun="Project")
+    if trust_root is not None:
+        reject_remote_or_device_path(
+            trust_root,
+            code_prefix="PACK",
+            noun="Project",
+        )
+    project_root = _absolute_without_resolving(Path(root))
+    inspection_root = (
+        None
+        if trust_root is None
+        else _absolute_without_resolving(Path(trust_root))
+    )
+    inspected_project = inspect_local_directory(
+        project_root,
+        allowed_root=project_root,
+        trust_root=inspection_root,
+        code_prefix="PACK",
+        noun="Project",
+    )
+    assert inspected_project is not None
+    nornyx_root = project_root / ".nornyx"
+    inspected_nornyx = inspect_local_directory(
+        nornyx_root,
+        allowed_root=project_root,
+        trust_root=inspection_root,
+        code_prefix="PACK",
+        noun="Project governance",
+        allow_missing=True,
+    )
+    discovered: list[Path] = []
+    if inspected_nornyx is not None:
+        for directory_name in ("profiles", "modules"):
+            directory = nornyx_root / directory_name
+            inspected = inspect_local_directory(
+                directory,
+                allowed_root=project_root,
+                trust_root=inspection_root,
+                code_prefix="PACK",
+                noun=f"Project {directory_name}",
+                allow_missing=True,
+            )
+            if inspected is not None:
+                discovered.append(inspected)
+
+    # Bundled discovery is intentionally deferred until every caller-controlled
+    # project component has passed inspection.
     registry = GovernanceRegistry.builtins()
-    nornyx_root = Path(root).resolve() / ".nornyx"
-    for directory_name in ("profiles", "modules"):
-        directory = nornyx_root / directory_name
-        if directory.is_dir():
-            registry.register_directory(directory, source_tier="project")
+    for directory in discovered:
+        registry.register_directory(
+            directory,
+            source_tier="project",
+            trust_root=inspection_root,
+        )
     return registry
 
 
 def registry_for_contract(path: str | Path) -> GovernanceRegistry:
-    return registry_for_directory(Path(path).resolve().parent)
+    reject_remote_or_device_path(path, code_prefix="PACK", noun="Contract")
+    supplied = Path(path)
+    contract = _absolute_without_resolving(supplied)
+    trust_root = Path(contract.anchor) if supplied.is_absolute() else Path.cwd()
+    _reject_symlink_components(
+        contract,
+        trust_root,
+        code_prefix="PACK",
+        noun="Contract",
+    )
+    return registry_for_directory(contract.parent, trust_root=trust_root)
 
 
 def compose_document_governance(
@@ -69,6 +142,8 @@ def evaluate_document_governance(
     *,
     registry: GovernanceRegistry,
     lock_path: str | Path | None = None,
+    as_of: str | None = None,
+    document_root: str | Path | None = None,
 ) -> tuple[GovernanceDiagnostic, ...]:
     composition = compose_document_governance(
         document,
@@ -92,4 +167,41 @@ def evaluate_document_governance(
                     ),
                 )
         return ()
-    return evaluate_rules(document, composition.rules)
+    diagnostics: list[GovernanceDiagnostic] = []
+    enforced_blocks = sorted(
+        {
+            block
+            for module in composition.modules
+            for block in module.required_blocks
+        }
+    )
+    for block in enforced_blocks:
+        if block not in document:
+            diagnostics.append(
+                GovernanceDiagnostic(
+                    "error",
+                    "GOVERNANCE_REQUIRED_BLOCK_MISSING",
+                    f"Selected governance modules require top-level block {block!r}.",
+                    path=block,
+                )
+            )
+    for binding in composition.block_schemas:
+        if binding.block in document:
+            diagnostics.extend(
+                validate_governance_block(
+                    binding.block,
+                    document[binding.block],
+                    binding.schema_id,
+                    source_id=binding.source_id,
+                )
+            )
+    diagnostics.extend(evaluate_rules(document, composition.rules))
+    diagnostics.extend(
+        evaluate_structural_checks(
+            document,
+            composition,
+            as_of=as_of,
+            document_root=document_root,
+        )
+    )
+    return tuple(diagnostics)

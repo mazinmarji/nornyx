@@ -6,6 +6,146 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## Unreleased
 
+### Audit remediation
+- The independent audit of candidate
+  `35ee69359599af7887f6b9b58ae0a4cd06a48d25` returned `NO-GO` with
+  AUD-001 through AUD-022. Earlier compatibility, security, closure, and
+  release-candidate claims are superseded while remediation is in progress.
+  The PR remains draft and no merge or release action is authorized.
+- Stage 2 closes the implementation gaps for AUD-001, AUD-002, AUD-009,
+  AUD-010, AUD-011, and AUD-018 pending final cross-platform validation:
+  anchor-derived unresolved-component inspection rejects links/reparse points
+  before discovery, profile/module identity is globally collision-safe, locks
+  are bounded and strict, remote/device paths are rejected lexically, and the
+  exact plus descendant built-in namespace is reserved.
+- The same filesystem invariant now protects adjacent workspace member sync,
+  governed-package lock/artifact verification, architecture reports, evidence
+  artifacts, and direct parser/API paths.
+- Stage 3 closes AUD-003 through AUD-007 and AUD-012 pending full integration:
+  accountable authority is intrinsically human-only, authority metadata is
+  never coerced, standalone approvals bind to one governed revision,
+  high-risk roles are checked as a strict authorized subset, and effective
+  approvals retain bounded verifiable source lineage under ADR-0032.
+- Stage 4 closes AUD-008 and AUD-013 pending full integration: declared SOD
+  approvers are non-empty, human, joined to the exact change, restrictive
+  approval gates, and corresponding evidence, with high-risk self-approval and
+  declared-independence overlap rejected. The SOD module now declares its
+  shared `changes` block/schema dependency. Exception expiry, overlap, closure,
+  lifecycle, core-target, and explicit renewal semantics now fail closed;
+  renewal approval proof is exact-type, authority-bound, fresh before
+  activation, unique across artifacts and predecessor chains, and matched
+  exactly by its renewal-action gate.
+- An adjacent evidence-authority bypass found during Stage 4 is also closed:
+  only `pass` records whose complete dependency chains pass may satisfy module,
+  approval, change, exception, closure, or renewal evidence requirements.
+- Structural enum handling is fail-closed and crash-safe: mappings, arrays,
+  booleans, and numbers cannot reach hash-based lifecycle, risk, architecture,
+  or claimed-approval-schema comparisons.
+- Stage 5 closes AUD-014 through AUD-016 pending final integration: every
+  repository artifact whose raw bytes are hash-bound is protected from Git
+  line-ending conversion and a real `core.autocrlf=true` clone exercises the
+  affected commands and corpus; governed-package changes retain the exact
+  1.5.2 accept/reject domain through a compatibility adapter; public 1.x
+  constructor prefixes and v1 serializers remain unchanged and are exercised
+  by a downstream installed-wheel consumer.
+- The additive architecture example now attributes its decision record to the
+  change author rather than its approving architect, preserving the declared
+  evidence/approval separation; the compatibility corpus pins the corrected
+  canonical bytes for later migration-proof validation.
+- Stage 6 closes AUD-019 through AUD-022 pending full integration: every lock
+  loading or validation failure on governance inspection surfaces uses exit
+  code 2; five intentional output/example migrations have immutable before and
+  after artifacts plus exact machine-verified diffs; the installed-wheel smoke
+  denies and records socket use while installing only the local wheel; and CI
+  checks whitespace across the complete candidate range from the audited base.
+- Approved migration evidence is bound by the markers
+  `migration:explain-declared-controls-v1`,
+  `migration:explain-effective-approval-v1`,
+  `migration:modules-sod-contract-v1`,
+  `migration:matrix-sod-contract-v1`,
+  `migration:architecture-evidence-separation-v1`, and the additive
+  `migration:architecture-governance-starter-v1` record. These records reflect
+  the human-requested audit remediation; they do not grant runtime authority.
+
+### Added
+- Foundational data-only governance modules for human approval, evidence
+  integrity, separation of duties, and exception management, with packaged
+  schemas, deterministic monotonic composition, fixed structural checks, an
+  executable local-evidence example, and adversarial coverage.
+- Shared declarative change governance with evidenced lifecycle transitions,
+  risk-proportionate human approval, revision and scope binding, rollback and
+  closure checks, and one additive schema reused by governed packages.
+- Optional architecture governance profile and conformance module with bounded
+  declarations, revision-bound external evidence, a safe neutral-report
+  importer, deterministic starter, and fixed reference/direction checks.
+- Bounded module block-schema bindings. Packs may select only reviewed schemas
+  bundled with Nornyx; inline schemas, remote references, custom validators,
+  dynamic code, and unknown structural checks fail closed.
+- Governance Surface Analysis dogfood, one validated advisory completeness
+  matrix for each profile, and a compatibility-preserving profile/module
+  mapping. GSA remains documentation, not a runtime schema or command.
+- Read-only `modules list/inspect/validate`, `governance
+  resolve/explain/matrix`, and `evidence validate` commands with text/JSON
+  output, stable exit semantics, lock status, provenance, controls,
+  requirements, exception status, and bounded local evidence verification.
+- Public `validate_governance_evidence_file` API and an explicit governance API
+  stability/deprecation policy.
+- A formal compatibility corpus covering starters, examples, legacy API
+  projections, CLI output/exit codes, generated artifacts, locks, manifests,
+  and approved migrations, plus adversarial assurance for every new governance
+  trust boundary.
+
+### Changed
+- Project contract checking now rejects every unresolved symlink component
+  before reading the contract or discovering project governance packs.
+- Approval composition intersects non-empty eligible human-role sets and fails
+  on disjoint or required-role conflicts instead of broadening authority.
+- Explicit normalized-v2 and effective-approval output retains
+  `exact_revision_required` and relative `expires_after` independently from
+  concrete revision bindings and absolute expiry timestamps; base-compatible
+  `to_dict()` serializers remain v1.
+- Approval normalization rejects non-string or empty accountable authority
+  instead of coercing it into an apparent human identity.
+- Approval authority now explicitly denies autonomous agents, models,
+  connectors, and generated output in addition to AI tools and execution
+  surfaces. Claimed normalized approvals are still fully re-derived from their
+  retained source before use.
+- Selected modules now enforce their required blocks, block schemas, evidence
+  contracts, and fixed relational checks. Legacy profile-only requirements
+  remain compatibility-preserving unless a module is explicitly selected.
+- Governed-package changes retain the exact 1.x input domain through a frozen
+  compatibility adapter and matching package schemas. The strict shared
+  `nornyx.change.v1` identity and lifecycle rules apply only to an explicitly
+  selected top-level `change_control` block; legacy nested extension metadata
+  is not reinterpreted as governance authority.
+- Architecture analysis remains external: Nornyx imports only a versioned
+  local data envelope and never executes tools or infers repository structure.
+  Architecture Radar is rejected for the current program by ADR-0030.
+- Specialist candidate placement is closed by ADR-0031: supply-chain controls
+  remain governed-package/external-evidence integrations, release control is
+  superseded by existing release tooling and shared modules, and data
+  protection, common lifecycle, and incident response are not required after
+  GSA. The module catalog is frozen at six for this program.
+- Local evidence-file loading now reuses the pack loader's unresolved-component
+  symlink inspection, containment, resource limits, and safe YAML parser with
+  evidence-specific fail-closed diagnostics.
+- Project-local `.nornyx` discovery now preserves the unresolved project trust
+  root and rejects symlinked ancestor components before enumerating profile or
+  module packs.
+- Governance block-schema validation now detects nested local-reference cycles
+  and dangling local references, not only direct `$defs` aliases.
+- Raw approval role lookup now fails closed on normalization/schema errors;
+  non-string or empty authority values cannot normalize as roles, evidence, or
+  governed actions, required roles must always be eligible, and offset
+  timestamp formats are checked explicitly.
+- Architecture report import now inspects unresolved path components from an
+  independent trust root and rejects symlinked ancestors before reading.
+- Approval and exception evidence names now resolve against actual governance
+  evidence records; closed exceptions require available closure evidence.
+- Explicit non-human actor identities such as `tool:*`, `agent:*`, `model:*`,
+  `connector:*`, and `system:*` are denied approval, separation-of-duties, and
+  exception authority in addition to the existing category denials.
+
 ## [1.5.2] - 2026-07-13
 
 ### Fixed

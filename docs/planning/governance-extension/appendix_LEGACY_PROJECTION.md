@@ -1,7 +1,8 @@
 # Appendix - v1 to Legacy v0.3 Projection (F-04)
 
-Status: normative PR 1 compatibility contract. The production API remains
-unchanged until a future loader PR.
+Status: implemented normative compatibility contract. The production facade
+uses this exact projection and keeps loss diagnostics out of the strict v0.3
+object.
 
 ## Version separation
 
@@ -38,7 +39,7 @@ inserted into that object: an extra `projected_from` field would violate the
 strict legacy schema.
 
 Source identity, source version, omitted fields, and loss diagnostics live in a
-separate `nornyx.profile_pack_projection_report.v1` sidecar. A future
+separate `nornyx.profile_pack_projection_report.v1` sidecar. The
 `profile_pack_projection_report(name)` API exposes it. The existing
 `profile_pack(name)` API continues returning the exact v0.3-shaped dictionary
 for one deprecation cycle; a new v1-native API returns the authoritative pack.
@@ -90,6 +91,6 @@ the frozen schema remains available for historical validation.
 
 ## F-04 closure
 
-Resolution: closed for PR 1. Fixtures prove a valid v0.3 pack, a valid v1 pack,
+Resolution: implemented. Fixtures prove a valid v0.3 pack, a valid v1 pack,
 an exact schema-valid projection, and a projection that must fail because
 unsupported semantics were marked must-preserve.

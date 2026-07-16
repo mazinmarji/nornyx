@@ -11,7 +11,8 @@
     "telecom_ops",
     "business_ops",
     "ai_governance",
-    "finance_ops"
+    "finance_ops",
+    "architecture_governance"
   ],
   "base_profiles": [
     "minimal",
@@ -29,5 +30,12 @@
     "ai_governance",
     "finance_ops"
   ],
-  "modules": []
+  "modules": [
+    "evidence_integrity",
+    "human_approval",
+    "separation_of_duties",
+    "exception_management",
+    "change_control",
+    "architecture_conformance"
+  ]
 }

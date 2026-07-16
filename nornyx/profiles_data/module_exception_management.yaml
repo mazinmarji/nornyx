@@ -1,0 +1,94 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.exception_management
+name: exception_management
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies:
+  - nornyx.builtin.module.separation_of_duties
+conflicts: []
+required_blocks:
+  - exceptions
+block_schemas:
+  - block: exceptions
+    schema_id: https://nornyx.dev/schemas/governance_exception_v1.schema.json
+structural_checks:
+  - exception_management.v1
+policies:
+  - id: exception_management_policy
+    description: Exceptions are temporary, human-authorized, evidenced, and bounded.
+    deny:
+      - exceptions to core safety invariants
+      - automatic renewal
+      - self-approved exceptions
+    require:
+      - explicit expiry
+      - compensating controls
+      - closure evidence
+evidence_requirements:
+  - id: exception_review_record
+    type: exception_review_record
+    required: true
+    schema_id: nornyx.governance_evidence.v1
+    revision_bound: true
+approval_requirements:
+  - id: exception_authority
+    required_roles:
+      - governance_owner
+    eligible_roles:
+      - governance_owner
+      - risk_owner
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence:
+      - exception_review_record
+    actions:
+      - approve_exception
+    timing: before_action
+    accountable_authority: governance_owner
+    exact_revision_required: true
+    invalidation_conditions:
+      - scope_changed
+      - compensating_control_changed
+    expires_after: PT24H
+evaluations:
+  - id: exception_management_evaluation
+    metrics:
+      - core_controls_not_excepted
+      - active_exceptions_unexpired
+      - exception_authority_disjoint
+    required_evidence:
+      - exception_review_record
+rules:
+  - id: EXC-001
+    description: Exceptions must originate in the project contract.
+    require:
+      - path: exceptions.source
+        equals: project_contract
+    severity: error
+    message: Governance exceptions must be project-contract declarations.
+non_goals:
+  - weakening core safety or pack integrity
+  - automatically renewing or approving exceptions
+  - executing compensating controls
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-b
+integrity:
+  algorithm: sha256
+  content_hash: sha256:1ed4e56012ef1f37b22cc61119bde0e427511df56c299b79c633a1828f4bdf30
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

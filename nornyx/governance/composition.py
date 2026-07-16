@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
 from types import MappingProxyType
 from typing import Any, Iterable, Mapping
 
-from .approvals import normalize_approval
+from .approvals import compose_effective_approval, normalize_approval
 from .errors import GovernanceError, error
 from .locks import verify_lock
 from .models import (
     CompositionResult,
+    GovernanceBlockSchema,
     GovernanceModule,
     NormalizedApproval,
     ProfileLock,
@@ -22,12 +22,9 @@ from .registry import GovernanceRegistry
 
 Pack = ProfilePack | GovernanceModule
 
-# Non-removable core denials: no pack may make an AI tool or an execution
-# surface an eligible approver, and every composed approval carries these
-# denials regardless of what the pack declared.
-CORE_DENIED_ACTOR_TYPES = ("ai_tool", "execution_surface")
-CORE_DENIED_EXECUTION_SURFACES = ("execution_surface",)
 MAX_COMPOSED_RULES = 2000
+MAX_COMPOSED_BLOCK_SCHEMAS = 64
+MAX_COMPOSED_STRUCTURAL_CHECKS = 64
 
 
 def _provenance_record(
@@ -54,6 +51,35 @@ def _ordered_union(*groups: Iterable[str]) -> tuple[str, ...]:
         for value in group:
             if value not in result:
                 result.append(value)
+    return tuple(result)
+
+
+def _strict_merge_strings(
+    value: Any,
+    *,
+    field: str,
+    source_id: str,
+) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        raise error(
+            "PACK_MONOTONICITY_CONFLICT",
+            f"Composed field {field!r} must be a list of source strings.",
+            source_id=source_id,
+        )
+    result: list[str] = []
+    for item in value:
+        if (
+            not isinstance(item, str)
+            or not item.strip()
+            or item != item.strip()
+        ):
+            raise error(
+                "PACK_MONOTONICITY_CONFLICT",
+                f"Composed field {field!r} contains a non-canonical source value.",
+                source_id=source_id,
+            )
+        if item not in result:
+            result.append(item)
     return tuple(result)
 
 
@@ -84,8 +110,16 @@ def _merge_policy(existing: Mapping[str, Any], incoming: Mapping[str, Any], *, s
     for field in ("deny", "require"):
         result[field] = list(
             _ordered_union(
-                (str(item) for item in result.get(field, [])),
-                (str(item) for item in incoming.get(field, [])),
+                _strict_merge_strings(
+                    result.get(field, []),
+                    field=field,
+                    source_id=source_id,
+                ),
+                _strict_merge_strings(
+                    incoming.get(field, []),
+                    field=field,
+                    source_id=source_id,
+                ),
             )
         )
     return immutable_mapping(result)
@@ -118,8 +152,16 @@ def _merge_evaluation(existing: Mapping[str, Any], incoming: Mapping[str, Any], 
     for field in ("metrics", "required_evidence"):
         result[field] = list(
             _ordered_union(
-                (str(item) for item in result.get(field, [])),
-                (str(item) for item in incoming.get(field, [])),
+                _strict_merge_strings(
+                    result.get(field, []),
+                    field=field,
+                    source_id=source_id,
+                ),
+                _strict_merge_strings(
+                    incoming.get(field, []),
+                    field=field,
+                    source_id=source_id,
+                ),
             )
         )
     for field, value in incoming.items():
@@ -136,11 +178,18 @@ def _merge_evaluation(existing: Mapping[str, Any], incoming: Mapping[str, Any], 
 
 
 def _normalize_pack_approval(item: Mapping[str, Any], *, source_id: str, index: int) -> NormalizedApproval:
+    raw_identity = item.get("id")
     normalized = normalize_approval(
         item,
         shape="generated_profile_approval",
         path=f"{source_id}.approval_requirements[{index}]",
-        fallback_id=str(item.get("id", f"approval-{index}")),
+        fallback_id=(
+            raw_identity
+            if isinstance(raw_identity, str)
+            and raw_identity.strip()
+            and raw_identity == raw_identity.strip()
+            else f"approval-{index}"
+        ),
     )
     if normalized.resolution == "invalid":
         raise GovernanceError(*normalized.diagnostics)
@@ -155,86 +204,58 @@ def _normalize_pack_approval(item: Mapping[str, Any], *, source_id: str, index: 
             "Governance approval requirements may not be empty.",
             source_id=source_id,
         )
-    contradictory = set(normalized.eligible_roles) & (
-        set(CORE_DENIED_ACTOR_TYPES) | set(CORE_DENIED_EXECUTION_SURFACES)
-    )
-    if contradictory:
-        raise error(
-            "PACK_MONOTONICITY_APPROVAL",
-            f"Approval {normalized.id!r} makes core-denied actors eligible: "
-            f"{sorted(contradictory)}.",
-            source_id=source_id,
-        )
-    return replace(
-        normalized,
-        denied_actor_types=_ordered_union(
-            normalized.denied_actor_types, CORE_DENIED_ACTOR_TYPES
-        ),
-        denied_execution_surfaces=_ordered_union(
-            normalized.denied_execution_surfaces, CORE_DENIED_EXECUTION_SURFACES
-        ),
+    return normalized
+
+
+def _approval_provenance(
+    pack: Pack,
+    *,
+    index: int,
+    approval_path: str,
+) -> Mapping[str, Any]:
+    return MappingProxyType(
+        {
+            "source_id": pack.id,
+            "source_kind": "module" if isinstance(pack, GovernanceModule) else "profile",
+            "source_version": pack.version,
+            "source_tier": pack.provenance.source_tier,
+            "source_path": pack.provenance.source_path,
+            "approval_path": approval_path,
+            "source_index": index,
+            "content_hash": pack.content_hash,
+        }
     )
 
 
-def _merge_approval(existing: NormalizedApproval, incoming: NormalizedApproval) -> NormalizedApproval:
-    for field in ("timing", "accountable_authority", "expires_at"):
-        left = getattr(existing, field)
-        right = getattr(incoming, field)
-        if left not in (None, "unspecified") and right not in (None, "unspecified") and left != right:
-            raise error(
-                "PACK_MONOTONICITY_APPROVAL",
-                f"Approval {existing.id!r} has conflicting {field} values.",
-            )
-    if existing.revision_binding and incoming.revision_binding and dict(existing.revision_binding) != dict(incoming.revision_binding):
-        raise error(
-            "PACK_MONOTONICITY_APPROVAL",
-            f"Approval {existing.id!r} has conflicting revision bindings.",
-        )
-    eligible_roles = _ordered_union(existing.eligible_roles, incoming.eligible_roles)
-    denied_actor_types = _ordered_union(
-        existing.denied_actor_types,
-        incoming.denied_actor_types,
-    )
-    denied_execution_surfaces = _ordered_union(
-        existing.denied_execution_surfaces,
-        incoming.denied_execution_surfaces,
-    )
-    contradictory = set(eligible_roles) & (
-        set(denied_actor_types) | set(denied_execution_surfaces)
-    )
-    if contradictory:
-        raise error(
-            "PACK_MONOTONICITY_APPROVAL",
-            f"Approval {existing.id!r} makes denied actors eligible: {sorted(contradictory)}.",
-        )
-    source_raw = {
-        "merged_sources": [existing.source_path, incoming.source_path],
-    }
+def _effective_approval_facade(
+    source_values: list[tuple[NormalizedApproval, Mapping[str, Any]]],
+) -> NormalizedApproval:
+    effective = compose_effective_approval(source_values)
     return NormalizedApproval(
-        id=existing.id,
-        required_roles=_ordered_union(existing.required_roles, incoming.required_roles),
-        eligible_roles=eligible_roles,
-        denied_actor_types=denied_actor_types,
-        denied_execution_surfaces=denied_execution_surfaces,
-        required_evidence=_ordered_union(existing.required_evidence, incoming.required_evidence),
-        actions_requiring_approval=_ordered_union(
-            existing.actions_requiring_approval,
-            incoming.actions_requiring_approval,
-        ),
-        timing=existing.timing if existing.timing != "unspecified" else incoming.timing,
-        accountable_authority=existing.accountable_authority or incoming.accountable_authority,
-        revision_binding=existing.revision_binding or incoming.revision_binding,
-        invalidation_conditions=_ordered_union(
-            existing.invalidation_conditions,
-            incoming.invalidation_conditions,
-        ),
-        expires_at=existing.expires_at or incoming.expires_at,
+        id=effective.id,
+        required_roles=effective.required_roles,
+        eligible_roles=effective.eligible_roles,
+        denied_actor_types=effective.denied_actor_types,
+        denied_execution_surfaces=effective.denied_execution_surfaces,
+        required_evidence=effective.required_evidence,
+        actions_requiring_approval=effective.actions_requiring_approval,
+        timing=effective.timing,
+        accountable_authority=effective.accountable_authority,
+        revision_binding=effective.revision_binding,
+        invalidation_conditions=effective.invalidation_conditions,
+        expires_at=effective.expires_at,
         resolution="complete",
-        diagnostics=existing.diagnostics + incoming.diagnostics,
+        diagnostics=(),
         source_shape="generated_profile_approval",
-        source_path=f"composed.{existing.id}",
-        source_raw=source_raw,
-        role_field="eligible_roles" if existing.eligible_roles or incoming.eligible_roles else "none",
+        source_path=f"composed.{effective.id}",
+        source_raw={
+            "effective_schema": "nornyx.effective_approval.v1",
+            "source_count": len(effective.sources),
+        },
+        role_field="eligible_roles" if effective.eligible_roles else "none",
+        exact_revision_required=effective.exact_revision_required,
+        expires_after=effective.expires_after,
+        effective_approval=effective,
     )
 
 
@@ -263,10 +284,15 @@ def compose_governance(
         verify_lock(lock, selected)
 
     required_blocks: tuple[str, ...] = ()
+    block_schemas: dict[str, GovernanceBlockSchema] = {}
+    structural_checks: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
     policies: dict[str, Mapping[str, Any]] = {}
     evidence: dict[str, Mapping[str, Any]] = {}
-    approvals: dict[str, NormalizedApproval] = {}
+    approval_sources: dict[
+        str,
+        list[tuple[NormalizedApproval, Mapping[str, Any]]],
+    ] = {}
     evaluations: dict[str, Mapping[str, Any]] = {}
     rules: dict[str, Rule] = {}
     provenance: list[Mapping[str, Any]] = []
@@ -307,6 +333,34 @@ def compose_governance(
         source_evaluations = pack.evaluations if isinstance(pack, GovernanceModule) else pack.default_evaluations
         source_rules = pack.rules if isinstance(pack, GovernanceModule) else pack.validation_rules
 
+        if isinstance(pack, GovernanceModule):
+            structural_checks = _ordered_union(structural_checks, pack.structural_checks)
+            for binding in pack.block_schemas:
+                existing = block_schemas.get(binding.block)
+                if existing is not None and existing.schema_id != binding.schema_id:
+                    raise error(
+                        "PACK_BLOCK_SCHEMA_CONFLICT",
+                        f"Block {binding.block!r} is claimed by both {existing.schema_id!r} "
+                        f"and {binding.schema_id!r}.",
+                        source_id=pack.id,
+                    )
+                block_schemas[binding.block] = binding
+                provenance.append(
+                    _provenance_record(
+                        pack,
+                        element_kind="block_schema",
+                        element_id=f"{binding.block}:{binding.schema_id}",
+                    )
+                )
+            provenance.extend(
+                _provenance_record(
+                    pack,
+                    element_kind="structural_check",
+                    element_id=check_id,
+                )
+                for check_id in pack.structural_checks
+            )
+
         for item in source_policies:
             item_id = _item_id(item, "policy", pack.id)
             _claim("policy", item_id)
@@ -339,10 +393,15 @@ def compose_governance(
                     element_id=normalized.id,
                 )
             )
-            approvals[normalized.id] = (
-                _merge_approval(approvals[normalized.id], normalized)
-                if normalized.id in approvals
-                else normalized
+            approval_sources.setdefault(normalized.id, []).append(
+                (
+                    normalized,
+                    _approval_provenance(
+                        pack,
+                        index=index,
+                        approval_path=normalized.source_path,
+                    ),
+                )
             )
         for item in source_evaluations:
             item_id = _item_id(item, "evaluation", pack.id)
@@ -381,15 +440,32 @@ def compose_governance(
             "PACK_LIMIT_EXCEEDED",
             f"Composition produced {len(rules)} rules; the limit is {MAX_COMPOSED_RULES}.",
         )
+    if len(block_schemas) > MAX_COMPOSED_BLOCK_SCHEMAS:
+        raise error(
+            "PACK_LIMIT_EXCEEDED",
+            f"Composition produced {len(block_schemas)} block schemas; "
+            f"the limit is {MAX_COMPOSED_BLOCK_SCHEMAS}.",
+        )
+    if len(structural_checks) > MAX_COMPOSED_STRUCTURAL_CHECKS:
+        raise error(
+            "PACK_LIMIT_EXCEEDED",
+            f"Composition produced {len(structural_checks)} structural checks; "
+            f"the limit is {MAX_COMPOSED_STRUCTURAL_CHECKS}.",
+        )
 
     fragments = profile.starter_fragments if profile else ()
     return CompositionResult(
         profile=profile,
         modules=modules,
         required_blocks=required_blocks,
+        block_schemas=tuple(block_schemas[key] for key in sorted(block_schemas)),
+        structural_checks=tuple(sorted(structural_checks)),
         policies=tuple(policies[key] for key in sorted(policies)),
         evidence_requirements=tuple(evidence[key] for key in sorted(evidence)),
-        approval_requirements=tuple(approvals[key] for key in sorted(approvals)),
+        approval_requirements=tuple(
+            _effective_approval_facade(approval_sources[key])
+            for key in sorted(approval_sources)
+        ),
         evaluations=tuple(evaluations[key] for key in sorted(evaluations)),
         rules=tuple(rules[key] for key in sorted(rules)),
         non_goals=non_goals,

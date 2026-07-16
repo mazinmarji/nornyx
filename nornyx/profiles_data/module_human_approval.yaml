@@ -1,0 +1,94 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.human_approval
+name: human_approval
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies:
+  - nornyx.builtin.module.evidence_integrity
+conflicts: []
+required_blocks:
+  - approvals
+  - governance_evidence
+block_schemas: []
+structural_checks:
+  - human_approval.v1
+policies:
+  - id: human_approval_policy
+    description: High-impact authority remains with named human roles.
+    deny:
+      - automatic approval
+      - AI or execution-surface approval
+      - approval detached from the governed revision
+    require:
+      - accountable human authority
+      - exact revision binding
+      - invalidation and expiry controls
+evidence_requirements:
+  - id: approval_record
+    type: approval_record
+    required: true
+    schema_id: nornyx.governance_evidence.v1
+    revision_bound: true
+approval_requirements:
+  - id: governance_authority
+    required_roles:
+      - reviewer
+    eligible_roles:
+      - reviewer
+      - security_reviewer
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence:
+      - approval_record
+    actions:
+      - merge
+      - release
+    timing: before_action
+    accountable_authority: governance_owner
+    exact_revision_required: true
+    invalidation_conditions:
+      - revision_changed
+      - scope_changed
+    expires_after: PT24H
+evaluations:
+  - id: human_approval_evaluation
+    metrics:
+      - human_roles_present
+      - exact_revision_bound
+      - non_human_authority_denied
+    required_evidence:
+      - approval_record
+rules:
+  - id: APR-001
+    description: At least one approval declaration must exist.
+    require:
+      - path: approvals
+        min_count: 1
+    severity: error
+    message: Human approval governance requires an approval declaration.
+non_goals:
+  - approving an action
+  - selecting a human approver automatically
+  - contacting identity or authorization systems
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-b
+integrity:
+  algorithm: sha256
+  content_hash: sha256:8bc640928cba203cbdd2dba2d4f0eb3e4fabb5377f4c9d6821bd7624b7d34e46
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

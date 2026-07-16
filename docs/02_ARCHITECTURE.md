@@ -60,8 +60,10 @@ eval runner, trace/evidence runtime, and connector-adapter execution pipeline as
 the v1.0 architecture. That diagram was an aspirational roadmap, not implemented
 behavior. It is superseded as a statement of current product identity.
 
-Future work may add bounded static analysis and local evidence import, but live
-adapter execution, model orchestration, deployment, credential loading,
+Bounded local evidence import and validation are implemented. Source-code
+analysis remains a specialist-tool responsibility and is prohibited inside
+the current governance program. Live adapter execution, model orchestration,
+deployment, credential loading,
 automatic approval, and arbitrary command execution remain non-goals unless a
 separate capability design and human approval explicitly changes that boundary.
 

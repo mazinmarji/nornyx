@@ -1,111 +1,172 @@
-# 12 — Implementation Roadmap
+# 12 - Implementation Roadmap
 
-Sequencing decision: PR 1 may proceed against main. The locally available
-scanner-hardening branch does not change profile generation or the existing
-`changes` shape. It must merge before the future Change Governance integration
-PR so approval/evidence/schema reconciliation targets a settled governed-
-package surface. See `appendix_SCANNER_INTEGRATION_DECISION.md`. No branch is
-merged by PR 1. The CLI UX is spread across later PRs 2–3.
+Status: **historical implementation roadmap with residual remediation recorded
+in the containing commit and externally verifiable final-head gates.**
 
-Common to every PR: CI green, full existing suite passes, no commits to
-`main` without review, no version bumps except at release PRs, CHANGELOG entry,
-rollback = revert the single PR (each is self-contained).
+## Audit Evidence History
 
----
+- Audited base: `95952226999327458c6fea81cb32d82539bcae5b`.
+- Original NO-GO candidate: `35ee69359599af7887f6b9b58ae0a4cd06a48d25`.
+- Main remediation implementation anchor:
+  `81899aaac5e54781dfe9c8002f557a874854c8b8`.
+- Historical exact-head CI candidate:
+  `3a0e840c3229dbf58959df1e3a161318bffd94ac`; this is not the final approved
+  candidate.
+- Historical hosted CI run: `29373272295`, conclusion `success`.
+- Historical Windows evidence on the `81899aa`/`3a0e840` lineage:
+  `913 passed, 45 skipped`.
+- Historical Linux evidence bound to `3a0e840` and run `29373272295`:
+  `958 passed, zero skipped`.
+- Historical wheel evidence: `12 profiles`, `6 modules`,
+  `network_attempts=[]`, `network_used=false`.
+- A later independent audit of `3a0e840` returned historical `NO-GO` and
+  reopened `AUD-011-R1`, `AUD-017-R1`, `AUD-021-R1`, and `PRMETA-001`.
+- Residual path and network remediation is anchored at
+  `1319613697b0e94d177ebe2c879f73107c366c7e`; documentation reconciliation is
+  implemented in the commit containing this record, whose SHA is intentionally
+  not embedded.
+- External final-head verification must resolve the containing commit from Git
+  and GitHub, run hosted CI on that exact head, and bind a fresh independent
+  audit to the same head.
+- Human authorization is not granted. PR #30 remains draft; merge, release,
+  tagging, publication, and deployment remain unauthorized.
 
-## PR 1 — Architecture decisions, schemas, and test foundations
+## Reconciled Status
 
-- **Objective**: finalize docs and ADRs; close F-01 through F-04; add draft
-  profile, module, approval-normalization, and timestamp-free lock schemas;
-  capture all 11 current-main starter baselines; add schema/specification
-  fixtures and tests.
-- **Files**: planning docs and appendices, repository ADRs, root and bundled
-  draft schemas, golden fixtures, specification fixtures/tests, and a guarded
-  baseline-capture script; `docs/40` and `docs/02` truth corrections.
-- **Tests**: JSON-Schema meta-validation, root/bundled copy synchronization,
-  valid/invalid v0.3 and v1 fixtures, projection, collection semantics,
-  approval normalization, module safety, and deterministic starter goldens.
-- **Non-goals**: loader/registry code, runtime composition or rule evaluation,
-  profile migration, new profiles/modules, or stable core changes.
-- **Acceptance**: F-01 through F-04 closed with evidence and tests; audit
-  conditions F-05/F-06/F-10/F-11/F-12/F-13 incorporated; full validation green
-  or any environment artifact explicitly blocks readiness. **Rollback**:
-  revert the specification/test-foundation PR.
+The original PR 1 through PR 4 sequence shipped across Nornyx 1.5.0-1.5.2:
+pack schemas, loader, registry, deterministic locks, composition, the closed
+rule evaluator, approval normalization, profile migration, scanner hardening,
+and symlink trust-root corrections are implemented. The old roadmap text that
+described those components as future work is historical, not current state.
 
-## PR 2 — Declarative profile/module loader and registry (built-ins only)
+The authoritative baseline and gap table are in
+`15_CURRENT_IMPLEMENTATION_INVENTORY.md`. Work continues in independently
+testable stages; no stage permits a release, tag, publication, deployment, or
+operational action.
 
-- **Objective**: `nornyx/packs/{loader,registry,lock}.py`; built-in packs
-  authored in `nornyx/packs_data/` for the 6 domain profiles; `profiles.py`
-  API re-backed by loaded packs; constants preserved (doc 11 §2).
-- **CLI**: `nornyx profiles list` (alias of existing `profiles`, adds `--json`),
-  `nornyx profiles inspect <name> [--json]`, `nornyx profiles validate <path>`.
-- **Security**: loader hardening T-02..T-05, T-09, T-11 (doc 10).
-- **Tests**: consume the golden starter baselines captured in PR 1; loader
-  abuse corpus; registry precedence with explicit path + `.nornyx/profiles/`.
-- **Backward compat**: `nornyx profiles` unchanged; `init` unchanged.
-- **Non-goals**: composition, rules, org tier. **Rollback**: revert; constants
-  return to dicts.
+## Stage A - Program Reconciliation
 
-## PR 3 — Composition engine and constrained rule evaluator
+Status: implemented.
 
-- **Objective**: `nornyx/packs/{compose,rules}.py`; governance modules;
-  the 5 MVP module packs (doc 03) authored; `nornyx check` runs composed rules
-  when a contract selects a profile/modules; org tier + `profiles resolve
-  [--lock]`, `profiles compatibility <p...>`; exceptions block semantics.
-- **Schemas**: rule-language portion of pack schema finalized (draft → active).
-- **Security**: T-01, T-06..T-08, T-13..T-18 tests.
-- **Tests**: deterministic merge (property-based order-invariance where inputs
-  are permuted), monotonicity adversarial suite, exception expiry, golden
-  resolution traces.
-- **Backward compat**: contracts without packs behave identically (explicit
-  regression test).
-- **Non-goals**: migrating base profiles' starter internals. **Rollback**:
-  compose path is behind "contract declares profile/modules AND packs
-  resolvable"; revert restores advisory-only.
+- verify current implementation and green baseline;
+- reconcile stale planning and ADR statuses;
+- accept the bounded block-schema and fixed structural-check ADRs;
+- establish the exact closure matrix and implementation sequence.
 
-## PR 4 — Migration of built-in profiles (single source of truth)
+Acceptance: no implementation starts without an explicit owner for every new
+schema and relational check.
 
-- **Objective**: all 11 profiles authoritative as packs; `profile_document`
-  rebuilt on fragment renderer; repo-root `profiles/*.yaml` become generated
-  exports or removed; packaging gains `packs_data`; deprecation warning on
-  dict access (doc 11 §3).
-- **Tests**: doc 11 §6 in full.
-- **Acceptance**: zero Python profile-content literals remain except the
-  renderer skeleton; `git grep DOMAIN_PROFILE_PACKS` shows only the
-  compatibility accessor.
-- **Rollback**: revert to PR 3 state (packs still load; Python dicts return).
+## Stage B - Foundational Modules
 
-## PR 5 — `change_control` module + governed-package reconciliation
+Status: implemented.
 
-- **Objective**: doc 07 in full; `nornyx.change.v1` block schema; governed
-  package profile requires the module; `governed_package.py` delegates
-  change-shape validation.
-- **Depends**: PR 0 (scanner branch settled), PR 3.
-- **Tests**: every existing governed-package example unchanged; new
-  change-lifecycle rule fixtures; approval-staleness structural check.
-- **Rollback**: module is opt-in; revert detaches it.
+- `human_approval`;
+- `evidence_integrity`;
+- `separation_of_duties`;
+- `exception_management`;
+- bounded block-schema composition and fixed checks required by them.
 
-## PR 6 — `architecture_governance` profile
+Acceptance: modules are packaged, integrity-locked, deterministic, local-only,
+monotonic, documented, and covered by unit/integration/adversarial tests.
 
-- **Objective**: doc 08; `architecture_conformance` module;
-  `nornyx.architecture_evidence.v1` schema + importer (report-parsing only,
-  scanner-branch adapter pattern); examples + starter.
-- **Tests**: evidence revision binding, stale-evidence detection, golden starter.
-- **Non-goals**: radar, any code analysis. **Rollback**: profile is opt-in.
+## Stage C - Generalized Change Governance
 
-## PR 7 — Governance Surface Analysis framework
+Status: implemented.
 
-- **Objective**: doc 09 method as `docs/`; GSA applied to Nornyx itself;
-  `nornyx.gsa_report.v1` schema **only if** the dogfood exercise shows tooling
-  value — otherwise explicitly record "method only, no tooling" (pre-committed
-  decision gate against tool sprawl).
-- **Rollback**: docs.
+- strict top-level `nornyx.change.v1` for explicitly selected change control;
+- `change_control` module;
+- lifecycle, revision, approval, rollback, closure, exception, and separation
+  checks;
+- exact governed-package 1.x compatibility projection at the package boundary;
+- explicitly approved golden migration only if unavoidable.
 
-## PR 8 — Hardening and release prep
+Acceptance: every existing governed-package example retains meaning and all
+new lifecycle/staleness diagnostics fail closed.
 
-- **Objective**: full doc 13 matrix green (incl. cross-platform, oversized,
-  unicode, adversarial corpus), docs/40+02 rewritten to describe reality,
-  migration guide, pack-authoring guide, CHANGELOG, release-readiness report;
-  independent re-audit against doc 14 conditions.
-- **Acceptance**: doc 14 conditions all closed; release decision (minor bump)
-  made by a human, per invariant.
+## Stage D - Architecture Governance
+
+Status: implemented.
+
+- `architecture_conformance` module;
+- `architecture_governance` optional profile;
+- declaration and evidence schemas;
+- bounded report import only, with no external tool execution;
+- starter, examples, docs, and revision/freshness tests.
+
+Architecture Radar is `rejected_with_ADR` by ADR-0030 for this program. Any
+re-entry is a separately approved future proposal with the evidence conditions
+defined there.
+
+## Stage E - GSA and Candidate Decisions
+
+Status: implemented.
+
+Complete Governance Surface Analysis for Nornyx and for supply chain, data
+protection, lifecycle, release, and incident response. Each candidate receives
+one final ADR placement: module, profile-local control, external evidence
+contract, existing-tool ownership, rejected, or not required.
+
+The completed matrices, dogfood analysis, priority tuples, and exact placement
+statuses are in docs 17-18 and ADR-0031. GSA remains a documented method with
+validated advisory templates; runtime schema and CLI tooling were not justified.
+
+## Stage F - Approved Later Modules
+
+Status: implemented with no additional module.
+
+Implement only candidates that prove reuse by at least two profiles, reconcile
+duplicated existing semantics, close a high-priority control gap, or provide a
+stable evidence contract required by an existing feature.
+
+No candidate passed that gate. Supply-chain controls remain in governed-package
+scanning and external evidence integration; release control is superseded by
+existing release tooling and shared modules; the other candidates are not
+required after GSA. The catalog is frozen at six modules by ADR-0031.
+
+## Stage G - Profile Integration
+
+Status: implemented.
+
+Map each of the 11 existing profiles and `architecture_governance` to only the
+modules justified by its GSA matrix. Preserve one primary profile plus modules.
+
+The 11 established profiles retain empty required-module lists to preserve
+their starters and contracts. Doc 17 records explicit project-level module
+recommendations; `architecture_governance` remains the sole profile with a
+required module because it was introduced with that contract.
+
+## Stage H - Full Hardening
+
+Status: implemented.
+
+- stable CLI/API and diagnostics;
+- malicious pack/schema/evidence/exception corpus;
+- compatibility corpus and approved migration records;
+- deterministic/permutation/resource tests;
+- build, wheel install, documentation execution, and Linux symlink tests;
+- public-boundary and repository-specific assurance.
+
+Reports 19-20 and the formal compatibility manifest record the results. The
+historical `81899aa`/`3a0e840` lineage passed the Windows and Linux results
+recorded above, and run `29373272295` passed exact-head checkout, candidate
+diff, build, Twine, wheel, and example gates. The later audit reopened the three
+AUD R1 items and PR metadata. Their implementation is recorded here without
+transferring the historical run to the containing commit.
+
+## Stage I - Program Closure
+
+Status: residual remediation implemented; external final-head verification required.
+
+Reports 19-22 and the candidate record distinguish historical commit-bound
+evidence from external dynamic verification. The machine-readable remediation
+ledger is the finding-level authority. No operational release action is
+authorized.
+
+## Rollback and Review
+
+Each stage is a logical commit or PR-sized group with its own tests. Reverting a
+stage must restore the prior green state. Do not continue past an unresolved
+Critical or High finding. Any core-language revision, compatibility break,
+arbitrary-expression requirement, network/external execution requirement, or
+evidence that cannot bind to a governed revision is a stop condition requiring
+human review.

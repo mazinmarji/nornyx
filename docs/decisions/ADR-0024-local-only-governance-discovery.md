@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for specification; loader implementation deferred.
+Accepted and implemented in Nornyx 1.5.x.
 
 ## Context
 

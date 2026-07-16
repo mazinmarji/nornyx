@@ -1,0 +1,318 @@
+{
+  "schema": "nornyx.governance_compatibility_corpus.v1",
+  "baseline": {
+    "package_version": "1.5.2",
+    "main_commit": "95952226999327458c6fea81cb32d82539bcae5b"
+  },
+  "classes": [
+    "byte_identical",
+    "canonical_lf_identical",
+    "semantically_equivalent",
+    "intentional_migration_requiring_approval"
+  ],
+  "profile_starters": {
+    "classification": "byte_identical",
+    "manifest": "tests/fixtures/governance_extension/starter_golden/manifest.json",
+    "legacy_profiles_unchanged": 11,
+    "additive_profiles": [
+      "architecture_governance"
+    ],
+    "additions": [
+      {
+        "id": "architecture-governance-starter-v1",
+        "classification": "intentional_migration_requiring_approval",
+        "artifact": "tests/fixtures/governance_extension/starter_golden/architecture_governance.nyx",
+        "old_hash": null,
+        "new_hash": "sha256:0bc6b7e5c9363b6f95a0ef858b2abe57cc1fc4025d6dcb6c610f6d7e8dc5ada0",
+        "reason": "Additive architecture-governance profile; no prior starter artifact existed.",
+        "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
+        "changelog": "CHANGELOG.md",
+        "changelog_marker": "migration:architecture-governance-starter-v1"
+      }
+    ]
+  },
+  "nyx_examples": {
+    "classification": "canonical_lf_identical",
+    "files": [
+      {
+        "path": "examples/architecture_governance.nyx",
+        "sha256": "8184eb5b86a2e9f268ae1075b9ce3f4f428a19014234291505801186925bb781"
+      },
+      {
+        "path": "examples/email_triage.nyx",
+        "sha256": "183538ab8635f3c66e2fcb147591abeec259798dcda40d3546df8f4f067e00f3"
+      },
+      {
+        "path": "examples/governance_foundations.nyx",
+        "sha256": "e49796639a56d5c79f9b1cc48226987235bed56b11c99a3b4d44ff05f5ecc3f9"
+      },
+      {
+        "path": "examples/governed_delivery_control_plane.nyx",
+        "sha256": "3ea884c4afd2bbf76c8aae430c840ce5df2879d21ff2e2b237cebf7364030701"
+      },
+      {
+        "path": "examples/nornyx_decision_boundary_evidence_quality.nyx",
+        "sha256": "cf387f406abea442bbba48ce188e194771d32f890aefb3d8f8305989aa58e9d3"
+      },
+      {
+        "path": "examples/nornyx_distinct_language_showcase.nyx",
+        "sha256": "97a4ccc283d80b860ffe19c9430f6d54cdc1713808bf0eadcb918b1c2efc8cfa"
+      },
+      {
+        "path": "examples/nornyx_graph_demo.nyx",
+        "sha256": "9d3e25998c4510a4bd1e7e1cf055152c760abf2f9be427ab528b8609e2b27293"
+      },
+      {
+        "path": "examples/nornyx_graph_demo_expanded.nyx",
+        "sha256": "531814612702dfecc5332a373f81476629e14affee7471e948960a5044833829"
+      },
+      {
+        "path": "examples/nornyx_handover_and_ambiguity.nyx",
+        "sha256": "a384a9420b1f0b6cefad0abc894d738db16245b13f6ed9ea209817918699bb97"
+      },
+      {
+        "path": "examples/nornyx_pattern_lifecycle.nyx",
+        "sha256": "14603a52b280ac0be3b0fb6dfb77cbaa7a7bc02dc1485aa46e2c65de6a2fbc94"
+      },
+      {
+        "path": "examples/nornyx_portal_contract.nyx",
+        "sha256": "e9a48164ca98f4f4755e9b41fbd2833794327e322cc4a51d25e641745ed69ee5"
+      },
+      {
+        "path": "examples/nornyx_product_to_ops_lifecycle.nyx",
+        "sha256": "ed4f964297186c22e90cd73e559193a0a314aef4f4974f72389dc74cb788e391"
+      },
+      {
+        "path": "examples/nornyx_roadmap_goals.nyx",
+        "sha256": "db95637371e990887e6d906e089e2a659a9f39c7c192a1561d3100af8da346a9"
+      },
+      {
+        "path": "examples/nornyx_v04_adapter_contracts.nyx",
+        "sha256": "6fe50fab20d9aa850fa62b31928800b35f582b3fab3246ff03da3ddbf95533c6"
+      },
+      {
+        "path": "examples/self_healing.nyx",
+        "sha256": "2fbd751dedf22e7fb97f61f12a7a3e9d5560306f8f65f26c59f23a1352130555"
+      }
+    ]
+  },
+  "governed_package_examples": {
+    "classification": "canonical_lf_identical",
+    "files": [
+      {
+        "path": "examples/governed_package/basic.nyx",
+        "sha256": "e9992019e3bc3dc9a5bdcbcf78786bdf3434aba0a4dd03e9be706d606164da07"
+      },
+      {
+        "path": "examples/governed_package/external_evidence_adapters.nyx",
+        "sha256": "cddd6dfeab90eb31176c2f296ce0b6bb21d41dd6e0f8f58622f1685916c739ce"
+      },
+      {
+        "path": "examples/governed_package/invalid_ai_tool_approver.nyx",
+        "sha256": "1ef3d9047216318c7e530e44533133f2cd0aac312c1f71fa197082bebe0ca459"
+      },
+      {
+        "path": "examples/governed_package/invalid_unsafe_flags.nyx",
+        "sha256": "7b5f7b3f6fe1c57c820308105f7619a8754627353ded170972d24acbb289e894"
+      },
+      {
+        "path": "examples/governed_package/register_existing.nyx",
+        "sha256": "e05561a570209f5362a65814d86b1c856cc4ddf101ab466b91f750604107d39c"
+      },
+      {
+        "path": "examples/governed_package/software_change.nyx",
+        "sha256": "9c51ec407a71bf45f7224317ad49ed4382a45e2eecb0ab1353ecd855608dab17"
+      }
+    ]
+  },
+  "generated_artifacts_and_manifests": {
+    "classification": "canonical_lf_identical",
+    "files": [
+      {
+        "path": "tests/fixtures/generated_drift/governed_delivery_control_plane.json",
+        "sha256": "6c5b8d631374a74cc8f7186e75ba31c8bedcaf688c866cbfd8a7ac82cdbd1f6c"
+      },
+      {
+        "path": "tests/fixtures/generated_drift/nornyx_roadmap_goals.json",
+        "sha256": "b5830de2bc3aafb9f50940688efbaa8e8b78bddc46dc467888d3ede69085e2df"
+      }
+    ]
+  },
+  "legacy_profile_api": {
+    "classification": "semantically_equivalent",
+    "profile_names_test": "tests/test_cli_dx.py::test_profile_catalog_includes_base_and_domain_profiles",
+    "projection_cases": "tests/fixtures/governance_extension/projection_cases.json",
+    "ai_coding_projection_sha256": "2797fe61849828fef3db6020d26fecf5d5f9f31af795c41929c0530940999361",
+    "ai_coding_projection_report_sha256": "2031bf5c921b0e19cc69860a23297bb68a80be6ee32a313aa2860ace979cebd4"
+  },
+  "locks": {
+    "classification": "canonical_lf_identical",
+    "minimal_profile_lock_sha256": "bb4dbe2c19eaafd3e5b015665ba4beb29ba43739dff5863a2180751b3e6a1400"
+  },
+  "cli": {
+    "classification": "semantically_equivalent",
+    "normalization": "canonical JSON with repository root replaced by <ROOT>",
+    "cases": [
+      {
+        "id": "profiles_list",
+        "argv": [
+          "profiles",
+          "list",
+          "--json"
+        ],
+        "exit": 0,
+        "sha256": "345d53ab4d0bf714fca9bb2d72495f940ca66a0b583f6cfc2f0cac9dd3a760b6"
+      },
+      {
+        "id": "modules_list",
+        "argv": [
+          "modules",
+          "list",
+          "--json"
+        ],
+        "exit": 0,
+        "sha256": "4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02"
+      },
+      {
+        "id": "modules_inspect",
+        "argv": [
+          "modules",
+          "inspect",
+          "change_control",
+          "--json"
+        ],
+        "exit": 0,
+        "sha256": "917eb65494dae367f1c6d6d13d2605999469744512d4cb918f250dbd9b779bfd"
+      },
+      {
+        "id": "governance_explain",
+        "argv": [
+          "governance",
+          "explain",
+          "examples/governance_foundations.nyx",
+          "--as-of",
+          "2026-06-01T00:00:00Z",
+          "--json"
+        ],
+        "exit": 0,
+        "sha256": "b80c873604e1915dc1ae6e58f5ba8c7a7f088e04502544afa4d7e7e27c128cb9"
+      },
+      {
+        "id": "governance_matrix",
+        "argv": [
+          "governance",
+          "matrix",
+          "examples/governance_foundations.nyx",
+          "--as-of",
+          "2026-06-01T00:00:00Z",
+          "--json"
+        ],
+        "exit": 0,
+        "sha256": "34892fe670ee94ce0fc67948872a0b3f43975e7e7c61da3e89b7af78dd767b0c"
+      },
+      {
+        "id": "module_not_found",
+        "argv": [
+          "modules",
+          "inspect",
+          "missing_module",
+          "--json"
+        ],
+        "exit": 1,
+        "sha256": "7b46d935d67913bdb2c61ea9c31d9d7407dec759a88aec093b1e0c842a9fe0a1"
+      }
+    ]
+  },
+  "intentional_migrations": [
+    {
+      "id": "explain-declared-controls-v1",
+      "target": "cli:governance_explain",
+      "sequence": 1,
+      "surface": "governance explain declared approval controls",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/explain-requirement-fields.before.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/explain-requirement-fields.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/explain-declared-controls-v1.diff.json",
+      "reason": "Retain exact-revision and relative-expiry controls in all three declared approval requirements instead of dropping authority-relevant source fields.",
+      "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:explain-declared-controls-v1",
+      "old_hash": "sha256:651fd74c369080e28b6599e8ad608a6a59d40170d1c63c3d6507eeb56ac7afb8",
+      "new_hash": "sha256:dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3",
+      "proof_hash": "sha256:d65e583d34eb84bee1cc36a35ecf374f4512af890b37c26940f1738a9ea284f4"
+    },
+    {
+      "id": "explain-effective-approval-v1",
+      "target": "cli:governance_explain",
+      "sequence": 2,
+      "surface": "governance explain verifiable effective approvals",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/explain-requirement-fields.after.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/explain-effective-approval.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/explain-effective-approval-v1.diff.json",
+      "reason": "Expose bounded retained sources and a deterministic composition recipe so each effective approval can be independently recomputed and tampering fails closed.",
+      "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:explain-effective-approval-v1",
+      "old_hash": "sha256:dcc04caa5f693831db56d3c1fb341622e2be508279415eea9109fe18ff7d6de3",
+      "new_hash": "sha256:b80c873604e1915dc1ae6e58f5ba8c7a7f088e04502544afa4d7e7e27c128cb9",
+      "proof_hash": "sha256:16f45eab94c76f516b313e3f1063f153269ba20aed356aba2cd051d388fea901"
+    },
+    {
+      "id": "modules-sod-contract-v1",
+      "target": "cli:modules_list",
+      "sequence": 1,
+      "surface": "modules list separation-of-duties change contract",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/modules-sod-contract.before.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/modules-sod-contract.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/modules-sod-contract-v1.diff.json",
+      "reason": "Declare the shared changes schema consumed by separation-of-duties validation and update the module integrity hash.",
+      "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:modules-sod-contract-v1",
+      "old_hash": "sha256:03a49a90f41514b4c4356df752167f38786e435f9b1a543776ad29552415b792",
+      "new_hash": "sha256:4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02",
+      "proof_hash": "sha256:f08931f074bf0af45be1802ac61a0418ccda6696cec55f2ae739349080df84d3"
+    },
+    {
+      "id": "matrix-sod-contract-v1",
+      "target": "cli:governance_matrix",
+      "sequence": 1,
+      "surface": "governance matrix separation-of-duties change contract",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/matrix-sod-contract.before.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/matrix-sod-contract.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/matrix-sod-contract-v1.diff.json",
+      "reason": "Report the shared changes block/schema dependency required by separation-of-duties validation instead of leaving it as an implicit runtime dependency.",
+      "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:matrix-sod-contract-v1",
+      "old_hash": "sha256:f15375cbbdccec43f49f8e342eb7076c35e591923deeef24728167ae6873dad1",
+      "new_hash": "sha256:34892fe670ee94ce0fc67948872a0b3f43975e7e7c61da3e89b7af78dd767b0c",
+      "proof_hash": "sha256:2c136558760bbc7d7c76f4fecd61242d85870c2c38fe101fcaa2e566c184c321"
+    },
+    {
+      "id": "architecture-evidence-separation-v1",
+      "target": "nyx_examples:examples/architecture_governance.nyx",
+      "sequence": 1,
+      "surface": "architecture example evidence and approval separation",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_lf_text",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/architecture-evidence-separation.before.nyx",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/architecture-evidence-separation.after.nyx",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/architecture-evidence-separation-v1.diff.json",
+      "reason": "Attribute the decision record to the change author so the approving architect remains independent from production of the evidence they approve.",
+      "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:architecture-evidence-separation-v1",
+      "old_hash": "sha256:c704e7ea0942452a59e9f5ff12a114adc55f08f92ed529b53d8bf18a12dbacd8",
+      "new_hash": "sha256:8184eb5b86a2e9f268ae1075b9ce3f4f428a19014234291505801186925bb781",
+      "proof_hash": "sha256:ec97b7992a470b3d6298cd5eb3bee076141094f0c4e80c407d13359148ecd6d2"
+    }
+  ]
+}

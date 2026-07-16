@@ -1,0 +1,124 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.architecture_conformance
+name: architecture_conformance
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+dependencies:
+  - nornyx.builtin.module.change_control
+conflicts: []
+required_blocks:
+  - architecture
+  - architecture_evidence
+block_schemas:
+  - block: architecture
+    schema_id: https://nornyx.dev/schemas/architecture_v1.schema.json
+  - block: architecture_evidence
+    schema_id: https://nornyx.dev/schemas/architecture_evidence_v1.schema.json
+structural_checks:
+  - architecture_conformance.v1
+policies:
+  - id: architecture_conformance_policy
+    description: Declared architecture is checked against revision-bound external evidence and human authority.
+    deny:
+      - unbound or stale architecture evidence
+      - undeclared dependency direction
+      - architecture approval by non-human authority
+    require:
+      - declared systems, components, boundaries, decisions, and constraints
+      - passing evidence for every required architecture check
+      - architecture decision evidence for major architecture impact
+evidence_requirements:
+  - id: architecture_conformance_report
+    type: architecture_evidence
+    required: true
+    schema_id: nornyx.architecture_evidence.v1
+    revision_bound: true
+approval_requirements:
+  - id: architecture_authority
+    required_roles:
+      - architect
+    eligible_roles:
+      - architect
+      - architecture_reviewer
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence:
+      - architecture_conformance_report
+    actions:
+      - approve_architecture
+    timing: before_action
+    accountable_authority: architect
+    exact_revision_required: true
+    invalidation_conditions:
+      - revision_change
+      - scope_change
+    expires_after: P7D
+evaluations:
+  - id: architecture_conformance_evaluation
+    metrics:
+      - required_checks_pass
+      - dependency_directions_conform
+      - evidence_revision_current
+      - architecture_exceptions_valid
+    required_evidence:
+      - architecture_conformance_report
+rules:
+  - id: ARCH-001
+    description: Major architecture impact requires a decision record and architect authority.
+    when:
+      path: changes[].impacts.architecture
+      in: [major, critical]
+    require:
+      - path: changes[].required_evidence
+        contains: architecture_decision_record
+      - path: approvals
+        references_role: architect
+    severity: error
+    message: Major architecture impact requires architecture decision evidence and architect authority.
+  - id: ARCH-010
+    description: Declared architecture checks require normalized evidence records.
+    when:
+      path: architecture.required_checks[].id
+      exists: true
+    require:
+      - path: architecture_evidence
+        min_count: 1
+    severity: error
+    message: Required architecture checks need normalized evidence.
+  - id: ARCH-020
+    description: Every architecture constraint identifies its verifier.
+    when:
+      path: architecture.constraints[].id
+      exists: true
+    require:
+      - path: architecture.constraints[].verified_by
+        exists: true
+    severity: error
+    message: Architecture constraints require a declared check or human review.
+non_goals:
+  - parsing source code or inferring architecture
+  - executing architecture tools or compiler checks
+  - architecture radar or repository-layout heuristics
+  - deploying, remediating, or changing systems
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-d
+integrity:
+  algorithm: sha256
+  content_hash: sha256:cb3c749a99ca2d5cbe7fcae52ed6cb8ebd38b93dad7543acd7779cdebdf04231
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

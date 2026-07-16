@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/architecture_v1.schema.json",
+  "title": "Nornyx Architecture Declaration v1",
+  "description": "Bounded declarations for architecture conformance; Nornyx does not infer these values from source.",
+  "x-nornyx-governance-block": "architecture",
+  "type": "object",
+  "required": [
+    "schema",
+    "subject_revision",
+    "descriptions",
+    "viewpoints",
+    "systems",
+    "components",
+    "modules",
+    "layers",
+    "bounded_contexts",
+    "interfaces",
+    "boundaries",
+    "decisions",
+    "principles",
+    "constraints",
+    "required_checks",
+    "architecture_exceptions"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.architecture.v1"},
+    "subject_revision": {"$ref": "#/$defs/nonEmpty"},
+    "descriptions": {"$ref": "#/$defs/descriptions"},
+    "viewpoints": {"$ref": "#/$defs/viewpoints"},
+    "systems": {"$ref": "#/$defs/systems"},
+    "components": {"$ref": "#/$defs/components"},
+    "modules": {"$ref": "#/$defs/modules"},
+    "layers": {"$ref": "#/$defs/layers"},
+    "bounded_contexts": {"$ref": "#/$defs/contexts"},
+    "interfaces": {"$ref": "#/$defs/interfaces"},
+    "boundaries": {"$ref": "#/$defs/boundaries"},
+    "decisions": {"$ref": "#/$defs/decisions"},
+    "principles": {"$ref": "#/$defs/principles"},
+    "constraints": {"$ref": "#/$defs/constraints"},
+    "required_checks": {"$ref": "#/$defs/checks"},
+    "architecture_exceptions": {"$ref": "#/$defs/identities"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmpty": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "identities": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/identity"},
+      "uniqueItems": true
+    },
+    "artifact": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._@/ -]+$"
+    },
+    "descriptions": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "viewpoints", "artifact"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "title": {"$ref": "#/$defs/nonEmpty"},
+          "viewpoints": {"$ref": "#/$defs/identities"},
+          "artifact": {"$ref": "#/$defs/artifact"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "viewpoints": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "concerns"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "concerns": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "systems": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "components"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "components": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "components": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "system", "layer", "bounded_context", "canonical", "modules", "depends_on"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "system": {"$ref": "#/$defs/identity"},
+          "layer": {"$ref": "#/$defs/identity"},
+          "bounded_context": {"$ref": "#/$defs/identity"},
+          "canonical": {"type": "boolean"},
+          "modules": {"$ref": "#/$defs/identities"},
+          "depends_on": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "modules": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "component", "layer", "depends_on"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "component": {"$ref": "#/$defs/identity"},
+          "layer": {"$ref": "#/$defs/identity"},
+          "depends_on": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "layers": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "may_depend_on"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "may_depend_on": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "contexts": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "description": {"$ref": "#/$defs/nonEmpty"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "interfaces": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "required": ["id", "provider", "consumers", "contract_artifact"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "provider": {"$ref": "#/$defs/identity"},
+          "consumers": {"$ref": "#/$defs/identities"},
+          "contract_artifact": {"$ref": "#/$defs/artifact"},
+          "trust_boundary": {"$ref": "#/$defs/identity"},
+          "data_boundary": {"$ref": "#/$defs/identity"},
+          "deployment_boundary": {"$ref": "#/$defs/identity"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "boundaryItems": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description", "crossing_requires"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "name": {"$ref": "#/$defs/nonEmpty"},
+          "description": {"$ref": "#/$defs/nonEmpty"},
+          "crossing_requires": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "boundaries": {
+      "type": "object",
+      "required": ["trust", "data", "deployment"],
+      "properties": {
+        "trust": {"$ref": "#/$defs/boundaryItems"},
+        "data": {"$ref": "#/$defs/boundaryItems"},
+        "deployment": {"$ref": "#/$defs/boundaryItems"}
+      },
+      "additionalProperties": false
+    },
+    "decisions": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "artifact", "supersedes"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "status": {"enum": ["proposed", "accepted", "rejected", "deprecated", "superseded"]},
+          "artifact": {"$ref": "#/$defs/artifact"},
+          "supersedes": {"$ref": "#/$defs/identities"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "principles": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "statement": {"$ref": "#/$defs/nonEmpty"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "verified_by"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "statement": {"$ref": "#/$defs/nonEmpty"},
+          "verified_by": {"$ref": "#/$defs/identity"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "checks": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "required": ["id", "tool", "evidence_schema", "frequency", "required"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identity"},
+          "tool": {"$ref": "#/$defs/identity"},
+          "evidence_schema": {"const": "nornyx.architecture_evidence.v1"},
+          "frequency": {"enum": ["per_change", "per_commit", "daily", "weekly", "manual"]},
+          "required": {"const": true}
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/profiles_lock_v1.schema.json",
-  "$comment": "DRAFT. Time fields are intentionally absent so identical resolution inputs produce byte-identical locks.",
-  "title": "Nornyx Profiles Lock v1 (Draft)",
+  "$comment": "Active lock contract. Time fields are absent so identical resolution inputs produce byte-identical locks.",
+  "title": "Nornyx Profiles Lock v1",
   "type": "object",
   "required": ["schema", "resolved"],
   "properties": {

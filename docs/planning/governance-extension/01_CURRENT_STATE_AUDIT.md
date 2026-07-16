@@ -1,11 +1,11 @@
 # 01 — Current State Audit (Repository Truth Report)
 
-Status: planning document. Grounded in `main` @ `5fc1806` ("ci: publish only from
-release events (#22)", v1.4.0). Verified by direct inspection, not by prior
-conversation summaries. Where a claim could not be verified it is marked
-**unverified**.
+Status: historical baseline audit, not a statement of current implementation.
+It is grounded in `main` @ `5fc1806` (v1.4.0) and is preserved as evidence of
+the starting state. Current repository truth is recorded in
+`15_CURRENT_IMPLEMENTATION_INVENTORY.md` and the program closure matrix.
 
-## 0. Branch-state caveat
+## 0. Historical branch-state caveat
 
 `main` is `5fc1806`. A branch `codex/governed-package-scanner-hardening`
 (`4f0fcea`, one commit ahead of main) contains the governed-package scanner

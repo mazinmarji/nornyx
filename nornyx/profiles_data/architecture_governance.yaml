@@ -1,0 +1,263 @@
+schema: nornyx.profile_pack.v1
+kind: profile
+id: nornyx.builtin.architecture_governance
+name: architecture_governance
+display_name: Architecture Governance
+version: 1.0.0
+compatible_core: ">=0.2 <=1.0"
+status: candidate
+purpose: Govern declared architecture, external conformance evidence, architecture-impacting changes, and human decisions.
+domain: architecture_governance
+required_modules:
+  - nornyx.builtin.module.architecture_conformance
+required_blocks:
+  - project
+  - intents
+  - contexts
+  - agents
+  - policies
+  - evidence
+  - goals
+  - approvals
+  - governance_evidence
+  - changes
+  - separation_of_duties
+  - exceptions
+  - architecture
+  - architecture_evidence
+recommended_blocks:
+  - graph
+  - contracts
+  - budgets
+  - traces
+  - evals
+default_policies:
+  - id: declared_architecture
+    description: Architecture conformance is determined from project declarations and supplied evidence.
+    deny:
+      - source inference by Nornyx
+      - stale architecture evidence
+      - architecture approval by non-human authority
+    require:
+      - revision-bound conformance evidence
+      - architect review for major architecture impact
+required_evidence:
+  - id: architecture_conformance_report
+    type: architecture_evidence
+    required: true
+    artifact: reports/architecture_conformance.json
+    schema_id: nornyx.architecture_evidence.v1
+    revision_bound: true
+default_evaluations:
+  - id: architecture_readiness
+    metrics:
+      - architecture_declaration_complete
+      - required_checks_pass
+      - architecture_authority_present
+    required_evidence:
+      - architecture_conformance_report
+approval_requirements:
+  - id: architecture_authority
+    required_roles:
+      - architect
+    eligible_roles:
+      - architect
+      - architecture_reviewer
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence:
+      - architecture_conformance_report
+    actions:
+      - approve_architecture
+    timing: before_action
+    accountable_authority: architect
+    exact_revision_required: true
+    invalidation_conditions:
+      - revision_change
+      - scope_change
+    expires_after: P7D
+graph:
+  node_kinds:
+    - profile
+    - component
+    - module
+    - interface
+    - policy
+    - approval
+    - evidence
+    - goal
+  relationship_constraints:
+    - from_kind: component
+      relation: exposes
+      to_kind: interface
+    - from_kind: policy
+      relation: governs
+      to_kind: component
+    - from_kind: approval
+      relation: gates
+      to_kind: goal
+starter_fragments:
+  - target: approvals
+    content:
+      - name: ArchitectureAuthority
+        required_roles: [architect]
+        eligible_roles: [architect, architecture_reviewer]
+        denied_actor_types:
+          - ai_tool
+          - execution_surface
+          - autonomous_agent
+          - model
+          - connector
+          - generated_output
+        required_evidence: [architecture_conformance_report]
+        required_for: [approve_architecture, merge]
+        timing: before_merge
+        accountable_authority: architecture_owner
+        revision_binding:
+          kind: git
+          revision: git:REPLACE_WITH_EXACT_REVISION
+          exact: true
+        invalidation_conditions: [revision_changed, scope_changed]
+        expires_at: "2099-01-01T00:00:00Z"
+  - target: governance_evidence
+    content:
+      schema: nornyx.governance_evidence.v1
+      subject_revision: git:REPLACE_WITH_EXACT_REVISION
+      records: []
+  - target: changes
+    content: []
+  - target: separation_of_duties
+    content:
+      schema: nornyx.separation_of_duties.v1
+      assignments: []
+  - target: exceptions
+    content:
+      schema: nornyx.governance_exceptions.v1
+      source: project_contract
+      entries: []
+  - target: architecture
+    content:
+      schema: nornyx.architecture.v1
+      subject_revision: git:REPLACE_WITH_EXACT_REVISION
+      descriptions:
+        - id: architecture.overview
+          title: Project architecture overview
+          viewpoints: [viewpoint.logical]
+          artifact: docs/architecture/overview.md
+      viewpoints:
+        - id: viewpoint.logical
+          name: Logical architecture
+          concerns: [dependency_direction, trust_boundaries]
+      systems:
+        - id: system.project
+          name: Project system
+          components: [component.application]
+      components:
+        - id: component.application
+          name: Application
+          system: system.project
+          layer: layer.application
+          bounded_context: context.core
+          canonical: true
+          modules: [module.application]
+          depends_on: []
+      modules:
+        - id: module.application
+          name: Application module
+          component: component.application
+          layer: layer.application
+          depends_on: []
+      layers:
+        - id: layer.application
+          name: Application
+          may_depend_on: []
+      bounded_contexts:
+        - id: context.core
+          name: Core context
+          description: Primary project responsibility.
+      interfaces: []
+      boundaries:
+        trust: []
+        data: []
+        deployment: []
+      decisions: []
+      principles:
+        - id: principle.explicit_dependencies
+          statement: Dependency direction is declared and checked outside Nornyx.
+      constraints:
+        - id: constraint.dependency_direction
+          statement: Dependencies follow declared layer direction.
+          verified_by: dependency-boundaries
+      required_checks:
+        - id: dependency-boundaries
+          tool: project-architecture-tool
+          evidence_schema: nornyx.architecture_evidence.v1
+          frequency: per_change
+          required: true
+      architecture_exceptions: []
+  - target: architecture_evidence
+    content: []
+validation_rules: []
+compatibility:
+  compatible_with: []
+  requires_review_with:
+    - ai_coding
+    - agentic_repo_harness
+    - telecom_ops
+    - business_ops
+    - ai_governance
+    - finance_ops
+  legacy_v0_3:
+    supported: false
+    mode: not_supported
+    validation_rules:
+      - architecture governance requires v1 pack metadata and contributed blocks
+    conformance:
+      v1_readiness: profile_candidate
+      migration: Use the v1 architecture_governance profile; no legacy projection is defined.
+    core_concepts:
+      - Intent
+      - Agent
+      - Policy
+      - Eval
+      - Approval
+      - Evidence
+      - Context
+      - Artifact
+      - Graph
+      - Goal
+      - Budget
+      - Trace
+    omitted_fields:
+      - required_modules
+      - architecture
+      - architecture_evidence
+      - validation_rules
+    must_preserve:
+      - required_modules
+      - architecture
+      - architecture_evidence
+conflicts: []
+migration_guidance: New optional profile; existing contracts and profile APIs retain their established behavior.
+non_goals:
+  - live agent runtime
+  - tool execution
+  - MCP/A2A live connectors
+  - LLM/model calls
+  - automatic approvals
+  - self-modification
+  - production deployment
+  - enterprise/regulated GOAL-100 promotion
+  - general-purpose programming language features
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: governance-program-stage-d
+integrity:
+  algorithm: sha256
+  content_hash: sha256:c4b85202cfaab66d7e06cba871ca7ec2a9e0535f6fed67824966701d6dcb176f

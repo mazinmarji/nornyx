@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 import yaml
 
+from .path_security import is_remote_or_device_path
+
 
 class NornyxParseError(Exception):
     pass
@@ -39,6 +41,10 @@ def load_nyx(path: str | Path) -> dict[str, Any]:
     can focus on semantics: context, agents, policy, harness, evals, evidence.
     A future parser can replace this without changing the high-level model.
     """
+    if is_remote_or_device_path(path):
+        raise NornyxParseError(
+            f"remote or device-backed contract paths are not allowed: {path}"
+        )
     p = Path(path)
     if not p.exists():
         raise NornyxParseError(f"contract file not found: {p}")
@@ -113,6 +119,10 @@ def _resolve_policy_refs(data: dict[str, Any], base_dir: Path) -> dict[str, Any]
         if not rel_path or not ref_policy:
             raise NornyxParseError(
                 f"policy {name!r}: 'ref' must be '<path>#<PolicyName>', got {ref!r}"
+            )
+        if is_remote_or_device_path(rel_path):
+            raise NornyxParseError(
+                f"policy {name!r}: remote or device-backed ref sources are not allowed"
             )
         source_doc = source_cache.get(rel_path)
         if source_doc is None:

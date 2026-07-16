@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: agentic_repo_harness
+what_is_governed: [harness_contract, capability_plan, evidence_gate]
+why: Bound repository harness behavior without executing it.
+owner: repository_owner
+who_may_act: [harness_author, reviewer, declared_tool]
+allowed: [declare_flow, validate_capability, record_evidence]
+denied: [live_unbounded_execution, secret_access, automatic_approval]
+approval_required: [write_capability, merge, connector_change]
+evidence: [harness_report, policy_report, change_record]
+stale_or_false_detection: [revision_binding, policy_rerun, artifact_hash]
+drift_detection: [ci_check, generated_drift]
+containment: [bounded_execution_readiness_only, stop_rules, rollback]
+authority_expiry: project_approval_expiry
+retirement: disable_harness_contract_and_archive_trace
+required_modules: []
+recommended_modules: [change_control, architecture_conformance]

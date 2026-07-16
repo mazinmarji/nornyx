@@ -15,7 +15,8 @@
     "telecom_ops",
     "business_ops",
     "ai_governance",
-    "finance_ops"
+    "finance_ops",
+    "architecture_governance"
   ],
   "compatibility_classes": [
     "byte_identical",
@@ -155,6 +156,18 @@
       "generation_command": "python -m nornyx.cli init --profile finance_ops --name GovernanceGolden --out tests/fixtures/governance_extension/starter_golden/finance_ops.nyx",
       "sha256": "88debb205caeec00b00db58e6f1de980c5a782976055dd7391983612eec24325",
       "canonical_lf_sha256": "acc2cabb81d56d49c82200a2eed8541825407a69ca96327d14c1906693d26f29",
+      "compatibility_class": "semantic_equivalence_allowed",
+      "allowed_normalization": "CRLF_to_LF_only"
+    },
+    {
+      "profile": "architecture_governance",
+      "project_name": "GovernanceGolden",
+      "file": "architecture_governance.nyx",
+      "source_revision": "governance-program-stage-d",
+      "nornyx_version": "1.5.2",
+      "generation_command": "python -m nornyx.cli init --profile architecture_governance --name GovernanceGolden --out tests/fixtures/governance_extension/starter_golden/architecture_governance.nyx",
+      "sha256": "0bc6b7e5c9363b6f95a0ef858b2abe57cc1fc4025d6dcb6c610f6d7e8dc5ada0",
+      "canonical_lf_sha256": "ebe634c4b590e7df3a4a05308d4d47a9d5ccfe6f2d908e22c9c46c4894c54b9a",
       "compatibility_class": "semantic_equivalence_allowed",
       "allowed_normalization": "CRLF_to_LF_only"
     }

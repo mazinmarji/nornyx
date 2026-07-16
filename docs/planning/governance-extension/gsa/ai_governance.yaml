@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: ai_governance
+what_is_governed: [ai_policy_change, model_evidence, approval, exception]
+why: Keep AI governance decisions evidenced and human-authorized.
+owner: ai_governance_owner
+who_may_act: [policy_author, evaluator, human_reviewer]
+allowed: [propose_policy, supply_evidence, approve_change]
+denied: [model_self_approval, generated_output_approval, secret_or_pii_exposure]
+approval_required: [policy_change, model_exposure_change, exception]
+evidence: [evaluation_report, change_record, approval_record]
+stale_or_false_detection: [revision_binding, evidence_expiry, independent_review]
+drift_detection: [ci_check, evaluation_rerun]
+containment: [deny_non_human_authority, scoped_exception, rollback]
+authority_expiry: approval_and_exception_expiry
+retirement: supersede_policy_and_archive_evidence
+required_modules: []
+recommended_modules: [change_control]

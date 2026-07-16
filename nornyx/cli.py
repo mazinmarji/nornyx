@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import yaml
 
@@ -36,8 +38,10 @@ from .generator import generate_artifacts
 from .goals import write_goal_plan
 from .governance import (
     GovernanceError,
+    GovernanceModule,
     GovernanceRegistry,
     ProfilePack,
+    compose_document_governance,
     compose_governance,
     evaluate_document_governance,
     load_local_pack,
@@ -45,8 +49,13 @@ from .governance import (
     lock_for_packs,
     registry_for_contract,
     registry_for_directory,
+    validate_governance_evidence_file,
     write_lock,
 )
+from .governance.errors import error as governance_error
+from .governance.loader import inspect_local_file, reject_remote_or_device_path
+from .governance.locks import GovernanceLockError
+from .governance.reporting import build_governance_report
 from .governed_package import (
     generate_governed_package,
     radar_governed_packages,
@@ -83,7 +92,35 @@ PACKAGE_RADAR_REPORT_DEFAULT = "dist/radar_report.json"
 PACKAGE_RADAR_CONTRACT_DEFAULT = "dist/radar_suggested.nyx"
 
 
+def _absolute_contract_path(path: str | Path) -> tuple[Path, Path]:
+    reject_remote_or_device_path(path, code_prefix="PACK", noun="Contract")
+    supplied = Path(path)
+    trust_root = Path(supplied.anchor) if supplied.is_absolute() else Path.cwd()
+    contract = supplied if supplied.is_absolute() else Path.cwd() / supplied
+    return contract, trust_root
+
+
+def _optional_profile_lock(directory: Path, *, trust_root: Path) -> Path | None:
+    try:
+        return inspect_local_file(
+            directory / "nornyx.profiles.lock",
+            allowed_root=directory,
+            trust_root=trust_root,
+            code_prefix="PACK",
+            noun="Profile lock",
+            allow_missing=True,
+        )
+    except GovernanceError as exc:
+        raise GovernanceLockError(*exc.diagnostics) from exc
+
+
 def cmd_check(args: argparse.Namespace) -> int:
+    try:
+        registry = registry_for_contract(args.file)
+    except GovernanceError as exc:
+        for diag in exc.diagnostics:
+            print(json.dumps(diag.to_dict(), indent=2))
+        return 1
     try:
         doc = load_nyx(args.file)
     except NornyxParseError as exc:
@@ -91,13 +128,32 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 2
     diagnostics = list(check_document(doc))
     try:
-        registry = registry_for_contract(args.file)
-        lock_candidate = Path(args.file).resolve().parent / "nornyx.profiles.lock"
+        contract_path, trust_root = _absolute_contract_path(args.file)
+        contract_path = Path(os.path.realpath(contract_path))
+        document_root = contract_path.parent
+        lock_path = _optional_profile_lock(document_root, trust_root=trust_root)
+        composition = compose_document_governance(
+            doc,
+            registry=registry,
+            lock_path=lock_path,
+        )
+        if composition is not None:
+            contributed_blocks = {item.block for item in composition.block_schemas}
+            diagnostics = [
+                item
+                for item in diagnostics
+                if not (
+                    item.code == "UNKNOWN_TOP_LEVEL_BLOCK"
+                    and item.path in contributed_blocks
+                )
+            ]
         diagnostics.extend(
             evaluate_document_governance(
                 doc,
                 registry=registry,
-                lock_path=lock_candidate if lock_candidate.is_file() else None,
+                lock_path=lock_path,
+                as_of=datetime.now(timezone.utc).isoformat(),
+                document_root=document_root,
             )
         )
     except GovernanceError as exc:
@@ -217,21 +273,31 @@ def cmd_package_evidence_import(args: argparse.Namespace) -> int:
         )
         return 1
     try:
+        reject_remote_or_device_path(
+            args.report_path,
+            code_prefix="PACKAGE",
+            noun="External evidence report",
+        )
+        reject_remote_or_device_path(
+            args.out,
+            code_prefix="PACKAGE",
+            noun="External evidence output",
+        )
         records = parser(Path(args.report_path), args.package_id)
+        payload = {
+            "status": "pass",
+            "tool": tool,
+            "package_id": args.package_id,
+            "evidence_count": len(records),
+            "evidence": records,
+        }
+        out_path = Path(args.out)
+        if out_path.suffix.lower() != ".json":
+            out_path = out_path / f"{tool}_normalized_evidence.json"
+        write_json(out_path, payload)
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(json.dumps({"level": "error", "code": "EVIDENCE_IMPORT_ERROR", "message": str(exc)}, indent=2))
         return 1
-    payload = {
-        "status": "pass",
-        "tool": tool,
-        "package_id": args.package_id,
-        "evidence_count": len(records),
-        "evidence": records,
-    }
-    out_path = Path(args.out)
-    if out_path.suffix.lower() != ".json":
-        out_path = out_path / f"{tool}_normalized_evidence.json"
-    write_json(out_path, payload)
     print(json.dumps({"status": "pass", "out": out_path.as_posix(), "evidence_count": len(records)}, indent=2))
     return 0
 
@@ -584,10 +650,18 @@ def _explicit_pack_path_and_trust_root(path: str | Path) -> tuple[Path, Path]:
     return trust_root / candidate, trust_root
 
 
+def _reject_remote_cli_path(path: str | Path, *, code_prefix: str, noun: str) -> None:
+    reject_remote_or_device_path(path, code_prefix=code_prefix, noun=noun)
+
+
 def cmd_profiles(args: argparse.Namespace) -> int:
     command = getattr(args, "profiles_command", None)
     as_json = getattr(args, "json", False)
-    registry = GovernanceRegistry.builtins()
+    registry = (
+        GovernanceRegistry()
+        if command in {"resolve", "validate"}
+        else GovernanceRegistry.builtins()
+    )
     if command is None:
         for name in PROFILE_NAMES:
             print(name)
@@ -627,6 +701,7 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             )
             return 0
         if command == "validate":
+            _reject_remote_cli_path(args.path, code_prefix="PACK", noun="Pack")
             path, trust_root = _explicit_pack_path_and_trust_root(args.path)
             pack = load_local_pack(
                 path,
@@ -651,8 +726,17 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             resolve_registry = registry_for_directory(Path.cwd())
             lock_file = Path.cwd() / "nornyx.profiles.lock"
             existing_lock = None
-            if lock_file.is_file() and not args.lock:
-                existing_lock = load_lock(lock_file)
+            if not args.lock:
+                discovered_lock = _optional_profile_lock(
+                    Path.cwd(),
+                    trust_root=Path.cwd(),
+                )
+                if discovered_lock is not None:
+                    existing_lock = load_lock(
+                        discovered_lock,
+                        allowed_root=Path.cwd(),
+                        trust_root=Path.cwd(),
+                    )
             try:
                 result = compose_governance(
                     resolve_registry,
@@ -661,8 +745,7 @@ def cmd_profiles(args: argparse.Namespace) -> int:
                 )
             except GovernanceError as exc:
                 _print_pack_error(exc, as_json=as_json)
-                lock_codes = {"PACK_LOCK_MISMATCH", "PACK_LOCK_SET_MISMATCH", "PACK_LOCK_DUPLICATE_ID", "PACK_LOCK_INVALID"}
-                return 2 if any(item.code in lock_codes for item in exc.diagnostics) else 1
+                return 2 if _is_lock_failure(exc) else 1
             payload = result.to_dict()
             payload["status"] = "resolved"
             payload["resolution_trace"] = list(resolve_registry.resolution_trace)
@@ -705,8 +788,208 @@ def cmd_profiles(args: argparse.Namespace) -> int:
             return 1 if conflicts else 0
     except GovernanceError as exc:
         _print_pack_error(exc, as_json=as_json)
-        return 1
+        return 2 if _is_lock_failure(exc) else 1
     raise ValueError(f"Unsupported profiles command {command!r}")
+
+
+def cmd_modules(args: argparse.Namespace) -> int:
+    command = args.modules_command
+    as_json = args.json
+    try:
+        if command == "validate":
+            _reject_remote_cli_path(args.path, code_prefix="PACK", noun="Pack")
+            registry = GovernanceRegistry()
+        else:
+            registry = registry_for_directory(Path.cwd())
+        if command == "list":
+            modules = []
+            for name in registry.module_names:
+                module = registry.resolve_module(name)
+                modules.append(
+                    {
+                        "name": module.name,
+                        "id": module.id,
+                        "version": module.version,
+                        "dependencies": list(module.dependencies),
+                        "source_tier": module.provenance.source_tier,
+                        "content_hash": module.content_hash,
+                    }
+                )
+            payload = {"status": "ok", "modules": modules}
+            print(
+                json.dumps(payload, indent=2)
+                if as_json
+                else yaml.safe_dump(payload, sort_keys=False).rstrip()
+            )
+            return 0
+        if command == "inspect":
+            module = registry.resolve_module(args.name)
+            payload = module.as_dict()
+            payload["resolved_provenance"] = module.provenance.to_dict()
+            payload["resolved_content_hash"] = module.content_hash
+            output = {"status": "ok", "module": payload}
+            print(
+                json.dumps(output, indent=2)
+                if as_json
+                else yaml.safe_dump(output, sort_keys=False, allow_unicode=True).rstrip()
+            )
+            return 0
+        if command == "validate":
+            _reject_remote_cli_path(args.path, code_prefix="PACK", noun="Pack")
+            path, trust_root = _explicit_pack_path_and_trust_root(args.path)
+            pack = load_local_pack(
+                path,
+                allowed_root=path.parent,
+                trust_root=trust_root,
+            )
+            if not isinstance(pack, GovernanceModule):
+                raise governance_error(
+                    "PACK_KIND_MISMATCH",
+                    "Module validation requires a governance module pack.",
+                    path=path.as_posix(),
+                    source_id=pack.id,
+                )
+            payload = {
+                "status": "valid",
+                "kind": "module",
+                "id": pack.id,
+                "version": pack.version,
+                "dependencies": list(pack.dependencies),
+                "content_hash": pack.content_hash,
+                "path": path.as_posix(),
+            }
+            print(
+                json.dumps(payload, indent=2)
+                if as_json
+                else yaml.safe_dump(payload, sort_keys=False).rstrip()
+            )
+            return 0
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=as_json)
+        return 1
+    raise ValueError(f"Unsupported modules command {command!r}")
+
+
+_LOCK_ERROR_CODES = {
+    "PACK_LOCK_MISMATCH",
+    "PACK_LOCK_SET_MISMATCH",
+    "PACK_LOCK_DUPLICATE_ID",
+    "PACK_LOCK_INVALID",
+}
+
+
+def _is_lock_failure(exc: GovernanceError) -> bool:
+    return isinstance(exc, GovernanceLockError) or any(
+        item.code in _LOCK_ERROR_CODES for item in exc.diagnostics
+    )
+
+
+def _governance_report_for_path(args: argparse.Namespace) -> dict[str, object]:
+    registry = registry_for_contract(args.file)
+    document = load_nyx(args.file)
+    contract_path, trust_root = _absolute_contract_path(args.file)
+    contract_path = Path(os.path.realpath(contract_path))
+    lock_path = _optional_profile_lock(contract_path.parent, trust_root=trust_root)
+    as_of = args.as_of or datetime.now(timezone.utc).isoformat()
+    report = build_governance_report(
+        document,
+        registry=registry,
+        lock_path=lock_path,
+        as_of=as_of,
+        document_root=contract_path.parent,
+    )
+    report["contract"] = contract_path.as_posix()
+    report["validation_time"] = as_of
+    return report
+
+
+def cmd_governance(args: argparse.Namespace) -> int:
+    as_json = args.json
+    try:
+        report = _governance_report_for_path(args)
+    except NornyxParseError as exc:
+        payload = {
+            "status": "error",
+            "diagnostics": [
+                {"level": "error", "code": "PARSE_ERROR", "message": str(exc)}
+            ],
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"PARSE_ERROR: {exc}"
+        )
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=as_json)
+        return 2 if _is_lock_failure(exc) else 1
+
+    if args.governance_command == "resolve":
+        payload = report
+    elif args.governance_command == "explain":
+        payload = {
+            "schema": report["schema"],
+            "status": report["status"],
+            "contract": report["contract"],
+            "profile": report["profile"],
+            "modules": report["modules"],
+            "lock": report["lock"],
+            "active_controls": report["active_controls"],
+            "required_evidence": report["required_evidence"],
+            "approval_requirements": report["approval_requirements"],
+            "exception_status": report["exception_status"],
+            "diagnostics": report["diagnostics"],
+        }
+    elif args.governance_command == "matrix":
+        payload = {
+            "schema": "nornyx.governance_matrix.v1",
+            "status": report["status"],
+            "contract": report["contract"],
+            "lock": report["lock"],
+            "matrix": report["matrix"],
+            "diagnostics": report["diagnostics"],
+        }
+    else:
+        raise ValueError(
+            f"Unsupported governance command {args.governance_command!r}"
+        )
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip()
+    )
+    return 1 if report["status"] == "fail" else 0
+
+
+def cmd_evidence(args: argparse.Namespace) -> int:
+    as_json = args.json
+    try:
+        _reject_remote_cli_path(args.path, code_prefix="EVIDENCE", noun="Evidence")
+        path, trust_root = _explicit_pack_path_and_trust_root(args.path)
+        as_of = args.as_of or datetime.now(timezone.utc).isoformat()
+        diagnostics = validate_governance_evidence_file(
+            path,
+            allowed_root=path.parent,
+            trust_root=trust_root,
+            as_of=as_of,
+        )
+        failed = any(item.level == "error" for item in diagnostics)
+        payload = {
+            "status": "fail" if failed else "pass",
+            "path": path.as_posix(),
+            "validation_time": as_of,
+            "diagnostics": [item.to_dict() for item in diagnostics],
+        }
+        if as_json:
+            print(json.dumps(payload, indent=2))
+        elif diagnostics:
+            print(yaml.safe_dump(payload, sort_keys=False).rstrip())
+        else:
+            print(f"Valid governance evidence: {path.as_posix()}")
+        return 1 if failed else 0
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=as_json)
+        return 1
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -718,6 +1001,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_init(args: argparse.Namespace) -> int:
     try:
         if args.profile_path:
+            _reject_remote_cli_path(
+                args.profile_path,
+                code_prefix="PACK",
+                noun="Pack",
+            )
             source, trust_root = _explicit_pack_path_and_trust_root(args.profile_path)
             pack = load_local_pack(
                 source,
@@ -1046,6 +1334,52 @@ def build_parser() -> argparse.ArgumentParser:
     profile_command.add_argument("names", nargs="+")
     profile_command.add_argument("--json", action="store_true")
     profile_command.set_defaults(func=cmd_profiles)
+
+    p = sub.add_parser("modules", help="Inspect and validate local governance modules")
+    module_sub = p.add_subparsers(dest="modules_command", required=True)
+
+    module_command = module_sub.add_parser("list", help="List available governance modules")
+    module_command.add_argument("--json", action="store_true")
+    module_command.set_defaults(func=cmd_modules)
+
+    module_command = module_sub.add_parser("inspect", help="Inspect one governance module")
+    module_command.add_argument("name")
+    module_command.add_argument("--json", action="store_true")
+    module_command.set_defaults(func=cmd_modules)
+
+    module_command = module_sub.add_parser("validate", help="Validate one local module pack")
+    module_command.add_argument("path")
+    module_command.add_argument("--json", action="store_true")
+    module_command.set_defaults(func=cmd_modules)
+
+    p = sub.add_parser("governance", help="Inspect effective contract governance")
+    governance_sub = p.add_subparsers(dest="governance_command", required=True)
+    for command, help_text in (
+        ("resolve", "Resolve the complete effective governance model"),
+        ("explain", "Explain active controls and requirements"),
+        ("matrix", "Show controls and requirements by contributing pack"),
+    ):
+        governance_command = governance_sub.add_parser(command, help=help_text)
+        governance_command.add_argument("file")
+        governance_command.add_argument(
+            "--as-of",
+            help="Explicit offset timestamp for freshness and expiry validation",
+        )
+        governance_command.add_argument("--json", action="store_true")
+        governance_command.set_defaults(func=cmd_governance)
+
+    p = sub.add_parser("evidence", help="Validate local governance evidence")
+    evidence_sub = p.add_subparsers(dest="evidence_command", required=True)
+    evidence_command = evidence_sub.add_parser(
+        "validate", help="Validate one governance evidence set"
+    )
+    evidence_command.add_argument("path")
+    evidence_command.add_argument(
+        "--as-of",
+        help="Explicit offset timestamp for freshness validation",
+    )
+    evidence_command.add_argument("--json", action="store_true")
+    evidence_command.set_defaults(func=cmd_evidence)
 
     p = sub.add_parser("doctor", help="Check local Nornyx repository readiness")
     p.add_argument("--repo", default=".")

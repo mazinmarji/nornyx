@@ -1,12 +1,20 @@
 """Declarative, local-only governance extension runtime."""
 
-from .approvals import normalize_approval
+from .architecture import import_architecture_evidence
+from .approvals import (
+    normalize_approval,
+    trusted_effective_approval,
+    trusted_normalized_approval,
+)
 from .composition import compose_governance
 from .errors import GovernanceError
+from .evidence_validation import validate_governance_evidence_file
 from .loader import load_local_pack, load_pack_bytes
 from .locks import load_lock, lock_for_packs, verify_lock, write_lock
 from .models import (
     CompositionResult,
+    EffectiveApproval,
+    GovernanceBlockSchema,
     GovernanceDiagnostic,
     GovernanceModule,
     LockEntry,
@@ -26,9 +34,12 @@ from .runtime import (
     registry_for_contract,
     registry_for_directory,
 )
+from .structural import change_scope_hash
 
 __all__ = [
     "CompositionResult",
+    "EffectiveApproval",
+    "GovernanceBlockSchema",
     "GovernanceDiagnostic",
     "GovernanceError",
     "GovernanceModule",
@@ -40,16 +51,21 @@ __all__ = [
     "ProjectionResult",
     "Rule",
     "StarterFragment",
+    "change_scope_hash",
     "compose_document_governance",
     "compose_governance",
     "evaluate_document_governance",
     "evaluate_rule",
     "evaluate_rules",
+    "import_architecture_evidence",
     "load_local_pack",
     "load_lock",
     "load_pack_bytes",
     "lock_for_packs",
     "normalize_approval",
+    "trusted_normalized_approval",
+    "trusted_effective_approval",
+    "validate_governance_evidence_file",
     "project_profile_to_v03",
     "registry_for_contract",
     "registry_for_directory",

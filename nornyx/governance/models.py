@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
+import hashlib
+import json
 from types import MappingProxyType
 from typing import Any, Literal, Mapping
 
@@ -100,6 +102,20 @@ class StarterFragment:
 
 
 @dataclass(frozen=True, slots=True)
+class GovernanceBlockSchema:
+    block: str
+    schema_id: str
+    source_id: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "block": self.block,
+            "schema_id": self.schema_id,
+            "source_id": self.source_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ProfilePack:
     id: str
     name: str
@@ -146,6 +162,8 @@ class GovernanceModule:
     provenance: PackProvenance
     content_hash: str
     raw: Mapping[str, Any] = field(repr=False)
+    block_schemas: tuple[GovernanceBlockSchema, ...] = ()
+    structural_checks: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return deepcopy(dict(self.raw))
@@ -171,10 +189,27 @@ class NormalizedApproval:
     source_path: str
     source_raw: Any
     role_field: str
+    exact_revision_required: bool | None = None
+    expires_after: str | None = None
+    effective_approval: EffectiveApproval | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
 
-    def to_dict(self) -> dict[str, Any]:
+    def _legacy_serialized_fields(self) -> dict[str, Any]:
+        legacy_revision_binding = (
+            deepcopy(dict(self.revision_binding))
+            if self.revision_binding
+            else None
+        )
+        # A base-style public constructor call has no v2 requirement marker;
+        # preserve its mapping byte-for-byte as the original serializer did.
+        # Newly normalized approvals always carry the boolean marker, so their
+        # v1 compatibility view omits the v2-only scope hash.
+        if legacy_revision_binding is not None and self.exact_revision_required is not None:
+            legacy_revision_binding.pop("scope_hash", None)
         return {
-            "schema": "nornyx.normalized_approval.v1",
             "id": self.id,
             "required_roles": list(self.required_roles),
             "eligible_roles": list(self.eligible_roles),
@@ -184,7 +219,7 @@ class NormalizedApproval:
             "actions_requiring_approval": list(self.actions_requiring_approval),
             "timing": self.timing,
             "accountable_authority": self.accountable_authority,
-            "revision_binding": deepcopy(dict(self.revision_binding)) if self.revision_binding else None,
+            "revision_binding": legacy_revision_binding,
             "invalidation_conditions": list(self.invalidation_conditions),
             "expires_at": self.expires_at,
             "resolution": self.resolution,
@@ -192,12 +227,151 @@ class NormalizedApproval:
                 {"level": item.level, "code": item.code, "message": item.message}
                 for item in self.diagnostics
             ],
+        }
+
+    def _extended_serialized_fields(self) -> dict[str, Any]:
+        return {
+            **self._legacy_serialized_fields(),
+            "revision_binding": (
+                deepcopy(dict(self.revision_binding))
+                if self.revision_binding
+                else None
+            ),
+            "exact_revision_required": bool(self.exact_revision_required),
+            "expires_after": self.expires_after,
+        }
+
+    def _serialized_source(self) -> dict[str, Any]:
+        fallback_id = "approval:" + hashlib.sha256(
+            json.dumps(
+                {"shape": self.source_shape, "path": self.source_path},
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()[:24]
+        return {
+            "shape": self.source_shape,
+            "path": self.source_path,
+            "raw": deepcopy(self.source_raw),
+            "role_field": self.role_field,
+            "fallback_id": fallback_id,
+        }
+
+    def _verifiable_identity(self, fallback_id: str) -> str:
+        raw = self.source_raw
+        source = raw if isinstance(raw, Mapping) else {}
+        if self.source_shape == "ordinary_approval":
+            field_name = "name"
+        elif self.source_shape == "generated_profile_approval":
+            field_name = "id" if "id" in source else "name"
+        elif self.source_shape == "governed_package_gate":
+            field_name = "id"
+        elif self.source_shape == "legacy_contract_reference":
+            if isinstance(raw, str) and raw.strip() and raw == raw.strip():
+                return f"reference:{raw}"
+            return fallback_id
+        else:
+            return fallback_id
+        value = source.get(field_name)
+        if isinstance(value, str) and value.strip() and value == value.strip():
+            return value
+        return fallback_id
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.to_legacy_dict()
+
+    def to_legacy_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "nornyx.normalized_approval.v1",
+            **self._legacy_serialized_fields(),
             "source": {
                 "shape": self.source_shape,
                 "path": self.source_path,
                 "raw": deepcopy(self.source_raw),
                 "role_field": self.role_field,
             },
+        }
+
+    def to_verifiable_dict(self) -> dict[str, Any]:
+        """Return the bounded v2 representation used at trust boundaries.
+
+        The source binding detects inconsistent mutation of retained source
+        metadata. It is deliberately a consistency binding, not a signature;
+        callers that require source authenticity must also supply trusted
+        source context to the verifier.
+        """
+
+        source = self._serialized_source()
+        identity = self._verifiable_identity(source["fallback_id"])
+        encoded = json.dumps(
+            source,
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        source["binding"] = "sha256:" + hashlib.sha256(encoded).hexdigest()
+        return {
+            "schema": "nornyx.normalized_approval.v2",
+            **self._extended_serialized_fields(),
+            "id": identity,
+            "source": source,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EffectiveApproval:
+    id: str
+    required_roles: tuple[str, ...]
+    eligible_roles: tuple[str, ...]
+    denied_actor_types: tuple[str, ...]
+    denied_execution_surfaces: tuple[str, ...]
+    required_evidence: tuple[str, ...]
+    actions_requiring_approval: tuple[str, ...]
+    timing: str
+    accountable_authority: str | None
+    revision_binding: Mapping[str, Any] | None
+    exact_revision_required: bool
+    invalidation_conditions: tuple[str, ...]
+    expires_after: str | None
+    expires_at: str | None
+    sources: tuple[Mapping[str, Any], ...]
+    decisions: Mapping[str, Any]
+    operation: str = "nornyx.monotonic_approval_composition.v1"
+
+    @property
+    def resolution(self) -> str:
+        return "complete"
+
+    @property
+    def diagnostics(self) -> tuple[GovernanceDiagnostic, ...]:
+        return ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "nornyx.effective_approval.v1",
+            "id": self.id,
+            "required_roles": list(self.required_roles),
+            "eligible_roles": list(self.eligible_roles),
+            "denied_actor_types": list(self.denied_actor_types),
+            "denied_execution_surfaces": list(self.denied_execution_surfaces),
+            "required_evidence": list(self.required_evidence),
+            "actions_requiring_approval": list(self.actions_requiring_approval),
+            "timing": self.timing,
+            "accountable_authority": self.accountable_authority,
+            "revision_binding": (
+                deepcopy(dict(self.revision_binding))
+                if self.revision_binding
+                else None
+            ),
+            "exact_revision_required": self.exact_revision_required,
+            "invalidation_conditions": list(self.invalidation_conditions),
+            "expires_after": self.expires_after,
+            "expires_at": self.expires_at,
+            "resolution": "complete",
+            "operation": self.operation,
+            "decisions": deepcopy(dict(self.decisions)),
+            "sources": [deepcopy(dict(item)) for item in self.sources],
         }
 
 
@@ -277,6 +451,8 @@ class CompositionResult:
     starter_fragments: tuple[StarterFragment, ...]
     provenance: tuple[Mapping[str, Any], ...]
     diagnostics: tuple[GovernanceDiagnostic, ...] = ()
+    block_schemas: tuple[GovernanceBlockSchema, ...] | None = None
+    structural_checks: tuple[str, ...] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -286,7 +462,48 @@ class CompositionResult:
             "required_blocks": list(self.required_blocks),
             "policies": [deepcopy(dict(item)) for item in self.policies],
             "evidence_requirements": [deepcopy(dict(item)) for item in self.evidence_requirements],
-            "approval_requirements": [item.to_dict() for item in self.approval_requirements],
+            "approval_requirements": [
+                item.to_legacy_dict() for item in self.approval_requirements
+            ],
+            "evaluations": [deepcopy(dict(item)) for item in self.evaluations],
+            "rules": [rule.namespaced_id for rule in self.rules],
+            "non_goals": list(self.non_goals),
+            "starter_fragments": [
+                {
+                    "target": item.target,
+                    "source_id": item.source_id,
+                    "source_index": item.source_index,
+                }
+                for item in self.starter_fragments
+            ],
+            "provenance": [deepcopy(dict(item)) for item in self.provenance],
+            "diagnostics": [item.to_dict() for item in self.diagnostics],
+        }
+
+    def to_effective_dict(self) -> dict[str, Any]:
+        """Return governance output with separately versioned approvals."""
+
+        return {
+            "schema": "nornyx.effective_governance.v2",
+            "profile": self.profile.id if self.profile else None,
+            "modules": [module.id for module in self.modules],
+            "required_blocks": list(self.required_blocks),
+            "block_schemas": [
+                item.to_dict() for item in (self.block_schemas or ())
+            ],
+            "structural_checks": list(self.structural_checks or ()),
+            "policies": [deepcopy(dict(item)) for item in self.policies],
+            "evidence_requirements": [
+                deepcopy(dict(item)) for item in self.evidence_requirements
+            ],
+            "approval_requirements": [
+                (
+                    item.effective_approval.to_dict()
+                    if item.effective_approval is not None
+                    else item.to_verifiable_dict()
+                )
+                for item in self.approval_requirements
+            ],
             "evaluations": [deepcopy(dict(item)) for item in self.evaluations],
             "rules": [rule.namespaced_id for rule in self.rules],
             "non_goals": list(self.non_goals),

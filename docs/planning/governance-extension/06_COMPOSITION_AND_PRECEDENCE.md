@@ -1,5 +1,7 @@
 # 06 — Composition and Precedence Semantics
 
+Status: implemented normative composition contract.
+
 ## 1. Merge order (fixed, deterministic)
 
 ```text
@@ -8,12 +10,13 @@ L1 modules, in dependency topological order (ties: lexicographic pack id)
 L2 the single profile
 L3 organization policy module (optional, tier: org)
 L4 project contract (.nyx)
-L5 explicit project exceptions (contract `exceptions:` block)
+post-composition: project exception declarations (validated records, never overrides)
 ```
 
-Later layers see earlier layers' output. The same inputs always produce the
-same effective model (no dict-ordering, environment, or timestamp dependence);
-this is a tested invariant (doc 13 "deterministic merge").
+Composition layers L0-L4 see earlier layers' output. Exception declarations
+cannot alter that output. The same inputs always produce the same effective
+model (no dict-ordering, environment, or timestamp dependence); this is a
+tested invariant (doc 13 "deterministic merge").
 
 ## 2. Merge behavior by shape
 
@@ -57,10 +60,10 @@ defaults:
 ```
 
 Absent `overridable`, project redefinition of the same id is a fatal conflict
-with a diagnostic telling the author to use a different id or an exception.
+with a diagnostic telling the author to use a different id.
 Budget conflicts specifically: numeric fields may always be **tightened**
 (lower max) by later layers without permission; raising requires
-`overridable` or an exception.
+`overridable`.
 
 `overridable` is limited to direct scalar fields of entries under `defaults`.
 Nested paths, wildcards, list replacement, schema fields, rule fields, denials,
@@ -77,7 +80,11 @@ this permission surface requires a new ADR.
 - Required evidence: accumulate. Mandatory core evidence and module-required
   evidence cannot be dropped; contracts can add.
 - Approvals: accumulate; approval gates can gain required evidence and
-  approver restrictions, never lose them. `denied_approver_types` core set
+  approver restrictions, never lose them. Non-empty eligible-role sets
+  intersect; disjoint sets or required roles excluded by another layer are
+  fatal conflicts. Exact-revision requirements combine with logical OR, while
+  conflicting non-empty relative expiry requirements fail closed.
+  `denied_approver_types` core set
   (`ai_tool`, `execution_surface` — matching shipped governed-package
   semantics) is always present and non-removable.
 - Non-goals / safety boundary: the core safety non-goals list (today's
@@ -85,35 +92,50 @@ this permission surface requires a new ADR.
   missing it fail pack validation (preserves
   `validate_profile_pack_catalog`'s current check, but structurally).
 
-## 6. Governed exceptions (the only relaxation path)
+## 6. Governed exception declarations
 
 ```yaml
 exceptions:
-  - id: EXC-2026-004
-    target: org.acme.arch_governance/ARCH-001   # exactly one rule/control id
-    accountable_owner: legacy_platform_owner
-    approving_authority: chief_architect        # role that must appear in approvals
-    reason: Legacy module migration in flight.
-    scope: ["src/legacy/**"]
-    compensating_controls: [quarterly_architecture_review]
-    starts_at: "2026-07-01T00:00:00Z"
-    expires: "2026-12-31"
-    closure_evidence: [legacy_migration_closeout]
+  schema: nornyx.governance_exceptions.v1
+  source: project_contract
+  entries:
+    - id: EXC-2026-004
+      control: project.architecture_review
+      reason: Legacy module migration in flight.
+      scope: [component:legacy]
+      risk_tier: high
+      requester: user:legacy_owner
+      accountable_owner: user:risk_owner
+      approving_authority: user:chief_architect
+      compensating_controls: [control:quarterly_architecture_review]
+      evidence: [exception_review_record]
+      starts_at: "2026-07-01T00:00:00Z"
+      expires_at: "2026-12-31T00:00:00Z"
+      renewal_policy: manual_reapproval
+      closure_evidence: []
+      status: approved
 ```
 
-Semantics: the targeted rule still evaluates; on failure within scope the
-diagnostic downgrades to `warning` with the exception attached (visible, never
-silent). Missing any field ⇒ exception invalid ⇒ rule stays `error`. Expired ⇒
-ignored with its own `EXCEPTION_EXPIRED` error. Exceptions cannot target core
-checker rules (checker codes are outside the exceptable namespace) and cannot
-target deny-list membership. Packs cannot ship exceptions; only L4 contracts
-declare them, and `exception_management` module rules can require approval
-evidence for each exception.
+This block is a project-owned declaration and evidence record, not an engine
+relaxation mechanism. The targeted control continues to evaluate unchanged:
+Nornyx never downgrades, ignores, approves, renews, or applies a failure because
+an exception is present. Missing or malformed fields fail schema and structural
+validation. Core namespaces, reserved governance diagnostic namespaces and
+known core control/rule ids cannot be named as exceptable controls. Packs
+cannot ship project exceptions.
 
-`starts_at` and `expires` are evaluated against an explicit checker time input;
-tests inject it. A future evaluator must not sample wall-clock time inside rule
-evaluation. Closure evidence is mandatory when an exception is expired or
-closed. Invalid, overlapping, or ambiguous exception scope fails closed.
+Intervals are half-open (`starts_at <= t < expires_at`) and evaluated only
+against an explicit checker time. Expired and closed records require passing
+closure evidence. Active or approved records with the same control, intersecting
+scope, and intersecting time fail closed. Renewal is a distinct record with a
+`renews` reference, a non-overlapping interval, and new passing human-approval
+evidence named by `renewal_approval_evidence`. Each proof is a single-use,
+exactly typed `approval_record` with a unique artifact/hash, is absent from the
+full predecessor chain, names the renewal authority as producer, and is
+generated no earlier than the predecessor start and no later than renewal
+activation. A normalized human approval gate must explicitly govern
+`renew_exception:<new-exception-id>`, authorize the declared renewal authority,
+and require exactly that evidence set; renewal is never automatic.
 
 ## 7. ADR-0022 — Composition model decision
 
@@ -123,10 +145,11 @@ Options considered:
 |---|---|
 | A. One profile + many modules | **Adopted** |
 | B. Multiple composable profiles | Rejected for v1: today's compatibility matrix already flags most cross-domain pairs "requires_review_with"; free composition multiplies conflict surface (duplicate starters, colliding defaults) for no demonstrated user need. |
-| C. Primary profile + secondary overlays | Deferred: overlay = "profile without starter skeleton" ≈ module. If a real need appears, an overlay is expressible as a module; no new mechanism required. |
+| C. Primary profile + secondary overlays | Rejected for the current program: an overlay is a module under another name; no new mechanism is justified. |
 
 Rationale: modules already give reuse; a single profile keeps starter
 generation, terminology, and identity unambiguous. The registry API keeps a
-`profiles: [..]` plural internally so option B/C could be enabled later
-without breaking the lock or pack formats. Existing contracts declare exactly
-one `project.profile` today, so A is also the zero-migration choice.
+plural internal collection for uniform implementation, not as authorization
+for multiple active profiles. Re-entry requires a new ADR, compatibility
+proof, and human approval. Existing contracts declare exactly one
+`project.profile`, so A is also the zero-migration choice.

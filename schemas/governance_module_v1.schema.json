@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/governance_module_v1.schema.json",
-  "$comment": "DRAFT data-only contract for PR 1. No loader or composition behavior exists.",
-  "title": "Nornyx Governance Module v1 (Draft)",
+  "$comment": "Active data-only governance module contract. Loading and composition are local, deterministic, and inert.",
+  "title": "Nornyx Governance Module v1",
   "type": "object",
   "required": [
     "schema",
@@ -44,6 +44,39 @@
     "required_blocks": {
       "type": "array",
       "items": {"$ref": "profile_pack_v1.schema.json#/$defs/shortName"},
+      "uniqueItems": true
+    },
+    "block_schemas": {
+      "$comment": "Bindings select reviewed schemas bundled with Nornyx; packs cannot supply inline schemas.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": ["block", "schema_id"],
+        "properties": {
+          "block": {"$ref": "profile_pack_v1.schema.json#/$defs/shortName"},
+          "schema_id": {
+            "type": "string",
+            "pattern": "^https://nornyx\\.dev/schemas/[a-z0-9_.-]+\\.schema\\.json$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "structural_checks": {
+      "$comment": "Closed reviewed check catalog; no pack-supplied expressions or callbacks.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "enum": [
+          "human_approval.v1",
+          "evidence_integrity.v1",
+          "separation_of_duties.v1",
+          "exception_management.v1",
+          "change_control.v1",
+          "architecture_conformance.v1"
+        ]
+      },
       "uniqueItems": true
     },
     "policies": {

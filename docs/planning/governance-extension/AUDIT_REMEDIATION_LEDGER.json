@@ -1,0 +1,1022 @@
+{
+  "schema": "nornyx.audit_remediation_ledger.v2",
+  "audit": {
+    "repository": "mazinmarji/nornyx",
+    "pull_request": 30,
+    "audited_base": "95952226999327458c6fea81cb32d82539bcae5b",
+    "original_no_go_candidate": "35ee69359599af7887f6b9b58ae0a4cd06a48d25",
+    "main_remediation_implementation_anchor": "81899aaac5e54781dfe9c8002f557a874854c8b8",
+    "historical_exact_head_ci": {
+      "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+      "is_final_approved_candidate": false,
+      "run_id": 29373272295,
+      "conclusion": "success",
+      "windows": {
+        "source": "local_windows",
+        "passed": 913,
+        "skipped": 45,
+        "lineage_anchor": "81899aaac5e54781dfe9c8002f557a874854c8b8"
+      },
+      "linux": {
+        "source": "hosted_linux_ci",
+        "run_id": 29373272295,
+        "passed": 958,
+        "skipped": 0
+      },
+      "wheel": {
+        "source": "hosted_linux_ci",
+        "run_id": 29373272295,
+        "profiles": 12,
+        "modules": 6,
+        "network_attempts": [],
+        "network_used": false
+      }
+    },
+    "later_reopening_audit": {
+      "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+      "verdict": "NO-GO",
+      "reopened_findings": [
+        "AUD-011-R1",
+        "AUD-017-R1",
+        "AUD-021-R1",
+        "PRMETA-001"
+      ]
+    },
+    "residual_remediation": {
+      "code_commit": "1319613697b0e94d177ebe2c879f73107c366c7e",
+      "documentation_commit": {
+        "kind": "containing_commit",
+        "sha": null,
+        "self_embedding_avoided": true
+      },
+      "status": "implemented_pending_external_final_head_verification"
+    },
+    "external_final_head_verification": {
+      "resolve_candidate_from": "git_and_github",
+      "hosted_ci": "required_for_resolved_exact_head",
+      "independent_audit": "required_after_green_exact_head_ci"
+    }
+  },
+  "authorization": {
+    "approve": false,
+    "mark_ready": false,
+    "auto_merge": false,
+    "merge": false,
+    "release": false,
+    "tag": false,
+    "publish": false,
+    "deploy": false
+  },
+  "findings": [
+    {
+      "id": "AUD-001",
+      "original_severity": "High",
+      "root_cause": "Project governance discovery calls is_dir before rejecting dangling or non-directory symlink components.",
+      "reproducer": "tests/test_governance_audit_aud001_aud002.py::test_aud001_dangling_project_governance_components_fail_all_commands",
+      "affected_files": [
+        "nornyx/governance/loader.py",
+        "nornyx/governance/runtime.py",
+        "nornyx/governance/registry.py",
+        "nornyx/cli.py"
+      ],
+      "correction": "Inspect every lexical governance component before metadata or enumeration and fail closed.",
+      "implementation_reference": [
+        "nornyx/governance/loader.py::_inspect_unresolved_components",
+        "nornyx/governance/runtime.py::registry_for_directory",
+        "nornyx/governance/registry.py::GovernanceRegistry.register_directory"
+      ],
+      "tests": [
+        "tests/test_governance_audit_aud001_aud002.py::test_aud001_dangling_project_governance_components_fail_all_commands",
+        "tests/test_governance_audit_aud001_aud002.py::test_aud001_live_governance_symlink_targets_fail_closed",
+        "tests/test_governance_audit_aud001_aud002.py::test_aud001_project_components_are_inspected_before_bundled_discovery"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Focused Stage-2 suite rejects dangling/live links, wrong types, inaccessible components, and premature bundled discovery; real-link cases remain scheduled for Linux CI."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-002",
+      "original_severity": "High",
+      "root_cause": "Profile and module registries use separate identity maps and lock verification collapses selected packs by id.",
+      "reproducer": "tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_identity_is_globally_unique_and_locks_cannot_collapse",
+      "affected_files": [
+        "nornyx/governance/registry.py",
+        "nornyx/governance/locks.py"
+      ],
+      "correction": "Enforce one global pack identity namespace and reject duplicate selected identities before lock construction.",
+      "implementation_reference": [
+        "nornyx/governance/registry.py::GovernanceRegistry._cross_kind_collision",
+        "nornyx/governance/locks.py::_reject_pack_identity_collisions"
+      ],
+      "tests": [
+        "tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_identity_is_globally_unique_and_locks_cannot_collapse",
+        "tests/test_governance_audit_aud001_aud002.py::test_aud002_cross_kind_collision_diagnostic_is_order_independent",
+        "tests/test_governance_audit_aud001_aud002.py::test_aud002_lock_identity_collision_is_permutation_safe",
+        "tests/test_governance_audit_aud001_aud002.py::test_aud002_forged_duplicate_lock_cannot_be_written"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Profile/module id, name, and cross-field collision permutations fail deterministically before registry or lock dictionary collapse; generated locks self-verify."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-003",
+      "original_severity": "High",
+      "root_cause": "Approval normalization validates accountable_authority type but does not apply intrinsic non-human identity denial.",
+      "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud003_non_human_accountable_authority_is_intrinsically_invalid",
+      "affected_files": [
+        "nornyx/governance/approvals.py",
+        "nornyx/governance/loader.py",
+        "nornyx/governance/structural.py"
+      ],
+      "correction": "Reject exact and prefixed non-human authority identities during normalization.",
+      "implementation_reference": [
+        "nornyx/governance/approvals.py::normalize_approval",
+        "nornyx/governance/approvals.py::is_non_human_authority",
+        "nornyx/governance/loader.py::_load_pack_bytes",
+        "nornyx/governance/structural.py::_human_approval"
+      ],
+      "tests": [
+        "tests/test_governance_audit_approval_integrity.py::test_aud003_non_human_accountable_authority_is_intrinsically_invalid",
+        "tests/test_governance_audit_approval_integrity.py::test_aud003_accountable_authority_requires_a_nonempty_source_string",
+        "tests/test_governance_audit_approval_integrity.py::test_aud003_source_pack_loading_rejects_non_human_authority",
+        "tests/test_governance_audit_approval_integrity.py::test_aud003_composition_rejects_programmatic_non_human_authority",
+        "tests/test_governance_audit_approval_integrity.py::test_aud003_document_evaluation_preserves_specific_authority_failure"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Direct normalization, pack loading, programmatic composition, v2 serialization, retained-source verification, and document evaluation reject malformed and explicit non-human authority."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-004",
+      "original_severity": "High",
+      "root_cause": "Retained-source verification uses the untrusted claimed normalized id as its own fallback.",
+      "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud004_normalized_identity_is_independently_derived",
+      "affected_files": [
+        "nornyx/governance/approvals.py",
+        "nornyx/governance/models.py",
+        "schemas/governance_approval_model_v2.schema.json",
+        "nornyx/schemas/governance_approval_model_v2.schema.json"
+      ],
+      "correction": "Derive identity independently from raw source and a documented source-path fallback.",
+      "implementation_reference": [
+        "nornyx/governance/approvals.py::_source_identity",
+        "nornyx/governance/approvals.py::trusted_normalized_approval",
+        "nornyx/governance/models.py::NormalizedApproval.to_verifiable_dict"
+      ],
+      "tests": [
+        "tests/test_governance_audit_approval_integrity.py::test_aud004_normalized_identity_is_independently_derived",
+        "tests/test_governance_audit_approval_integrity.py::test_aud004_missing_identity_uses_one_path_derived_fallback",
+        "tests/test_governance_audit_approval_integrity.py::test_aud004_legacy_serializer_and_schema_remain_base_compatible"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Changed/deleted identity, conflicting shape, changed path, case, whitespace and Unicode-confusable mutations all fail v2 re-derivation. Missing raw identity is derived only from shape/path; arbitrary in-band fallbacks fail even with a recomputed consistency binding. The frozen v1 serializer/schema remains valid."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-005",
+      "original_severity": "High",
+      "root_cause": "Invalidation conditions are converted with str instead of validated as source strings.",
+      "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud005_invalidation_conditions_never_coerce",
+      "affected_files": [
+        "nornyx/governance/approvals.py"
+      ],
+      "correction": "Strictly validate non-empty unique strings and mark malformed approval input invalid.",
+      "implementation_reference": [
+        "nornyx/governance/approvals.py::_strict_strings",
+        "nornyx/governance/approvals.py::normalize_approval",
+        "nornyx/governance/structural.py::_strict_source_strings"
+      ],
+      "tests": [
+        "tests/test_governance_audit_approval_integrity.py::test_aud005_invalidation_conditions_never_coerce",
+        "tests/test_governance_audit_approval_integrity.py::test_aud005_adjacent_approval_authority_values_never_coerce",
+        "tests/test_governance_audit_approval_integrity.py::test_aud005_subject_revision_and_exception_authority_never_coerce"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Boolean, mapping, integer, empty, whitespace and duplicate invalidation inputs return resolution=invalid with APPROVAL_INVALIDATION_CONDITION_INVALID. Roles, evidence, actions, governed revisions, exception authorities, rule references, evidence dependencies and closure evidence are checked as source strings and are never stringified."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-006",
+      "original_severity": "High",
+      "root_cause": "The standalone human-approval check requires exact=true but does not compare governed subject revisions.",
+      "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud006_standalone_approval_must_match_governed_revision",
+      "affected_files": [
+        "nornyx/governance/structural.py"
+      ],
+      "correction": "Resolve one canonical governed revision and compare all approval/evidence/change/architecture bindings.",
+      "implementation_reference": [
+        "nornyx/governance/structural.py::_governed_subject_revision",
+        "nornyx/governance/structural.py::_human_approval"
+      ],
+      "tests": [
+        "tests/test_governance_audit_approval_integrity.py::test_aud006_standalone_approval_must_match_governed_revision",
+        "tests/test_governance_audit_approval_integrity.py::test_aud006_matching_standalone_revision_is_accepted",
+        "tests/test_governance_audit_approval_integrity.py::test_aud006_missing_governed_revision_fails_closed",
+        "tests/test_governance_audit_approval_integrity.py::test_aud006_conflicting_evidence_revision_fails_closed",
+        "tests/test_governance_audit_approval_integrity.py::test_aud006_multiple_approvals_cannot_span_governed_revisions",
+        "tests/test_governance_audit_approval_integrity.py::test_aud006_change_scope_hash_must_match_same_approval"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "One independent top-level subject revision is required; approval, evidence-record, change, architecture and architecture-evidence claims are compared without relying on change_control selection."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-007",
+      "original_severity": "High",
+      "root_cause": "High-risk change authorization accepts any role intersection instead of a strict authorized subset.",
+      "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud007_high_risk_change_roles_are_a_strict_human_subset",
+      "affected_files": [
+        "nornyx/governance/structural.py"
+      ],
+      "correction": "Require every declared role and irreversible authority to be eligible, human, non-denied and sufficient.",
+      "implementation_reference": [
+        "nornyx/governance/structural.py::_change_control",
+        "nornyx/governance/structural.py::_strict_source_strings"
+      ],
+      "tests": [
+        "tests/test_governance_audit_approval_integrity.py::test_aud007_high_risk_change_roles_are_a_strict_human_subset",
+        "tests/test_governance_audit_approval_integrity.py::test_aud007_required_duplicate_and_malformed_change_roles_fail",
+        "tests/test_governance_audit_approval_integrity.py::test_aud007_irreversible_authority_must_be_eligible",
+        "tests/test_governance_audit_approval_integrity.py::test_aud007_valid_human_high_risk_authority_remains_accepted"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Every high-risk role must be a unique canonical human role in one candidate's eligible set, include all required roles, avoid denials, and match the same revision/scope; irreversible authority is checked independently."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-008",
+      "original_severity": "High",
+      "root_cause": "The separation-of-duties actors schema has no minimum and structural checks are vacuous for an empty approver set.",
+      "reproducer": "tests/test_governance_audit_structural_semantics.py::test_aud008_empty_sod_assignment_fails_schema_and_structure",
+      "affected_files": [
+        "schemas/separation_of_duties_v1.schema.json",
+        "nornyx/schemas/separation_of_duties_v1.schema.json",
+        "nornyx/governance/structural.py",
+        "nornyx/profiles_data/module_separation_of_duties.yaml",
+        "examples/architecture_governance.nyx",
+        "tests/fixtures/governance_compatibility/manifest.json",
+        "docs/decisions/ADR-0029-fixed-structural-governance-checks.md"
+      ],
+      "correction": "Require and independently validate at least one unique human approver, join each change assignment to every restrictive approval gate and its connected passing evidence, and reject any required-independence overlap.",
+      "implementation_reference": [
+        "nornyx/governance/structural.py::_separation_of_duties",
+        "nornyx/governance/structural.py::_human_actor_role",
+        "nornyx/governance/structural.py::_evidence_component_resolver",
+        "nornyx/profiles_data/module_separation_of_duties.yaml::required_blocks"
+      ],
+      "tests": [
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_empty_sod_assignment_fails_schema_and_structure",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_malformed_duplicate_and_nonhuman_approvers_fail",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_assignments_are_linked_to_change_gate_and_evidence",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_all_assignment_shapes_fail_closed",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_all_linked_approval_gates_compose_restrictively",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_undeclared_actual_producer_cannot_overlap_approver",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_evidence_type_cannot_hide_actual_producer_overlap",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_subject_aliases_cannot_duplicate_one_change_assignment",
+        "tests/test_governance_audit_structural_semantics.py::test_aud008_sod_module_declares_its_cross_block_change_contract",
+        "tests/test_governance_audit_structural_semantics.py::test_adjacent_malformed_enum_values_fail_closed_without_exceptions"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Empty, scalar, mapping, padded, duplicate, semantic-duplicate, explicit non-human and case-varied approvers fail without exceptions; malformed enum values return diagnostics instead of raising. Canonical change subjects, risk, author, role, restrictive multi-gate and connected-evidence joins are enforced. Declared or actual producer overlap fails when evidence independence is required, including forged approval-type labels; the module declares both required block schemas."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-009",
+      "original_severity": "Medium",
+      "root_cause": "Exported path APIs default the trust boundary to the caller-supplied root, omitting higher ancestors.",
+      "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud009_exported_api_rejects_symlink_ancestor",
+      "affected_files": [
+        "nornyx/governance/runtime.py",
+        "nornyx/governance/loader.py",
+        "nornyx/governance/registry.py",
+        "nornyx/governance/evidence_validation.py"
+      ],
+      "correction": "Derive an independent lexical trust root or require a safe explicit one without breaking callers.",
+      "implementation_reference": [
+        "nornyx/governance/loader.py::_prepare_local_candidate",
+        "nornyx/governance/loader.py::inspect_local_file",
+        "nornyx/governance/loader.py::inspect_local_directory"
+      ],
+      "tests": [
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud009_exported_api_rejects_symlink_ancestor",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud009_caller_supplied_weak_trust_root_cannot_hide_symlink",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud009_safe_explicit_trust_root_remains_supported"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Direct registry, directory, pack, byte-reader, and evidence APIs inspect from an independent anchor; explicit roots only narrow containment."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-010",
+      "original_severity": "Medium",
+      "root_cause": "Lock loading uses unrestricted Path.read_text and permissive json.loads.",
+      "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_loader_rejects_unsafe_inputs",
+      "affected_files": [
+        "nornyx/governance/locks.py",
+        "nornyx/governance/loader.py",
+        "nornyx/cli.py"
+      ],
+      "correction": "Use the bounded hardened local-file loader, strict UTF-8, duplicate-key rejection and stable lock diagnostics.",
+      "implementation_reference": [
+        "nornyx/governance/locks.py::load_lock",
+        "nornyx/governance/locks.py::write_lock",
+        "nornyx/cli.py::_optional_profile_lock"
+      ],
+      "tests": [
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_loader_rejects_unsafe_inputs",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud010_lock_json_is_strict_and_schema_validated",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud010_cli_lock_symlink_fails_all_governance_consumers",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud010_write_lock_refuses_existing_symlink"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Bounded strict lock reads reject links, traversal, oversized/invalid UTF-8, duplicate keys, non-finite JSON, schema errors, directories, and unsafe writes."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-011",
+      "original_severity": "Medium",
+      "root_cause": "Remote-path checks cover URL schemes but not Windows UNC and device namespaces.",
+      "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud011_windows_remote_paths_are_rejected_before_filesystem_access",
+      "affected_files": [
+        "nornyx/path_security.py",
+        "nornyx/parser.py",
+        "nornyx/governance/loader.py",
+        "nornyx/governance/runtime.py",
+        "nornyx/governance/architecture.py",
+        "nornyx/governance/structural.py",
+        "nornyx/cli.py"
+      ],
+      "correction": "Centrally reject UNC, device and extended Windows paths before any filesystem call.",
+      "implementation_reference": [
+        "nornyx/path_security.py::is_remote_or_device_path",
+        "nornyx/governance/loader.py::reject_remote_or_device_path",
+        "nornyx/parser.py::load_nyx"
+      ],
+      "tests": [
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud011_windows_remote_paths_are_rejected_before_filesystem_access",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud011_every_loader_boundary_is_lexically_screened_first",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud011_public_governance_path_apis_reject_before_probe",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud011_validation_clis_reject_before_probe"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Historical tests covered URI, UNC, extended/device namespaces and standard DOS names before mocked probes; the later audit found omitted console and superscript aliases."
+      },
+      "closure_history": [
+        {
+          "status": "closed",
+          "evidence_context": "Historical closure through exact-head candidate 3a0e840c3229dbf58959df1e3a161318bffd94ac."
+        },
+        {
+          "status": "reopened",
+          "reopened_id": "AUD-011-R1",
+          "audit_candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+        }
+      ],
+      "final_status": "reopened_as_AUD-011-R1"
+    },
+    {
+      "id": "AUD-012",
+      "original_severity": "Medium",
+      "root_cause": "Composition replaces complete retained approval sources with path-only merged_sources metadata.",
+      "reproducer": "tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approvals_are_independently_verifiable",
+      "affected_files": [
+        "nornyx/governance/composition.py",
+        "nornyx/governance/approvals.py",
+        "nornyx/governance/models.py",
+        "nornyx/governance/reporting.py",
+        "schemas/effective_approval_v1.schema.json",
+        "nornyx/schemas/effective_approval_v1.schema.json",
+        "schemas/effective_governance_v2.schema.json",
+        "nornyx/schemas/effective_governance_v2.schema.json",
+        "docs/decisions/ADR-0032-verifiable-effective-approvals.md"
+      ],
+      "correction": "Introduce bounded deterministic effective-approval provenance, registry-backed source authentication, and independent recomputation verification under explicit versioned serializers.",
+      "implementation_reference": [
+        "nornyx/governance/approvals.py::compose_effective_approval",
+        "nornyx/governance/approvals.py::_trusted_provenance_source",
+        "nornyx/governance/approvals.py::trusted_effective_approval",
+        "nornyx/governance/composition.py::_effective_approval_facade",
+        "nornyx/governance/models.py::EffectiveApproval",
+        "nornyx/governance/models.py::CompositionResult.to_effective_dict"
+      ],
+      "tests": [
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approvals_are_independently_verifiable",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_nonbuiltin_effective_approval_requires_its_registry",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_forged_builtin_lineage_is_not_self_authenticating",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_document_rules_reject_effective_reporting_artifacts",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_public_verifiers_fail_closed_on_excessive_depth",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_effective_approval_mutation_matrix",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_provenance_id_index_and_path_must_agree",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_composer_rejects_duplicate_source_leaves",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_one_pack_index_cannot_claim_two_different_leaves",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_source_limit_stops_consuming_the_generator",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_three_layer_composition_is_deterministic_and_monotonic",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_empty_eligibility_never_broadens_a_restriction",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_disjoint_nonempty_sets_fail_even_with_an_empty_layer",
+        "tests/test_governance_audit_approval_integrity.py::test_aud012_required_role_excluded_by_another_layer_fails"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Bounded flattened v2 leaves, source hashes, deterministic provenance order and declared operations are replayed by the public verifier. Built-ins resolve only from packaged packs; other tiers require an explicit registry. Forged pack lineage, contradictory or duplicate id/index/path lineage, over-limit generators, excessive nesting, document reuse, source/recipe/result mutations, disjoint roles and excluded requirements fail."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-013",
+      "original_severity": "Medium",
+      "root_cause": "Exception closure is enforced only for closed status and active interval overlap is not checked.",
+      "reproducer": "tests/test_governance_audit_structural_semantics.py::test_aud013_expired_and_overlapping_exceptions_fail",
+      "affected_files": [
+        "nornyx/governance/structural.py",
+        "schemas/governance_exception_v1.schema.json",
+        "nornyx/schemas/governance_exception_v1.schema.json",
+        "examples/governance_evidence/renewal_approval_record.json",
+        ".gitattributes",
+        "docs/decisions/ADR-0029-fixed-structural-governance-checks.md",
+        "docs/planning/governance-extension/06_COMPOSITION_AND_PRECEDENCE.md"
+      ],
+      "correction": "Use order-independent half-open lifecycle validation, require passing closure proof, reject intersecting active control/scope/time intervals, and require explicit non-overlapping renewals with exact-type, authority-bound, unique, predecessor-fresh human-approval evidence plus a renewal-action gate requiring the exact same evidence set. Only passing evidence dependency chains may satisfy governance references; selected built-in controls and rules cannot be exception targets.",
+      "implementation_reference": [
+        "nornyx/governance/structural.py::_exception_management",
+        "nornyx/governance/structural.py::_usable_evidence_records",
+        "nornyx/governance/structural.py::_is_core_non_exceptable_control",
+        "nornyx/governance/structural.py::_selected_builtin_control_ids"
+      ],
+      "tests": [
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_expired_and_overlapping_exceptions_fail",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_missing_or_malformed_intervals_fail_closed",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_overlap_requires_same_control_scope_time_and_active_status",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_renewal_is_explicit_separate_and_nonoverlapping",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_lifecycle_and_renewal_bypasses_fail_closed",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_renewal_requires_exact_approval_evidence_type",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_relabelled_old_approval_is_not_new_renewal_evidence",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_renewal_approval_must_follow_prior_start_and_precede_activation",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_fresh_extra_evidence_cannot_launder_reused_gate_proof",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_ancestor_renewal_evidence_cannot_be_reused",
+        "tests/test_governance_audit_structural_semantics.py::test_aud013_core_safety_checker_controls_cannot_be_exempted",
+        "tests/test_governance_audit_structural_semantics.py::test_adjacent_nonpassing_evidence_cannot_authorize_governance",
+        "tests/test_governance_audit_structural_semantics.py::test_adjacent_malformed_enum_values_fail_closed_without_exceptions"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Missing/reversed intervals, malformed status values without crashes, premature active/expired states, stale active declarations, missing closure, same-control scope/time overlap, prohibited/dangling/self/cyclic/forked/overlapping renewals, mistyped/relabelled/reused/unknown/failed/post-activation approval proof, gate laundering, reserved governance diagnostic targets, and selected built-in rule/control targets fail. Adjacent intervals and independently preapproved renewals pass; failed, inconclusive, observed, or transitively failed evidence confers no authority."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-014",
+      "original_severity": "Medium",
+      "root_cause": "Raw-byte-hashed evidence and architecture artifacts are treated as Git text and converted by autocrlf.",
+      "reproducer": "tests/test_governance_audit_cross_platform.py::test_aud014_hash_bound_artifacts_are_checkout_stable",
+      "affected_files": [
+        ".gitattributes",
+        "examples/governance_evidence",
+        "examples/architecture_reports",
+        "tests/fixtures/governance_compatibility",
+        "tests/fixtures/generated_drift",
+        "tests/test_governance_audit_cross_platform.py"
+      ],
+      "correction": "Mark every raw-byte-hashed artifact as non-text and validate a fresh autocrlf checkout.",
+      "implementation_reference": [
+        ".gitattributes",
+        "tests/test_governance_audit_cross_platform.py::test_aud014_fresh_autocrlf_checkout_preserves_hash_bound_behavior"
+      ],
+      "tests": [
+        "tests/test_governance_audit_cross_platform.py::test_aud014_hash_bound_artifacts_are_checkout_stable",
+        "tests/test_governance_audit_cross_platform.py::test_aud014_fresh_autocrlf_checkout_preserves_hash_bound_behavior"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "The protected inventory covers all governance evidence, architecture reports, direct compatibility JSON, generated-drift JSON, and pre-existing binary starter goldens. A real autocrlf clone compares checkout bytes with immutable HEAD blobs, runs both hash-bound examples, resolve/explain/matrix, and the compatibility corpus without weakening raw-byte hash verification."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-015",
+      "original_severity": "Medium",
+      "root_cause": "Governed-package validation delegates legacy change id/type strings to a newly narrowed shared identity schema.",
+      "reproducer": "tests/test_governance_audit_compatibility.py::test_aud015_governed_package_legacy_change_strings_remain_valid",
+      "affected_files": [
+        "nornyx/governed_package.py",
+        "schemas/governed_package.schema.json",
+        "nornyx/schemas/governed_package.schema.json",
+        "schemas/change_v1.schema.json",
+        "nornyx/schemas/change_v1.schema.json",
+        "docs/decisions/ADR-0021-change-governance-as-a-module.md",
+        "docs/planning/governance-extension/07_CHANGE_GOVERNANCE_DESIGN.md"
+      ],
+      "correction": "Preserve the complete base governed-package string and extension domain with a frozen compatibility adapter; enforce the strict shared model only for an explicitly selected top-level change-control block.",
+      "implementation_reference": [
+        "nornyx/governed_package.py::_validate_governed_package_changes",
+        "schemas/governed_package.schema.json::properties.changes",
+        "nornyx/schemas/governed_package.schema.json::properties.changes",
+        "docs/decisions/ADR-0021-change-governance-as-a-module.md"
+      ],
+      "tests": [
+        "tests/test_governance_audit_compatibility.py::test_aud015_governed_package_legacy_change_strings_remain_valid",
+        "tests/test_governance_audit_compatibility.py::test_aud015_head_matches_base_string_domain",
+        "tests/test_governance_audit_compatibility.py::test_aud015_head_matches_base_rejection_domain",
+        "tests/test_governance_audit_compatibility.py::test_aud015_seeded_base_vs_head_string_differential",
+        "tests/test_governance_audit_compatibility.py::test_aud015_generalized_change_schema_remains_strict_when_selected",
+        "tests/test_governance_audit_compatibility.py::test_aud015_governed_package_schema_mirrors_pin_the_base_oracle"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Reported cases plus empty, whitespace, long, punctuation-leading, newline, emoji, CJK, arbitrary extension, and 250 seeded mutation values per field match the frozen 1.5.2 schema oracle with no narrowing or broadening. Missing and non-string base-invalid shapes still fail, while strict generalized change identities remain fail-closed."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-016",
+      "original_severity": "Medium",
+      "root_cause": "Required fields were inserted into exported dataclass constructors and existing to_dict shapes changed.",
+      "reproducer": "tests/test_governance_audit_compatibility.py::test_aud016_base_public_dataclass_constructors_remain_valid",
+      "affected_files": [
+        "nornyx/governance/models.py",
+        "nornyx/governance/__init__.py",
+        "scripts/test_wheel_install.py",
+        "docs/GOVERNANCE_CLI_AND_API.md"
+      ],
+      "correction": "Restore base-valid constructors with defaults and preserve legacy serialization through compatible output methods.",
+      "implementation_reference": [
+        "nornyx/governance/models.py::GovernanceModule",
+        "nornyx/governance/models.py::NormalizedApproval.to_legacy_dict",
+        "nornyx/governance/models.py::CompositionResult.to_dict",
+        "scripts/test_wheel_install.py::main"
+      ],
+      "tests": [
+        "tests/test_governance_audit_compatibility.py::test_aud016_base_public_dataclass_constructors_remain_valid",
+        "tests/test_governance_audit_compatibility.py::test_aud016_base_positional_constructor_prefixes_remain_valid",
+        "tests/test_governance_audit_compatibility.py::test_aud016_base_serialized_payloads_are_exactly_preserved",
+        "tests/test_governance_audit_compatibility.py::test_aud016_base_nested_values_and_diagnostics_are_preserved",
+        "tests/test_governance_audit_compatibility.py::test_aud016_base_public_exports_are_not_removed",
+        "scripts/test_wheel_install.py::main"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Every base field remains an unchanged positional prefix; additive fields are trailing defaults; complete normalized-approval and composition v1 payloads, nested consumer mappings, retained source and diagnostics match the base contract; base public exports remain a subset; the isolated wheel smoke executes the legacy positional consumer."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-017",
+      "original_severity": "Medium",
+      "root_cause": "Closure, security, compatibility and release records claim assurances contradicted by exact-head behavior.",
+      "reproducer": "tests/test_governance_audit_compatibility.py::test_aud017_current_docs_state_exact_evidence_and_authorization_boundary",
+      "affected_files": [
+        "docs/planning/governance-extension/19_COMPATIBILITY_REPORT.md",
+        "docs/planning/governance-extension/20_SECURITY_ASSURANCE_REPORT.md",
+        "docs/planning/governance-extension/21_PROGRAM_CLOSURE_REPORT.md",
+        "docs/planning/governance-extension/22_FINAL_INDEPENDENT_AUDIT.md",
+        "docs/releases/RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"
+      ],
+      "correction": "Mark inaccurate records superseded immediately and regenerate exact-head claims only after independent validation.",
+      "implementation_reference": [
+        "docs/planning/governance-extension/19_COMPATIBILITY_REPORT.md",
+        "docs/planning/governance-extension/20_SECURITY_ASSURANCE_REPORT.md",
+        "docs/planning/governance-extension/21_PROGRAM_CLOSURE_REPORT.md",
+        "docs/planning/governance-extension/22_FINAL_INDEPENDENT_AUDIT.md",
+        "docs/releases/RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"
+      ],
+      "tests": [
+        "tests/test_governance_audit_compatibility.py::test_aud017_current_docs_state_exact_evidence_and_authorization_boundary",
+        "tests/test_governance_program_closure.py::test_current_audit_and_candidate_preserve_external_gate_boundary"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Historical records captured the pre-push state and authorization boundary; hosted run 29373272295 later made their mutable remote/CI assertions obsolete."
+      },
+      "closure_history": [
+        {
+          "status": "closed",
+          "evidence_context": "Historical closure before hosted run 29373272295 changed the external facts."
+        },
+        {
+          "status": "reopened",
+          "reopened_id": "AUD-017-R1",
+          "audit_candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+        }
+      ],
+      "final_status": "reopened_as_AUD-017-R1"
+    },
+    {
+      "id": "AUD-018",
+      "original_severity": "Low",
+      "root_cause": "Reserved namespace validation rejects descendants but not exact nornyx.builtin equality.",
+      "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud018_reserved_namespace_root_is_rejected",
+      "affected_files": [
+        "nornyx/governance/loader.py",
+        "nornyx/governance/registry.py"
+      ],
+      "correction": "Reject exact and descendant reserved namespace identities for every non-built-in tier.",
+      "implementation_reference": [
+        "nornyx/governance/loader.py::_reserved_builtin_identity",
+        "nornyx/governance/loader.py::_load_bundled_pack",
+        "nornyx/governance/loader.py::load_local_pack",
+        "nornyx/governance/registry.py::GovernanceRegistry._validate_namespace"
+      ],
+      "tests": [
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud018_reserved_namespace_root_is_rejected",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud018_local_loader_cannot_claim_builtin_tier",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud018_public_bytes_loader_cannot_claim_builtin_tier",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud018_programmatic_nonbuiltin_pack_is_defensively_rejected",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud018_programmatic_builtin_tier_claim_is_rejected",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud018_private_bundled_loader_requires_catalog_capability"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Exact root and descendant identities fail for project, org and explicit tiers in profile/module inputs; local byte/file loaders, forged dataclasses, and uncatalogued resources cannot claim bundled tier while authentic packaged packs remain registerable."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-019",
+      "original_severity": "Low",
+      "root_cause": "PACK_SCHEMA_INVALID is omitted from lock error classification.",
+      "reproducer": "tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_uses_documented_exit_code",
+      "affected_files": [
+        "nornyx/cli.py"
+      ],
+      "correction": "Map all schema and semantic lock validation failures to documented exit code 2.",
+      "implementation_reference": [
+        "nornyx/cli.py::_optional_profile_lock",
+        "nornyx/cli.py::_is_lock_failure",
+        "nornyx/cli.py::cmd_profiles",
+        "nornyx/cli.py::cmd_governance"
+      ],
+      "tests": [
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_uses_documented_exit_code",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud019_all_invalid_lock_classes_use_exit_two",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud019_invalid_lock_path_type_uses_exit_two",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud019_profiles_resolve_uses_the_same_lock_exit_contract",
+        "tests/test_governance_audit_path_and_lock_security.py::test_aud019_schema_invalid_pack_remains_exit_one"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Resolve, explain, matrix and profiles resolve return 2 in text and JSON modes for path, encoding, JSON, schema and semantic lock failures; schema-invalid packs remain ordinary exit 1 and check remains exit 1."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-020",
+      "original_severity": "Low",
+      "root_cause": "Migration tests assert metadata presence without proving the immutable old artifact or exact diff.",
+      "reproducer": "tests/test_governance_audit_compatibility.py::test_aud020_migration_record_is_mechanically_bound_to_artifacts",
+      "affected_files": [
+        "tests/fixtures/governance_compatibility/manifest.json",
+        "tests/fixtures/governance_compatibility/migrations/",
+        "scripts/check_compatibility_migrations.py",
+        "tests/test_governance_compatibility_corpus.py"
+      ],
+      "correction": "Commit immutable before/after artifacts and mechanically verify both hashes and the exact structural diff.",
+      "implementation_reference": [
+        "scripts/check_compatibility_migrations.py::verify_manifest",
+        "scripts/check_compatibility_migrations.py::json_operations",
+        "scripts/check_compatibility_migrations.py::text_diff",
+        "tests/fixtures/governance_compatibility/manifest.json::intentional_migrations"
+      ],
+      "tests": [
+        "tests/test_governance_audit_compatibility.py::test_aud020_migration_record_is_mechanically_bound_to_artifacts"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Five migrations bind canonical immutable before/after bytes, exact JSON-pointer operations or unified text diff, proof-record hash, approval/reason/changelog metadata, closed artifact inventory, ordered chains and current terminal output."
+      },
+      "final_status": "closed"
+    },
+    {
+      "id": "AUD-021",
+      "original_severity": "Low",
+      "root_cause": "Wheel smoke omits no-index/socket denial and reports network_used as a literal false value.",
+      "reproducer": "tests/test_governance_audit_cross_platform.py::test_aud021_wheel_smoke_enforces_observed_no_network",
+      "affected_files": [
+        "scripts/test_wheel_install.py"
+      ],
+      "correction": "Install with no-index, clear network environment and derive network_used from an enforced socket-denial observation.",
+      "implementation_reference": [
+        "scripts/test_wheel_install.py::_network_attempts",
+        "scripts/test_wheel_install.py::_run",
+        "scripts/test_wheel_install.py::main"
+      ],
+      "tests": [
+        "tests/test_governance_audit_cross_platform.py::test_aud021_wheel_smoke_enforces_observed_no_network"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Historical smoke cleared index/proxy configuration, used pip --no-index/--no-deps, denied DNS/connect calls and derived network_used from its log; the later audit found unobserved UDP/send paths."
+      },
+      "closure_history": [
+        {
+          "status": "closed",
+          "evidence_context": "Historical closure through exact-head run 29373272295."
+        },
+        {
+          "status": "reopened",
+          "reopened_id": "AUD-021-R1",
+          "audit_candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac"
+        }
+      ],
+      "final_status": "reopened_as_AUD-021-R1"
+    },
+    {
+      "id": "AUD-022",
+      "original_severity": "Low",
+      "root_cause": "Validation used a clean-worktree diff check instead of the candidate base-to-head range.",
+      "reproducer": "tests/test_governance_audit_cross_platform.py::test_aud022_candidate_diff_is_clean",
+      "affected_files": [
+        "CODEX_GOAL.md",
+        "docs/decisions/ADR-0028-bounded-governance-block-schemas.md",
+        "docs/decisions/ADR-0029-fixed-structural-governance-checks.md",
+        "docs/decisions/ADR-0031-specialist-governance-placement-after-gsa.md",
+        ".github/workflows/ci.yml"
+      ],
+      "correction": "Remove candidate whitespace defects and run the base-to-head check in CI/release assurance.",
+      "implementation_reference": [
+        ".github/workflows/ci.yml::Check candidate diff hygiene",
+        "CODEX_GOAL.md",
+        "docs/decisions/ADR-0028-bounded-governance-block-schemas.md",
+        "docs/decisions/ADR-0031-specialist-governance-placement-after-gsa.md"
+      ],
+      "tests": [
+        "tests/test_governance_audit_cross_platform.py::test_aud022_candidate_diff_is_clean"
+      ],
+      "validation": {
+        "status": "passed",
+        "evidence": "Known candidate whitespace defects are removed and Linux CI runs git diff --check from audited base 95952226999327458c6fea81cb32d82539bcae5b through HEAD."
+      },
+      "final_status": "closed"
+    }
+  ],
+  "reopened_findings": [
+    {
+      "original_finding": {
+        "id": "AUD-011"
+      },
+      "reopened_id": "AUD-011-R1",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Medium",
+        "classification": "defect",
+        "evidence": [
+          "CONIN$, CONOUT$, COM superscript 1/2/3 and LPT superscript 1/2/3 reached filesystem probes.",
+          "The existing host-independent classifier omitted the native Windows aliases and adjacent transformed variants.",
+          "Pre-remediation adjacent probes also reached filesystem operations through governed-package validation, generation, registration, radar, scanner, external-evidence and discovered-artifact boundaries.",
+          "Raw adapter URI and UNC references required classification before Path normalization so their remote identity could not be erased on Linux."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "exact_commit",
+          "sha": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "implementation_references": [
+          "nornyx/path_security.py::is_remote_or_device_path",
+          "nornyx/governed_package.py::validate_governed_package",
+          "nornyx/governed_package.py::generate_governed_package",
+          "nornyx/governed_package.py::register_existing_package",
+          "nornyx/governed_package.py::radar_governed_packages",
+          "nornyx/governed_package.py::load_governed_package_source",
+          "nornyx/governed_package.py::validate_governed_package_source",
+          "nornyx/package_scanner.py::_reject_unsafe_path",
+          "nornyx/package_scanner.py::iter_source_files",
+          "nornyx/package_scanner.py::scan_package",
+          "nornyx/cli.py::cmd_package_evidence_import",
+          "nornyx/governance/locks.py::write_lock"
+        ],
+        "test_references": [
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_classifier_rejects_complete_dos_device_matrix",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_safe_near_misses_remain_allowed",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_public_governance_path_apis_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_governed_package_boundaries_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_registered_artifact_rejects_before_unsafe_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_lock_write_rejects_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_policy_ref_rejects_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_contract_clis_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_all_governed_package_path_boundaries_reject_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_embedded_package_lock_path_rejects_before_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_raw_adapter_paths_reject_before_normalization_or_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_discovered_artifact_rejects_before_entry_probe",
+          "tests/test_governance_audit_path_and_lock_security.py::test_aud011_r1_package_clis_reject_every_path_before_probe"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "implemented",
+          "evidence_commit": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "remediated_pending_external_exact_head_ci_and_independent_audit",
+      "external_exact_head_ci_requirement": true
+    },
+    {
+      "original_finding": {
+        "id": "AUD-017"
+      },
+      "reopened_id": "AUD-017-R1",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Medium",
+        "classification": "documentation issue",
+        "evidence": [
+          "Eight current-state records still said the branch was unpushed, the remote head was 35ee693 or hosted CI was unavailable.",
+          "Live PR state and run 29373272295 contradicted those mutable assertions."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "containing_commit",
+          "sha": null,
+          "self_embedding_avoided": true
+        },
+        "implementation_references": [
+          "docs/planning/governance-extension/12_IMPLEMENTATION_ROADMAP.md",
+          "docs/planning/governance-extension/15_CURRENT_IMPLEMENTATION_INVENTORY.md",
+          "docs/planning/governance-extension/19_COMPATIBILITY_REPORT.md",
+          "docs/planning/governance-extension/20_SECURITY_ASSURANCE_REPORT.md",
+          "docs/planning/governance-extension/21_PROGRAM_CLOSURE_REPORT.md",
+          "docs/planning/governance-extension/22_FINAL_INDEPENDENT_AUDIT.md",
+          "docs/planning/governance-extension/AUDIT_REMEDIATION_LEDGER.json",
+          "docs/releases/RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md"
+        ],
+        "test_references": [
+          "tests/test_governance_audit_compatibility.py::test_aud017_current_docs_state_exact_evidence_and_authorization_boundary",
+          "tests/test_governance_audit_closure.py::test_every_audit_finding_has_executable_closure_evidence",
+          "tests/test_governance_program_closure.py::test_current_audit_and_candidate_preserve_external_gate_boundary"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "not_applicable",
+          "reason": "documentation evidence-model finding"
+        },
+        "documentation_closure": {
+          "status": "implemented_in_containing_commit",
+          "embedded_sha": null
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "remediated_pending_external_exact_head_ci_and_independent_audit",
+      "external_exact_head_ci_requirement": true
+    },
+    {
+      "original_finding": {
+        "id": "AUD-021"
+      },
+      "reopened_id": "AUD-021-R1",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Low",
+        "classification": "test gap",
+        "evidence": [
+          "The historical guard did not intercept AF_INET/AF_INET6 construction, UDP sendto or sendmsg.",
+          "The historical test only inspected source strings instead of exercising denial behavior.",
+          "Pre-remediation executable probes showed _socket and legacy DNS calls plus cached connect/send descriptors reaching the runtime with an empty attempt log."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "exact_commit",
+          "sha": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "implementation_references": [
+          "scripts/wheel_network_guard.py::NetworkGuard",
+          "scripts/wheel_network_guard.py::_audit_hook",
+          "scripts/wheel_network_guard.py::run_self_test",
+          "scripts/test_wheel_install.py::main"
+        ],
+        "test_references": [
+          "tests/test_wheel_network_guard.py::test_network_guard_self_test_records_and_rejects_every_primitive",
+          "tests/test_wheel_network_guard.py::test_network_guard_denies_constructor_aliases_before_socket_creation",
+          "tests/test_wheel_network_guard.py::test_network_guard_self_test_log_is_separate_from_product_log",
+          "tests/test_wheel_network_guard.py::test_network_guard_denies_low_level_and_legacy_dns_before_resolution",
+          "tests/test_wheel_network_guard.py::test_network_guard_audit_fallback_denies_cached_socket_methods",
+          "tests/test_governance_audit_cross_platform.py::test_aud021_wheel_smoke_enforces_observed_no_network"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "implemented",
+          "evidence_commit": "1319613697b0e94d177ebe2c879f73107c366c7e"
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "remediated_pending_external_exact_head_ci_and_independent_audit",
+      "external_exact_head_ci_requirement": true
+    },
+    {
+      "original_finding": {
+        "id": "PRMETA-001",
+        "source": "later independent audit"
+      },
+      "reopened_id": "PRMETA-001",
+      "reopening_audit": {
+        "candidate": "3a0e840c3229dbf58959df1e3a161318bffd94ac",
+        "verdict": "NO-GO",
+        "severity": "Low",
+        "classification": "documentation issue",
+        "evidence": [
+          "The live PR body cited obsolete commits, test counts, run IDs, migration scope and audit language."
+        ]
+      },
+      "remediation": {
+        "commit_reference": {
+          "kind": "containing_commit",
+          "sha": null,
+          "self_embedding_avoided": true
+        },
+        "implementation_references": [
+          "docs/releases/RELEASE_CANDIDATE_GOVERNANCE_PROGRAM.md::Prepared PR Description"
+        ],
+        "test_references": [
+          "tests/test_governance_program_closure.py::test_current_audit_and_candidate_preserve_external_gate_boundary"
+        ]
+      },
+      "closure": {
+        "code_closure": {
+          "status": "not_applicable",
+          "reason": "external pull-request metadata finding"
+        },
+        "metadata_closure": {
+          "status": "prepared_not_published",
+          "publication_condition": "fresh_independent_audit_GO"
+        },
+        "hosted_ci_closure": {
+          "status": "required_for_external_final_head",
+          "candidate": null,
+          "run_id": null
+        },
+        "independent_audit_closure": {
+          "status": "required_after_green_exact_head_ci",
+          "verdict": null
+        },
+        "human_authorization": {
+          "status": "not_granted",
+          "authorized": false
+        }
+      },
+      "final_status": "prepared_pending_post_go_publication",
+      "external_exact_head_ci_requirement": true
+    }
+  ]
+}

@@ -13,7 +13,19 @@ import yaml
 
 from . import __version__
 from .errors import Diagnostic
-from .package_scanner import SCANNER_NAME, SCANNER_VERSION, scan_package, write_scan_reports
+from .governance.errors import GovernanceError
+from .governance.loader import (
+    inspect_local_directory,
+    read_local_file_bytes,
+    reject_remote_or_device_path,
+)
+from .package_scanner import (
+    SCANNER_NAME,
+    SCANNER_VERSION,
+    iter_source_files,
+    scan_package,
+    write_scan_reports,
+)
 from .parser import load_nyx
 
 
@@ -229,6 +241,59 @@ def _diag(
     level: str = "error",
 ) -> Diagnostic:
     return Diagnostic(level, code, message, path, hint)
+
+
+def _validate_governed_package_changes(changes: Any) -> list[Diagnostic]:
+    """Validate the unchanged governed-package 1.x change projection.
+
+    Governed-package 1.x accepted the full JSON string domain for change
+    ``id``, ``type``, and ``expected_artifacts`` entries and permitted arbitrary
+    extension properties.  The generalized change schema deliberately uses a
+    narrower identity type, but it governs only the separate top-level
+    ``changes`` block when the change-control module is selected.  Reinterpreting
+    a legacy package extension property as an opt-in would narrow formerly valid
+    packages, so this compatibility adapter never does so.
+    """
+
+    if not isinstance(changes, list):
+        return []
+
+    diagnostics: list[Diagnostic] = []
+    for index, change in enumerate(changes):
+        path = f"governed_package.changes[{index}]"
+        if not isinstance(change, dict):
+            diagnostics.append(
+                _diag(
+                    "INVALID_GOVERNED_PACKAGE_CHANGE",
+                    "governed_package change must be a mapping",
+                    path,
+                )
+            )
+            continue
+
+        for field in ("id", "type"):
+            if field not in change or not isinstance(change[field], str):
+                diagnostics.append(
+                    _diag(
+                        "INVALID_GOVERNED_PACKAGE_CHANGE",
+                        f"governed_package change {field!r} must be a string",
+                        f"{path}.{field}",
+                    )
+                )
+
+        expected_artifacts = change.get("expected_artifacts")
+        if "expected_artifacts" in change and (
+            not isinstance(expected_artifacts, list)
+            or any(not isinstance(item, str) for item in expected_artifacts)
+        ):
+            diagnostics.append(
+                _diag(
+                    "INVALID_GOVERNED_PACKAGE_CHANGE",
+                    "governed_package change expected_artifacts must be a list of strings",
+                    f"{path}.expected_artifacts",
+                )
+            )
+    return diagnostics
 
 
 def _risk_rank(tier: str) -> int:
@@ -450,6 +515,11 @@ def _scan_report_hashes(out: Path) -> list[dict[str, str]]:
 
 
 def load_governed_package_source(source: str | Path) -> dict[str, Any]:
+    reject_remote_or_device_path(
+        source,
+        code_prefix="PACKAGE",
+        noun="Governed package source",
+    )
     path = Path(source)
     if path.suffix.lower() == ".json":
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -468,6 +538,12 @@ def validate_governed_package(
     *,
     base_dir: str | Path | None = None,
 ) -> list[Diagnostic]:
+    if base_dir is not None:
+        reject_remote_or_device_path(
+            base_dir,
+            code_prefix="PACKAGE",
+            noun="Governed package base directory",
+        )
     diagnostics: list[Diagnostic] = []
     if not isinstance(package, dict):
         return [_diag("INVALID_GOVERNED_PACKAGE", "governed_package must be a mapping", "governed_package")]
@@ -539,6 +615,8 @@ def validate_governed_package(
                     f"governed_package.{block}",
                 )
             )
+
+    diagnostics.extend(_validate_governed_package_changes(package.get("changes")))
 
     requirements = _evidence_requirements(package)
     requirement_ids = _id_values(requirements)
@@ -844,7 +922,13 @@ def validate_governed_package(
 
     package_lock = package.get("package_lock")
     if isinstance(package_lock, dict) and base_dir is not None:
-        lock_path = Path(base_dir) / str(package_lock.get("path", "package_lock.json"))
+        lock_reference = str(package_lock.get("path", "package_lock.json"))
+        reject_remote_or_device_path(
+            lock_reference,
+            code_prefix="PACKAGE",
+            noun="Package lock reference",
+        )
+        lock_path = Path(base_dir) / lock_reference
         if lock_path.exists():
             diagnostics.extend(verify_package_lock(lock_path.parent))
 
@@ -959,9 +1043,18 @@ def _render_safety(package: dict[str, Any]) -> str:
 
 
 def generate_governed_package(source_file: str | Path, out_dir: str | Path) -> list[Path]:
+    reject_remote_or_device_path(
+        source_file,
+        code_prefix="PACKAGE",
+        noun="Governed package source",
+    )
+    reject_remote_or_device_path(
+        out_dir,
+        code_prefix="PACKAGE",
+        noun="Governed package output",
+    )
     source = Path(source_file)
     out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
     manifest = _manifest_from_source(source)
     scan = scan_package(
         source,
@@ -1017,26 +1110,96 @@ def generate_governed_package(source_file: str | Path, out_dir: str | Path) -> l
 
 
 def verify_package_lock(package_dir: str | Path) -> list[Diagnostic]:
-    directory = Path(package_dir)
-    lock_path = directory / "package_lock.json"
-    diagnostics: list[Diagnostic] = []
-    if not lock_path.exists():
-        return [_diag("MISSING_PACKAGE_LOCK", "package_lock.json is required", lock_path.as_posix())]
     try:
-        lock = json.loads(lock_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return [_diag("INVALID_PACKAGE_LOCK_JSON", f"package_lock.json is invalid JSON: {exc}", lock_path.as_posix())]
-    manifest_path = directory / "package_manifest.json"
-    if not manifest_path.exists():
-        diagnostics.append(
-            _diag("MISSING_PACKAGE_MANIFEST", "package_manifest.json is required", manifest_path.as_posix())
+        reject_remote_or_device_path(
+            package_dir,
+            code_prefix="PACKAGE",
+            noun="Governed package",
         )
-    elif lock.get("manifest_sha256") != _sha256_file(manifest_path):
+        supplied = Path(package_dir)
+        display_directory = supplied
+        raw_directory = supplied if supplied.is_absolute() else Path.cwd() / supplied
+        directory = inspect_local_directory(
+            raw_directory,
+            allowed_root=raw_directory.parent,
+            code_prefix="PACKAGE",
+            noun="Governed package",
+            allow_missing=True,
+        )
+    except GovernanceError as exc:
+        return [
+            _diag(
+                "UNSAFE_PACKAGE_PATH",
+                str(exc),
+                str(package_dir),
+            )
+        ]
+    if directory is None:
+        missing = display_directory / "package_lock.json"
+        return [_diag("MISSING_PACKAGE_LOCK", "package_lock.json is required", missing.as_posix())]
+    lock_path = directory / "package_lock.json"
+    display_lock_path = display_directory / "package_lock.json"
+    diagnostics: list[Diagnostic] = []
+    try:
+        raw_lock, _ = read_local_file_bytes(
+            lock_path,
+            allowed_root=directory,
+            code_prefix="PACKAGE",
+            noun="Package lock",
+            max_bytes=1024 * 1024,
+        )
+    except GovernanceError as exc:
+        if {item.code for item in exc.diagnostics} == {"PACKAGE_NOT_FOUND"}:
+            return [
+                _diag(
+                    "MISSING_PACKAGE_LOCK",
+                    "package_lock.json is required",
+                    display_lock_path.as_posix(),
+                )
+            ]
+        return [_diag("UNSAFE_PACKAGE_LOCK", str(exc), display_lock_path.as_posix())]
+    try:
+        lock = json.loads(raw_lock.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return [_diag("INVALID_PACKAGE_LOCK_JSON", f"package_lock.json is invalid JSON: {exc}", display_lock_path.as_posix())]
+    if not isinstance(lock, dict):
+        return [
+            _diag(
+                "INVALID_PACKAGE_LOCK_JSON",
+                "package_lock.json must contain one JSON object",
+                display_lock_path.as_posix(),
+            )
+        ]
+    manifest_path = directory / "package_manifest.json"
+    display_manifest_path = display_directory / "package_manifest.json"
+    manifest_missing = False
+    try:
+        raw_manifest, _ = read_local_file_bytes(
+            manifest_path,
+            allowed_root=directory,
+            code_prefix="PACKAGE",
+            noun="Package manifest",
+            max_bytes=4 * 1024 * 1024,
+        )
+    except GovernanceError as exc:
+        raw_manifest = None
+        codes = {item.code for item in exc.diagnostics}
+        if codes == {"PACKAGE_NOT_FOUND"}:
+            manifest_missing = True
+        else:
+            diagnostics.append(
+                _diag("UNSAFE_PACKAGE_MANIFEST", str(exc), display_manifest_path.as_posix())
+            )
+    if manifest_missing:
+        diagnostics.append(
+            _diag("MISSING_PACKAGE_MANIFEST", "package_manifest.json is required", display_manifest_path.as_posix())
+        )
+    elif raw_manifest is not None and lock.get("manifest_sha256") != _sha256_bytes(raw_manifest):
         diagnostics.append(
             _diag(
                 "PACKAGE_LOCK_MANIFEST_HASH_MISMATCH",
                 "package_manifest.json hash does not match package_lock.json",
-                manifest_path.as_posix(),
+                display_manifest_path.as_posix(),
             )
         )
     for item in _as_list(lock.get("artifact_hashes")):
@@ -1047,15 +1210,40 @@ def verify_package_lock(package_dir: str | Path) -> list[Diagnostic]:
         if not _non_empty_string(rel) or not _non_empty_string(expected):
             diagnostics.append(_diag("INVALID_PACKAGE_LOCK_ENTRY", "artifact hash entries require path and sha256", "package_lock.artifact_hashes"))
             continue
-        path = directory / str(rel)
-        if not path.exists():
-            diagnostics.append(_diag("PACKAGE_LOCK_ARTIFACT_MISSING", f"locked artifact missing: {rel}", path.as_posix()))
-        elif _sha256_file(path) != expected:
+        try:
+            raw_artifact, _ = read_local_file_bytes(
+                str(rel),
+                allowed_root=directory,
+                code_prefix="PACKAGE",
+                noun="Locked package artifact",
+                max_bytes=16 * 1024 * 1024,
+            )
+        except GovernanceError as exc:
+            codes = {entry.code for entry in exc.diagnostics}
+            display_path = display_directory / str(rel)
+            if codes == {"PACKAGE_NOT_FOUND"}:
+                diagnostics.append(
+                    _diag(
+                        "PACKAGE_LOCK_ARTIFACT_MISSING",
+                        f"locked artifact missing: {rel}",
+                        display_path.as_posix(),
+                    )
+                )
+            else:
+                diagnostics.append(
+                    _diag(
+                        "UNSAFE_PACKAGE_LOCK_ARTIFACT",
+                        f"locked artifact path is unsafe: {rel}; {exc}",
+                        display_path.as_posix(),
+                    )
+                )
+            continue
+        if _sha256_bytes(raw_artifact) != expected:
             diagnostics.append(
                 _diag(
                     "PACKAGE_LOCK_ARTIFACT_HASH_MISMATCH",
                     f"artifact hash mismatch for {rel}",
-                    path.as_posix(),
+                    (display_directory / str(rel)).as_posix(),
                 )
             )
     return diagnostics
@@ -1071,12 +1259,42 @@ def verify_registered_artifact_hashes(
     if not _non_empty_string(source_path):
         return [_diag("MISSING_REGISTERED_SOURCE_PATH", "registered packages require source_path", "source_path")]
 
+    try:
+        reject_remote_or_device_path(
+            package_dir,
+            code_prefix="PACKAGE",
+            noun="Governed package",
+        )
+        reject_remote_or_device_path(
+            str(source_path),
+            code_prefix="PACKAGE",
+            noun="Registered package source",
+        )
+    except GovernanceError as exc:
+        return [_diag("UNSAFE_REGISTERED_SOURCE_PATH", str(exc), "source_path")]
     raw_source = Path(str(source_path))
     candidates = [raw_source]
     if not raw_source.is_absolute():
         candidates.append(Path(package_dir) / raw_source)
-    source = next((candidate for candidate in candidates if candidate.is_dir()), None)
-    if source is None:
+    source = None
+    source_display = None
+    for candidate in candidates:
+        absolute = candidate if candidate.is_absolute() else Path.cwd() / candidate
+        try:
+            inspected = inspect_local_directory(
+                absolute,
+                allowed_root=absolute.parent,
+                code_prefix="PACKAGE",
+                noun="Registered package source",
+                allow_missing=True,
+            )
+        except GovernanceError as exc:
+            return [_diag("UNSAFE_REGISTERED_SOURCE_PATH", str(exc), "source_path")]
+        if inspected is not None:
+            source = inspected
+            source_display = candidate
+            break
+    if source is None or source_display is None:
         return []
 
     diagnostics: list[Diagnostic] = []
@@ -1087,21 +1305,40 @@ def verify_registered_artifact_hashes(
         expected = item.get("sha256")
         if not _non_empty_string(rel) or not _non_empty_string(expected):
             continue
-        path = source / str(rel)
-        if not path.exists():
-            diagnostics.append(
-                _diag(
-                    "REGISTERED_ARTIFACT_MISSING",
-                    f"registered artifact missing from source: {rel}",
-                    path.as_posix(),
-                )
+        try:
+            raw_artifact, _ = read_local_file_bytes(
+                str(rel),
+                allowed_root=source,
+                code_prefix="PACKAGE",
+                noun="Registered package artifact",
+                max_bytes=16 * 1024 * 1024,
             )
-        elif _sha256_file(path) != expected:
+        except GovernanceError as exc:
+            codes = {entry.code for entry in exc.diagnostics}
+            display_path = source_display / str(rel)
+            if codes == {"PACKAGE_NOT_FOUND"}:
+                diagnostics.append(
+                    _diag(
+                        "REGISTERED_ARTIFACT_MISSING",
+                        f"registered artifact missing from source: {rel}",
+                        display_path.as_posix(),
+                    )
+                )
+            else:
+                diagnostics.append(
+                    _diag(
+                        "UNSAFE_REGISTERED_ARTIFACT_PATH",
+                        f"registered artifact path is unsafe: {rel}; {exc}",
+                        display_path.as_posix(),
+                    )
+                )
+            continue
+        if _sha256_bytes(raw_artifact) != expected:
             diagnostics.append(
                 _diag(
                     "REGISTERED_ARTIFACT_HASH_MISMATCH",
                     f"registered artifact hash mismatch for {rel}",
-                    path.as_posix(),
+                    (source_display / str(rel)).as_posix(),
                 )
             )
     return diagnostics
@@ -1109,9 +1346,8 @@ def verify_registered_artifact_hashes(
 
 def _inventory_existing(source_dir: Path) -> list[dict[str, Any]]:
     artifacts: list[dict[str, Any]] = []
-    for path in sorted(source_dir.rglob("*")):
-        if not path.is_file() or any(part in {".git", "__pycache__"} for part in path.parts):
-            continue
+    _, files = iter_source_files(source_dir, skip_dirs={".git", "__pycache__"})
+    for path in files:
         rel = path.relative_to(source_dir).as_posix()
         artifacts.append(
             {
@@ -1179,11 +1415,26 @@ def register_existing_package(
     *,
     contract: str | Path | None = None,
 ) -> list[Path]:
+    reject_remote_or_device_path(
+        source_dir,
+        code_prefix="PACKAGE",
+        noun="Existing package source",
+    )
+    reject_remote_or_device_path(
+        out_dir,
+        code_prefix="PACKAGE",
+        noun="Registered package output",
+    )
+    if contract is not None:
+        reject_remote_or_device_path(
+            contract,
+            code_prefix="PACKAGE",
+            noun="Governed package contract",
+        )
     source = Path(source_dir)
     if not source.is_dir():
         raise ValueError(f"existing package source is not a directory: {source}")
     out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
     manifest = _registration_manifest(source, contract)
     scan = scan_package(
         source,
@@ -1309,6 +1560,16 @@ def radar_governed_packages(
     *,
     suggest_contract: bool = False,
 ) -> dict[str, Any]:
+    reject_remote_or_device_path(
+        source_dir,
+        code_prefix="PACKAGE",
+        noun="Radar source",
+    )
+    reject_remote_or_device_path(
+        out,
+        code_prefix="PACKAGE",
+        noun="Radar output",
+    )
     source = Path(source_dir)
     if not source.is_dir():
         raise ValueError(f"radar source is not a directory: {source}")
@@ -1461,6 +1722,11 @@ def radar_governed_packages(
 
 
 def validate_governed_package_source(path: str | Path) -> list[Diagnostic]:
+    reject_remote_or_device_path(
+        path,
+        code_prefix="PACKAGE",
+        noun="Governed package source",
+    )
     source = Path(path)
     if source.is_dir():
         manifest = source / "package_manifest.json"

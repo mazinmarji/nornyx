@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: telecom_ops
+what_is_governed: [telecom_contract_change, operational_evidence, human_gate]
+why: Describe telecom governance while operations remain external.
+owner: telecom_service_owner
+who_may_act: [change_author, operations_reviewer, accountable_authority]
+allowed: [propose_contract_change, validate, approve_with_evidence]
+denied: [network_operation, automatic_containment, production_deployment]
+approval_required: [high_risk_change, release, exception]
+evidence: [change_record, external_operations_report, approval_record]
+stale_or_false_detection: [revision_binding, expiry, external_system_review]
+drift_detection: [ci_check, operational_feedback_import]
+containment: [no_live_operations, rollback_declaration, stop_rules]
+authority_expiry: explicit_approval_and_exception_expiry
+retirement: close_change_and_retire_external_operational_record
+required_modules: []
+recommended_modules: [change_control]

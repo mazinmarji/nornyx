@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: legacy_upgrade
+what_is_governed: [migration_change, compatibility_evidence, rollback]
+why: Upgrade legacy contracts without silent semantic change.
+owner: migration_owner
+who_may_act: [migration_author, reviewer]
+allowed: [propose_migration, validate_compatibility, approve_migration]
+denied: [silent_breaking_change, automatic_approval, irreversible_unplanned_change]
+approval_required: [migration_merge, compatibility_exception]
+evidence: [compatibility_report, change_record, rollback_plan]
+stale_or_false_detection: [old_new_hash_comparison, revision_binding]
+drift_detection: [golden_corpus, ci_check]
+containment: [scoped_migration, rollback, stop_on_ambiguity]
+authority_expiry: approval_invalidates_on_revision_or_scope_change
+retirement: supersede_legacy_contract_after_evidence_retention
+required_modules: []
+recommended_modules: [change_control]

@@ -1,22 +1,32 @@
-# 13 — Test and Assurance Plan
+# 13 - Test and Assurance Plan
+
+Status: **prior execution record superseded by the independent NO-GO audit of
+`35ee69359599af7887f6b9b58ae0a4cd06a48d25`; remediation validation is in
+progress.**
+
+The prior 532/544-test and report 19-22 claims are historical, not current
+closure evidence. Final counts, exact-head Linux CI, wheel evidence, and the
+fresh independent verdict will be recorded only after Stage 7.
 
 ## Categories and representative cases
 
 **Backward compatibility (golden)**
-- 11 profiles: exact current-main Windows bytes plus canonical-LF hashes are
+- 12 profiles: exact current-main Windows bytes plus canonical-LF hashes are
   captured. Current generation must be semantically and canonical-LF equal;
   line endings are the sole approved normalization (appendix F-01).
 - `nornyx profiles` stdout identical; `init` flags identical; exit codes identical.
 - Contracts without packs: checker diagnostics byte-equal on a fixture corpus.
-- Full existing suite (currently ~330 tests) green at every PR boundary.
-- Governed-package examples and golden manifests unchanged through PR 5.
+- Full existing suite green at every stage boundary.
+- Governed-package examples and established golden manifests remain pinned.
 
 **Loader / registry (unit + fixtures)**
 - Discovery precedence: explicit > project > org > builtin; resolution trace
   golden. Dynamic discovery from `.nornyx/profiles/`; explicit-path loading.
 - Invalid pack schemas (one fixture per required field + unknown top-level key).
-- Duplicate identity same-tier (fatal) and cross-tier (shadow + provenance).
-- Reserved-namespace squat (`nornyx.builtin.*` from project tier) rejected.
+- Global profile/module id/name collision permutations are fatal before locks;
+  same-kind exact cross-tier identity shadows with provenance.
+- Reserved-namespace squat at exact `nornyx.builtin` and descendants is
+  rejected for every non-builtin tier; local loaders cannot claim builtin.
 - Version incompatibility (`compatible_core` unsatisfied) fail-closed.
 - Dependency cycles (self, pair, 3-cycle) named in diagnostic.
 - Frozen v0.3 fixture validation, valid v1 fixture validation, exact
@@ -32,9 +42,12 @@
   raising without permission — each must fail with its stable code
   (`PACK_MONOTONICITY_*`). Includes the composer-invariant backstop test
   (hand-built malicious effective model rejected).
-- Exceptions: valid full-field exception downgrades to warning; each missing
-  field invalidates; expiry (`EXCEPTION_EXPIRED`); core-checker codes not
-  exceptable; pack-supplied exceptions rejected.
+- Exceptions: full-field declarations validate without changing rule severity;
+  missing fields, invalid lifecycle states, overlapping active intervals, and
+  stale, reused, mistyped, post-activation, or gate-mismatched renewal proof
+  fails; expiry emits `EXCEPTION_EXPIRED`; reserved governance diagnostic
+  namespaces and selected built-in control/rule ids remain non-exceptable;
+  pack-supplied exceptions are rejected.
 
 **Rule evaluator**
 - Every operator: positive/negative/absent-path cases.
@@ -43,31 +56,34 @@
 - `matches_id` restricted grammar (no regex metacharacters honored).
 - Severity, message, provenance in diagnostics; stable code format.
 
-PR 1 covers these as schema and specification fixtures only. Evaluator outcome
-tests begin when the evaluator exists; they must reuse the PR 1 semantic-case
-ids rather than silently redefining them.
+The evaluator reuses the original specification fixture ids, and every case is
+executed against the current runtime.
 
 **Security / adversarial (doc 10 mapping)**
 - Path traversal fixtures (`../`, absolute, drive-relative on Windows).
-- Symlink escape (skipped where symlinks unavailable — runs on Linux CI).
+- Live/dangling symlink, junction/reparse, inaccessible-component, parent
+  traversal, UNC/device, and wrong-type paths. Real symlinks are mandatory on
+  Linux; Windows also runs host-independent lexical and simulated-lstat cases.
 - YAML abuse: alias bomb, deep nesting, 10 MB file, null bytes, non-UTF8.
 - Template-injection attempts in fragments (rendered literally).
-- Hash mismatch, lock version substitution, stale lock, missing lock warning.
+- Hash mismatch, version substitution, stale/forged/duplicate locks, strict
+  JSON/UTF-8/size failures, unsafe lock paths/writes, and optional absence.
 - Offline guarantee: static import audit of `nornyx/packs/` (no network
   modules), plus a socket-disabled integration run.
 
 **Cross-platform**
 - Windows path fixtures (backslashes, drive letters, reserved names).
 - CRLF-input packs hash identically to LF (canonicalization test).
-- Unicode pack filenames and unicode ids.
+- Unicode pack filenames and rejection of Unicode/confusable pack ids by the
+  ASCII identity grammar.
 
 **Determinism (lesson from the scanner-branch defect: name tests honestly)**
-- Double-run byte-equality for: composed model dump, future rendered starter output,
+- Double-run byte-equality for: composed model dump, rendered starter output,
   resolution trace, lock file (excluding nothing — locks contain no timestamps
   by design; if a timestamp is ever added it must be injected, not sampled).
 
-**PR 1 specification foundation**
-- Root and bundled draft schemas are byte-identical and meta-schema valid.
+**Specification foundation**
+- Root and bundled schemas are byte-identical and meta-schema valid.
 - Unknown operators, malformed paths/core ranges/compatibility, version
   mismatch, and additional properties are rejected.
 - Collection semantics fixture covers existential `when`, universal `require`,
@@ -76,10 +92,10 @@ ids rather than silently redefining them.
   alias, reference, prose, boolean, duplicate, conflict, and unknown-role cases.
 - Module security fixtures prove network/code/command/credential/approval-grant
   and core-weakening flags cannot be enabled.
-- Tests assert no loader/composer package exists and do not claim current
-  runtime behavior for planned rules.
+- Tests bind the schema fixtures to the implemented loader, composer, and rule
+  runtime without redefining their semantics.
 
-**Change / architecture governance (PR 5–6)**
+**Change / architecture governance**
 - Governed-package compatibility corpus.
 - Change lifecycle rules; separation-of-duties structural check.
 - Approval invalidation: revision mismatch fixture ⇒ `APPROVAL_STALE_FOR_REVISION`.
@@ -87,6 +103,14 @@ ids rather than silently redefining them.
   malformed evidence reports (truncated JSON, wrong schema id) fail-closed.
 
 **Documentation assurance**
-- Doc examples executed: every fenced `nornyx ...` command in the new docs runs
-  in CI against fixtures (guards against the doc-drift problem found in audit
-  doc 01 §1.6).
+- Governance CLI/API markers are tied to executable command and public-API
+  tests. README and repository script commands retain their existing execution
+  tests. The installed-wheel probe executes the packaged module CLI outside the
+  repository.
+
+**Distribution assurance**
+- `python -m build` creates source and wheel distributions.
+- `python -m twine check` validates both artifacts.
+- `scripts/test_wheel_install.py` installs the wheel locally with `--no-deps`,
+  isolates it from the repository, verifies packaged schemas/profiles/modules,
+  imports the public API, and executes the installed CLI without network use.

@@ -1,7 +1,8 @@
 # 05 - Profile and Governance-Module Specification
 
-Status: PR 1 specification. Draft schemas and fixtures exist; no loader,
-registry, composition engine, or rule evaluator is connected to Nornyx.
+Status: implemented normative specification. The schemas, bounded loader,
+registry, deterministic composition engine, lock verification, and closed rule
+evaluator are connected to Nornyx and covered by the runtime test suite.
 
 ## 1. Versioned formats
 
@@ -65,8 +66,9 @@ safety:
 
 Modules add requirements only. They cannot grant approvals, remove denials,
 weaken core checks, create exceptions, or choose their own loading source.
-Dependencies are ids, not paths. Cycles and conflicts are future load-time
-errors. The module loader and composition engine are explicitly outside PR 1.
+Dependencies are ids, not paths. Cycles, missing dependencies, and conflicts
+are fail-closed load or composition errors. Modules are loaded and composed by
+the governance registry without executing package-controlled code.
 
 ## 4. Legacy v0.3 relationship
 
@@ -75,9 +77,10 @@ projection, exact projected fields, out-of-band loss report, failure cases,
 public API behavior, and deprecation strategy are normative in
 `appendix_LEGACY_PROJECTION.md`.
 
-A future v0.3 import shim, if retained, must be explicit and provenance-marked.
-It is not needed to prove the public v1-to-legacy compatibility view in PR 1
-and must not silently reinterpret prose `validation_rules` as executable rules.
+No v0.3 authoring import shim is part of the current program. Any later shim is
+a `future_proposal_outside_current_program`; it must be explicit,
+provenance-marked, and must not reinterpret prose `validation_rules` as
+executable rules.
 
 ## 5. Structured rule language
 
@@ -96,8 +99,8 @@ regexes, scripts, calls, variables, arithmetic, imports, executable logic, or
 pack-defined operators. `matches_id` is a bounded wildcard match over identifier
 characters with `*` and `?`, not regex execution.
 
-Unknown operators and invalid paths are schema errors. A future loader must
-fail before composition. The complete collection quantification, missing/null/
+Unknown operators and invalid paths are schema errors. The loader fails before
+composition. The complete collection quantification, missing/null/
 type behavior, nested-list semantics, de-duplication, and binding rules are
 normative in `appendix_RULE_COLLECTION_SEMANTICS.md`.
 
@@ -105,22 +108,22 @@ normative in `appendix_RULE_COLLECTION_SEMANTICS.md`.
 `appendix_APPROVAL_NORMALIZATION.md`. It never guesses roles from gate names,
 actions, prose, or arbitrary fields.
 
-Limits: at most 200 rules per profile or module, at most 2,000 composed rules,
-and a future evaluator step budget proportional to concrete path resolutions.
-Exceeding a limit fails with `PACK_LIMIT_EXCEEDED`. Any limit increase requires
-an ADR and resource-abuse tests.
+Limits: at most 200 rules per profile or module and at most 2,000 composed
+rules. Evaluation is bounded by the closed path grammar, collection limits,
+and composed-rule cap. Exceeding a limit fails with `PACK_LIMIT_EXCEEDED`. Any
+limit increase requires an ADR and resource-abuse tests.
 
 ## 6. Starter fragments
 
 Starter fragments are literal YAML-compatible values targeted at known
-top-level blocks. They are not templates. The only future substitution is the
-project name at a fixed, engine-owned set of locations; packs cannot declare
-substitution points. PR 1 does not refactor `profile_document()` or starter
-generation.
+top-level blocks. They are not templates. Project-name substitution occurs
+only at fixed, engine-owned locations; packs cannot declare substitution
+points. The authoritative packaged profiles preserve the approved starter
+goldens through the compatibility renderer.
 
-## 7. Future local discovery
+## 7. Local discovery
 
-Planned precedence is deterministic:
+Implemented precedence is deterministic:
 
 ```text
 1. explicit user-selected local path
@@ -129,15 +132,24 @@ Planned precedence is deterministic:
 4. bundled files
 ```
 
-No URL is valid. Network loading and Python entry-point discovery are deferred
-non-goals. Explicit paths and source roots will be canonicalized; symlinked
-pack files will be rejected. Same-tier identity ambiguity is fatal. Cross-tier
-shadowing is reported with provenance.
+No URI, UNC path, device namespace, or remote-backed path is valid. Network
+loading and Python entry-point discovery are rejected for the current program.
+Every unresolved component is inspected with `lstat` before canonicalization;
+live/dangling links, junctions, reparse points, inaccessible components, and
+wrong-type governance directories fail closed. Caller-supplied trust roots only
+narrow containment and never replace anchor-to-target inspection.
+
+Profile and module ids/names occupy one global identity namespace, so a
+cross-kind token collision is fatal before composition or lock generation.
+Same-kind exact cross-tier shadowing remains supported and is reported with
+provenance. The reserved namespace includes both `nornyx.builtin` and all
+`nornyx.builtin.*` descendants, and local inputs cannot claim built-in tier.
 
 An organization-tier pack requires a committed lock. A missing org lock is an
-error, not a warning, and every resolve/check report must display the configured
-org root and selected source tier. Project/builtin packs may initially warn
-when no lock exists, subject to the future loader ADR.
+error, not a warning, and resolve/check reports display the configured source
+tier. Organization roots are supplied explicitly through the registry API;
+there is no ambient environment, entry-point, or network discovery. Project
+and builtin packs remain deterministic local sources.
 
 ## 8. Integrity and lock canonicalization
 
@@ -158,17 +170,25 @@ content hash, and path hint. Time fields are schema-invalid. Identical inputs
 must produce byte-identical lock files. Hash, version, tier, or missing-pack
 mismatch is fatal.
 
-## 9. Loader hardening requirements for later PRs
+Lock reads use the same unresolved-component and containment checks as packs,
+with a 512 KiB limit, strict UTF-8, strict JSON duplicate-key/non-finite-value
+rejection, packaged-schema validation, and semantic duplicate-id rejection.
+Lock generation and verification materialize and validate selected identities
+before constructing id-keyed dictionaries. Lock writes reject unsafe parents,
+existing links, non-regular targets, and use same-directory atomic replacement.
 
-Future loading must use `NornyxSafeLoader`, UTF-8, a 512 KiB file cap, YAML
-alias/depth limits, canonical source-root checks, symlink rejection, a 200-rule
-per-pack cap, a 2,000-rule composed cap, and stable fail-closed diagnostics.
-It may not import network libraries, execute commands, import profile Python,
-load credentials, or evaluate templates.
+## 9. Loader hardening
 
-## 10. Draft-schema status
+Loading uses `NornyxSafeLoader`, UTF-8, a 512 KiB file cap, YAML alias/depth
+limits, canonical source-root checks, symlink rejection, a 200-rule per-pack
+cap, a 2,000-rule composed cap, and stable fail-closed diagnostics. It does not
+import network libraries, execute commands, import profile Python, load
+credentials, or evaluate templates.
+
+## 10. Schema and runtime status
 
 Root schemas and bundled `nornyx/schemas/` copies are exact. They are packaged
-by the existing `schemas/*.json` package-data rule, but no runtime registry
-routes to them. Fixtures distinguish schema validation and specification
-contracts from current runtime behavior.
+by the existing `schemas/*.json` package-data rule. The runtime registry and
+validation APIs route profile, module, lock, block, and evidence inputs through
+their authoritative packaged schemas. Fixtures and runtime tests cover both
+schema contracts and enforcement behavior.

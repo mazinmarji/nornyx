@@ -3,7 +3,9 @@ from __future__ import annotations
 from copy import deepcopy
 from importlib import resources
 import json
+import os
 from pathlib import Path
+import stat
 from typing import Any
 
 import pytest
@@ -16,10 +18,13 @@ from nornyx.governance.locks import lock_for_packs
 from nornyx.governance.locks import write_lock
 from nornyx.governance.projection import project_profile_to_v03
 from nornyx.governance.registry import GovernanceRegistry
+from nornyx.governance.reporting import build_governance_report
 from nornyx.governance.rules import evaluate_rule
 from nornyx.governance.schemas import canonical_pack_hash, validate_payload
 from nornyx.cli import main
 from nornyx.profiles import PROFILE_NAMES, profile_document, profile_pack_v1
+
+from symlink_support import create_symlink_or_skip
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "governance_extension"
@@ -74,7 +79,14 @@ def test_approval_normalization_cases_execute_against_the_runtime() -> None:
         )
         assert normalized.resolution == case["expected_resolution"], case["id"]
         assert normalized.source_raw == case["source"], case["id"]
-        validate_payload(normalized.to_dict(), "governance_approval_model_v1.schema.json")
+        verifiable = normalized.to_verifiable_dict()
+        validate_payload(
+            verifiable,
+            "governance_approval_model_v2.schema.json",
+        )
+        if case["id"] == "structured_revision_bound_gate":
+            assert verifiable["exact_revision_required"] is True
+            assert verifiable["expires_after"] == "PT24H"
         if diagnostic := case.get("expected_diagnostic"):
             assert diagnostic in {item.code for item in normalized.diagnostics}, case["id"]
 
@@ -170,10 +182,7 @@ def test_loader_rejects_symlinked_pack_files(tmp_path: Path) -> None:
     target = tmp_path / "target.yaml"
     link = tmp_path / "link.yaml"
     _write_pack(target, payload)
-    try:
-        link.symlink_to(target)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link, target)
     with pytest.raises(GovernanceError) as symlink:
         load_local_pack(link, allowed_root=tmp_path)
     assert _codes(symlink.value) == {"PACK_SYMLINK_REJECTED"}
@@ -190,15 +199,17 @@ def test_loader_checks_trust_root_components_before_resolving(
     pack_path = profiles / "profile.yaml"
     _write_pack(pack_path, payload)
 
-    original_is_symlink = Path.is_symlink
+    original_lstat = os.lstat
 
-    def simulated_ancestor_symlink(path: Path) -> bool:
-        return path == link_root or original_is_symlink(path)
+    def simulated_ancestor_symlink(path: str | Path) -> os.stat_result:
+        if Path(path) == link_root:
+            return os.stat_result((stat.S_IFLNK | 0o777, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        return original_lstat(path)
 
     def unexpected_resolve(*args: Any, **kwargs: Any) -> Path:
         raise AssertionError("path resolution ran before symlink inspection")
 
-    monkeypatch.setattr(Path, "is_symlink", simulated_ancestor_symlink)
+    monkeypatch.setattr(os, "lstat", simulated_ancestor_symlink)
     monkeypatch.setattr(Path, "resolve", unexpected_resolve)
     with pytest.raises(GovernanceError) as symlink:
         load_local_pack(
@@ -221,15 +232,17 @@ def test_loader_preserves_parent_traversal_before_symlink_inspection(
     _write_pack(real / "profile.yaml", payload)
     candidate = link / ".." / "profile.yaml"
 
-    original_is_symlink = Path.is_symlink
+    original_lstat = os.lstat
 
-    def simulated_traversed_symlink(path: Path) -> bool:
-        return path == link or original_is_symlink(path)
+    def simulated_traversed_symlink(path: str | Path) -> os.stat_result:
+        if Path(path) == link:
+            return os.stat_result((stat.S_IFLNK | 0o777, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        return original_lstat(path)
 
     def unexpected_resolve(*args: Any, **kwargs: Any) -> Path:
         raise AssertionError("path resolution ran before symlink inspection")
 
-    monkeypatch.setattr(Path, "is_symlink", simulated_traversed_symlink)
+    monkeypatch.setattr(os, "lstat", simulated_traversed_symlink)
     monkeypatch.setattr(Path, "resolve", unexpected_resolve)
     with pytest.raises(GovernanceError) as symlink:
         load_local_pack(
@@ -311,7 +324,7 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
     registry = GovernanceRegistry()
     registry.register_directory(tmp_path, source_tier="project")
     assert registry.profile_names == ("delivery_profile",)
-    assert registry.module_names == ("evidence_integrity",)
+    assert registry.module_names == ("fixture_evidence_integrity",)
 
     with pytest.raises(GovernanceError) as duplicate:
         registry.register_path(profile_path, allowed_root=tmp_path, source_tier="project")
@@ -320,12 +333,15 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
     first = compose_governance(
         registry,
         profile_identity="delivery_profile",
-        module_ids=["evidence_integrity"],
+        module_ids=["fixture_evidence_integrity"],
     )
     second = compose_governance(
         registry,
         profile_identity="delivery_profile",
-        module_ids=["org.example.evidence_integrity", "evidence_integrity"],
+        module_ids=[
+            "org.example.fixture_evidence_integrity",
+            "fixture_evidence_integrity",
+        ],
     )
     assert first.to_dict() == second.to_dict()
     assert "evidence" in first.required_blocks
@@ -347,7 +363,7 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
     assert compose_governance(
         registry,
         profile_identity="delivery_profile",
-        module_ids=["evidence_integrity"],
+        module_ids=["fixture_evidence_integrity"],
         lock=lock,
     ).to_dict() == first.to_dict()
     shortened = type(lock)(lock.resolved[:-1])
@@ -355,7 +371,7 @@ def test_registry_order_duplicate_detection_composition_and_locks(tmp_path: Path
         compose_governance(
             registry,
             profile_identity="delivery_profile",
-            module_ids=["evidence_integrity"],
+            module_ids=["fixture_evidence_integrity"],
             lock=shortened,
         )
     assert _codes(mismatch.value) == {"PACK_LOCK_SET_MISMATCH"}
@@ -410,6 +426,104 @@ def test_composition_rejects_cross_module_approval_weakening(tmp_path: Path) -> 
     assert _codes(weakening.value) == {"APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE"}
 
 
+def test_composition_does_not_union_disjoint_human_eligibility(
+    tmp_path: Path,
+) -> None:
+    base = _yaml("valid_module_v1.yaml")
+    base["rules"] = []
+    for identity, role in (("a_architect", "architect"), ("b_reviewer", "reviewer")):
+        payload = deepcopy(base)
+        payload["id"] = f"org.example.{identity}"
+        payload["name"] = identity
+        payload["approval_requirements"] = [
+            {
+                "id": "merge_gate",
+                "required_roles": [role],
+                "eligible_roles": [role],
+                "denied_actor_types": [],
+                "required_evidence": [],
+                "actions": ["merge"],
+                "timing": "before_merge",
+            }
+        ]
+        _write_pack(tmp_path / f"{identity}.yaml", payload)
+
+    registry = GovernanceRegistry()
+    registry.register_directory(tmp_path, source_tier="project")
+    with pytest.raises(GovernanceError) as conflict:
+        compose_governance(
+            registry,
+            profile_identity=None,
+            module_ids=["a_architect", "b_reviewer"],
+        )
+    assert _codes(conflict.value) == {"PACK_MONOTONICITY_APPROVAL"}
+
+
+def test_composition_intersects_overlapping_human_eligibility(
+    tmp_path: Path,
+) -> None:
+    base = _yaml("valid_module_v1.yaml")
+    base["rules"] = []
+    for identity, eligible in (
+        ("a_broad", ["architect", "reviewer"]),
+        ("b_narrow", ["architect", "security_reviewer"]),
+    ):
+        payload = deepcopy(base)
+        payload["id"] = f"org.example.{identity}"
+        payload["name"] = identity
+        payload["approval_requirements"] = [
+            {
+                "id": "merge_gate",
+                "required_roles": ["architect"],
+                "eligible_roles": eligible,
+                "denied_actor_types": [],
+                "required_evidence": [],
+                "actions": ["merge"],
+                "timing": "before_merge",
+            }
+        ]
+        _write_pack(tmp_path / f"{identity}.yaml", payload)
+
+    registry = GovernanceRegistry()
+    registry.register_directory(tmp_path, source_tier="project")
+    composition = compose_governance(
+        registry,
+        profile_identity=None,
+        module_ids=["a_broad", "b_narrow"],
+    )
+    approval = next(
+        item for item in composition.approval_requirements if item.id == "merge_gate"
+    )
+    assert approval.eligible_roles == ("architect",)
+
+
+def test_effective_approval_retains_revision_and_relative_expiry_requirements() -> None:
+    registry = GovernanceRegistry.builtins()
+    composition = compose_governance(
+        registry,
+        profile_identity="architecture_governance",
+    )
+    approval = next(
+        item
+        for item in composition.approval_requirements
+        if item.id == "architecture_authority"
+    )
+    assert approval.exact_revision_required is True
+    assert approval.expires_after == "P7D"
+
+    report = build_governance_report(
+        {"project": {"name": "Architecture", "profile": "architecture_governance"}},
+        registry=registry,
+    )
+    reported = next(
+        item
+        for item in report["approval_requirements"]
+        if item["id"] == "architecture_authority"
+    )
+    assert reported["exact_revision_required"] is True
+    assert reported["expires_after"] == "P7D"
+
+
 def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
     # F1: an AI tool or execution surface can never normalize as an eligible
     # or required approver, so references_role fails closed on such gates.
@@ -433,6 +547,154 @@ def test_core_denied_actors_fail_at_the_normalization_boundary() -> None:
     assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
 
 
+@pytest.mark.parametrize(
+    "role",
+    ["tool:approval_bot", "system:approval_service"],
+)
+def test_non_human_actor_identity_fails_at_the_normalization_boundary(
+    role: str,
+) -> None:
+    approval = {
+        "name": "automation-gate",
+        "required_roles": [role],
+        "eligible_roles": [role],
+    }
+    normalized = normalize_approval(
+        approval,
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="automation-gate",
+    )
+    assert normalized.resolution == "invalid"
+    assert {item.code for item in normalized.diagnostics} == {
+        "APPROVAL_CORE_DENIED_ACTOR_ELIGIBLE"
+    }
+
+    rule = _rule(
+        requirement={
+            "path": "approvals",
+            "references_role": role,
+        }
+    )
+    diagnostics = evaluate_rule({"approvals": [approval]}, rule)
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        {"timing": "during"},
+        {"expires_at": "not-a-time"},
+        {"expires_at": "2026-07-13 10:00:00+00:00"},
+        {"eligible_roles": [""]},
+        {"eligible_roles": [{"role": "reviewer"}]},
+        {
+            "revision_binding": {
+                "kind": "git",
+                "revision": "",
+                "exact": True,
+            }
+        },
+    ],
+)
+def test_raw_approval_normalization_errors_fail_closed(
+    mutation: dict[str, Any],
+) -> None:
+    approval = {
+        "name": "review_gate",
+        "eligible_roles": ["reviewer"],
+        **mutation,
+    }
+    rule = _rule(
+        requirement={"path": "approvals", "references_role": "reviewer"}
+    )
+
+    diagnostics = evaluate_rule({"approvals": [approval]}, rule)
+
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
+
+
+def test_non_string_approval_values_cannot_normalize_as_authority() -> None:
+    normalized = normalize_approval(
+        {
+            "name": "review_gate",
+            "required_roles": [{"role": "reviewer"}],
+            "eligible_roles": [{"role": "reviewer"}],
+            "required_evidence": ["review_record"],
+        },
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="review_gate",
+    )
+
+    assert normalized.resolution == "invalid"
+    assert normalized.required_roles == ()
+    assert normalized.eligible_roles == ()
+    assert {item.code for item in normalized.diagnostics} == {
+        "APPROVAL_VALUE_TYPE_INVALID"
+    }
+
+
+def test_required_role_without_eligible_role_cannot_authorize() -> None:
+    approval = {
+        "name": "required-only-gate",
+        "required_roles": ["reviewer"],
+    }
+    normalized = normalize_approval(
+        approval,
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="required-only-gate",
+    )
+    assert normalized.resolution == "invalid"
+    assert {item.code for item in normalized.diagnostics} == {
+        "APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE"
+    }
+
+    rule = _rule(
+        requirement={"path": "approvals", "references_role": "reviewer"}
+    )
+    diagnostics = evaluate_rule({"approvals": [approval]}, rule)
+    assert [item.code for item in diagnostics] == ["RULE_REFERENCE_TYPE_ERROR"]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected_code"),
+    [
+        (
+            "exact_revision_required",
+            "yes",
+            "APPROVAL_EXACT_REVISION_REQUIREMENT_INVALID",
+        ),
+        ("expires_after", 24, "APPROVAL_EXPIRY_REQUIREMENT_INVALID"),
+        (
+            "accountable_authority",
+            "   ",
+            "APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID",
+        ),
+    ],
+)
+def test_approval_requirement_metadata_types_fail_closed(
+    field: str,
+    value: object,
+    expected_code: str,
+) -> None:
+    source = {
+        "name": "metadata-gate",
+        "required_roles": ["reviewer"],
+        "eligible_roles": ["reviewer"],
+        field: value,
+    }
+    normalized = normalize_approval(
+        source,
+        shape="ordinary_approval",
+        path="approvals[0]",
+        fallback_id="metadata-gate",
+    )
+    assert normalized.resolution == "invalid"
+    assert expected_code in {item.code for item in normalized.diagnostics}
+
+
 def _genuine_normalized_approval() -> dict[str, Any]:
     return normalize_approval(
         {
@@ -442,11 +704,13 @@ def _genuine_normalized_approval() -> dict[str, Any]:
             "denied_approver_types": ["ai_tool"],
             "required_evidence": ["review_record"],
             "required_for": ["merge"],
+            "exact_revision_required": True,
+            "expires_after": "PT24H",
         },
         shape="generated_profile_approval",
         path="approvals[0]",
         fallback_id="gate",
-    ).to_dict()
+    ).to_verifiable_dict()
 
 
 @pytest.mark.parametrize(
@@ -457,6 +721,8 @@ def _genuine_normalized_approval() -> dict[str, Any]:
         "missing_resolution",
         "missing_required_roles",
         "missing_eligible_roles",
+        "missing_exact_revision_required",
+        "missing_expires_after",
         "roles_as_mapping",
         "roles_as_null",
         "non_string_role_entry",
@@ -473,6 +739,7 @@ def _genuine_normalized_approval() -> dict[str, Any]:
         "source_roles_removed",
         "source_shape_diverges",
         "canonical_roles_diverge_from_source",
+        "canonical_requirement_diverges_from_source",
     ],
 )
 def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
@@ -496,6 +763,14 @@ def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
         },
         "missing_eligible_roles": {
             key: value for key, value in base.items() if key != "eligible_roles"
+        },
+        "missing_exact_revision_required": {
+            key: value
+            for key, value in base.items()
+            if key != "exact_revision_required"
+        },
+        "missing_expires_after": {
+            key: value for key, value in base.items() if key != "expires_after"
         },
         "roles_as_mapping": {**base, "eligible_roles": {"reviewer": False}},
         "roles_as_null": {**base, "required_roles": None},
@@ -535,6 +810,11 @@ def test_pre_normalized_approval_invariant_matrix(mutation_id: str) -> None:
             **base,
             "required_roles": [],
             "eligible_roles": ["admin"],
+        },
+        "canonical_requirement_diverges_from_source": {
+            **base,
+            "exact_revision_required": False,
+            "expires_after": "P7D",
         },
     }
     payload = mutations[mutation_id]
@@ -677,7 +957,11 @@ def test_rule_caps_apply_per_pack_and_per_composition(tmp_path: Path, monkeypatc
     registry.register_path(ok_path, allowed_root=tmp_path, source_tier="project")
     monkeypatch.setattr(composition_module, "MAX_COMPOSED_RULES", 2)
     with pytest.raises(GovernanceError) as composed_cap:
-        compose_governance(registry, profile_identity=None, module_ids=["evidence_integrity"])
+        compose_governance(
+            registry,
+            profile_identity=None,
+            module_ids=["fixture_evidence_integrity"],
+        )
     assert _codes(composed_cap.value) == {"PACK_LIMIT_EXCEEDED"}
 
 
@@ -694,7 +978,11 @@ def test_same_pack_duplicate_item_ids_are_fatal(tmp_path: Path) -> None:
     registry = GovernanceRegistry.builtins()
     registry.register_path(path, allowed_root=tmp_path, source_tier="project")
     with pytest.raises(GovernanceError) as duplicated:
-        compose_governance(registry, profile_identity=None, module_ids=["evidence_integrity"])
+        compose_governance(
+            registry,
+            profile_identity=None,
+            module_ids=["fixture_evidence_integrity"],
+        )
     assert _codes(duplicated.value) == {"PACK_DUPLICATE_ID"}
 
 
@@ -825,14 +1113,14 @@ def test_org_tier_requires_a_matching_lock(tmp_path: Path) -> None:
         compose_governance(
             registry,
             profile_identity=None,
-            module_ids=["evidence_integrity"],
+            module_ids=["fixture_evidence_integrity"],
         )
     assert _codes(required.value) == {"PACK_LOCK_REQUIRED"}
     lock = lock_for_packs([module])
     result = compose_governance(
         registry,
         profile_identity=None,
-        module_ids=["evidence_integrity"],
+        module_ids=["fixture_evidence_integrity"],
         lock=lock,
     )
     assert result.modules == (module,)
@@ -902,6 +1190,7 @@ def test_packaged_builtin_authority_and_public_v1_api() -> None:
         stale_scopes = [
             scope
             for fragment in payload["starter_fragments"]
+            if isinstance(fragment["content"], dict)
             for goal in fragment["content"].get("goals", [])
             for scope in goal.get("scope", [])
             if scope.startswith("profiles/")
@@ -984,16 +1273,13 @@ def test_profile_cli_entrypoints_reject_symlinked_pack_paths(
     real_dir.mkdir()
     pack_path = real_dir / "profile.yaml"
     _write_pack(pack_path, payload)
-    try:
-        if link_kind == "file":
-            requested = tmp_path / "profile-link.yaml"
-            requested.symlink_to(pack_path)
-        else:
-            linked_dir = tmp_path / "profile-dir-link"
-            linked_dir.symlink_to(real_dir, target_is_directory=True)
-            requested = linked_dir / "profile.yaml"
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    if link_kind == "file":
+        requested = tmp_path / "profile-link.yaml"
+        create_symlink_or_skip(requested, pack_path)
+    else:
+        linked_dir = tmp_path / "profile-dir-link"
+        create_symlink_or_skip(linked_dir, real_dir, target_is_directory=True)
+        requested = linked_dir / "profile.yaml"
 
     monkeypatch.chdir(tmp_path)
     _assert_profile_cli_path_rejected(
@@ -1013,10 +1299,7 @@ def test_profile_cli_entrypoints_reject_symlinked_ancestor_above_pack_parent(
     profiles.mkdir(parents=True)
     _write_pack(profiles / "profile.yaml", payload)
     link_root = tmp_path / "link_root"
-    try:
-        link_root.symlink_to(tmp_path / "real_root", target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link_root, tmp_path / "real_root", target_is_directory=True)
 
     monkeypatch.chdir(tmp_path)
     _assert_profile_cli_path_rejected(
@@ -1037,10 +1320,7 @@ def test_profile_cli_entrypoints_reject_symlink_before_parent_traversal(
     (real / "subdir").mkdir(parents=True)
     _write_pack(real / "profile.yaml", payload)
     link = root / "link"
-    try:
-        link.symlink_to(real / "subdir", target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is unavailable")
+    create_symlink_or_skip(link, real / "subdir", target_is_directory=True)
 
     monkeypatch.chdir(tmp_path)
     _assert_profile_cli_path_rejected(
@@ -1091,10 +1371,10 @@ def test_check_fails_closed_on_adversarial_retained_approval_source(
     ]
     module_dir = tmp_path / ".nornyx" / "modules"
     module_dir.mkdir(parents=True)
-    _write_pack(module_dir / "evidence_integrity.yaml", module)
+    _write_pack(module_dir / "fixture_evidence_integrity.yaml", module)
 
     document = profile_document("minimal", "ApprovalBoundary")
-    document["project"]["modules"] = ["evidence_integrity"]
+    document["project"]["modules"] = ["fixture_evidence_integrity"]
     document.setdefault("experimental", {})["normalized_approvals"] = [approval]
     contract = tmp_path / "project.nyx"
     contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
@@ -1116,17 +1396,17 @@ def test_check_runs_project_local_module_rules(tmp_path: Path, capsys) -> None:
     ]
     module_dir = tmp_path / ".nornyx" / "modules"
     module_dir.mkdir(parents=True)
-    _write_pack(module_dir / "evidence_integrity.yaml", module)
+    _write_pack(module_dir / "fixture_evidence_integrity.yaml", module)
 
     document = profile_document("minimal", "LocalModule")
-    document["project"]["modules"] = ["evidence_integrity"]
+    document["project"]["modules"] = ["fixture_evidence_integrity"]
     contract = tmp_path / "project.nyx"
     contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
 
     assert main(["check", str(contract)]) == 1
     output = capsys.readouterr().out
     assert "RULE_PATH_MISSING" in output
-    assert "org.example.evidence_integrity/GOV-001" in output
+    assert "org.example.fixture_evidence_integrity/GOV-001" in output
 
     document["project"]["governance_marker"] = True
     contract.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")

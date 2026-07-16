@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: business_ops
+what_is_governed: [business_process_contract, process_change, evidence]
+why: Make process governance reviewable without becoming workflow automation.
+owner: business_process_owner
+who_may_act: [process_author, reviewer, accountable_authority]
+allowed: [propose_process_change, validate, approve]
+denied: [automatic_business_action, automatic_approval, production_mutation]
+approval_required: [high_risk_process_change, exception]
+evidence: [change_record, process_review, approval_record]
+stale_or_false_detection: [revision_binding, expiry, human_review]
+drift_detection: [ci_check, external_process_feedback]
+containment: [no_workflow_execution, bounded_scope, rollback_declaration]
+authority_expiry: project_approval_expiry
+retirement: close_or_supersede_process_contract
+required_modules: []
+recommended_modules: [change_control]

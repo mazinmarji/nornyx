@@ -20,11 +20,22 @@ SCHEMA_DIR = ROOT / "schemas"
 BUNDLED_SCHEMA_DIR = ROOT / "nornyx" / "schemas"
 FIXTURES = ROOT / "tests" / "fixtures" / "governance_extension"
 GOLDEN = FIXTURES / "starter_golden"
-NEW_SCHEMA_FILES = (
+GOVERNANCE_SCHEMA_FILES = (
     "profile_pack_v1.schema.json",
     "governance_module_v1.schema.json",
     "governance_approval_model_v1.schema.json",
+    "governance_approval_model_v2.schema.json",
+    "effective_approval_v1.schema.json",
+    "effective_governance_v2.schema.json",
     "profiles_lock_v1.schema.json",
+    "governance_evidence_v1.schema.json",
+    "separation_of_duties_v1.schema.json",
+    "governance_exception_v1.schema.json",
+    "change_v1.schema.json",
+    "governed_package.schema.json",
+    "architecture_v1.schema.json",
+    "architecture_evidence_v1.schema.json",
+    "architecture_report_v1.schema.json",
 )
 
 
@@ -154,7 +165,7 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
                 "An actor category cannot be both eligible and denied.",
             )
         )
-    if eligible and required and not set(required) <= set(eligible):
+    if required and not set(required) <= set(eligible):
         diagnostics.append(
             _normalization_diagnostic(
                 "APPROVAL_REQUIRED_ROLE_NOT_ELIGIBLE",
@@ -178,6 +189,20 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
                 "An approval gate with no roles, evidence, or actions is invalid.",
             )
         )
+
+    accountable_authority = source.get("accountable_authority")
+    if accountable_authority is not None and (
+        not isinstance(accountable_authority, str)
+        or not accountable_authority.strip()
+    ):
+        diagnostics.append(
+            _normalization_diagnostic(
+                "APPROVAL_ACCOUNTABLE_AUTHORITY_INVALID",
+                "error",
+                "Approval accountable authority must be a non-empty source string.",
+            )
+        )
+        accountable_authority = None
 
     if shape in {"ordinary_approval", "generated_profile_approval"}:
         normalized_id = str(source.get("name", case["id"]))
@@ -212,7 +237,7 @@ def _normalize_approval(case: dict[str, Any]) -> dict[str, Any]:
         "required_evidence": evidence,
         "actions_requiring_approval": actions,
         "timing": timing,
-        "accountable_authority": source.get("accountable_authority"),
+        "accountable_authority": accountable_authority,
         "revision_binding": source.get("revision_binding"),
         "invalidation_conditions": list(source.get("invalidation_conditions", [])),
         "expires_at": source.get("expires_at"),
@@ -254,12 +279,11 @@ def _project_v1_to_v03(pack: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
     return projected, report
 
 
-def test_draft_schemas_are_valid_and_bundled_copies_are_exact() -> None:
-    for name in NEW_SCHEMA_FILES:
+def test_governance_schemas_are_valid_and_bundled_copies_are_exact() -> None:
+    for name in GOVERNANCE_SCHEMA_FILES:
         root_schema = _json(SCHEMA_DIR / name)
         Draft202012Validator.check_schema(root_schema)
         assert (SCHEMA_DIR / name).read_bytes() == (BUNDLED_SCHEMA_DIR / name).read_bytes()
-        assert "DRAFT" in root_schema["$comment"]
 
 
 def test_v03_and_v1_profile_fixtures_validate_against_separate_schemas() -> None:
