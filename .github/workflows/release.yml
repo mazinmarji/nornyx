@@ -20,7 +20,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install . pytest
-      - run: pytest -q
+      # python -m puts the checkout root on sys.path so the repository-root
+      # `scripts` helper modules imported by the test suite are resolvable.
+      - run: python -m pytest -q
 
   publish:
     if: github.event_name == 'release'

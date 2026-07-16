@@ -185,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         payload = json.loads(probe.stdout)
         if payload != {
-            "version": "1.6.0",
+            "version": "1.6.1",
             "profiles": 12,
             "modules": 6,
             "schema": True,
