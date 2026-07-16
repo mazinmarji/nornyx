@@ -2,7 +2,7 @@
   "schema": "nornyx.profile_starter_golden.v1",
   "source_ref": "main",
   "source_commit": "a274e7d85e2ea9b7925a4d9caa3b83e5f4fe3652",
-  "nornyx_version": "1.5.2",
+  "nornyx_version": "1.6.0",
   "project_name": "GovernanceGolden",
   "profile_order": [
     "minimal",
