@@ -4,3 +4,5 @@ examples/architecture_reports/*.json -text
 tests/fixtures/governance_compatibility/*.json -text
 tests/fixtures/governance_compatibility/migrations/** -text
 tests/fixtures/generated_drift/*.json -text
+schemas/*.json -text
+nornyx/schemas/*.json -text
