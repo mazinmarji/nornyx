@@ -4,6 +4,16 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [1.6.2] - 2026-07-17
+
+### Fixed
+- The release workflow test job now checks out full history so the AUD-022
+  candidate-diff regression test can resolve the audited base commit; the
+  shallow checkout in the v1.6.1 release run made
+  `git diff --check <base>...HEAD` an invalid range expression. The `v1.6.1`
+  GitHub release predates this fix and was never published to PyPI; PyPI
+  publication first occurs at 1.6.2.
+
 ## [1.6.1] - 2026-07-16
 
 ### Fixed
