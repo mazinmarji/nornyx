@@ -1,10 +1,17 @@
 # AN-001 — Agentic Network Governance Foundation
 
-Status: remediation is implemented in candidate commit `8e939d9f69f474566b11d42fe2a989d1cf6e480c`.
+Status: three P1 implementation findings raised after acceptance commit
+`b707e2a3325f981c0e7a34cef07a0950bb4c98a5` are remediated in the local
+candidate. Composed-module approval authority is authoritative, canonical
+approval and contract-review evidence is typed, and exact revisions are
+content-addressed. Local validation passed; the prior CI success applies to the
+superseded acceptance head, and new exact-head CI is required. Merge
+authorization remains withdrawn pending review-thread closure and separate
+human authorization.
+
 The first independent audit returned `NO_GO`; the corrected second independent
 audit closed AN-AUD-001 through AN-AUD-012 and withdrew AN-AUD2-001. Human
-acceptance of ADR-0033 and the compatibility migrations is recorded; separate
-merge authorization remains required.
+acceptance of ADR-0033 and the compatibility migrations remains recorded.
 
 ## Scope Inventory
 
@@ -36,6 +43,7 @@ publication, or deployment behavior.
 
 ## Remaining Gates
 
-1. Complete exact-head post-acceptance hosted CI and focused verification.
-2. Preserve separate authorization for merge; any release remains a
+1. Run exact-head hosted CI and focused verification for the P1 remediation.
+2. Reassess the three unresolved review threads against that exact head.
+3. Preserve separate authorization for merge; any release remains a
    separate decision.

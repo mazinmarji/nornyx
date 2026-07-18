@@ -20,6 +20,10 @@ distribution version is independent of the Nornyx **language/schema** version
   and autonomous approval remain outstanding.
 
 ### Fixed
+- AN-001 approval validation now keeps composed-module roles authoritative,
+  requires typed canonical approval and contract-review evidence, and accepts
+  only full content-addressed Git object IDs or SHA-256 digests at its exact
+  revision boundary.
 - The release workflow test job now checks out full history so the AUD-022
   candidate-diff regression test can resolve the audited base commit; the
   shallow checkout in the v1.6.1 release run made

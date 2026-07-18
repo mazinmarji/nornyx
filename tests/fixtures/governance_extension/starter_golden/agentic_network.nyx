@@ -110,7 +110,7 @@ approvals:
   accountable_authority: network_governance_owner
   revision_binding:
     kind: git
-    revision: git:REPLACE_WITH_EXACT_REVISION
+    revision: git:0123456789abcdef0123456789abcdef01234567
     exact: true
   invalidation_conditions:
   - revision_change
@@ -121,7 +121,7 @@ approvals:
   expires_at: '2026-07-24T00:00:00Z'
 governance_evidence:
   schema: nornyx.governance_evidence.v1
-  subject_revision: git:REPLACE_WITH_EXACT_REVISION
+  subject_revision: git:0123456789abcdef0123456789abcdef01234567
   records: []
 capabilities:
 - name: read_governed_context
@@ -185,7 +185,7 @@ agent_identities:
 agentic_network:
   schema: nornyx.agentic_network.v1
   id: network.research
-  subject_revision: git:REPLACE_WITH_EXACT_REVISION
+  subject_revision: git:0123456789abcdef0123456789abcdef01234567
   trust_zones:
   - id: zone.local_governed
     classification: governed_local

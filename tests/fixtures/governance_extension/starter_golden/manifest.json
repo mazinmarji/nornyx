@@ -179,8 +179,8 @@
       "source_revision": "AN-001",
       "nornyx_version": "1.6.2",
       "generation_command": "python -m nornyx.cli init --profile agentic_network --name GovernanceGolden --out tests/fixtures/governance_extension/starter_golden/agentic_network.nyx",
-      "sha256": "cf08a55ebe99735b273c3e4ab87737020c7d5c4813b5b98bb670ba18e50810ac",
-      "canonical_lf_sha256": "cf08a55ebe99735b273c3e4ab87737020c7d5c4813b5b98bb670ba18e50810ac",
+      "sha256": "87514713c1a0b0d4106b296ae51d6b57015ae346aedcfd9bcaa4b127e69c4c28",
+      "canonical_lf_sha256": "87514713c1a0b0d4106b296ae51d6b57015ae346aedcfd9bcaa4b127e69c4c28",
       "compatibility_class": "semantic_equivalence_allowed",
       "allowed_normalization": "CRLF_to_LF_only"
     }

@@ -35,7 +35,7 @@
         "classification": "intentional_migration_requiring_approval",
         "artifact": "tests/fixtures/governance_extension/starter_golden/agentic_network.nyx",
         "old_hash": null,
-        "new_hash": "sha256:cf08a55ebe99735b273c3e4ab87737020c7d5c4813b5b98bb670ba18e50810ac",
+        "new_hash": "sha256:87514713c1a0b0d4106b296ae51d6b57015ae346aedcfd9bcaa4b127e69c4c28",
         "reason": "Additive v1-only agentic-network profile; no prior starter artifact existed.",
         "approval": "Explicit AN-001 implementation requested by the human repository owner on 2026-07-17; this records additive compatibility evidence and does not grant merge, release, runtime, autonomous, or compatibility acceptance.",
         "changelog": "CHANGELOG.md",
@@ -48,7 +48,7 @@
     "files": [
       {
         "path": "examples/agentic_network.nyx",
-        "sha256": "7167a17d68f7cad4d3121b8b6f02510a89cc59b162ca479027d62fc99c706299"
+        "sha256": "b06506f93ecf503eefc822dbd6946858738b651f2303493e08b381682f87b23c"
       },
       {
         "path": "examples/architecture_governance.nyx",

@@ -15,6 +15,10 @@ AGENTIC_APPROVAL_ID = "agentic_network_authority"
 APPROVAL_RECORD_ID = "approval_record"
 CONTRACT_REVIEW_ID = "agentic_network_contract_review"
 _DURATION_RE = re.compile(r"^(?:P(?P<days>[1-9][0-9]*)D|PT(?P<hours>[1-9][0-9]*)H)$")
+_IMMUTABLE_REVISION_RE = re.compile(
+    r"^(?:git:(?:[0-9a-f]{40}|[0-9a-f]{64})|sha256:[0-9a-f]{64})$"
+)
+_SYMBOLIC_REVISION_RE = re.compile(r"^[A-Za-z][A-Za-z0-9._/-]*$")
 
 
 def _diagnostic(code: str, message: str, *, path: str) -> GovernanceDiagnostic:
@@ -294,6 +298,100 @@ def _producer_role(producer_id: str) -> str:
     return producer_id
 
 
+def _revision_problem(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return "required"
+    if _IMMUTABLE_REVISION_RE.fullmatch(value):
+        return None
+    if any(character.isspace() for character in value) or "://" in value:
+        return "malformed"
+    if value.startswith("refs/") or _SYMBOLIC_REVISION_RE.fullmatch(value):
+        return "mutable"
+    if ":" not in value:
+        return "malformed"
+    algorithm, payload = value.split(":", 1)
+    if algorithm not in {"git", "sha256"}:
+        return "unsupported_algorithm"
+    if algorithm == "git" and _SYMBOLIC_REVISION_RE.fullmatch(payload):
+        return "mutable"
+    return "malformed"
+
+
+def _validate_immutable_revision(
+    value: Any,
+    *,
+    path: str,
+    noun: str,
+    diagnostics: list[GovernanceDiagnostic],
+) -> str | None:
+    problem = _revision_problem(value)
+    if problem is None:
+        return str(value)
+    code, message = {
+        "required": (
+            "AN_REVISION_REQUIRED",
+            f"{noun} requires an immutable content-addressed revision.",
+        ),
+        "mutable": (
+            "AN_REVISION_MUTABLE",
+            f"{noun} must not use a mutable or symbolic revision.",
+        ),
+        "unsupported_algorithm": (
+            "AN_REVISION_ALGORITHM_UNSUPPORTED",
+            f"{noun} uses an unsupported revision algorithm.",
+        ),
+        "malformed": (
+            "AN_REVISION_MALFORMED",
+            f"{noun} must use git:<40-or-64-hex> or sha256:<64-hex>.",
+        ),
+    }[problem]
+    diagnostics.append(_diagnostic(code, message, path=path))
+    return None
+
+
+def _canonical_evidence_record(
+    records: list[Mapping[str, Any]],
+    *,
+    record_id: str,
+    record_type: str,
+    missing_code: str,
+    type_code: str,
+    ambiguous_code: str,
+    noun: str,
+    diagnostics: list[GovernanceDiagnostic],
+) -> Mapping[str, Any] | None:
+    id_matches = [item for item in records if item.get("id") == record_id]
+    for record in id_matches:
+        if record.get("type") != record_type:
+            diagnostics.append(
+                _diagnostic(
+                    type_code,
+                    f"{noun} {record_id!r} must have type {record_type!r}.",
+                    path=f"governance_evidence.records[{records.index(record)}].type",
+                )
+            )
+    canonical = [item for item in id_matches if item.get("type") == record_type]
+    if not canonical:
+        diagnostics.append(
+            _diagnostic(
+                missing_code,
+                f"Required {noun.lower()} {record_id!r} with type {record_type!r} is missing.",
+                path="governance_evidence.records",
+            )
+        )
+        return None
+    if len(canonical) > 1:
+        diagnostics.append(
+            _diagnostic(
+                ambiguous_code,
+                f"Exactly one canonical {noun.lower()} is permitted.",
+                path="governance_evidence.records",
+            )
+        )
+        return None
+    return canonical[0]
+
+
 def _validate_revision_and_authority(
     document: Mapping[str, Any],
     composition: CompositionResult,
@@ -307,27 +405,25 @@ def _validate_revision_and_authority(
     evidence = document.get("governance_evidence")
     evidence_mapping = evidence if isinstance(evidence, Mapping) else {}
     records = _mapping_items(evidence_mapping.get("records"))
-    records_by_id = {str(item["id"]): item for item in records if isinstance(item.get("id"), str)}
+    records_by_id = {
+        str(item["id"]): item for item in records if isinstance(item.get("id"), str)
+    }
 
-    network_revision = network.get("subject_revision")
-    evidence_revision = evidence_mapping.get("subject_revision")
-    if not isinstance(network_revision, str) or not network_revision:
-        diagnostics.append(
-            _diagnostic(
-                "AN_REVISION_REQUIRED",
-                "Agentic-network governance requires one exact subject revision.",
-                path="agentic_network.subject_revision",
-            )
-        )
-    if not isinstance(evidence_revision, str) or not evidence_revision:
-        diagnostics.append(
-            _diagnostic(
-                "AN_REVISION_REQUIRED",
-                "Governance evidence requires the exact agentic-network subject revision.",
-                path="governance_evidence.subject_revision",
-            )
-        )
-    elif isinstance(network_revision, str) and evidence_revision != network_revision:
+    network_revision = _validate_immutable_revision(
+        network.get("subject_revision"),
+        path="agentic_network.subject_revision",
+        noun="Agentic-network governance",
+        diagnostics=diagnostics,
+    )
+    evidence_revision = _validate_immutable_revision(
+        evidence_mapping.get("subject_revision"),
+        path="governance_evidence.subject_revision",
+        noun="Governance evidence",
+        diagnostics=diagnostics,
+    )
+    if network_revision is not None and evidence_revision is not None and (
+        evidence_revision != network_revision
+    ):
         diagnostics.append(
             _diagnostic(
                 "AN_REVISION_MISMATCH",
@@ -336,31 +432,67 @@ def _validate_revision_and_authority(
             )
         )
 
-    for record_id, missing_code in (
-        (CONTRACT_REVIEW_ID, "AN_CONTRACT_REVIEW_MISSING"),
-        (APPROVAL_RECORD_ID, "AN_APPROVAL_RECORD_MISSING"),
-    ):
-        record = records_by_id.get(record_id)
-        if record is None:
-            diagnostics.append(
-                _diagnostic(
-                    missing_code,
-                    f"Required evidence record {record_id!r} is missing.",
-                    path="governance_evidence.records",
-                )
+    contract_requirement = next(
+        (
+            item
+            for item in composition.evidence_requirements
+            if item.get("id") == CONTRACT_REVIEW_ID
+        ),
+        None,
+    )
+    contract_type = (
+        contract_requirement.get("type")
+        if isinstance(contract_requirement, Mapping)
+        and isinstance(contract_requirement.get("type"), str)
+        else None
+    )
+    if contract_type is None:
+        diagnostics.append(
+            _diagnostic(
+                "AN_CONTRACT_REVIEW_REQUIREMENT_MISSING",
+                "The composed module does not define the required contract-review evidence type.",
+                path="governance_evidence.records",
             )
+        )
+        contract_review = None
+    else:
+        contract_review = _canonical_evidence_record(
+            records,
+            record_id=CONTRACT_REVIEW_ID,
+            record_type=contract_type,
+            missing_code="AN_CONTRACT_REVIEW_MISSING",
+            type_code="AN_CONTRACT_REVIEW_TYPE_INVALID",
+            ambiguous_code="AN_CONTRACT_REVIEW_AMBIGUOUS",
+            noun="Contract-review evidence record",
+            diagnostics=diagnostics,
+        )
+    approval_record = _canonical_evidence_record(
+        records,
+        record_id=APPROVAL_RECORD_ID,
+        record_type="approval_record",
+        missing_code="AN_APPROVAL_RECORD_MISSING",
+        type_code="AN_APPROVAL_RECORD_TYPE_INVALID",
+        ambiguous_code="AN_APPROVAL_AMBIGUOUS",
+        noun="Approval evidence record",
+        diagnostics=diagnostics,
+    )
+
+    for record_id, record in (
+        (CONTRACT_REVIEW_ID, contract_review),
+        (APPROVAL_RECORD_ID, approval_record),
+    ):
+        if record is None:
             continue
         record_index = records.index(record)
-        record_revision = record.get("subject_revision")
-        if not isinstance(record_revision, str) or not record_revision:
-            diagnostics.append(
-                _diagnostic(
-                    "AN_REVISION_REQUIRED",
-                    f"Evidence record {record_id!r} requires an exact subject revision.",
-                    path=f"governance_evidence.records[{record_index}].subject_revision",
-                )
-            )
-        elif isinstance(network_revision, str) and record_revision != network_revision:
+        record_revision = _validate_immutable_revision(
+            record.get("subject_revision"),
+            path=f"governance_evidence.records[{record_index}].subject_revision",
+            noun=f"Evidence record {record_id!r}",
+            diagnostics=diagnostics,
+        )
+        if network_revision is not None and record_revision is not None and (
+            record_revision != network_revision
+        ):
             diagnostics.append(
                 _diagnostic(
                     "AN_REVISION_MISMATCH",
@@ -368,16 +500,6 @@ def _validate_revision_and_authority(
                     path=f"governance_evidence.records[{record_index}].subject_revision",
                 )
             )
-
-    approval_records = [item for item in records if item.get("type") == "approval_record"]
-    if len(approval_records) > 1:
-        diagnostics.append(
-            _diagnostic(
-                "AN_APPROVAL_AMBIGUOUS",
-                "Exactly one current approval record is permitted for the AN-001 contract.",
-                path="governance_evidence.records",
-            )
-        )
 
     declarations = _mapping_items(document.get("approvals"))
     declaration = next(
@@ -388,6 +510,28 @@ def _validate_revision_and_authority(
         ),
         None,
     )
+    approval_requirement = next(
+        (item for item in composition.approval_requirements if item.id == AGENTIC_APPROVAL_ID),
+        None,
+    )
+    declaration_authority_valid = False
+    effective_allowed_roles: set[str] = set()
+    module_allowed_roles: set[str] = set()
+    if approval_requirement is None:
+        diagnostics.append(
+            _diagnostic(
+                "AN_APPROVAL_MODULE_REQUIREMENT_MISSING",
+                "The composed module does not define the required agentic-network authority.",
+                path="approvals",
+            )
+        )
+    else:
+        module_required_roles = set(approval_requirement.required_roles)
+        module_eligible_roles = set(approval_requirement.eligible_roles)
+        module_allowed_roles = module_required_roles | module_eligible_roles
+        if approval_requirement.accountable_authority is not None:
+            module_allowed_roles.add(approval_requirement.accountable_authority)
+
     if declaration is None:
         diagnostics.append(
             _diagnostic(
@@ -398,6 +542,69 @@ def _validate_revision_and_authority(
         )
     else:
         declaration_index = declarations.index(declaration)
+        declaration_path = f"approvals[{declaration_index}]"
+        declared_required_roles = set(_strings(declaration.get("required_roles")))
+        declared_eligible_roles = set(_strings(declaration.get("eligible_roles")))
+        declared_authority = declaration.get("accountable_authority")
+        contradiction = False
+        unauthorized_required = declared_required_roles - module_allowed_roles
+        unauthorized_eligible = declared_eligible_roles - (
+            set(approval_requirement.eligible_roles)
+            if approval_requirement is not None
+            else set()
+        )
+        for field, unauthorized in (
+            ("required_roles", unauthorized_required),
+            ("eligible_roles", unauthorized_eligible),
+        ):
+            if unauthorized:
+                contradiction = True
+                diagnostics.append(
+                    _diagnostic(
+                        "AN_APPROVAL_DECLARED_ROLE_UNAUTHORIZED",
+                        "Document approval roles are absent from the composed module authority: "
+                        + ", ".join(sorted(unauthorized))
+                        + ".",
+                        path=f"{declaration_path}.{field}",
+                    )
+                )
+        if approval_requirement is not None:
+            omitted_roles = set(approval_requirement.required_roles) - declared_required_roles
+            if omitted_roles:
+                contradiction = True
+                diagnostics.append(
+                    _diagnostic(
+                        "AN_APPROVAL_MODULE_ROLE_OMITTED",
+                        "Document approval requirements omit module-required roles: "
+                        + ", ".join(sorted(omitted_roles))
+                        + ".",
+                        path=f"{declaration_path}.required_roles",
+                    )
+                )
+            if declared_authority != approval_requirement.accountable_authority:
+                contradiction = True
+                diagnostics.append(
+                    _diagnostic(
+                        "AN_APPROVAL_ACCOUNTABLE_AUTHORITY_MISMATCH",
+                        "Document accountable authority must match the composed module authority.",
+                        path=f"{declaration_path}.accountable_authority",
+                    )
+                )
+        document_allowed_roles = declared_required_roles | declared_eligible_roles
+        effective_allowed_roles = module_allowed_roles & document_allowed_roles
+        if not effective_allowed_roles:
+            contradiction = True
+        if contradiction:
+            diagnostics.append(
+                _diagnostic(
+                    "AN_APPROVAL_DECLARATION_MODULE_CONTRADICTION",
+                    "Document approval authority contradicts the composed module requirement.",
+                    path=declaration_path,
+                )
+            )
+        else:
+            declaration_authority_valid = approval_requirement is not None
+
         declared_actions = set(_strings(declaration.get("required_for")))
         missing_actions = required_actions - declared_actions
         if missing_actions:
@@ -413,15 +620,17 @@ def _validate_revision_and_authority(
         binding = declaration.get("revision_binding")
         bound_revision = binding.get("revision") if isinstance(binding, Mapping) else None
         binding_path = f"approvals[{declaration_index}].revision_binding.revision"
-        if not isinstance(bound_revision, str) or not bound_revision:
-            diagnostics.append(
-                _diagnostic(
-                    "AN_REVISION_REQUIRED",
-                    "Approval declaration requires an exact subject revision.",
-                    path=binding_path,
-                )
-            )
-        elif binding.get("exact") is not True or bound_revision != network_revision:
+        validated_bound_revision = _validate_immutable_revision(
+            bound_revision,
+            path=binding_path,
+            noun="Approval declaration",
+            diagnostics=diagnostics,
+        )
+        if validated_bound_revision is not None and (
+            binding.get("exact") is not True
+            or network_revision is None
+            or validated_bound_revision != network_revision
+        ):
             diagnostics.append(
                 _diagnostic(
                     "AN_REVISION_MISMATCH",
@@ -430,7 +639,6 @@ def _validate_revision_and_authority(
                 )
             )
 
-    approval_record = records_by_id.get(APPROVAL_RECORD_ID)
     if approval_record is None:
         return records_by_id
     record_index = records.index(approval_record)
@@ -443,14 +651,17 @@ def _validate_revision_and_authority(
                 path=f"governance_evidence.records[{record_index}].producer.type",
             )
         )
-    elif declaration is not None and isinstance(producer.get("id"), str):
-        allowed_roles = set(_strings(declaration.get("required_roles"))) | set(
-            _strings(declaration.get("eligible_roles"))
-        )
-        authority = declaration.get("accountable_authority")
-        if isinstance(authority, str):
-            allowed_roles.add(authority)
-        if _producer_role(str(producer["id"])) not in allowed_roles:
+    elif isinstance(producer.get("id"), str):
+        producer_role = _producer_role(str(producer["id"]))
+        if producer_role not in module_allowed_roles:
+            diagnostics.append(
+                _diagnostic(
+                    "AN_APPROVAL_PRODUCER_OUTSIDE_MODULE_AUTHORITY",
+                    "Approval producer is outside the composed module authority.",
+                    path=f"governance_evidence.records[{record_index}].producer.id",
+                )
+            )
+        elif declaration_authority_valid and producer_role not in effective_allowed_roles:
             diagnostics.append(
                 _diagnostic(
                     "AN_APPROVAL_ROLE_INVALID",
@@ -476,10 +687,6 @@ def _validate_revision_and_authority(
             )
         )
 
-    approval_requirement = next(
-        (item for item in composition.approval_requirements if item.id == AGENTIC_APPROVAL_ID),
-        None,
-    )
     maximum_age = _parse_duration(
         approval_requirement.expires_after if approval_requirement is not None else None
     )

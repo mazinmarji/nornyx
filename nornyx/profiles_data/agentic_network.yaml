@@ -136,7 +136,7 @@ starter_fragments:
           accountable_authority: network_governance_owner
           revision_binding:
             kind: git
-            revision: git:REPLACE_WITH_EXACT_REVISION
+            revision: git:0123456789abcdef0123456789abcdef01234567
             exact: true
           invalidation_conditions:
             - revision_change
@@ -147,7 +147,7 @@ starter_fragments:
           expires_at: "2026-07-24T00:00:00Z"
       governance_evidence:
         schema: nornyx.governance_evidence.v1
-        subject_revision: git:REPLACE_WITH_EXACT_REVISION
+        subject_revision: git:0123456789abcdef0123456789abcdef01234567
         records: []
       capabilities:
         - name: read_governed_context
@@ -202,7 +202,7 @@ starter_fragments:
       agentic_network:
         schema: nornyx.agentic_network.v1
         id: network.research
-        subject_revision: git:REPLACE_WITH_EXACT_REVISION
+        subject_revision: git:0123456789abcdef0123456789abcdef01234567
         trust_zones:
           - id: zone.local_governed
             classification: governed_local
@@ -331,4 +331,4 @@ provenance:
   source_revision: AN-001
 integrity:
   algorithm: sha256
-  content_hash: sha256:0e4cffb4c6cc182dc9f3e78ddc8dc3f44f78c6d00aa4fc67ba6c71aeac9a63f0
+  content_hash: sha256:94ab4650c2a24e8829e0df9accf8ca539a8e3e1f4dc477f9835eebfdbe62f944
