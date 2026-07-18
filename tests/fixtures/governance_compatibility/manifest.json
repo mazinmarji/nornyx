@@ -13,9 +13,10 @@
   "profile_starters": {
     "classification": "byte_identical",
     "manifest": "tests/fixtures/governance_extension/starter_golden/manifest.json",
-    "legacy_profiles_unchanged": 11,
+    "legacy_profiles_unchanged": 12,
     "additive_profiles": [
-      "architecture_governance"
+      "architecture_governance",
+      "agentic_network"
     ],
     "additions": [
       {
@@ -28,12 +29,27 @@
         "approval": "Explicit AUD remediation requested by the human repository owner on 2026-07-14; this records evidence and does not grant runtime governance approval.",
         "changelog": "CHANGELOG.md",
         "changelog_marker": "migration:architecture-governance-starter-v1"
+      },
+      {
+        "id": "agentic-network-starter-v1",
+        "classification": "intentional_migration_requiring_approval",
+        "artifact": "tests/fixtures/governance_extension/starter_golden/agentic_network.nyx",
+        "old_hash": null,
+        "new_hash": "sha256:cf08a55ebe99735b273c3e4ab87737020c7d5c4813b5b98bb670ba18e50810ac",
+        "reason": "Additive v1-only agentic-network profile; no prior starter artifact existed.",
+        "approval": "Explicit AN-001 implementation requested by the human repository owner on 2026-07-17; this records additive compatibility evidence and does not grant merge, release, runtime, autonomous, or compatibility acceptance.",
+        "changelog": "CHANGELOG.md",
+        "changelog_marker": "migration:agentic-network-starter-v1"
       }
     ]
   },
   "nyx_examples": {
     "classification": "canonical_lf_identical",
     "files": [
+      {
+        "path": "examples/agentic_network.nyx",
+        "sha256": "7167a17d68f7cad4d3121b8b6f02510a89cc59b162ca479027d62fc99c706299"
+      },
       {
         "path": "examples/architecture_governance.nyx",
         "sha256": "8184eb5b86a2e9f268ae1075b9ce3f4f428a19014234291505801186925bb781"
@@ -161,7 +177,7 @@
           "--json"
         ],
         "exit": 0,
-        "sha256": "345d53ab4d0bf714fca9bb2d72495f940ca66a0b583f6cfc2f0cac9dd3a760b6"
+        "sha256": "c898c0ad13b44aa0fed4f02b4101cb1b3725ef081f9cd3e495b492521b3d1c6a"
       },
       {
         "id": "modules_list",
@@ -171,7 +187,7 @@
           "--json"
         ],
         "exit": 0,
-        "sha256": "4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02"
+        "sha256": "e6b986207669c5c9cb4ed7991dab5c0db25ed4dd814305ce09e6cbe49199b1da"
       },
       {
         "id": "modules_inspect",
@@ -313,6 +329,42 @@
       "old_hash": "sha256:c704e7ea0942452a59e9f5ff12a114adc55f08f92ed529b53d8bf18a12dbacd8",
       "new_hash": "sha256:8184eb5b86a2e9f268ae1075b9ce3f4f428a19014234291505801186925bb781",
       "proof_hash": "sha256:ec97b7992a470b3d6298cd5eb3bee076141094f0c4e80c407d13359148ecd6d2"
+    },
+    {
+      "id": "profiles-agentic-network-v1",
+      "target": "cli:profiles_list",
+      "sequence": 1,
+      "surface": "profiles list additive agentic-network contract",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/profiles-agentic-network.before.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/profiles-agentic-network.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/profiles-agentic-network-v1.diff.json",
+      "reason": "Add the optional v1-only agentic_network profile without changing any existing profile entry.",
+      "approval": "Explicit AN-001 implementation requested by the human repository owner on 2026-07-17; this records additive profile/catalog compatibility evidence and does not grant merge, release, runtime, or autonomous approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:profiles-agentic-network-v1",
+      "old_hash": "sha256:345d53ab4d0bf714fca9bb2d72495f940ca66a0b583f6cfc2f0cac9dd3a760b6",
+      "new_hash": "sha256:c898c0ad13b44aa0fed4f02b4101cb1b3725ef081f9cd3e495b492521b3d1c6a",
+      "proof_hash": "sha256:03ba3014454a7c2d9efda49f8ab3bfd87a5802fc2e183d84592517e88b6f1285"
+    },
+    {
+      "id": "modules-agentic-network-governance-v1",
+      "target": "cli:modules_list",
+      "sequence": 2,
+      "surface": "modules list additive agentic-network governance contract",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/modules-sod-contract.after.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/modules-agentic-network-governance.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/modules-agentic-network-governance-v1.diff.json",
+      "reason": "Add the bounded agentic_network_governance module without changing any existing module entry.",
+      "approval": "Explicit AN-001 implementation requested by the human repository owner on 2026-07-17; this records additive profile/catalog compatibility evidence and does not grant merge, release, runtime, or autonomous approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:modules-agentic-network-governance-v1",
+      "old_hash": "sha256:4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02",
+      "new_hash": "sha256:e6b986207669c5c9cb4ed7991dab5c0db25ed4dd814305ce09e6cbe49199b1da",
+      "proof_hash": "sha256:2ddd4d751699e7be7eaf99a39147f248a38a1479f1ed650a726813fb13b113bd"
     }
   ]
 }

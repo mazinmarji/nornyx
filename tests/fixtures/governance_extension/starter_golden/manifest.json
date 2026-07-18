@@ -16,7 +16,8 @@
     "business_ops",
     "ai_governance",
     "finance_ops",
-    "architecture_governance"
+    "architecture_governance",
+    "agentic_network"
   ],
   "compatibility_classes": [
     "byte_identical",
@@ -168,6 +169,18 @@
       "generation_command": "python -m nornyx.cli init --profile architecture_governance --name GovernanceGolden --out tests/fixtures/governance_extension/starter_golden/architecture_governance.nyx",
       "sha256": "0bc6b7e5c9363b6f95a0ef858b2abe57cc1fc4025d6dcb6c610f6d7e8dc5ada0",
       "canonical_lf_sha256": "ebe634c4b590e7df3a4a05308d4d47a9d5ccfe6f2d908e22c9c46c4894c54b9a",
+      "compatibility_class": "semantic_equivalence_allowed",
+      "allowed_normalization": "CRLF_to_LF_only"
+    },
+    {
+      "profile": "agentic_network",
+      "project_name": "GovernanceGolden",
+      "file": "agentic_network.nyx",
+      "source_revision": "AN-001",
+      "nornyx_version": "1.6.2",
+      "generation_command": "python -m nornyx.cli init --profile agentic_network --name GovernanceGolden --out tests/fixtures/governance_extension/starter_golden/agentic_network.nyx",
+      "sha256": "cf08a55ebe99735b273c3e4ab87737020c7d5c4813b5b98bb670ba18e50810ac",
+      "canonical_lf_sha256": "cf08a55ebe99735b273c3e4ab87737020c7d5c4813b5b98bb670ba18e50810ac",
       "compatibility_class": "semantic_equivalence_allowed",
       "allowed_normalization": "CRLF_to_LF_only"
     }

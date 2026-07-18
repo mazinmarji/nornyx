@@ -123,9 +123,10 @@ def test_compatibility_corpus_delegates_all_starters_to_the_existing_goldens() -
 
     assert starter_manifest["profile_order"] == PROFILE_NAMES
     assert len(starter_manifest["profiles"]) == len(PROFILE_NAMES)
-    assert manifest["profile_starters"]["legacy_profiles_unchanged"] == 11
+    assert manifest["profile_starters"]["legacy_profiles_unchanged"] == 12
     assert manifest["profile_starters"]["additive_profiles"] == [
-        "architecture_governance"
+        "architecture_governance",
+        "agentic_network",
     ]
 
 
@@ -159,5 +160,5 @@ def test_compatibility_corpus_pins_cli_stdout_and_exit_codes() -> None:
 
 def test_every_intentional_migration_has_the_required_approval_record() -> None:
     manifest = verify_manifest()
-    assert len(manifest["intentional_migrations"]) == 5
-    assert len(manifest["profile_starters"]["additions"]) == 1
+    assert len(manifest["intentional_migrations"]) == 7
+    assert len(manifest["profile_starters"]["additions"]) == 2

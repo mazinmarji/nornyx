@@ -113,10 +113,17 @@ These should be delivered later as profiles, not core.
 | `cold_chain` | telemetry, compliance, shipment risk, evidence export |
 | `civic_services` | citizen issues, work orders, public status |
 | `enterprise_portal` | role views, dashboard contracts, reporting |
+| `agentic_network` | static agent identities, capabilities, memberships, trust zones, gates, contract-only protocol targets, revocation |
 
 ---
 
 # 5. Outside Nornyx
+
+Agent authentication and identity issuance, service discovery, runtime
+presence, agent orchestration, live MCP/A2A transport, endpoint and credential
+management, framework execution, production consoles, and automatic approval
+remain external systems. Nornyx may validate bounded static contracts and
+evidence about them; untrusted context cannot define policy or permissions.
 
 Nornyx may define contracts for these, but should not implement them.
 

@@ -21,6 +21,32 @@ class NornyxSafeLoader(yaml.SafeLoader):
     restrict implicit bool resolution to true/false only.
     """
 
+    def construct_mapping(self, node: yaml.nodes.MappingNode, deep: bool = False):
+        """Construct one mapping while rejecting every duplicate source key."""
+
+        self.flatten_mapping(node)
+        seen: set[object] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                duplicated = key in seen
+            except TypeError as exc:
+                raise yaml.constructor.ConstructorError(
+                    "while constructing a mapping",
+                    node.start_mark,
+                    "found an unhashable mapping key",
+                    key_node.start_mark,
+                ) from exc
+            if duplicated:
+                raise yaml.constructor.ConstructorError(
+                    "while constructing a mapping",
+                    node.start_mark,
+                    f"found duplicate key {key!r}",
+                    key_node.start_mark,
+                )
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
+
 
 # Drop the bool resolver everywhere, then re-add it for true/false only.
 NornyxSafeLoader.yaml_implicit_resolvers = {
@@ -42,9 +68,7 @@ def load_nyx(path: str | Path) -> dict[str, Any]:
     A future parser can replace this without changing the high-level model.
     """
     if is_remote_or_device_path(path):
-        raise NornyxParseError(
-            f"remote or device-backed contract paths are not allowed: {path}"
-        )
+        raise NornyxParseError(f"remote or device-backed contract paths are not allowed: {path}")
     p = Path(path)
     if not p.exists():
         raise NornyxParseError(f"contract file not found: {p}")
@@ -128,21 +152,18 @@ def _resolve_policy_refs(data: dict[str, Any], base_dir: Path) -> dict[str, Any]
         if source_doc is None:
             source_path = base_dir / rel_path
             if not source_path.is_file():
-                raise NornyxParseError(
-                    f"policy {name!r}: ref source not found: {source_path}"
-                )
+                raise NornyxParseError(f"policy {name!r}: ref source not found: {source_path}")
             try:
-                source_doc = yaml.load(
-                    source_path.read_text(encoding="utf-8"), Loader=NornyxSafeLoader
-                ) or {}
+                source_doc = (
+                    yaml.load(source_path.read_text(encoding="utf-8"), Loader=NornyxSafeLoader)
+                    or {}
+                )
             except yaml.YAMLError as exc:
                 raise NornyxParseError(
                     f"policy {name!r}: ref source {rel_path!r} is invalid YAML: {exc}"
                 ) from exc
             if not isinstance(source_doc, dict):
-                raise NornyxParseError(
-                    f"policy {name!r}: ref source {rel_path!r} is not a mapping"
-                )
+                raise NornyxParseError(f"policy {name!r}: ref source {rel_path!r} is not a mapping")
             source_cache[rel_path] = source_doc
         rules = _extract_policy_rules(source_doc, ref_policy)
         if rules is None:

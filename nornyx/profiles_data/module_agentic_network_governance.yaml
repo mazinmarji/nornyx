@@ -1,0 +1,104 @@
+schema: nornyx.governance_module.v1
+kind: module
+id: nornyx.builtin.module.agentic_network_governance
+name: agentic_network_governance
+version: 0.1.0
+compatible_core: ">=0.2 <=1.0"
+dependencies:
+  - nornyx.builtin.module.human_approval
+conflicts: []
+required_blocks:
+  - agentic_network
+  - agent_identities
+  - capabilities
+block_schemas:
+  - block: agentic_network
+    schema_id: https://nornyx.dev/schemas/agentic_network_v1.schema.json
+  - block: agent_identities
+    schema_id: https://nornyx.dev/schemas/agent_identities_v1.schema.json
+  - block: capabilities
+    schema_id: https://nornyx.dev/schemas/agentic_capabilities_v1.schema.json
+structural_checks:
+  - agentic_network_foundation.v1
+policies:
+  - id: agentic_network_safety
+    description: Agentic-network declarations remain static, bounded, human-governed contracts.
+    deny:
+      - duplicate or false agent identity
+      - capability escalation
+      - undeclared trust-zone membership
+      - expired or revoked authorization
+      - non-human approval
+      - credential, endpoint, or command material
+    require:
+      - exact identity, capability, trust-zone, gate, approval, and evidence references
+      - revision-bound network contract review
+      - explicit validity and revocation semantics
+evidence_requirements:
+  - id: agentic_network_contract_review
+    type: network_contract_review
+    required: true
+    revision_bound: true
+approval_requirements:
+  - id: agentic_network_authority
+    required_roles:
+      - network_governance_owner
+    eligible_roles:
+      - network_governance_owner
+      - security_reviewer
+      - architecture_reviewer
+    denied_actor_types:
+      - ai_tool
+      - execution_surface
+      - autonomous_agent
+      - model
+      - connector
+      - generated_output
+    required_evidence:
+      - agentic_network_contract_review
+    actions:
+      - approve_agentic_network_contract
+    timing: before_action
+    accountable_authority: network_governance_owner
+    exact_revision_required: true
+    invalidation_conditions:
+      - revision_change
+      - identity_change
+      - capability_change
+      - trust_zone_change
+      - membership_change
+    expires_after: P7D
+evaluations:
+  - id: agentic_network_foundation_evaluation
+    metrics:
+      - identity_references_valid
+      - capability_assignments_bounded
+      - trust_zone_boundaries_complete
+      - non_human_approval_denied
+    required_evidence:
+      - agentic_network_contract_review
+rules: []
+non_goals:
+  - executing or orchestrating agents
+  - authenticating or issuing agent identities
+  - discovering services or network members
+  - opening MCP or A2A connections
+  - loading credentials, endpoints, commands, tools, models, or frameworks
+  - granting approvals or enforcing runtime authorization
+  - deploying or remediating systems
+provenance:
+  author: Nornyx maintainers
+  source_tier: builtin
+  source_revision: AN-001
+integrity:
+  algorithm: sha256
+  content_hash: sha256:d9fa71c8703c5c347ab5b3cb4071b20954919e4cab4b39f3857fd9f2df446459
+safety:
+  data_only: true
+  local_only: true
+  network_access: false
+  executable_code: false
+  command_execution: false
+  credential_access: false
+  can_grant_approval: false
+  can_weaken_core_safety: false

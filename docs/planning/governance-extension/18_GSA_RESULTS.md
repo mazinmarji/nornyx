@@ -35,7 +35,7 @@ runtime.
 | Constraints | Monotonic composition, closed rules, fixed checks, exact revision/scope binding, local artifact containment, explicit expiry, non-exceptable safety invariants. |
 | Containment/rollback | Resource caps, fail-closed diagnostics, no execution, bounded change blast radius, rollback declarations, package payload remains inert, release/tag/publish flags remain false. |
 | Exceptions | One project-owned model with human authority, compensating controls, expiry, closure evidence, and immutable core exclusions. |
-| Placement | Stable invariants in engine; reusable declarative controls in six modules; architecture in optional profile; specialist analysis and operations external; package scanning package-owned. |
+| Placement | Stable invariants in engine; reusable declarative controls in seven modules after ADR-0033; architecture and agentic-network governance in optional profiles; specialist analysis and operations external; package scanning package-owned. |
 
 ## Surface Completeness
 
@@ -72,3 +72,13 @@ Likelihood, Autonomy)`, each scored 1-3.
 No later candidate passes the module-proliferation gate. Stage F is complete
 with no additional module implementation. Re-entry conditions are normative in
 ADR-0031.
+
+## Later ADR-0033 Addendum
+
+AN-001 is outside the closed Stage F candidate set. Its advisory GSA matrix
+places static identity, capability, membership, trust-zone, gate, protocol
+contract, and revocation controls in one optional profile and one thin module.
+Authentication, identity issuance, discovery, transport, live MCP/A2A,
+framework execution, operational monitoring, and runtime enforcement remain
+external. This evidence justifies the seventh module without reopening the
+specialist-module decisions in ADR-0031.

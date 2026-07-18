@@ -6,6 +6,19 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [1.6.2] - 2026-07-17
 
+### Added
+- AN-001 adds the optional v1-only `agentic_network` profile and the bounded
+  `agentic_network_governance` module. The surface is data-only and local-only:
+  it validates static identities, capabilities, memberships, trust zones,
+  gates, protocol contracts, revocations, evidence, and human approval without
+  opening connections or executing agents, tools, commands, or frameworks.
+- Proposed additive compatibility records are bound by the markers
+  `migration:profiles-agentic-network-v1`,
+  `migration:modules-agentic-network-governance-v1`, and
+  `migration:agentic-network-starter-v1`. These records document the authorized
+  remediation candidate; compatibility acceptance, merge, release, runtime,
+  and autonomous approval remain outstanding.
+
 ### Fixed
 - The release workflow test job now checks out full history so the AUD-022
   candidate-diff regression test can resolve the audited base commit; the

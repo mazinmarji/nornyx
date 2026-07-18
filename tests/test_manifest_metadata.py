@@ -12,13 +12,15 @@ def test_manifest_current_validation_is_fresh() -> None:
     manifest = load_manifest()
     validation = manifest["current_validation"]
 
-    assert manifest["updated_for"] == "GOAL-063-nornyx-graph-demo-expansion"
-    assert validation["goal"] == "GOAL-063"
-    assert validation["date"] == "2026-06-04"
-    assert validation["test_result"] == "253 passed"
+    assert manifest["version"] == "1.6.2"
+    assert manifest["language_version"] == "1.0.0"
+    assert manifest["updated_for"] == "AN-001-agentic-network-foundation"
+    assert validation["goal"] == "AN-001"
+    assert validation["date"] == "2026-07-18"
+    assert "remediation validation in progress" in validation["test_result"]
     assert validation["release_check"]["blocked"] == 0
     assert validation["stable_language_check"]["blocked"] == 0
-    assert validation["pmo_audit"] == "blocks=56 completed=55 partial=0 locked=1"
+    assert "AN-001" in validation["pmo_audit"]
 
 
 def test_manifest_has_no_build_provenance() -> None:

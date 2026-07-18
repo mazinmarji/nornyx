@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from nornyx.parser import load_nyx
+import pytest
+
+from nornyx.parser import NornyxParseError, load_nyx
 from nornyx.checker import (
     CORE_TOP_LEVEL_BLOCKS,
     EXTENSION_TOP_LEVEL_BLOCKS,
@@ -9,6 +11,80 @@ from nornyx.checker import (
 )
 from nornyx.generator import generate_artifacts
 from nornyx.context_builder import build_context_pack
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        """\
+nornyx: "0.1"
+project: {name: First}
+project: {name: Second}
+""",
+        """\
+nornyx: "0.1"
+project:
+  name: First
+  name: Second
+""",
+        """\
+nornyx: "0.1"
+project: {name: Example}
+approvals:
+  - name: HumanGate
+    eligible_roles: [reviewer]
+    eligible_roles: [owner]
+""",
+        """\
+nornyx: "0.1"
+project: {name: Example}
+agents:
+  - name: Builder
+    role: First role
+    role: Second role
+""",
+    ],
+    ids=("top-level", "nested", "authorization", "list-item"),
+)
+def test_duplicate_yaml_keys_fail_closed_at_primary_parse_boundary(
+    tmp_path: Path, source: str
+) -> None:
+    contract = tmp_path / "duplicate.nyx"
+    contract.write_text(source, encoding="utf-8")
+
+    with pytest.raises(NornyxParseError, match="duplicate key"):
+        load_nyx(contract)
+
+
+def test_duplicate_yaml_keys_fail_closed_in_referenced_policy(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "policies.nyx"
+    source.write_text(
+        """\
+nornyx: "0.1"
+project: {name: Policies}
+policies:
+  - name: SafeDelivery
+    rules: [deny secrets_to_llm]
+    rules: [require human_approval_before_merge]
+""",
+        encoding="utf-8",
+    )
+    contract = tmp_path / "service.nyx"
+    contract.write_text(
+        """\
+nornyx: "0.1"
+project: {name: Service}
+policies:
+  - name: SafeDelivery
+    ref: policies.nyx#SafeDelivery
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(NornyxParseError, match="duplicate key"):
+        load_nyx(contract)
 
 
 def test_example_checks_clean():
@@ -118,9 +194,7 @@ def test_harness_context_reference_is_checked():
             "nornyx": "0.1",
             "project": {"name": "Example"},
             "contexts": [{"name": "RepoContext", "include": ["README.md"]}],
-            "harnesses": [
-                {"name": "DevHarness", "context": "MissingContext", "flow": []}
-            ],
+            "harnesses": [{"name": "DevHarness", "context": "MissingContext", "flow": []}],
         }
     )
     assert any(d.code == "UNKNOWN_CONTEXT_REFERENCE" for d in diagnostics)
@@ -169,8 +243,7 @@ def test_static_nornyx_graph_demo_checks_clean():
 
     assert not has_errors(diagnostics), [d.to_dict() for d in diagnostics]
     assert not any(
-        d.code in {"UNKNOWN_GRAPH_RELATION", "INVALID_GRAPH_RELATION_PAIR"}
-        for d in diagnostics
+        d.code in {"UNKNOWN_GRAPH_RELATION", "INVALID_GRAPH_RELATION_PAIR"} for d in diagnostics
     )
 
 
@@ -279,7 +352,10 @@ def test_graph_evidence_refs_include_harness_flow_evidence_targets():
             "harnesses": [
                 {
                     "name": "DevHarness",
-                    "flow": [{"agent": "Builder", "action": "implement"}, {"evidence": "DevEvidence"}],
+                    "flow": [
+                        {"agent": "Builder", "action": "implement"},
+                        {"evidence": "DevEvidence"},
+                    ],
                 }
             ],
             "graph": {

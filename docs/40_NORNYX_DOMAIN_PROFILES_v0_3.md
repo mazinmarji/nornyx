@@ -101,3 +101,9 @@ The v0.6 domain-profile conformance surface is implemented. The additive
 `architecture_governance` profile is v1-only and is not projected into the six
 historical v0.3 domain-pack catalog. New profile semantics remain optional and
 do not become stable core concepts.
+
+The additive `agentic_network` profile is also v1-only. It is discoverable via
+the v1 profile registry and existing CLI but has no v0.3 projection. Its
+generated starter is a static governance contract with non-human identities,
+bounded capabilities, zones, gates, and a contract-only A2A target; it contains
+no endpoint, command, credential, delegation, handoff, or runtime activation.

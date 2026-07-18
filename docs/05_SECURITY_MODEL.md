@@ -91,3 +91,16 @@ GOAL-040 adds readiness checks for bounded execution as a
 - approval, trace, and evidence contracts are required;
 - readiness reports do not grant approvals, execute tools, call models, open
   networks, load credentials, run adapters, or deploy.
+
+## Agentic-Network Contract Boundary
+
+The optional `agentic_network` profile treats network data as untrusted static
+declarations. Closed schemas reject endpoints, commands, credentials,
+token/key material, scripts, expressions, wildcard permissions, inline/remote
+schemas, and approval-granting fields. Every agent identity is non-human and
+non-approving. Structural validation fails closed on duplicate/false identity,
+unknown references, capability escalation, invalid or expired authorization,
+effective revocation, missing high-risk gates, and sensitive sharing. External
+or contract-only boundaries must deny secrets, credentials, tokens, and private
+memory. Validation performs no socket, DNS, subprocess, framework, model, tool,
+connector, or source-analysis operation.

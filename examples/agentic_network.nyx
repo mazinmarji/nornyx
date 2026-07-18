@@ -1,0 +1,238 @@
+nornyx: "0.2"
+project:
+  name: AgenticNetworkExample
+  profile: agentic_network
+  purpose: Static governance contract for a bounded agentic network.
+  non_goals:
+    - live agent runtime
+    - agent orchestration
+    - agent authentication
+    - identity issuance
+    - service discovery
+    - protocol transport
+    - tool execution
+    - credential loading
+    - automatic approvals
+    - production deployment
+
+intents:
+  - name: GovernAgenticNetwork
+    goal: Demonstrate a governed static agentic-network declaration.
+
+contexts:
+  - name: GovernedNetworkContext
+    include: [README.md, docs/**/*.md, project.nyx]
+    exclude: [.env, secrets/**, generated/**]
+    authority: [project.nyx, docs/architecture/**/*.md]
+    budget: {max_tokens: 32000, reserve_output_tokens: 4000}
+
+agents:
+  - name: Researcher
+    role: Produce bounded findings under declared network capabilities.
+    policy: AgenticNetworkSafety
+  - name: Reviewer
+    role: Review findings without approval authority.
+    policy: AgenticNetworkSafety
+
+policies:
+  - name: AgenticNetworkSafety
+    deny:
+      - secrets_to_agents
+      - autonomous_approval
+      - undeclared_capability_use
+      - undeclared_cross_zone_transition
+    require:
+      - exact_revision_binding
+      - evidence_before_external_share
+      - human_network_governance_authority
+
+evidence:
+  required: [agentic_network_contract_review.json, approval_record.json]
+
+goals:
+  - id: GOAL-001
+    title: Establish the static agentic-network governance contract
+    phase: AN-001
+    goal: Declare bounded identities, capabilities, memberships, zones, gates, and protocol targets.
+    scope: [project.nyx, governance_evidence/]
+    non_goals: [agent execution, live protocol connectivity, credential loading, delegation or handoff]
+    validation: [nornyx check project.nyx]
+    evidence: governance_evidence/
+    approval: required before accepting the exact network-contract revision
+    stop_rules:
+      - stop on identity, capability, trust-zone, approval, or evidence ambiguity
+      - stop if endpoints, commands, credentials, or runtime execution are required
+
+approvals:
+  - name: agentic_network_authority
+    required_roles: [network_governance_owner]
+    eligible_roles: [network_governance_owner, security_reviewer, architecture_reviewer]
+    denied_actor_types: [ai_tool, execution_surface, autonomous_agent, model, connector, generated_output]
+    required_evidence: [approval_record, agentic_network_contract_review]
+    required_for: [approve_agentic_network_contract, external_share]
+    timing: before_action
+    accountable_authority: network_governance_owner
+    revision_binding:
+      kind: git
+      revision: git:0123456789abcdef
+      exact: true
+    invalidation_conditions: [revision_change, identity_change, capability_change, trust_zone_change, membership_change]
+    expires_at: "2026-07-24T00:00:00Z"
+
+governance_evidence:
+  schema: nornyx.governance_evidence.v1
+  subject_revision: git:0123456789abcdef
+  records:
+    - id: evidence_manifest
+      type: evidence_manifest
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: local.example, type: tool}
+      artifact: governance_evidence/evidence_manifest.json
+      content_hash: sha256:a9cf03996a56895a694c8b5f151063fc8a6915198ffad3fe3426ba15ec93cb4f
+      subject_revision: git:0123456789abcdef
+      tool: {name: example_tool, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: []
+    - id: agentic_network_contract_review
+      type: network_contract_review
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.security_reviewer, type: human}
+      artifact: governance_evidence/independent_review_record.json
+      content_hash: sha256:b302df1f03b34094e303bd2e8ee702078e4d7abb765eebc7932d6065d90fc8ec
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: [evidence_manifest]
+    - id: approval_record
+      type: approval_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.network_governance_owner, type: human}
+      artifact: governance_evidence/approval_record.json
+      content_hash: sha256:6ad40fdf451d274730cd9315dfae772a300175817e1b116dbea07cd0903b23db
+      subject_revision: git:0123456789abcdef
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: [agentic_network_contract_review]
+
+capabilities:
+  - name: read_governed_context
+    actions: [read_context]
+    risk: low
+    scope_type: context
+    scope_refs: [GovernedNetworkContext]
+    delegable: false
+    required_gate_refs: []
+    required_approval_refs: []
+    required_evidence_refs: []
+  - name: propose_research_finding
+    actions: [propose_finding]
+    risk: medium
+    scope_type: context
+    scope_refs: [GovernedNetworkContext]
+    delegable: false
+    required_gate_refs: [gate.reviewed_proposal]
+    required_approval_refs: []
+    required_evidence_refs: [agentic_network_contract_review]
+
+agent_identities:
+  - id: identity.researcher.local
+    role_ref: Researcher
+    identity_class: local_agent
+    namespace: local.research
+    subject: researcher
+    framework_bindings: [{framework: contract_fixture, agent_key: researcher}]
+    capability_refs: [read_governed_context, propose_research_finding]
+    status: active
+    valid_from: "2026-01-01T00:00:00Z"
+    expires_at: "2026-08-01T00:00:00Z"
+    revocation_refs: []
+    authority: non_human
+    can_approve: false
+  - id: identity.reviewer.local
+    role_ref: Reviewer
+    identity_class: local_agent
+    namespace: local.review
+    subject: reviewer
+    framework_bindings: [{framework: contract_fixture, agent_key: reviewer}]
+    capability_refs: [read_governed_context]
+    status: active
+    valid_from: "2026-01-01T00:00:00Z"
+    expires_at: "2026-08-01T00:00:00Z"
+    revocation_refs: []
+    authority: non_human
+    can_approve: false
+
+agentic_network:
+  schema: nornyx.agentic_network.v1
+  id: network.research
+  subject_revision: git:0123456789abcdef
+  trust_zones:
+    - id: zone.local_governed
+      classification: governed_local
+      allowed_transition_targets: [zone.external_contract]
+      share_allowlist: [evidence_digest, finding_summary]
+      never_share: [secrets, credentials, tokens, private_memory]
+      ingress_gate_refs: []
+      egress_gate_refs: [gate.external_share]
+    - id: zone.external_contract
+      classification: external_contract_only
+      allowed_transition_targets: []
+      share_allowlist: [evidence_digest, finding_summary]
+      never_share: [secrets, credentials, tokens, private_memory]
+      ingress_gate_refs: [gate.external_share]
+      egress_gate_refs: []
+  memberships:
+    - id: membership.researcher
+      identity_ref: identity.researcher.local
+      trust_zone_ref: zone.local_governed
+      capability_refs: [read_governed_context, propose_research_finding]
+      status: authorized
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-08-01T00:00:00Z"
+      revocation_refs: []
+    - id: membership.reviewer
+      identity_ref: identity.reviewer.local
+      trust_zone_ref: zone.local_governed
+      capability_refs: [read_governed_context]
+      status: authorized
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-08-01T00:00:00Z"
+      revocation_refs: []
+  protocol_targets:
+    - id: protocol.external_reviewer
+      protocol: a2a
+      version: declared-by-project
+      execution_mode: contract_only
+      live_connector_execution: false
+      identity_refs: [identity.reviewer.local]
+      source_membership_refs: [membership.reviewer]
+      source_zone_ref: zone.local_governed
+      capability_refs: [read_governed_context]
+      trust_zone_ref: zone.external_contract
+      share: [evidence_digest, finding_summary]
+      never_share: [secrets, credentials, tokens, private_memory]
+      required_gate_refs: [gate.external_share]
+      required_approval_refs: [agentic_network_authority]
+      required_evidence_refs: [agentic_network_contract_review]
+  network_gates:
+    - id: gate.reviewed_proposal
+      action_classes: [propose_finding]
+      source_zone_refs: [zone.local_governed]
+      target_zone_refs: [zone.local_governed]
+      required_policy_refs: [AgenticNetworkSafety]
+      required_approval_refs: []
+      required_evidence_refs: [agentic_network_contract_review]
+    - id: gate.external_share
+      action_classes: [read_context, external_share]
+      source_zone_refs: [zone.local_governed]
+      target_zone_refs: [zone.external_contract]
+      required_policy_refs: [AgenticNetworkSafety]
+      required_approval_refs: [agentic_network_authority]
+      required_evidence_refs: [agentic_network_contract_review]
+  revocations: []

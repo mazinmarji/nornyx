@@ -93,11 +93,14 @@ def test_profile_mapping_preserves_legacy_requirements() -> None:
         assert isinstance(required_names, list)
         expected_ids = tuple(registry.resolve_module(item).id for item in required_names)
         assert profile.required_modules == expected_ids
-        if name != "architecture_governance":
+        if name not in {"architecture_governance", "agentic_network"}:
             assert profile.required_modules == ()
 
     assert matrices["architecture_governance"]["required_modules"] == [
         "architecture_conformance"
+    ]
+    assert matrices["agentic_network"]["required_modules"] == [
+        "agentic_network_governance"
     ]
 
 
