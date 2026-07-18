@@ -1,9 +1,10 @@
 # AN-001 — Agentic Network Governance Foundation
 
-Status: remediation is implemented in the uncommitted local candidate and local
-validation is in progress. The first independent audit returned `NO_GO`;
-second independent audit, exact-head hosted CI, Linux real-symlink testing,
-compatibility acceptance, and human merge authorization remain pending.
+Status: remediation is implemented in candidate commit `8e939d9f69f474566b11d42fe2a989d1cf6e480c`.
+The first independent audit returned `NO_GO`; the corrected second independent
+audit closed AN-AUD-001 through AN-AUD-012 and withdrew AN-AUD2-001. Human
+acceptance of ADR-0033 and the compatibility migrations is recorded; separate
+merge authorization remains required.
 
 ## Scope Inventory
 
@@ -35,9 +36,6 @@ publication, or deployment behavior.
 
 ## Remaining Gates
 
-1. Complete final local validation and bind exact results to the handoff.
-2. Run hosted Windows and Linux CI on the exact final commit.
-3. Run real Linux symlink-escape tests.
-4. Obtain an independent final-head security audit.
-5. Obtain separate human authorization for merge; any release remains a
+1. Complete exact-head post-acceptance hosted CI and focused verification.
+2. Preserve separate authorization for merge; any release remains a
    separate decision.

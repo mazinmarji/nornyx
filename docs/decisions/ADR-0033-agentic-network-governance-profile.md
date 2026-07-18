@@ -1,12 +1,14 @@
 # ADR-0033 — Optional Agentic Network Governance Profile
 
-- Status: Proposed
+- Status: Accepted for AN-001 candidate merge consideration
 - Date: 2026-07-17
 - Decision owner: human repository owner
-- Implementation authority: the explicit AN-000/AN-001 request supplied on
-  2026-07-17 authorizes this bounded candidate implementation. It does not
-  accept this ADR or authorize merge, release, publication, deployment,
-  runtime operation, or autonomous approval.
+- Human acceptance: explicitly recorded by the repository owner after the
+  second independent audit. This accepts the bounded AN-001 architecture for
+  candidate merge consideration only; it does not authorize runtime execution,
+  orchestration, delegation, handoffs, live connectors, credentials,
+  endpoints, commands, network operation, deployment, release, publication,
+  or runtime enablement.
 
 ## Context
 

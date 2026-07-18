@@ -1,7 +1,13 @@
 # 19 - Backward Compatibility Report
 
-Status: **historical compatibility evidence plus containing-commit residual
-remediation; external final-head verification required.**
+Status: **accepted compatibility migration records for AN-001 candidate merge
+consideration; final exact-head CI verification required.**
+
+Human acceptance explicitly covers the seven mechanically verified migration
+records and the intentional fail-closed rejection of duplicate YAML mapping
+keys. Uniquely keyed valid contracts remain the supported behavior. This
+acceptance does not authorize merge, release, publication, deployment, or
+runtime enablement.
 
 ## Audit Evidence History
 
