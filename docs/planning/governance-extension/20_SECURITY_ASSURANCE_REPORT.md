@@ -1,5 +1,25 @@
 # 20 - Security Assurance Report
 
+## Current-State Addendum — 2026-07-17
+
+PR #30 was subsequently merged and its governance-program release line reached
+package 1.6.2. Statements below that PR #30 remained draft are retained as
+historical exact-commit evidence, not current branch status. AN-001 is a new
+candidate change and requires its own exact-head CI and independent audit.
+
+The first independent AN-001 audit returned `NO_GO` and identified validation
+gaps in revision binding, effective authorization, gate applicability, human
+approval evidence, sharing allowlists, delegation, scope resolution,
+revocation representation, duplicate-key parsing, documentation, and test
+adequacy. The uncommitted remediation candidate adds fail-closed enforcement
+and behavior-oriented regressions for those findings. This paragraph records
+remediation scope, not security assurance or independent acceptance.
+
+Installed-wheel no-network observation, complete local validation, hosted
+exact-head CI, Linux real-symlink coverage, and a second independent audit
+remain explicit gates. No merge, release, publication, deployment, or runtime
+authority is inferred from implementation or local test results.
+
 Status: **historical security evidence plus containing-commit residual
 remediation; external final-head verification required.**
 

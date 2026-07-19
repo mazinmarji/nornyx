@@ -1,7 +1,13 @@
 # 19 - Backward Compatibility Report
 
-Status: **historical compatibility evidence plus containing-commit residual
-remediation; external final-head verification required.**
+Status: **accepted compatibility migration records for AN-001 candidate merge
+consideration; final exact-head CI verification required.**
+
+Human acceptance explicitly covers the seven mechanically verified migration
+records and the intentional fail-closed rejection of duplicate YAML mapping
+keys. Uniquely keyed valid contracts remain the supported behavior. This
+acceptance does not authorize merge, release, publication, deployment, or
+runtime enablement.
 
 ## Audit Evidence History
 
@@ -36,13 +42,13 @@ remediation; external final-head verification required.**
 The machine-readable corpus is
 `tests/fixtures/governance_compatibility/manifest.json`. It pins:
 
-- all established starters and the one additive architecture starter;
+- all twelve pre-AN starters plus the additive agentic-network starter;
 - all top-level and governed-package examples;
 - generated drift artifacts, locks, legacy projections, CLI output and exit
   codes;
 - the base-compatible public dataclass constructor and v1 serializer surface;
 - source and packaged schema behavior; and
-- five intentional migrations with immutable before/after artifacts.
+- seven intentional migrations with immutable before/after artifacts.
 
 Each migration proof binds the complete manifest record, old and new raw
 SHA-256 hashes, exact deterministic JSON-pointer operations or unified text
@@ -55,20 +61,34 @@ entry point.
 
 | Surface | Result |
 |---|---|
-| Eleven established profile starters | byte-identical |
+| Twelve pre-AN profile starters | byte-identical |
 | Architecture-governance starter | additive, recorded separately |
+| Agentic-network starter | additive, no old hash, proposed compatibility record and changelog marker |
 | Governed-package 1.5.2 change domain | preserved by compatibility adapter |
 | Public 1.x constructor prefixes/defaults | preserved |
 | Public v1 serializers | preserved; v2/verifiable output is explicit |
-| CLI semantic corpus | pinned, including five exact migrations |
+| CLI semantic corpus | pinned, including seven exact migrations |
 | Raw hash-bound artifacts | protected by `.gitattributes` and real `core.autocrlf=true` clone test |
-| Installed wheel downstream consumer | passes with 12 profiles and 6 modules |
+| Installed wheel downstream consumer | remediation validation requires 13 profiles, 7 modules, all three AN schemas, generated-starter checking, and no network attempts |
 
 The explain migrations are a two-step chain: declared revision/expiry fields,
 then bounded verifiable effective-approval provenance. The SOD module-list and
 matrix changes are recorded independently. The architecture example migration
 contains one producer-identity line change preserving evidence/approval
 separation.
+
+The two AN-001 migrations append one profile and one module to existing list
+output; each has canonical before/after artifacts and an exact proof. No prior
+entry changes. The agentic-network starter is a proposed addition awaiting
+independent review and explicit compatibility acceptance. The legacy v0.3
+projections and all twelve earlier starter hashes are required to remain
+unchanged.
+
+Duplicate YAML mapping keys are now rejected in primary contracts and
+referenced policy sources instead of being resolved with last-key-wins
+behavior. This is an intentional fail-closed narrowing of ambiguous input, not
+a change to uniquely keyed supported documents; regression coverage includes
+top-level, nested, authorization, list-item, and referenced-policy mappings.
 
 ## Release Boundary
 

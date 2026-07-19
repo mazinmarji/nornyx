@@ -35,6 +35,7 @@ def _run(
     cwd: Path,
     env: dict[str, str],
     attempt_log: Path | None = None,
+    expected_returncodes: tuple[int, ...] = (0,),
 ) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         command,
@@ -47,7 +48,7 @@ def _run(
     attempts = _network_attempts(attempt_log)
     if attempts:
         raise RuntimeError(f"network access attempted by {' '.join(command)}: {attempts!r}")
-    if result.returncode:
+    if result.returncode not in expected_returncodes:
         raise RuntimeError(
             f"command failed ({result.returncode}): {' '.join(command)}\n"
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
@@ -78,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("wheel must identify a .whl file")
 
     network_attempts: list[dict[str, str]] = []
+    agentic_starter_generated = False
     with tempfile.TemporaryDirectory(prefix="nornyx-wheel-smoke-") as raw_tmp:
         root = Path(raw_tmp)
         venv_root = root / "venv"
@@ -173,9 +175,13 @@ def main(argv: list[str] | None = None) -> int:
                     "root=resources.files('nornyx'); "
                     "s=root/'schemas'/'governance_evidence_v1.schema.json'; "
                     "p=root/'profiles_data'; "
+                    "an=('agentic_network_v1.schema.json',"
+                    "'agent_identities_v1.schema.json',"
+                    "'agentic_capabilities_v1.schema.json'); "
                     "print(json.dumps({'version':nornyx.__version__,"
                     "'profiles':len(PROFILE_NAMES),'modules':len(r.module_names),"
                     "'schema':s.is_file(),'profile_resources':len(list(p.iterdir())),"
+                    "'agentic_schemas':all((root/'schemas'/x).is_file() for x in an),"
                     "'validator':callable(validate_governance_evidence_file)}))"
                 ),
             ],
@@ -186,10 +192,11 @@ def main(argv: list[str] | None = None) -> int:
         payload = json.loads(probe.stdout)
         if payload != {
             "version": "1.6.2",
-            "profiles": 12,
-            "modules": 6,
+            "profiles": 13,
+            "modules": 7,
             "schema": True,
-            "profile_resources": 19,
+            "profile_resources": 21,
+            "agentic_schemas": True,
             "validator": True,
         }:
             raise RuntimeError(f"installed-wheel resource probe failed: {payload!r}")
@@ -247,9 +254,7 @@ print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["
             "approval_schema": "nornyx.normalized_approval.v1",
             "composition_schema": "nornyx.effective_governance.v1",
         }:
-            raise RuntimeError(
-                f"installed-wheel legacy consumer failed: {consumer_payload!r}"
-            )
+            raise RuntimeError(f"installed-wheel legacy consumer failed: {consumer_payload!r}")
         cli = _run(
             [str(python), "-I", "-m", "nornyx.cli", "modules", "list", "--json"],
             cwd=root,
@@ -257,16 +262,65 @@ print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["
             attempt_log=attempt_log,
         )
         modules = json.loads(cli.stdout)["modules"]
-        if len(modules) != 6 or {item["source_tier"] for item in modules} != {"builtin"}:
-            raise RuntimeError("installed-wheel CLI did not resolve six bundled modules")
+        if len(modules) != 7 or {item["source_tier"] for item in modules} != {"builtin"}:
+            raise RuntimeError("installed-wheel CLI did not resolve seven bundled modules")
         profiles_cli = _run(
             [str(python), "-I", "-m", "nornyx.cli", "profiles", "list", "--json"],
             cwd=root,
             env=env,
             attempt_log=attempt_log,
         )
-        if len(json.loads(profiles_cli.stdout)["profiles"]) != 12:
-            raise RuntimeError("installed-wheel CLI did not resolve twelve bundled profiles")
+        if len(json.loads(profiles_cli.stdout)["profiles"]) != 13:
+            raise RuntimeError("installed-wheel CLI did not resolve thirteen bundled profiles")
+        generated_agentic_network = root / "agentic-network.nyx"
+        _run(
+            [
+                str(python),
+                "-I",
+                "-m",
+                "nornyx.cli",
+                "init",
+                "--profile",
+                "agentic_network",
+                "--name",
+                "WheelAgenticNetwork",
+                "--out",
+                str(generated_agentic_network),
+            ],
+            cwd=root,
+            env=env,
+            attempt_log=attempt_log,
+        )
+        agentic_starter_generated = generated_agentic_network.is_file()
+        if not agentic_starter_generated:
+            raise RuntimeError("installed-wheel CLI did not generate the agentic starter")
+        agentic_check = _run(
+            [
+                str(python),
+                "-I",
+                "-m",
+                "nornyx.cli",
+                "check",
+                str(generated_agentic_network),
+            ],
+            cwd=root,
+            env=env,
+            attempt_log=attempt_log,
+            expected_returncodes=(1,),
+        )
+        required_failures = {
+            "EVIDENCE_REQUIRED_MISSING",
+            "AN_CONTRACT_REVIEW_MISSING",
+            "AN_APPROVAL_RECORD_MISSING",
+        }
+        missing_failures = {
+            code for code in required_failures if f'"code": "{code}"' not in agentic_check.stdout
+        }
+        if missing_failures or '"code": "GOVERNANCE_BLOCK_SCHEMA_INVALID"' in agentic_check.stdout:
+            raise RuntimeError(
+                "installed-wheel agentic starter did not fail closed as expected: "
+                f"missing={sorted(missing_failures)!r}\nstdout:\n{agentic_check.stdout}"
+            )
         network_attempts = _network_attempts(attempt_log)
         network_used = bool(network_attempts)
         if network_used:
@@ -281,6 +335,8 @@ print(json.dumps({"legacy_consumer": True, "approval_schema": approval_payload["
                 "profiles": payload["profiles"],
                 "modules": payload["modules"],
                 "legacy_consumer": consumer_payload["legacy_consumer"],
+                "agentic_starter_generated": agentic_starter_generated,
+                "agentic_starter_check": "expected_evidence_failure",
                 "network_used": network_used,
                 "network_attempts": network_attempts,
             },

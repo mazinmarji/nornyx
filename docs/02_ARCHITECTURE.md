@@ -73,3 +73,15 @@ Nornyx remains a generalized contract/checker/generator/governance language,
 not a general-purpose programming language or autonomous runtime. Planned
 features must preserve deterministic outputs, explicit evidence and approvals,
 human authority for high-impact actions, and fail-closed safety behavior.
+
+## Optional Agentic-Network Governance
+
+ADR-0033 adds `agentic_network` as a v1-only optional profile, not a stable-core
+language expansion. The profile selects the data-only
+`agentic_network_governance` module, three reviewed bundled schemas, and the
+fixed `agentic_network_foundation.v1` check. It declares static identities,
+capabilities, memberships, zones, gates, contract-only protocol targets, and
+revocations. The pipeline remains local parse → deterministic composition →
+schema/fixed-check validation. It never authenticates, discovers, connects,
+orchestrates, executes, delegates, hands off, loads credentials, or grants
+approval.

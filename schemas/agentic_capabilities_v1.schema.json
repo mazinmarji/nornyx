@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/agentic_capabilities_v1.schema.json",
+  "title": "Nornyx Agentic Capabilities v1",
+  "description": "Static capability classes. A declaration is not a runtime token, authority grant, command, script, credential, or approval.",
+  "x-nornyx-governance-block": "capabilities",
+  "type": "array",
+  "maxItems": 1024,
+  "items": {"$ref": "#/$defs/capability"},
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ids": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/id"},
+      "uniqueItems": true
+    },
+    "nonEmptyIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/id"},
+      "uniqueItems": true
+    },
+    "capability": {
+      "type": "object",
+      "required": [
+        "name",
+        "actions",
+        "risk",
+        "scope_type",
+        "scope_refs",
+        "delegable",
+        "required_gate_refs",
+        "required_approval_refs",
+        "required_evidence_refs"
+      ],
+      "properties": {
+        "name": {"$ref": "#/$defs/id"},
+        "actions": {"$ref": "#/$defs/nonEmptyIds"},
+        "risk": {"enum": ["low", "medium", "high", "critical"]},
+        "scope_type": {"const": "context"},
+        "scope_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "delegable": {"const": false},
+        "required_gate_refs": {"$ref": "#/$defs/ids"},
+        "required_approval_refs": {"$ref": "#/$defs/ids"},
+        "required_evidence_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

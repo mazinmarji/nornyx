@@ -1,6 +1,6 @@
 # 17 - Profile Module Mapping
 
-Status: implemented mapping for all 12 built-in profiles.
+Status: implemented mapping for all 13 built-in profiles.
 
 ## Decision Rule
 
@@ -11,11 +11,14 @@ GSA result is therefore an explicit project-level recommendation through
 `project.modules`, not a silent profile migration. The new
 `architecture_governance` profile was designed with governed blocks from its
 first version and requires `architecture_conformance`.
+The additive v1-only `agentic_network` profile likewise requires only the thin
+`agentic_network_governance` module directly.
 
 Selecting a module includes its dependency chain. In particular,
 `change_control` includes evidence integrity, human approval, separation of
 duties, and exception management; `architecture_conformance` includes that
-entire chain plus architecture checks.
+entire chain plus architecture checks. `agentic_network_governance` includes
+only the existing evidence-integrity and human-approval dependency chain.
 
 ## Mapping
 
@@ -33,6 +36,7 @@ entire chain plus architecture checks.
 | `ai_governance` | none | `change_control` | Governs model/policy contract changes, independent evidence, exceptions, and stale approvals. | opt-in only | change/foundational evidence; accountable human authority | A second approval or model-lifecycle system would duplicate existing semantics. |
 | `finance_ops` | none | `change_control` | Governs high-risk finance contract changes and separation of duties without operating financial systems. | opt-in only | full foundational/change evidence; disjoint human authority | Mandatory modules would alter an explicitly optional profile and imply operational enforcement. |
 | `architecture_governance` | `architecture_conformance` | none beyond its dependency chain | Provides declared architecture, change controls, external conformance evidence, exceptions, and architect authority. | new profile; no legacy projection or existing contract changed | all foundational/change records plus architecture evidence; architect and reviewer roles | Peer-profile composition and architecture source inference are rejected. |
+| `agentic_network` | `agentic_network_governance` | none beyond its dependency chain | Validates static identities, capabilities, memberships, trust zones, gates, protocol contracts, and revocations. | additive v1-only profile; no legacy projection or existing contract changed | network-contract review and approval record; human network-governance owner | A live agent runtime, transport, framework adapter, authentication system, or credential loader is rejected. |
 
 ## Evidence
 

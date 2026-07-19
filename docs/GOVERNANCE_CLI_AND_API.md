@@ -54,7 +54,14 @@ Text output is YAML-shaped except for a one-line successful evidence result.
 
 Diagnostic codes retain their existing namespaces: `PACK_*`, `RULE_*`,
 `GOVERNANCE_*`, `APPROVAL_*`, `EVIDENCE_*`, `SOD_*`, `EXCEPTION_*`, `CHANGE_*`,
-and `ARCH_*`.
+`ARCH_*`, and `AN_*`.
+
+The existing list, inspect, resolve, explain, and matrix commands discover the
+optional `agentic_network` profile and `agentic_network_governance` module.
+There is no new runtime command or public Python export. Running inspection for
+that profile validates only local static declarations and never opens an A2A or
+MCP connection, constructs a framework agent, or loads an endpoint, command,
+credential, token, or key.
 
 ## Public Python API
 

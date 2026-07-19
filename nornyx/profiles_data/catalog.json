@@ -12,7 +12,8 @@
     "business_ops",
     "ai_governance",
     "finance_ops",
-    "architecture_governance"
+    "architecture_governance",
+    "agentic_network"
   ],
   "base_profiles": [
     "minimal",
@@ -30,12 +31,17 @@
     "ai_governance",
     "finance_ops"
   ],
+  "v1_domain_profiles": [
+    "architecture_governance",
+    "agentic_network"
+  ],
   "modules": [
     "evidence_integrity",
     "human_approval",
     "separation_of_duties",
     "exception_management",
     "change_control",
-    "architecture_conformance"
+    "architecture_conformance",
+    "agentic_network_governance"
   ]
 }

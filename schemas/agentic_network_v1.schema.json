@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/agentic_network_v1.schema.json",
+  "title": "Nornyx Agentic Network Declaration v1",
+  "description": "Static agentic-network governance declarations. This schema defines no runtime, endpoint, credential, authentication, transport, or execution behavior.",
+  "x-nornyx-governance-block": "agentic_network",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "subject_revision",
+    "trust_zones",
+    "memberships",
+    "protocol_targets",
+    "network_gates",
+    "revocations"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.agentic_network.v1"},
+    "id": {"$ref": "#/$defs/id"},
+    "subject_revision": {"$ref": "#/$defs/subjectRevision"},
+    "trust_zones": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/trustZone"}
+    },
+    "memberships": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/membership"}
+    },
+    "protocol_targets": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/protocolTarget"}
+    },
+    "network_gates": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {"$ref": "#/$defs/networkGate"}
+    },
+    "revocations": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/revocation"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 257,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "subjectRevision": {
+      "type": "string",
+      "minLength": 44,
+      "maxLength": 71,
+      "pattern": "^(?:git:(?:[0-9a-f]{40}|[0-9a-f]{64})|sha256:[0-9a-f]{64})$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 40,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "ids": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/id"},
+      "uniqueItems": true
+    },
+    "nonEmptyIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/id"},
+      "uniqueItems": true
+    },
+    "trustZone": {
+      "type": "object",
+      "required": [
+        "id",
+        "classification",
+        "allowed_transition_targets",
+        "share_allowlist",
+        "never_share",
+        "ingress_gate_refs",
+        "egress_gate_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "classification": {
+          "enum": [
+            "governed_local",
+            "internal",
+            "isolated",
+            "test",
+            "external",
+            "external_contract_only",
+            "contract_only"
+          ]
+        },
+        "allowed_transition_targets": {"$ref": "#/$defs/ids"},
+        "share_allowlist": {"$ref": "#/$defs/ids"},
+        "never_share": {"$ref": "#/$defs/nonEmptyIds"},
+        "ingress_gate_refs": {"$ref": "#/$defs/ids"},
+        "egress_gate_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "membership": {
+      "type": "object",
+      "required": [
+        "id",
+        "identity_ref",
+        "trust_zone_ref",
+        "capability_refs",
+        "status",
+        "valid_from",
+        "expires_at",
+        "revocation_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "identity_ref": {"$ref": "#/$defs/id"},
+        "trust_zone_ref": {"$ref": "#/$defs/id"},
+        "capability_refs": {"$ref": "#/$defs/ids"},
+        "status": {"enum": ["authorized", "suspended", "revoked", "expired"]},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "revocation_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "protocolTarget": {
+      "type": "object",
+      "required": [
+        "id",
+        "protocol",
+        "version",
+        "execution_mode",
+        "live_connector_execution",
+        "identity_refs",
+        "source_membership_refs",
+        "source_zone_ref",
+        "capability_refs",
+        "trust_zone_ref",
+        "share",
+        "never_share",
+        "required_gate_refs",
+        "required_approval_refs",
+        "required_evidence_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "protocol": {"enum": ["mcp", "a2a"]},
+        "version": {"$ref": "#/$defs/id"},
+        "execution_mode": {"const": "contract_only"},
+        "live_connector_execution": {"const": false},
+        "identity_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "source_membership_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "source_zone_ref": {"$ref": "#/$defs/id"},
+        "capability_refs": {"$ref": "#/$defs/ids"},
+        "trust_zone_ref": {"$ref": "#/$defs/id"},
+        "share": {"$ref": "#/$defs/ids"},
+        "never_share": {"$ref": "#/$defs/nonEmptyIds"},
+        "required_gate_refs": {"$ref": "#/$defs/ids"},
+        "required_approval_refs": {"$ref": "#/$defs/ids"},
+        "required_evidence_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "networkGate": {
+      "type": "object",
+      "required": [
+        "id",
+        "action_classes",
+        "source_zone_refs",
+        "target_zone_refs",
+        "required_policy_refs",
+        "required_approval_refs",
+        "required_evidence_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "action_classes": {"$ref": "#/$defs/nonEmptyIds"},
+        "source_zone_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "target_zone_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "required_policy_refs": {"$ref": "#/$defs/ids"},
+        "required_approval_refs": {"$ref": "#/$defs/ids"},
+        "required_evidence_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "revocation": {
+      "type": "object",
+      "required": [
+        "id",
+        "target",
+        "effective_at",
+        "reason",
+        "required_approval_refs",
+        "required_evidence_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "target": {
+          "oneOf": [
+            {"$ref": "#/$defs/agentIdentityTarget"},
+            {"$ref": "#/$defs/membershipTarget"},
+            {"$ref": "#/$defs/capabilityAssignmentTarget"},
+            {"$ref": "#/$defs/protocolTargetRevocation"},
+            {"$ref": "#/$defs/approvalRecordTarget"}
+          ]
+        },
+        "effective_at": {"$ref": "#/$defs/timestamp"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "required_approval_refs": {"$ref": "#/$defs/ids"},
+        "required_evidence_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "agentIdentityTarget": {
+      "type": "object",
+      "required": ["kind", "identity_ref"],
+      "properties": {
+        "kind": {"const": "agent_identity"},
+        "identity_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "membershipTarget": {
+      "type": "object",
+      "required": ["kind", "membership_ref"],
+      "properties": {
+        "kind": {"const": "membership"},
+        "membership_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "capabilityAssignmentTarget": {
+      "type": "object",
+      "required": ["kind", "principal_type", "principal_ref", "capability_ref"],
+      "properties": {
+        "kind": {"const": "capability_assignment"},
+        "principal_type": {"enum": ["agent_identity", "membership"]},
+        "principal_ref": {"$ref": "#/$defs/id"},
+        "capability_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "protocolTargetRevocation": {
+      "type": "object",
+      "required": ["kind", "protocol_target_ref"],
+      "properties": {
+        "kind": {"const": "protocol_target"},
+        "protocol_target_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "approvalRecordTarget": {
+      "type": "object",
+      "required": ["kind", "approval_record_ref"],
+      "properties": {
+        "kind": {"const": "approval_record"},
+        "approval_record_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

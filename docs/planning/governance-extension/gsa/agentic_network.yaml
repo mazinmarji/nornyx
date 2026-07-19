@@ -1,0 +1,18 @@
+schema: nornyx.gsa_profile_matrix.v1
+enforcement: advisory_document
+profile: agentic_network
+what_is_governed: [agent_identity, capability, membership, trust_zone, network_gate, protocol_contract, revocation]
+why: Bind a static agentic-network contract to bounded capabilities, evidence, and human authority.
+owner: network_governance_owner
+who_may_act: [network_governance_owner, security_reviewer, architecture_reviewer, contract_author]
+allowed: [declare_identity, declare_capability, declare_membership, review_contract, approve_exact_revision]
+denied: [agent_execution, live_connection, credential_loading, automatic_approval, runtime_enforcement]
+approval_required: [agentic_network_contract, identity_change, capability_change, trust_zone_change]
+evidence: [network_contract_review, approval_record, evidence_manifest]
+stale_or_false_detection: [exact_revision_binding, artifact_hash, expiry, dependency_chain]
+drift_detection: [nornyx_check, profile_lock_review, compatibility_corpus]
+containment: [data_only, local_only, closed_schemas, non_human_approval_denied]
+authority_expiry: approval_and_authorization_expiry
+retirement: revoke_authorization_supersede_contract_and_archive_evidence
+required_modules: [agentic_network_governance]
+recommended_modules: []

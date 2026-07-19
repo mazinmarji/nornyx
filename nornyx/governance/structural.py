@@ -9,6 +9,7 @@ import re
 from typing import Any, Callable
 
 from .architecture import architecture_conformance_check
+from .agentic_network import agentic_network_foundation_check
 from .approvals import (
     CORE_DENIED_ACTOR_TYPES,
     is_non_human_authority,
@@ -36,6 +37,7 @@ CORE_NON_EXCEPTABLE_CONTROLS = {
 }
 CORE_NON_EXCEPTABLE_NAMESPACES = ("nornyx.builtin", "nornyx.core")
 CORE_DIAGNOSTIC_PREFIXES = (
+    "AN_",
     "APPROVAL_",
     "ARCH_",
     "CHANGE_",
@@ -2609,6 +2611,7 @@ def _change_control(
 
 StructuralCheck = Callable[..., tuple[GovernanceDiagnostic, ...]]
 STRUCTURAL_CHECKS: dict[str, StructuralCheck] = {
+    "agentic_network_foundation.v1": agentic_network_foundation_check,
     "architecture_conformance.v1": architecture_conformance_check,
     "change_control.v1": _change_control,
     "evidence_integrity.v1": _evidence_integrity,

@@ -99,8 +99,8 @@ def test_required_program_records_and_catalog_counts_exist() -> None:
     profiles = list((ROOT / "nornyx" / "profiles_data").glob("*.yaml"))
     modules = [path for path in profiles if path.name.startswith("module_")]
     profile_packs = [path for path in profiles if not path.name.startswith("module_")]
-    assert len(modules) == 6
-    assert len(profile_packs) == 12
+    assert len(modules) == 7
+    assert len(profile_packs) == 13
 
 
 def test_current_audit_and_candidate_preserve_external_gate_boundary() -> None:

@@ -96,3 +96,13 @@ GOAL-042 records local stable-language completion only. Public release,
 package-version changes, tags, pushes, announcements, connector/runtime
 enablement, production deployment, and GOAL-100 promotion all remain separate
 approval-gated work.
+
+## Optional Profiles Do Not Expand Stable Core
+
+The v1-only `agentic_network` profile introduced by ADR-0033 is an additive
+governance pack selected through existing profile metadata. Its identity,
+capability, membership, trust-zone, gate, protocol-contract, and revocation
+blocks are profile/module-owned extensions. They do not join the twelve stable
+core concepts, change the stable top-level schema, or alter legacy v0.3
+projection behavior. Contract-only protocol labels do not enable live MCP/A2A
+or any agent runtime.
