@@ -1,6 +1,8 @@
 tests/fixtures/governance_extension/starter_golden/*.nyx binary
 examples/governance_evidence/*.json -text
 examples/architecture_reports/*.json -text
+examples/agentic_network_support/governance_evidence/*.json -text
+examples/agentic_network_support/eval/** -text
 tests/fixtures/governance_compatibility/*.json -text
 tests/fixtures/governance_compatibility/migrations/** -text
 tests/fixtures/generated_drift/*.json -text
