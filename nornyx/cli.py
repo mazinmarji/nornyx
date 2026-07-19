@@ -9,6 +9,16 @@ import yaml
 
 from . import __version__
 from .adoption import adoption_status, write_lite_nyx
+from .agentic_artifacts import (
+    DEFAULT_ARTIFACT_DIR,
+    DEFAULT_LOCK_NAME,
+    agentic_network_lock_digest,
+    build_agentic_network_lock,
+    load_agentic_network_lock,
+    verify_agentic_network_lock,
+    write_agentic_network_artifacts,
+    write_agentic_network_lock,
+)
 from .checker import check_document, has_errors
 from .connector_runtime import (
     ConnectorRuntimeError,
@@ -620,6 +630,138 @@ def cmd_language_evolution(args: argparse.Namespace) -> int:
     if args.strict and report["summary"]["blocking_issues"]:
         return 1
     return 0
+
+
+def _agentic_document_and_composition(
+    args: argparse.Namespace,
+) -> tuple[dict, "object"]:
+    """Load, fully validate, and compose one agentic-network contract.
+
+    Raises SystemExit-style tuples via ValueError paths; callers translate
+    GovernanceError/NornyxParseError into diagnostics output.
+    """
+
+    registry = registry_for_contract(args.file)
+    doc = load_nyx(args.file)
+    contract_path, trust_root = _absolute_contract_path(args.file)
+    contract_path = Path(os.path.realpath(contract_path))
+    document_root = contract_path.parent
+    lock_path = _optional_profile_lock(document_root, trust_root=trust_root)
+    as_of = getattr(args, "as_of", None) or datetime.now(timezone.utc).isoformat()
+    diagnostics = list(check_document(doc))
+    composition = compose_document_governance(
+        doc,
+        registry=registry,
+        lock_path=lock_path,
+    )
+    if composition is not None:
+        contributed_blocks = {item.block for item in composition.block_schemas}
+        diagnostics = [
+            item
+            for item in diagnostics
+            if not (
+                item.code == "UNKNOWN_TOP_LEVEL_BLOCK"
+                and item.path in contributed_blocks
+            )
+        ]
+    diagnostics.extend(
+        evaluate_document_governance(
+            doc,
+            registry=registry,
+            lock_path=lock_path,
+            as_of=as_of,
+            document_root=document_root,
+        )
+    )
+    if has_errors(diagnostics):
+        raise GovernanceError(*[d for d in diagnostics if d.level == "error"])
+    if composition is None:
+        raise governance_error(
+            "AN_ARTIFACT_PROFILE_MISSING",
+            "Agentic-network commands require a resolved governance profile.",
+            path="project.profile",
+        )
+    return doc, composition
+
+
+def cmd_agentic_network_generate(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        paths = write_agentic_network_artifacts(doc, composition, args.out)
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    payload = {
+        "status": "pass",
+        "out": Path(args.out).as_posix(),
+        "artifact_count": len(paths),
+        "artifacts": [path.name for path in paths],
+    }
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def cmd_agentic_network_lock(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        lock_payload = build_agentic_network_lock(doc, composition)
+        mismatches = verify_agentic_network_lock(
+            lock_payload,
+            doc,
+            composition,
+            artifacts_dir=args.artifacts,
+        )
+        if mismatches:
+            payload = {
+                "status": "fail",
+                "diagnostics": [item.to_dict() for item in mismatches],
+            }
+            print(json.dumps(payload, indent=2))
+            return 1
+        written = write_agentic_network_lock(lock_payload, args.out)
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    payload = {
+        "status": "pass",
+        "lock_path": Path(written).as_posix(),
+        "lock_digest": agentic_network_lock_digest(lock_payload),
+        "artifact_count": len(lock_payload["artifacts"]),
+    }
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def cmd_agentic_network_lock_check(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        lock_payload = load_agentic_network_lock(args.lock)
+        diagnostics = verify_agentic_network_lock(
+            lock_payload,
+            doc,
+            composition,
+            artifacts_dir=args.artifacts,
+        )
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    payload = {
+        "schema": "nornyx.agentic_network_lock_check.v1",
+        "status": "fail" if diagnostics else "pass",
+        "lock_digest": agentic_network_lock_digest(lock_payload),
+        "diagnostics": [item.to_dict() for item in diagnostics],
+    }
+    print(json.dumps(payload, indent=2))
+    return 1 if diagnostics else 0
 
 
 def cmd_evidence_pack(args: argparse.Namespace) -> int:
@@ -1303,6 +1445,44 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("evidence-pack", help="Create an evidence pack scaffold")
     p.add_argument("--out", default="generated/evidence")
     p.set_defaults(func=cmd_evidence_pack)
+
+    agentic = sub.add_parser(
+        "agentic-network",
+        help="Deterministic agentic-network governance artifacts, lock, and evidence",
+    )
+    agentic_sub = agentic.add_subparsers(dest="agentic_command", required=True)
+
+    p = agentic_sub.add_parser(
+        "generate",
+        help="Generate deterministic agentic-network declaration artifacts",
+    )
+    p.add_argument("file")
+    p.add_argument("--out", default=DEFAULT_ARTIFACT_DIR)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_generate)
+
+    p = agentic_sub.add_parser(
+        "lock",
+        help="Write the content-addressed agentic-network lock",
+    )
+    p.add_argument("file")
+    p.add_argument("--artifacts", default=DEFAULT_ARTIFACT_DIR)
+    p.add_argument("--out", default=DEFAULT_LOCK_NAME)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_lock)
+
+    p = agentic_sub.add_parser(
+        "lock-check",
+        help="Verify the agentic-network lock against the current contract",
+    )
+    p.add_argument("file")
+    p.add_argument("--lock", default=DEFAULT_LOCK_NAME)
+    p.add_argument("--artifacts", default=DEFAULT_ARTIFACT_DIR)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_lock_check)
 
     p = sub.add_parser("profiles", help="Inspect and validate local Nornyx profiles")
     p.set_defaults(func=cmd_profiles, profiles_command=None)
