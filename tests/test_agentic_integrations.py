@@ -406,6 +406,17 @@ def test_zone_and_sensitive_sharing_enforcement(controls: dict[str, Any]) -> Non
         )
     assert excinfo.value.code == "AN_ADAPTER_ZONE_CROSSING_DENIED"
 
+    # AN5-AUD-001: an external-classified destination without an approval
+    # reference fails fast at the adapter, not only at evidence validation.
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.record_zone_crossing(
+            "identity.reviewer.local",
+            "zone.local_governed",
+            "zone.external_contract",
+            mission_id="mission.zone",
+        )
+    assert excinfo.value.code == "AN_ADAPTER_CROSSING_APPROVAL_REQUIRED"
+
     with pytest.raises(GovernanceViolation) as excinfo:
         kernel.record_data_shared(
             "identity.researcher.local",

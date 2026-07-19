@@ -625,4 +625,6 @@ def test_aud020_migration_record_is_mechanically_bound_to_artifacts() -> None:
     from scripts.check_compatibility_migrations import verify_manifest
 
     manifest = verify_manifest(CORPUS / "manifest.json")
-    assert len(manifest["intentional_migrations"]) == 7
+    # 7 pre-AN migrations plus the AN-002 module evolution
+    # (migration:modules-agentic-network-governance-v2).
+    assert len(manifest["intentional_migrations"]) == 8

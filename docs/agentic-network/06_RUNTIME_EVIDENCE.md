@@ -41,6 +41,10 @@ numbers, and paired transitions (completion requires initiation, acceptance
 requires request, grant requires request, tool invocation requires a prior
 allowance). It rejects duplicates and content replays.
 
+Per-event `evidence_artifact.path` values resolve relative to the events
+file's own directory and must stay inside it; escapes, symlinks, and hash
+mismatches fail closed.
+
 It does **not** solve distributed causality, cannot prove events across
 systems happened in the claimed order, and never claims complete causal
 truth. A runtime can omit or fabricate events; validation proves conformance

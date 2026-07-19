@@ -326,6 +326,23 @@ def test_symlinked_artifact_is_not_a_regular_file(tmp_path: Path) -> None:
     assert "AN_LOCK_ARTIFACT_MISMATCH" in codes
 
 
+def test_writer_refuses_symlinked_artifact_targets(tmp_path: Path) -> None:
+    # AN3-AUD-001: a pre-planted symlink named like a governed artifact must
+    # never redirect the write outside the output directory.
+    out_dir = tmp_path / "artifacts"
+    out_dir.mkdir()
+    victim = tmp_path / "victim.json"
+    victim.write_text("untouched", encoding="utf-8")
+    create_symlink_or_skip(victim, out_dir / "identity_manifest.json")
+    with pytest.raises(GovernanceError) as excinfo:
+        write_agentic_network_artifacts(_document(), COMPOSITION, out_dir)
+    assert any(
+        item.code == "AN_ARTIFACT_OUTPUT_INVALID"
+        for item in excinfo.value.diagnostics
+    )
+    assert victim.read_text(encoding="utf-8") == "untouched"
+
+
 def test_remote_and_device_paths_are_rejected(tmp_path: Path) -> None:
     document = _document()
     with pytest.raises(GovernanceError):

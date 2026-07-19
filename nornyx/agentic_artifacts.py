@@ -23,6 +23,7 @@ from .governance.agentic_network import SENSITIVE_CATEGORIES, _IMMUTABLE_REVISIO
 from .governance.errors import GovernanceError, error
 from .governance.loader import (
     MAX_PACK_BYTES,
+    _is_link_or_reparse,
     read_local_file_bytes,
     reject_remote_or_device_path,
 )
@@ -595,6 +596,25 @@ def write_agentic_network_artifacts(
     written: list[Path] = []
     for name in sorted(rendered):
         target = out / name
+        try:
+            metadata = os.lstat(target)
+        except FileNotFoundError:
+            metadata = None
+        except OSError as exc:
+            raise error(
+                "AN_ARTIFACT_WRITE_ERROR",
+                f"Cannot inspect the artifact output: {exc}",
+                path=str(target),
+            ) from exc
+        if metadata is not None and (
+            _is_link_or_reparse(metadata) or not stat.S_ISREG(metadata.st_mode)
+        ):
+            raise error(
+                "AN_ARTIFACT_OUTPUT_INVALID",
+                "Refusing to overwrite a symlinked, reparse-point, or "
+                "non-regular artifact output.",
+                path=str(target),
+            )
         with open(target, "wb") as stream:
             stream.write(rendered[name])
         written.append(target)

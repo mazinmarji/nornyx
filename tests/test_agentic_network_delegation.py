@@ -512,7 +512,7 @@ def test_cross_zone_delegation_requires_gate_approval_and_evidence() -> None:
     } <= codes
 
 
-def test_cross_zone_delegation_with_full_controls_passes() -> None:
+def _cross_zone_document() -> dict[str, Any]:
     document = _document()
     _add_external_membership(document, "identity.reviewer.local")
     document["agentic_network"]["network_gates"].append(
@@ -536,7 +536,24 @@ def test_cross_zone_delegation_with_full_controls_passes() -> None:
         }
     )
     document["approvals"][0]["required_for"].append("delegate")
+    return document
+
+
+def test_cross_zone_delegation_with_full_controls_passes() -> None:
+    document = _cross_zone_document()
+    zones = document["agentic_network"]["trust_zones"]
+    zones[0]["egress_gate_refs"].append("gate.delegate_external")
+    zones[1]["ingress_gate_refs"].append("gate.delegate_external")
     assert _diagnostics(document) == ()
+
+
+def test_cross_zone_delegation_gates_must_be_zone_declared() -> None:
+    document = _cross_zone_document()
+    codes = _codes(document)
+    assert {
+        "AN_DELEGATION_EGRESS_GATE_MISSING",
+        "AN_DELEGATION_INGRESS_GATE_MISSING",
+    } <= codes
 
 
 def test_high_risk_delegation_requires_human_authority() -> None:

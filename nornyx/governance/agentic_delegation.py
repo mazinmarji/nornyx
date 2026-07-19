@@ -276,6 +276,7 @@ def _cross_zone_controls(
         )
         return
     covered: set[str] = set()
+    target_zone = zone_by_id.get(str(target_zone_ref))
     for gate_ref in gate_refs:
         gate = gate_by_id.get(gate_ref)
         if gate is None:
@@ -294,6 +295,26 @@ def _cross_zone_controls(
                 _diagnostic(
                     f"{prefix}_GATE_TARGET_MISMATCH",
                     f"Gate {gate_ref!r} does not cover the target zone.",
+                    path=f"{path}.required_gate_refs",
+                )
+            )
+        if source_zone is not None and gate_ref not in _strings(
+            source_zone.get("egress_gate_refs")
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    f"{prefix}_EGRESS_GATE_MISSING",
+                    f"Source zone does not declare gate {gate_ref!r} for egress.",
+                    path=f"{path}.required_gate_refs",
+                )
+            )
+        if target_zone is not None and gate_ref not in _strings(
+            target_zone.get("ingress_gate_refs")
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    f"{prefix}_INGRESS_GATE_MISSING",
+                    f"Target zone does not declare gate {gate_ref!r} for ingress.",
                     path=f"{path}.required_gate_refs",
                 )
             )

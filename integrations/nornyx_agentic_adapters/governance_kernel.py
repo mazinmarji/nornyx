@@ -39,6 +39,9 @@ from nornyx.governance import (
 from nornyx.parser import load_nyx
 
 SENSITIVE_CATEGORIES = frozenset({"secrets", "credentials", "tokens", "private_memory"})
+EXTERNAL_ZONE_CLASSIFICATIONS = frozenset(
+    {"external", "external_contract_only", "contract_only"}
+)
 AGENTIC_APPROVAL_ID = "agentic_network_authority"
 
 
@@ -551,6 +554,24 @@ class GovernanceKernel:
                 "AN_ADAPTER_ZONE_CROSSING_DENIED",
                 f"Crossing {source_zone!r} -> {target_zone!r} is not a "
                 "declared allowed transition.",
+            )
+        destination = self._zones.get(target_zone)
+        if (
+            destination is not None
+            and destination.get("classification") in EXTERNAL_ZONE_CLASSIFICATIONS
+            and approval_ref is None
+        ):
+            self._emit(
+                "policy_violation",
+                mission_id,
+                actor_ref=identity_id,
+                source_zone_ref=source_zone,
+                target_zone_ref=target_zone,
+            )
+            raise GovernanceViolation(
+                "AN_ADAPTER_CROSSING_APPROVAL_REQUIRED",
+                "External trust-zone crossings require a human approval "
+                "reference.",
             )
         self._emit(
             "trust_zone_crossed",
