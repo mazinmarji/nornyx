@@ -1,0 +1,463 @@
+nornyx: "0.2"
+project:
+  name: GovernedCustomerSupport
+  profile: agentic_network
+  profile_pack:
+    name: agentic_network
+    version: 0.1.0
+    status: candidate
+  purpose: Canonical AN-006 demonstration; one static contract governing a bounded customer-support agent network across CrewAI and LangGraph.
+  non_goals:
+    - live agent runtime
+    - agent orchestration
+    - agent authentication
+    - service discovery
+    - protocol transport
+    - tool execution
+    - model execution
+    - credential loading
+    - automatic approvals
+    - production deployment
+
+intents:
+  - name: GovernSupportNetwork
+    goal: Answer customer requests with bounded, evidence-backed, human-approved automation.
+
+contexts:
+  - name: SupportContext
+    include: [README.md, sanitized_requests/**/*.json, declared_policies/**/*.md]
+    exclude: [.env, secrets/**, customer_pii/**]
+    authority: [support_network.nyx, declared_policies/**/*.md]
+    budget:
+      max_tokens: 32000
+      reserve_output_tokens: 4000
+
+agents:
+  - name: SupportCoordinator
+    role: Classify sanitized requests and route bounded support work.
+    policy: SupportGovernance
+  - name: PolicyAdvisor
+    role: Retrieve and cite declared support policy text.
+    policy: SupportGovernance
+  - name: RefundAgent
+    role: Propose refunds under the declared limit using delegated authority.
+    policy: SupportGovernance
+  - name: EscalationAgent
+    role: Escalate high-value refunds to the human approver.
+    policy: SupportGovernance
+
+policies:
+  - name: SupportGovernance
+    deny:
+      - secrets_to_agents
+      - autonomous_approval
+      - undeclared_capability_use
+      - undeclared_cross_zone_transition
+      - customer_pii_exposure
+    require:
+      - exact_revision_binding
+      - evidence_before_external_share
+      - human_approval_for_high_value_refunds
+
+evidence:
+  required:
+    - governance_evidence/evidence_manifest.json
+    - governance_evidence/independent_review_record.json
+    - governance_evidence/approval_record.json
+    - governance_evidence/support_eval_report_record.json
+
+evals:
+  - name: support_response_quality
+    metrics:
+      - response_safety_score >= 0.9
+      - refund_policy_accuracy >= 0.95
+      - hallucination_rate <= 0.05
+      - pass_rate >= 0.75
+    datasets:
+      - name: support_cases
+        path: eval/support_eval_cases.jsonl
+        split: dataset
+    integrity:
+      holdout: eval/support_holdout.jsonl
+      contamination_checks: [holdout_isolated_from_prompt_examples]
+      baseline: support_response_quality@2026-06
+
+goals:
+  - id: GOAL-SUPPORT-001
+    title: Operate the governed customer support network demonstration
+    phase: AN-006
+    goal: Prove allowed, denied, delegated, handed-off, and human-approved support flows across two frameworks with validated evidence.
+    scope: [support_network.nyx, governance_evidence/, eval/]
+    non_goals:
+      - live customer traffic
+      - real refunds or payments
+      - credential loading
+    validation:
+      - nornyx check examples/agentic_network_support/support_network.nyx
+      - nornyx agentic-network lock-check examples/agentic_network_support/support_network.nyx
+    evidence: governance_evidence/
+    approval: required before accepting the exact network-contract revision
+    stop_rules:
+      - stop on identity, capability, trust-zone, approval, or evidence ambiguity
+      - stop if endpoints, commands, credentials, or runtime execution are required
+
+approvals:
+  - name: agentic_network_authority
+    required_roles: [network_governance_owner]
+    eligible_roles: [network_governance_owner, security_reviewer, architecture_reviewer]
+    denied_actor_types: [ai_tool, execution_surface, autonomous_agent, model, connector, generated_output]
+    required_evidence: [approval_record, agentic_network_contract_review]
+    required_for: [approve_agentic_network_contract, external_share, handoff]
+    timing: before_action
+    accountable_authority: network_governance_owner
+    revision_binding:
+      kind: git
+      revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+      exact: true
+    invalidation_conditions: [revision_change, identity_change, capability_change, trust_zone_change, membership_change]
+    expires_at: "2026-07-24T00:00:00Z"
+
+governance_evidence:
+  schema: nornyx.governance_evidence.v1
+  subject_revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+  records:
+    - id: evidence_manifest
+      type: evidence_manifest
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: local.support_example, type: tool}
+      artifact: governance_evidence/evidence_manifest.json
+      content_hash: sha256:3ebf5e86cacaf613c66d68bd6dda10ab3c6e4ae023b2ba89634019c3e78031c5
+      subject_revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+      tool: {name: example_tool, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: []
+    - id: agentic_network_contract_review
+      type: network_contract_review
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.security_reviewer, type: human}
+      artifact: governance_evidence/independent_review_record.json
+      content_hash: sha256:11f2ecbf7b09495f8cbc41d936df6abdd6fb7579d35bde159ac84356a2bdc484
+      subject_revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: [evidence_manifest]
+    - id: approval_record
+      type: approval_record
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: human.network_governance_owner, type: human}
+      artifact: governance_evidence/approval_record.json
+      content_hash: sha256:9ebeba1f07fc8914635bfe7eb14efd4230150c670e57e0605af155bc2c49afb7
+      subject_revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+      tool: {name: local_record, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: [agentic_network_contract_review]
+    - id: support_eval_report
+      type: external_eval_report
+      schema_id: nornyx.example_evidence.v1
+      producer: {id: tool.promptfoo, type: tool}
+      artifact: governance_evidence/support_eval_report_record.json
+      content_hash: sha256:b3b34e7afb04578c026a7cb46ba679a9eb283978e3550a3aefe934a44934ea1f
+      subject_revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+      tool: {name: promptfoo_import, version: 1.0.0}
+      generated_at: "2026-07-17T00:00:00Z"
+      expires_at: "2026-07-24T00:00:00Z"
+      status: pass
+      dependencies: [evidence_manifest]
+
+capabilities:
+  - name: read_sanitized_request
+    actions: [read_request]
+    risk: low
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: []
+    required_approval_refs: []
+    required_evidence_refs: []
+  - name: classify_support_request
+    actions: [classify_request]
+    risk: low
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: []
+    required_approval_refs: []
+    required_evidence_refs: []
+  - name: retrieve_declared_policy
+    actions: [retrieve_policy]
+    risk: low
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: []
+    required_approval_refs: []
+    required_evidence_refs: []
+  - name: propose_refund_under_limit
+    actions: [propose_refund]
+    risk: medium
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: true
+    max_delegation_depth: 1
+    required_gate_refs: [gate.refund_review]
+    required_approval_refs: []
+    required_evidence_refs: [agentic_network_contract_review]
+  - name: escalate_high_value_refund
+    actions: [escalate_refund]
+    risk: high
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: [gate.escalation_review]
+    required_approval_refs: [agentic_network_authority]
+    required_evidence_refs: [agentic_network_contract_review]
+  - name: produce_customer_safe_response
+    actions: [produce_response, external_share]
+    risk: medium
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: [gate.customer_response]
+    required_approval_refs: []
+    required_evidence_refs: [agentic_network_contract_review]
+  - name: share_sanitized_context
+    actions: [share_context]
+    risk: medium
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: []
+    required_approval_refs: []
+    required_evidence_refs: []
+  - name: request_human_approval
+    actions: [request_approval]
+    risk: low
+    scope_type: context
+    scope_refs: [SupportContext]
+    delegable: false
+    required_gate_refs: []
+    required_approval_refs: []
+    required_evidence_refs: []
+
+agent_identities:
+  - id: identity.support_coordinator
+    role_ref: SupportCoordinator
+    identity_class: local_agent
+    namespace: support.coordination
+    subject: support_coordinator
+    framework_bindings:
+      - {framework: contract_fixture, agent_key: support_coordinator}
+      - {framework: crewai, agent_key: support_coordinator}
+      - {framework: langgraph, agent_key: support_coordinator}
+    capability_refs: [read_sanitized_request, classify_support_request, share_sanitized_context, request_human_approval, propose_refund_under_limit]
+    status: active
+    valid_from: "2026-01-01T00:00:00Z"
+    expires_at: "2026-12-01T00:00:00Z"
+    revocation_refs: []
+    authority: non_human
+    can_approve: false
+  - id: identity.policy_advisor
+    role_ref: PolicyAdvisor
+    identity_class: local_agent
+    namespace: support.policy
+    subject: policy_advisor
+    framework_bindings:
+      - {framework: contract_fixture, agent_key: policy_advisor}
+      - {framework: crewai, agent_key: policy_advisor}
+      - {framework: langgraph, agent_key: policy_advisor}
+    capability_refs: [read_sanitized_request, retrieve_declared_policy]
+    status: active
+    valid_from: "2026-01-01T00:00:00Z"
+    expires_at: "2026-12-01T00:00:00Z"
+    revocation_refs: []
+    authority: non_human
+    can_approve: false
+  - id: identity.refund_agent
+    role_ref: RefundAgent
+    identity_class: local_agent
+    namespace: support.refunds
+    subject: refund_agent
+    framework_bindings:
+      - {framework: contract_fixture, agent_key: refund_agent}
+      - {framework: crewai, agent_key: refund_agent}
+      - {framework: langgraph, agent_key: refund_agent}
+    capability_refs: [read_sanitized_request, produce_customer_safe_response]
+    status: active
+    valid_from: "2026-01-01T00:00:00Z"
+    expires_at: "2026-12-01T00:00:00Z"
+    revocation_refs: []
+    authority: non_human
+    can_approve: false
+  - id: identity.escalation_agent
+    role_ref: EscalationAgent
+    identity_class: local_agent
+    namespace: support.escalation
+    subject: escalation_agent
+    framework_bindings:
+      - {framework: contract_fixture, agent_key: escalation_agent}
+      - {framework: crewai, agent_key: escalation_agent}
+      - {framework: langgraph, agent_key: escalation_agent}
+    capability_refs: [read_sanitized_request, escalate_high_value_refund, request_human_approval]
+    status: active
+    valid_from: "2026-01-01T00:00:00Z"
+    expires_at: "2026-12-01T00:00:00Z"
+    revocation_refs: []
+    authority: non_human
+    can_approve: false
+
+agentic_network:
+  schema: nornyx.agentic_network.v1
+  id: network.governed_support
+  subject_revision: git:feedfacefeedfacefeedfacefeedfacefeedface
+  trust_zones:
+    - id: zone.support_internal
+      classification: governed_local
+      allowed_transition_targets: [zone.customer_channel]
+      share_allowlist: [sanitized_request, classification, declared_policy, refund_proposal, customer_response, evidence_digest]
+      never_share: [secrets, credentials, tokens, private_memory]
+      ingress_gate_refs: []
+      egress_gate_refs: [gate.customer_response]
+    - id: zone.customer_channel
+      classification: external_contract_only
+      allowed_transition_targets: []
+      share_allowlist: [customer_response, evidence_digest]
+      never_share: [secrets, credentials, tokens, private_memory]
+      ingress_gate_refs: [gate.customer_response]
+      egress_gate_refs: []
+  memberships:
+    - id: membership.support_coordinator
+      identity_ref: identity.support_coordinator
+      trust_zone_ref: zone.support_internal
+      capability_refs: [read_sanitized_request, classify_support_request, share_sanitized_context, request_human_approval, propose_refund_under_limit]
+      status: authorized
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-12-01T00:00:00Z"
+      revocation_refs: []
+    - id: membership.policy_advisor
+      identity_ref: identity.policy_advisor
+      trust_zone_ref: zone.support_internal
+      capability_refs: [read_sanitized_request, retrieve_declared_policy]
+      status: authorized
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-12-01T00:00:00Z"
+      revocation_refs: []
+    - id: membership.refund_agent
+      identity_ref: identity.refund_agent
+      trust_zone_ref: zone.support_internal
+      capability_refs: [read_sanitized_request, produce_customer_safe_response]
+      status: authorized
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-12-01T00:00:00Z"
+      revocation_refs: []
+    - id: membership.escalation_agent
+      identity_ref: identity.escalation_agent
+      trust_zone_ref: zone.support_internal
+      capability_refs: [read_sanitized_request, escalate_high_value_refund, request_human_approval]
+      status: authorized
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-12-01T00:00:00Z"
+      revocation_refs: []
+  protocol_targets:
+    - id: protocol.customer_response
+      protocol: a2a
+      version: declared-by-project
+      execution_mode: contract_only
+      live_connector_execution: false
+      identity_refs: [identity.refund_agent]
+      source_membership_refs: [membership.refund_agent]
+      source_zone_ref: zone.support_internal
+      capability_refs: [produce_customer_safe_response]
+      trust_zone_ref: zone.customer_channel
+      share: [customer_response, evidence_digest]
+      never_share: [secrets, credentials, tokens, private_memory]
+      required_gate_refs: [gate.customer_response]
+      required_approval_refs: [agentic_network_authority]
+      required_evidence_refs: [agentic_network_contract_review]
+  network_gates:
+    - id: gate.refund_review
+      action_classes: [propose_refund, delegate]
+      source_zone_refs: [zone.support_internal]
+      target_zone_refs: [zone.support_internal]
+      required_policy_refs: [SupportGovernance]
+      required_approval_refs: []
+      required_evidence_refs: [agentic_network_contract_review]
+    - id: gate.escalation_review
+      action_classes: [escalate_refund, handoff, request_approval]
+      source_zone_refs: [zone.support_internal]
+      target_zone_refs: [zone.support_internal]
+      required_policy_refs: [SupportGovernance]
+      required_approval_refs: [agentic_network_authority]
+      required_evidence_refs: [agentic_network_contract_review]
+    - id: gate.customer_response
+      action_classes: [produce_response, external_share]
+      source_zone_refs: [zone.support_internal]
+      target_zone_refs: [zone.customer_channel]
+      required_policy_refs: [SupportGovernance]
+      required_approval_refs: [agentic_network_authority]
+      required_evidence_refs: [agentic_network_contract_review]
+  revocations: []
+  delegations:
+    - id: delegation.refund_proposal
+      delegator_ref: identity.support_coordinator
+      delegate_ref: identity.refund_agent
+      capability_ref: propose_refund_under_limit
+      purpose: Delegate bounded refund proposals to the refund specialist.
+      actions: [propose_refund]
+      scope_refs: [SupportContext]
+      status: active
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-12-01T00:00:00Z"
+      max_depth: 1
+      current_depth: 0
+      onward_delegation: denied
+      source_zone_ref: zone.support_internal
+      target_zone_ref: zone.support_internal
+      required_gate_refs: [gate.refund_review]
+      required_policy_refs: [SupportGovernance]
+      required_approval_refs: []
+      required_evidence_refs: [agentic_network_contract_review]
+      revocation_refs: []
+  handoffs:
+    - id: handoff.high_value_escalation
+      from_identity_ref: identity.support_coordinator
+      to_identity_ref: identity.escalation_agent
+      purpose: Transfer responsibility for a high-value refund case.
+      mission_ref: GOAL-SUPPORT-001
+      from_zone_ref: zone.support_internal
+      to_zone_ref: zone.support_internal
+      required_capability_refs: [escalate_high_value_refund]
+      delegation_refs: []
+      shared_context: [sanitized_request, classification]
+      never_share: [secrets, credentials, tokens, private_memory]
+      status: initiated
+      valid_from: "2026-01-01T00:00:00Z"
+      expires_at: "2026-12-01T00:00:00Z"
+      required_gate_refs: [gate.escalation_review]
+      required_approval_refs: [agentic_network_authority]
+      required_evidence_refs: [agentic_network_contract_review]
+      revocation_refs: []
+  relations:
+    - id: relation.refund_delegation
+      type: delegates_to
+      source: {kind: agent_identity, ref: identity.support_coordinator}
+      target: {kind: agent_identity, ref: identity.refund_agent}
+      delegation_ref: delegation.refund_proposal
+    - id: relation.escalation_handoff
+      type: hands_off_to
+      source: {kind: agent_identity, ref: identity.support_coordinator}
+      target: {kind: agent_identity, ref: identity.escalation_agent}
+      handoff_ref: handoff.high_value_escalation
+    - id: relation.escalation_approval
+      type: requires_approval_from
+      source: {kind: capability, ref: escalate_high_value_refund}
+      target: {kind: human_role, ref: network_governance_owner}
+    - id: relation.response_advertisement
+      type: advertises_capability
+      source: {kind: agent_identity, ref: identity.refund_agent}
+      target: {kind: capability, ref: produce_customer_safe_response}

@@ -1,0 +1,3 @@
+{"expected": "status_lookup", "request": "Where is my order #1001?"}
+{"expected": "refund_under_limit", "request": "I want a refund for a duplicate charge of $12."}
+{"expected": "escalate_high_value", "request": "Refund my $2,400 enterprise invoice."}

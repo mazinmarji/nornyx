@@ -42,6 +42,11 @@ from .editor_tools import (
     syntax_highlighting_spec,
     write_json_payload,
 )
+from .eval_import import (
+    EvalImportError,
+    convert_promptfoo_results,
+    write_imported_results,
+)
 from .evidence import create_evidence_pack
 from .explain import explain_document
 from .fmt import format_file
@@ -472,6 +477,50 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     )
     if args.strict and report["status"] in {"blocked_integrity", "failed", "invalid"}:
         return 1
+    return 0
+
+
+def cmd_eval_import(args: argparse.Namespace) -> int:
+    if args.tool != "promptfoo":
+        print(
+            json.dumps(
+                {
+                    "level": "error",
+                    "code": "UNSUPPORTED_EVAL_TOOL",
+                    "message": f"unsupported eval tool: {args.tool}",
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        results = convert_promptfoo_results(
+            args.report_path,
+            eval_name=args.eval_name,
+            subject_revision=args.subject_revision,
+        )
+        out_path = write_imported_results(results, args.out)
+    except (EvalImportError, OSError) as exc:
+        print(
+            json.dumps(
+                {"level": "error", "code": "EVAL_IMPORT_ERROR", "message": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+    print(
+        json.dumps(
+            {
+                "status": "pass",
+                "tool": args.tool,
+                "eval_name": args.eval_name,
+                "out": out_path.as_posix(),
+                "metrics": sorted(results["evals"][args.eval_name]["metrics"]),
+                "report_sha256": results["provenance"]["report_sha256"],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -1429,6 +1478,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out")
     p.add_argument("--strict", action="store_true", help="Return non-zero on failed or blocked evals")
     p.set_defaults(func=cmd_eval_run)
+
+    p = sub.add_parser(
+        "eval-import",
+        help="Convert an external eval-tool results file for eval-run --results",
+    )
+    p.add_argument("tool", choices=["promptfoo"])
+    p.add_argument("report_path")
+    p.add_argument("--eval-name", required=True, help="Declared eval to bind")
+    p.add_argument("--subject-revision", help="Exact revision the results evaluate")
+    p.add_argument("--out", default="dist/imported_eval_results.json")
+    p.set_defaults(func=cmd_eval_import)
 
     p = sub.add_parser(
         "connector-plan",
