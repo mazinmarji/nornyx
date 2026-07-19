@@ -160,5 +160,5 @@ def test_compatibility_corpus_pins_cli_stdout_and_exit_codes() -> None:
 
 def test_every_intentional_migration_has_the_required_approval_record() -> None:
     manifest = verify_manifest()
-    assert len(manifest["intentional_migrations"]) == 7
+    assert len(manifest["intentional_migrations"]) == 8
     assert len(manifest["profile_starters"]["additions"]) == 2

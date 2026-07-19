@@ -278,6 +278,10 @@ def _revocation_target_key(target: Any) -> tuple[str, ...] | None:
         return ("protocol_target", target["protocol_target_ref"])
     if kind == "approval_record" and isinstance(target.get("approval_record_ref"), str):
         return ("approval_record", target["approval_record_ref"])
+    if kind == "delegation" and isinstance(target.get("delegation_ref"), str):
+        return ("delegation", target["delegation_ref"])
+    if kind == "handoff" and isinstance(target.get("handoff_ref"), str):
+        return ("handoff", target["handoff_ref"])
     if kind == "capability_assignment" and all(
         isinstance(target.get(field), str)
         for field in ("principal_type", "principal_ref", "capability_ref")
@@ -773,6 +777,23 @@ def agentic_network_foundation_check(
     protocols = _mapping_items(network.get("protocol_targets"))
     gates = _mapping_items(network.get("network_gates"))
     revocations = _mapping_items(network.get("revocations"))
+    delegation_record_ids = _name_set(_mapping_items(network.get("delegations")), "id")
+    handoff_record_ids = _name_set(_mapping_items(network.get("handoffs")), "id")
+    delegation_governed = "agentic_network_delegation.v1" in (
+        composition.structural_checks or ()
+    )
+    if not delegation_governed and any(
+        network.get(field) not in (None, [])
+        for field in ("delegations", "handoffs", "relations")
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "AN_DELEGATION_GOVERNANCE_MISSING",
+                "Delegation, handoff, and relation records require the "
+                "agentic_network_delegation.v1 structural check.",
+                path="agentic_network",
+            )
+        )
 
     identity_by_id = _index_unique(
         identities,
@@ -871,6 +892,10 @@ def agentic_network_foundation_check(
                 target_known = target_key[1] in protocol_ids
             elif kind == "approval_record":
                 target_known = target_key[1] in evidence_record_ids
+            elif kind == "delegation":
+                target_known = target_key[1] in delegation_record_ids
+            elif kind == "handoff":
+                target_known = target_key[1] in handoff_record_ids
             elif kind == "capability_assignment":
                 _, principal_type, principal_ref, capability_ref = target_key
                 principal = (
@@ -1064,12 +1089,22 @@ def agentic_network_foundation_check(
                         path=f"{path}.scope_refs",
                     )
                 )
-        if capability.get("delegable") is not False:
+        delegable = capability.get("delegable")
+        if not isinstance(delegable, bool) or (delegable and not delegation_governed):
             diagnostics.append(
                 _diagnostic(
                     "AN_DELEGATION_FORBIDDEN",
-                    "Delegation is outside AN-001 and must remain disabled.",
+                    "Delegable capabilities require the composed "
+                    "agentic_network_delegation.v1 structural check.",
                     path=f"{path}.delegable",
+                )
+            )
+        if delegable is False and capability.get("max_delegation_depth") is not None:
+            diagnostics.append(
+                _diagnostic(
+                    "AN_CAPABILITY_DELEGATION_POLICY_CONTRADICTION",
+                    "Non-delegable capabilities must not declare a delegation depth.",
+                    path=f"{path}.max_delegation_depth",
                 )
             )
         gate_refs = _strings(capability.get("required_gate_refs"))

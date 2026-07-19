@@ -75,7 +75,8 @@
           "exception_management.v1",
           "change_control.v1",
           "architecture_conformance.v1",
-          "agentic_network_foundation.v1"
+          "agentic_network_foundation.v1",
+          "agentic_network_delegation.v1"
         ]
       },
       "uniqueItems": true

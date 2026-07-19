@@ -187,7 +187,7 @@
           "--json"
         ],
         "exit": 0,
-        "sha256": "e6b986207669c5c9cb4ed7991dab5c0db25ed4dd814305ce09e6cbe49199b1da"
+        "sha256": "14c05f4671e430bb0bcd386dcfe794b46638202444da59286a9242595404cd4a"
       },
       {
         "id": "modules_inspect",
@@ -365,6 +365,24 @@
       "old_hash": "sha256:4aaf2d623df926714e8ae9dc7e73cee20ba3304847610e5ae051d793ec779b02",
       "new_hash": "sha256:e6b986207669c5c9cb4ed7991dab5c0db25ed4dd814305ce09e6cbe49199b1da",
       "proof_hash": "sha256:2ddd4d751699e7be7eaf99a39147f248a38a1479f1ed650a726813fb13b113bd"
+    },
+    {
+      "id": "modules-agentic-network-governance-v2",
+      "target": "cli:modules_list",
+      "sequence": 3,
+      "surface": "modules list agentic-network delegation contract",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_json",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/modules-agentic-network-governance.after.json",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/modules-agentic-network-governance-v2.after.json",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/modules-agentic-network-governance-v2.diff.json",
+      "reason": "AN-002 evolves agentic_network_governance to 0.2.0: closed delegation, handoff, and relation records plus the agentic_network_delegation.v1 structural check; no other module entry changes.",
+      "approval": "Explicit AN-002..AN-006 completion goal issued by the human repository owner on 2026-07-19; this records compatibility evidence and does not grant merge, release, runtime, or autonomous approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:modules-agentic-network-governance-v2",
+      "old_hash": "sha256:e6b986207669c5c9cb4ed7991dab5c0db25ed4dd814305ce09e6cbe49199b1da",
+      "new_hash": "sha256:14c05f4671e430bb0bcd386dcfe794b46638202444da59286a9242595404cd4a",
+      "proof_hash": "sha256:d9ff66e5ee81ef83ca77c3d0e32743df4cada52432a4976a01cc10c2cbbbf3e2"
     }
   ]
 }

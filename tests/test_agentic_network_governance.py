@@ -88,7 +88,8 @@ def test_agentic_network_profile_module_and_example_are_bounded_and_valid() -> N
     assert PROFILE_NAMES[-1] == "agentic_network"
     assert len(registry.profile_names) == 13
     assert len(registry.module_names) == 7
-    assert profile.version == module.version == "0.1.0"
+    assert profile.version == "0.1.0"
+    assert module.version == "0.2.0"
     assert profile.required_modules == (module.id,)
     assert module.dependencies == ("nornyx.builtin.module.human_approval",)
     assert [item.name for item in composition.modules] == [
@@ -97,6 +98,7 @@ def test_agentic_network_profile_module_and_example_are_bounded_and_valid() -> N
         "agentic_network_governance",
     ]
     assert composition.structural_checks == (
+        "agentic_network_delegation.v1",
         "agentic_network_foundation.v1",
         "evidence_integrity.v1",
         "human_approval.v1",
@@ -1020,13 +1022,62 @@ def test_protocol_sharing_rejects_duplicate_and_missing_allowlist() -> None:
     ) in _pairs(document)
 
 
-def test_delegation_is_rejected_by_schema_and_structural_check() -> None:
+def test_delegation_requires_the_delegation_check_and_stays_bounded() -> None:
+    # AN-002 (ADR-0034): `delegable: true` is schema-valid and governed by
+    # agentic_network_delegation.v1; without that composed check it fails closed.
     document = _document()
     document["capabilities"][0]["delegable"] = True
-    pairs = _pairs(document)
+    codes = _codes(document)
+    assert "AN_DELEGATION_FORBIDDEN" not in codes
+    assert "GOVERNANCE_BLOCK_SCHEMA_INVALID" not in codes
 
-    assert ("AN_DELEGATION_FORBIDDEN", "capabilities[0].delegable") in pairs
-    assert "GOVERNANCE_BLOCK_SCHEMA_INVALID" in _codes(document)
+    document = _document()
+    document["capabilities"][0]["delegable"] = "yes"
+    assert ("AN_DELEGATION_FORBIDDEN", "capabilities[0].delegable") in _pairs(document)
+
+    composition = compose_governance(
+        REGISTRY, profile_identity="agentic_network"
+    )
+    stripped = replace(
+        composition,
+        structural_checks=tuple(
+            item
+            for item in composition.structural_checks
+            if item != "agentic_network_delegation.v1"
+        ),
+    )
+    document = _document()
+    document["capabilities"][0]["delegable"] = True
+    document["agentic_network"]["delegations"] = []
+    diagnostics = agentic_network_foundation_check(
+        document,
+        stripped,
+        as_of=datetime.fromisoformat(AS_OF.replace("Z", "+00:00")),
+        document_root=None,
+    )
+    codes = {item.code for item in diagnostics}
+    assert "AN_DELEGATION_FORBIDDEN" in codes
+
+
+def test_ungoverned_delegation_records_fail_closed_without_the_check() -> None:
+    composition = compose_governance(REGISTRY, profile_identity="agentic_network")
+    stripped = replace(
+        composition,
+        structural_checks=tuple(
+            item
+            for item in composition.structural_checks
+            if item != "agentic_network_delegation.v1"
+        ),
+    )
+    document = _document()
+    document["agentic_network"]["handoffs"] = [{"id": "handoff.x"}]
+    diagnostics = agentic_network_foundation_check(
+        document,
+        stripped,
+        as_of=datetime.fromisoformat(AS_OF.replace("Z", "+00:00")),
+        document_root=None,
+    )
+    assert "AN_DELEGATION_GOVERNANCE_MISSING" in {item.code for item in diagnostics}
 
 
 @pytest.mark.parametrize(

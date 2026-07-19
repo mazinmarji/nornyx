@@ -2,7 +2,7 @@ schema: nornyx.governance_module.v1
 kind: module
 id: nornyx.builtin.module.agentic_network_governance
 name: agentic_network_governance
-version: 0.1.0
+version: 0.2.0
 compatible_core: ">=0.2 <=1.0"
 dependencies:
   - nornyx.builtin.module.human_approval
@@ -20,6 +20,7 @@ block_schemas:
     schema_id: https://nornyx.dev/schemas/agentic_capabilities_v1.schema.json
 structural_checks:
   - agentic_network_foundation.v1
+  - agentic_network_delegation.v1
 policies:
   - id: agentic_network_safety
     description: Agentic-network declarations remain static, bounded, human-governed contracts.
@@ -30,10 +31,16 @@ policies:
       - expired or revoked authorization
       - non-human approval
       - credential, endpoint, or command material
+      - delegation scope or action escalation
+      - onward delegation beyond declared policy
+      - handoff that grants undeclared authority
+      - sensitive-category delegation or handoff sharing
     require:
       - exact identity, capability, trust-zone, gate, approval, and evidence references
       - revision-bound network contract review
       - explicit validity and revocation semantics
+      - bounded, acyclic, depth-limited delegation chains
+      - explicit handoff purpose, mission, and capability possession
 evidence_requirements:
   - id: agentic_network_contract_review
     type: network_contract_review
@@ -77,9 +84,17 @@ evaluations:
       - non_human_approval_denied
     required_evidence:
       - agentic_network_contract_review
+  - id: agentic_network_delegation_evaluation
+    metrics:
+      - delegation_chains_bounded
+      - handoff_authority_preserved
+      - relation_references_consistent
+    required_evidence:
+      - agentic_network_contract_review
 rules: []
 non_goals:
   - executing or orchestrating agents
+  - executing delegation, handoff, or relation transitions
   - authenticating or issuing agent identities
   - discovering services or network members
   - opening MCP or A2A connections
@@ -89,10 +104,10 @@ non_goals:
 provenance:
   author: Nornyx maintainers
   source_tier: builtin
-  source_revision: AN-001
+  source_revision: AN-002
 integrity:
   algorithm: sha256
-  content_hash: sha256:d9fa71c8703c5c347ab5b3cb4071b20954919e4cab4b39f3857fd9f2df446459
+  content_hash: sha256:bd2642620c670ef4320b76b3f4263c50f787279f1a613d4ab7f962bb08186d7b
 safety:
   data_only: true
   local_only: true
