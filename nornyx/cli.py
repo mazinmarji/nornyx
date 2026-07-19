@@ -19,6 +19,7 @@ from .agentic_artifacts import (
     write_agentic_network_artifacts,
     write_agentic_network_lock,
 )
+from .agentic_evidence import load_runtime_events, validate_runtime_events
 from .checker import check_document, has_errors
 from .connector_runtime import (
     ConnectorRuntimeError,
@@ -764,6 +765,49 @@ def cmd_agentic_network_lock_check(args: argparse.Namespace) -> int:
     return 1 if diagnostics else 0
 
 
+def cmd_agentic_network_evidence_validate(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        lock_payload = load_agentic_network_lock(args.lock)
+        events_payload, events_root = load_runtime_events(args.events)
+        report = validate_runtime_events(
+            doc,
+            composition,
+            lock_payload,
+            events_payload,
+            events_root=events_root,
+        )
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    if args.out:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(report, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(f"Evidence report written to {out_path.as_posix()}")
+    print(
+        json.dumps(
+            {
+                "status": report["status"],
+                "event_count": report["event_count"],
+                "mission_count": report["mission_count"],
+                "diagnostic_count": len(report["diagnostics"]),
+            },
+            indent=2,
+        )
+    )
+    if args.strict and report["status"] != "pass":
+        return 1
+    return 0
+
+
 def cmd_evidence_pack(args: argparse.Namespace) -> int:
     paths = create_evidence_pack(args.out)
     print(f"Evidence scaffold written to {args.out}")
@@ -1483,6 +1527,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--as-of", help="Explicit offset timestamp for validation")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_agentic_network_lock_check)
+
+    p = agentic_sub.add_parser(
+        "evidence-validate",
+        help="Validate supplied local runtime-event evidence against the lock",
+    )
+    p.add_argument("file")
+    p.add_argument("--events", required=True, help="Local runtime-events JSON file")
+    p.add_argument("--lock", default=DEFAULT_LOCK_NAME)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--out", help="Optional deterministic report output path")
+    p.add_argument("--strict", action="store_true", help="Exit nonzero on failure")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_evidence_validate)
 
     p = sub.add_parser("profiles", help="Inspect and validate local Nornyx profiles")
     p.set_defaults(func=cmd_profiles, profiles_command=None)
