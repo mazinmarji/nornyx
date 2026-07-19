@@ -12,12 +12,13 @@ distribution version is independent of the Nornyx **language/schema** version
   it validates static identities, capabilities, memberships, trust zones,
   gates, protocol contracts, revocations, evidence, and human approval without
   opening connections or executing agents, tools, commands, or frameworks.
-- Proposed additive compatibility records are bound by the markers
+- Additive compatibility records are bound by the markers
   `migration:profiles-agentic-network-v1`,
   `migration:modules-agentic-network-governance-v1`, and
-  `migration:agentic-network-starter-v1`. These records document the authorized
-  remediation candidate; compatibility acceptance, merge, release, runtime,
-  and autonomous approval remain outstanding.
+  `migration:agentic-network-starter-v1`. These compatibility records were
+  accepted, and AN-001 was merged through PR #35; release, publication,
+  deployment, runtime enablement, and autonomous approval remain outside the
+  merge.
 
 ### Fixed
 - AN-001 approval validation now keeps composed-module roles authoritative,
