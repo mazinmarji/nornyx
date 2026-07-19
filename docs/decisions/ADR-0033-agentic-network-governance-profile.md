@@ -1,6 +1,6 @@
 # ADR-0033 — Optional Agentic Network Governance Profile
 
-- Status: Accepted for AN-001 candidate merge consideration
+- Status: Accepted
 - Date: 2026-07-17
 - Decision owner: human repository owner
 - Human acceptance: explicitly recorded by the repository owner after the
@@ -9,6 +9,11 @@
   orchestration, delegation, handoffs, live connectors, credentials,
   endpoints, commands, network operation, deployment, release, publication,
   or runtime enablement.
+- Implementation: PR #35, implementation commit
+  `1a2d26f14b77cded7a0ab765afa77215b2ddf0b6`, merged into `main` via merge
+  commit `5956ba815cf31f904afe86d52582af221f2e739c`. This reference records the
+  merge only; it does not change or authorize any runtime, deployment, release,
+  or publication boundary above.
 
 ## Context
 

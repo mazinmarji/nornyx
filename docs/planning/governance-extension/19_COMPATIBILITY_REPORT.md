@@ -1,13 +1,19 @@
 # 19 - Backward Compatibility Report
 
-Status: **accepted compatibility migration records for AN-001 candidate merge
-consideration; final exact-head CI verification required.**
+Status: **AN-001 compatibility records accepted; AN-001 merged.** The seven
+mechanically verified migration records are accepted, the intentional
+fail-closed rejection of duplicate YAML mapping keys (duplicate-key narrowing)
+is accepted, exact-head CI run `29663747419` passed, and AN-001 is merged into
+`main` via PR #35 (merge commit `5956ba815cf31f904afe86d52582af221f2e739c`).
 
 Human acceptance explicitly covers the seven mechanically verified migration
 records and the intentional fail-closed rejection of duplicate YAML mapping
-keys. Uniquely keyed valid contracts remain the supported behavior. This
-acceptance does not authorize merge, release, publication, deployment, or
-runtime enablement.
+keys. Uniquely keyed valid contracts remain the supported behavior. Release,
+publication, deployment, and runtime enablement remain separate decisions and
+have not occurred as part of this merge.
+
+The **Audit Evidence History** and **Release Boundary** sections below are
+retained as historical evidence of the earlier PR #30 lineage and prior audits.
 
 ## Audit Evidence History
 
