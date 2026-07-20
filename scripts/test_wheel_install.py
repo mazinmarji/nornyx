@@ -77,6 +77,10 @@ def main(argv: list[str] | None = None) -> int:
     wheel = args.wheel.resolve(strict=True)
     if wheel.suffix != ".whl":
         parser.error("wheel must identify a .whl file")
+    # Expect the version the wheel actually declares (never hardcoded, so the
+    # smoke test does not drift on every release). Wheel names are
+    # `nornyx-<version>-py3-none-any.whl`.
+    expected_version = wheel.name.split("-")[1]
 
     network_attempts: list[dict[str, str]] = []
     agentic_starter_generated = False
@@ -191,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         payload = json.loads(probe.stdout)
         if payload != {
-            "version": "1.6.2",
+            "version": expected_version,
             "profiles": 13,
             "modules": 7,
             "schema": True,

@@ -1,9 +1,9 @@
 {
   "project": "Nornyx",
   "category": "AI Engineering Control-Plane Language",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "language_version": "1.0.0",
-  "status": "Package 1.6.2 on main; AN-001 is locally implemented and remains external-audit, merge, and release gated",
+  "status": "Package 1.7.0 on main; AN-001 through AN-006 agentic-network program merged and released",
   "source_of_truth": [
     "README.md",
     "docs/01_LANGUAGE_SPEC_v0_1.md",
@@ -36,7 +36,7 @@
     "No credential storage",
     "No autonomous self-modification"
   ],
-  "updated_for": "AN-001-agentic-network-foundation",
+  "updated_for": "1.7.0-agentic-network-release",
   "added": [
     "templates/nornyx-agentic-repo-harness",
     "docs/goals",
@@ -45,10 +45,10 @@
     "scripts/agent/run-nornyx-validation-gates.sh"
   ],
   "current_validation": {
-    "goal": "AN-001",
-    "date": "2026-07-18",
+    "goal": "1.7.0-release",
+    "date": "2026-07-20",
     "test_command": "python -m pytest -q",
-    "test_result": "AN-001 remediation validation in progress; exact-head hosted CI and second independent audit pending",
+    "test_result": "AN-001 through AN-006 merged; full CI green on main across Python 3.10-3.13, Windows, and native CrewAI/LangGraph",
     "release_check": {
       "command": "python -m nornyx.cli release-check --approved",
       "blocked": 0,
@@ -59,8 +59,8 @@
       "blocked": 0,
       "warning": 0
     },
-    "pmo_audit": "AN-001 local implementation active; historical goal blocks preserved",
-    "package_publication": "1.6.2 current; no AN-001 publication authorized",
+    "pmo_audit": "AN-001 through AN-006 merged; historical goal blocks preserved",
+    "package_publication": "1.7.0",
     "deployment": "not_deployed",
     "goal_100": "locked"
   }

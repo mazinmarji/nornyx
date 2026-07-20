@@ -26,8 +26,9 @@ as 1.7.0).
 No stable-core concept, top-level block, public Python export, runtime
 authentication, identity issuance, transport, endpoint, command, credential,
 framework execution in core, service discovery, live MCP/A2A connectivity,
-automatic approval, release, publication, or deployment behavior was added.
-The package version remains 1.6.2 and no tag was created.
+automatic approval, or deployment behavior was added. The AN program itself
+performed no version bump, tag, or publication; the merged functionality is
+released separately to PyPI as package version 1.7.0.
 
 ## Independent adversarial audit ledger
 

@@ -6,6 +6,8 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-20
+
 ### Added
 - AN-002 evolves the `agentic_network_governance` module to 0.2.0: the
   `agentic_network` block gains closed, optional `delegations`, `handoffs`,
@@ -37,6 +39,32 @@ distribution version is independent of the Nornyx **language/schema** version
   a bounded Promptfoo-style results importer (`nornyx eval-import promptfoo`),
   a reference CI script (`scripts/agentic_network_ci.py`), and the
   agentic-network documentation set under `docs/agentic-network/`.
+- Framework-native CrewAI verification suite (`tests/test_agentic_crewai_native.py`)
+  exercising real CrewAI `Agent`/`Task`/`Crew` lifecycles against the governance
+  kernel with a deterministic offline LLM; the hosted CI matrix gained
+  `quality`, `native-frameworks` (pinned CrewAI + LangGraph, no skips), and a
+  `windows` job, all pinned to the exact PR head.
+- New `docs/VERSIONING.md` documenting the independent version axes (package vs
+  language/schema vs module vs lock/generation/events) and `tests/`
+  documentation-consistency assertions that fail the build on version,
+  dependency, or product-state drift.
+
+### Changed
+- Reconciled source-of-truth documentation with the merged agentic-network state:
+  corrected README install/dependency/version statements, the architecture doc's
+  delegation/handoff description, and the positioning doc's package-distribution
+  framing.
+- CI now proves the advertised Python range with a 3.10–3.13 matrix and checks
+  diff hygiene against the live PR base instead of a hardcoded historical commit.
+
+### Fixed
+- Keep `nornyx` importable on Python 3.10: `nornyx/governance/loader.py` no longer
+  imports `importlib.resources.abc` (3.11+ only) at runtime — the annotation-only
+  `Traversable` import moves under `TYPE_CHECKING`.
+- Adversarial-audit remediations from the AN close-out: artifact/lock failures now
+  raise the module's own `AgenticArtifactError` (AN-CLOSE-AUD-001), and the AN-003
+  symlink security tests use the correct helper argument order so their Linux
+  coverage actually runs (AN-CLOSE-AUD-003).
 
 ## [1.6.2] - 2026-07-17
 
