@@ -316,7 +316,7 @@ def test_symlinked_artifact_is_not_a_regular_file(tmp_path: Path) -> None:
     moved = tmp_path / "identity_manifest.real.json"
     moved.write_bytes(original.read_bytes())
     original.unlink()
-    create_symlink_or_skip(moved, original)
+    create_symlink_or_skip(original, moved)
     codes = {
         item.code
         for item in verify_agentic_network_lock(
@@ -333,7 +333,7 @@ def test_writer_refuses_symlinked_artifact_targets(tmp_path: Path) -> None:
     out_dir.mkdir()
     victim = tmp_path / "victim.json"
     victim.write_text("untouched", encoding="utf-8")
-    create_symlink_or_skip(victim, out_dir / "identity_manifest.json")
+    create_symlink_or_skip(out_dir / "identity_manifest.json", victim)
     with pytest.raises(GovernanceError) as excinfo:
         write_agentic_network_artifacts(_document(), COMPOSITION, out_dir)
     assert any(
