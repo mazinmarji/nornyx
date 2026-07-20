@@ -1,0 +1,2 @@
+{"expected": "refund_under_limit", "request": "The app charged me twice for $8."}
+{"expected": "escalate_high_value", "request": "Cancel and refund my $5,000 annual plan."}

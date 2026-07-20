@@ -9,6 +9,7 @@ import re
 from typing import Any, Callable
 
 from .architecture import architecture_conformance_check
+from .agentic_delegation import agentic_network_delegation_check
 from .agentic_network import agentic_network_foundation_check
 from .approvals import (
     CORE_DENIED_ACTOR_TYPES,
@@ -2611,6 +2612,7 @@ def _change_control(
 
 StructuralCheck = Callable[..., tuple[GovernanceDiagnostic, ...]]
 STRUCTURAL_CHECKS: dict[str, StructuralCheck] = {
+    "agentic_network_delegation.v1": agentic_network_delegation_check,
     "agentic_network_foundation.v1": agentic_network_foundation_check,
     "architecture_conformance.v1": architecture_conformance_check,
     "change_control.v1": _change_control,

@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nornyx.dev/schemas/agentic_network_lock_v1.schema.json",
+  "title": "Nornyx Agentic Network Lock v1",
+  "description": "Content-addressed binding of an agentic-network contract, its resolved governance composition, and its generated declaration artifacts. The lock proves reviewed-content binding only; it never attests runtime behavior, producer identity, or truth, and it grants no approval.",
+  "type": "object",
+  "required": [
+    "schema",
+    "lock_format_version",
+    "generation_format_version",
+    "network_id",
+    "subject_revision",
+    "source_contract_digest",
+    "profile",
+    "modules",
+    "block_schemas",
+    "structural_checks",
+    "runtime_events_schema",
+    "protocol_declarations",
+    "records",
+    "approval_requirements",
+    "evidence_requirements",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {"const": "nornyx.agentic_network_lock.v1"},
+    "lock_format_version": {"const": "1.0"},
+    "generation_format_version": {"const": "1.0"},
+    "network_id": {"$ref": "#/$defs/id"},
+    "subject_revision": {
+      "type": "string",
+      "minLength": 44,
+      "maxLength": 71,
+      "pattern": "^(?:git:(?:[0-9a-f]{40}|[0-9a-f]{64})|sha256:[0-9a-f]{64})$"
+    },
+    "source_contract_digest": {"$ref": "#/$defs/sha256Digest"},
+    "profile": {"$ref": "#/$defs/packEntry"},
+    "modules": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/packEntry"}
+    },
+    "block_schemas": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "required": ["block", "schema_id"],
+        "properties": {
+          "block": {"$ref": "#/$defs/id"},
+          "schema_id": {"type": "string", "minLength": 1, "maxLength": 256}
+        },
+        "additionalProperties": false
+      }
+    },
+    "structural_checks": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/id"},
+      "uniqueItems": true
+    },
+    "runtime_events_schema": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"const": "nornyx.agentic_runtime_events.v1"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 32}
+      },
+      "additionalProperties": false
+    },
+    "protocol_declarations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "required": ["id", "protocol", "version_label", "execution_mode"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "protocol": {"enum": ["mcp", "a2a"]},
+          "version_label": {"$ref": "#/$defs/id"},
+          "execution_mode": {"const": "contract_only"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "records": {
+      "type": "object",
+      "required": [
+        "agent_identities",
+        "capabilities",
+        "trust_zones",
+        "memberships",
+        "network_gates",
+        "protocol_targets",
+        "delegations",
+        "handoffs",
+        "relations",
+        "revocations"
+      ],
+      "properties": {
+        "agent_identities": {"$ref": "#/$defs/recordDigests"},
+        "capabilities": {"$ref": "#/$defs/recordDigests"},
+        "trust_zones": {"$ref": "#/$defs/recordDigests"},
+        "memberships": {"$ref": "#/$defs/recordDigests"},
+        "network_gates": {"$ref": "#/$defs/recordDigests"},
+        "protocol_targets": {"$ref": "#/$defs/recordDigests"},
+        "delegations": {"$ref": "#/$defs/recordDigests"},
+        "handoffs": {"$ref": "#/$defs/recordDigests"},
+        "relations": {"$ref": "#/$defs/recordDigests"},
+        "revocations": {"$ref": "#/$defs/recordDigests"}
+      },
+      "additionalProperties": false
+    },
+    "approval_requirements": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "evidence_requirements": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256Digest": {
+      "type": "string",
+      "minLength": 71,
+      "maxLength": 71,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "packEntry": {
+      "type": "object",
+      "required": ["id", "name", "version", "content_hash"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "name": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/id"},
+        "content_hash": {"$ref": "#/$defs/sha256Digest"}
+      },
+      "additionalProperties": false
+    },
+    "recordDigests": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": {
+        "type": "object",
+        "required": ["id", "digest"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "digest": {"$ref": "#/$defs/sha256Digest"}
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

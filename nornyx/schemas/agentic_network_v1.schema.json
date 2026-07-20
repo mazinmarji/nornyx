@@ -43,6 +43,21 @@
       "type": "array",
       "maxItems": 1024,
       "items": {"$ref": "#/$defs/revocation"}
+    },
+    "delegations": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/delegation"}
+    },
+    "handoffs": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/handoff"}
+    },
+    "relations": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": {"$ref": "#/$defs/relation"}
     }
   },
   "additionalProperties": false,
@@ -218,7 +233,9 @@
             {"$ref": "#/$defs/membershipTarget"},
             {"$ref": "#/$defs/capabilityAssignmentTarget"},
             {"$ref": "#/$defs/protocolTargetRevocation"},
-            {"$ref": "#/$defs/approvalRecordTarget"}
+            {"$ref": "#/$defs/approvalRecordTarget"},
+            {"$ref": "#/$defs/delegationTarget"},
+            {"$ref": "#/$defs/handoffTarget"}
           ]
         },
         "effective_at": {"$ref": "#/$defs/timestamp"},
@@ -272,6 +289,180 @@
       "properties": {
         "kind": {"const": "approval_record"},
         "approval_record_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "delegationTarget": {
+      "type": "object",
+      "required": ["kind", "delegation_ref"],
+      "properties": {
+        "kind": {"const": "delegation"},
+        "delegation_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "handoffTarget": {
+      "type": "object",
+      "required": ["kind", "handoff_ref"],
+      "properties": {
+        "kind": {"const": "handoff"},
+        "handoff_ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "delegation": {
+      "type": "object",
+      "required": [
+        "id",
+        "delegator_ref",
+        "delegate_ref",
+        "capability_ref",
+        "purpose",
+        "actions",
+        "scope_refs",
+        "status",
+        "valid_from",
+        "expires_at",
+        "max_depth",
+        "current_depth",
+        "onward_delegation",
+        "source_zone_ref",
+        "target_zone_ref",
+        "required_gate_refs",
+        "required_policy_refs",
+        "required_approval_refs",
+        "required_evidence_refs",
+        "revocation_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "delegator_ref": {"$ref": "#/$defs/id"},
+        "delegate_ref": {"$ref": "#/$defs/id"},
+        "capability_ref": {"$ref": "#/$defs/id"},
+        "purpose": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "actions": {"$ref": "#/$defs/nonEmptyIds"},
+        "scope_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "status": {"enum": ["active", "suspended", "revoked", "expired"]},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "max_depth": {"type": "integer", "minimum": 1, "maximum": 8},
+        "current_depth": {"type": "integer", "minimum": 0, "maximum": 8},
+        "onward_delegation": {"enum": ["denied", "allowed_with_policy"]},
+        "parent_delegation_ref": {"$ref": "#/$defs/id"},
+        "source_zone_ref": {"$ref": "#/$defs/id"},
+        "target_zone_ref": {"$ref": "#/$defs/id"},
+        "required_gate_refs": {"$ref": "#/$defs/ids"},
+        "required_policy_refs": {"$ref": "#/$defs/ids"},
+        "required_approval_refs": {"$ref": "#/$defs/ids"},
+        "required_evidence_refs": {"$ref": "#/$defs/ids"},
+        "revocation_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "handoff": {
+      "type": "object",
+      "required": [
+        "id",
+        "from_identity_ref",
+        "to_identity_ref",
+        "purpose",
+        "mission_ref",
+        "from_zone_ref",
+        "to_zone_ref",
+        "required_capability_refs",
+        "delegation_refs",
+        "shared_context",
+        "never_share",
+        "status",
+        "valid_from",
+        "expires_at",
+        "required_gate_refs",
+        "required_approval_refs",
+        "required_evidence_refs",
+        "revocation_refs"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "from_identity_ref": {"$ref": "#/$defs/id"},
+        "to_identity_ref": {"$ref": "#/$defs/id"},
+        "purpose": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "mission_ref": {"$ref": "#/$defs/id"},
+        "from_zone_ref": {"$ref": "#/$defs/id"},
+        "to_zone_ref": {"$ref": "#/$defs/id"},
+        "required_capability_refs": {"$ref": "#/$defs/nonEmptyIds"},
+        "delegation_refs": {"$ref": "#/$defs/ids"},
+        "shared_context": {"$ref": "#/$defs/ids"},
+        "never_share": {"$ref": "#/$defs/nonEmptyIds"},
+        "status": {
+          "enum": [
+            "initiated",
+            "accepted",
+            "completed",
+            "rejected",
+            "expired",
+            "revoked",
+            "superseded"
+          ]
+        },
+        "superseded_by_ref": {"$ref": "#/$defs/id"},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "required_gate_refs": {"$ref": "#/$defs/ids"},
+        "required_approval_refs": {"$ref": "#/$defs/ids"},
+        "required_evidence_refs": {"$ref": "#/$defs/ids"},
+        "revocation_refs": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": false
+    },
+    "relationEndpoint": {
+      "type": "object",
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "agent_identity",
+            "capability",
+            "trust_zone",
+            "membership",
+            "protocol_target",
+            "delegation",
+            "handoff",
+            "approval",
+            "revocation",
+            "human_role"
+          ]
+        },
+        "ref": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "required": ["id", "type", "source", "target"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {
+          "enum": [
+            "identifies",
+            "owns",
+            "advertises_capability",
+            "delegates_to",
+            "hands_off_to",
+            "communicates_with",
+            "crosses_trust_zone",
+            "shares_with",
+            "requires_approval_from",
+            "revokes",
+            "observed_by"
+          ]
+        },
+        "source": {"$ref": "#/$defs/relationEndpoint"},
+        "target": {"$ref": "#/$defs/relationEndpoint"},
+        "delegation_ref": {"$ref": "#/$defs/id"},
+        "handoff_ref": {"$ref": "#/$defs/id"},
+        "protocol_target_ref": {"$ref": "#/$defs/id"},
+        "share_categories": {"$ref": "#/$defs/ids"},
+        "description": {"type": "string", "minLength": 1, "maxLength": 1024}
       },
       "additionalProperties": false
     }

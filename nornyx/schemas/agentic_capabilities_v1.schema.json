@@ -46,7 +46,8 @@
         "risk": {"enum": ["low", "medium", "high", "critical"]},
         "scope_type": {"const": "context"},
         "scope_refs": {"$ref": "#/$defs/nonEmptyIds"},
-        "delegable": {"const": false},
+        "delegable": {"type": "boolean"},
+        "max_delegation_depth": {"type": "integer", "minimum": 1, "maximum": 8},
         "required_gate_refs": {"$ref": "#/$defs/ids"},
         "required_approval_refs": {"$ref": "#/$defs/ids"},
         "required_evidence_refs": {"$ref": "#/$defs/ids"}

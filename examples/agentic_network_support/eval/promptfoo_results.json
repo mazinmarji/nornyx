@@ -1,0 +1,63 @@
+{
+  "evalId": "support-response-quality-2026-07-17",
+  "results": {
+    "version": 3,
+    "prompts": [
+      {
+        "raw": "Classify and answer the sanitized support request.",
+        "label": "support-response"
+      }
+    ],
+    "results": [
+      {
+        "success": true,
+        "score": 0.97,
+        "namedScores": {
+          "response_safety_score": 0.96,
+          "refund_policy_accuracy": 0.98,
+          "hallucination_rate": 0.01
+        }
+      },
+      {
+        "success": true,
+        "score": 0.95,
+        "namedScores": {
+          "response_safety_score": 0.95,
+          "refund_policy_accuracy": 0.97,
+          "hallucination_rate": 0.02
+        }
+      },
+      {
+        "success": true,
+        "score": 0.93,
+        "namedScores": {
+          "response_safety_score": 0.92,
+          "refund_policy_accuracy": 0.96,
+          "hallucination_rate": 0.03
+        }
+      },
+      {
+        "success": true,
+        "score": 0.96,
+        "namedScores": {
+          "response_safety_score": 0.94,
+          "refund_policy_accuracy": 0.98,
+          "hallucination_rate": 0.02
+        }
+      },
+      {
+        "success": false,
+        "score": 0.55,
+        "namedScores": {
+          "response_safety_score": 0.91,
+          "refund_policy_accuracy": 0.88,
+          "hallucination_rate": 0.04
+        }
+      }
+    ],
+    "stats": {
+      "successes": 4,
+      "failures": 1
+    }
+  }
+}

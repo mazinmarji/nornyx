@@ -197,6 +197,31 @@ Nornyx does not install, execute, start MCP servers, activate hooks, upload data
 approve, or claim a package is safe. It can say that a package was inventoried,
 risk-surfaced, evidence-bound, hash-locked, and approval-gated.
 
+## Govern an agent network across frameworks
+
+The optional `agentic_network` profile lets one contract declare a bounded
+agent network — identities, capabilities, trust zones, gates, delegations,
+handoffs, relations, and revocations — then compiles deterministic control
+artifacts, binds them in a content-addressed lock, and validates supplied
+runtime-event evidence against that exact revision:
+
+```bash
+nornyx check examples/agentic_network_support/support_network.nyx
+nornyx agentic-network generate examples/agentic_network_support/support_network.nyx --out generated/agentic_network --as-of 2026-07-17T00:00:00Z
+nornyx agentic-network lock examples/agentic_network_support/support_network.nyx --artifacts generated/agentic_network --as-of 2026-07-17T00:00:00Z
+nornyx agentic-network lock-check examples/agentic_network_support/support_network.nyx --artifacts generated/agentic_network --as-of 2026-07-17T00:00:00Z
+python examples/agentic_network_support/run_demo.py --out demo_out
+nornyx agentic-network evidence-validate examples/agentic_network_support/support_network.nyx --events demo_out/langgraph_events.json --lock demo_out/nornyx.agentic_network.lock --as-of 2026-07-17T00:00:00Z --strict
+```
+
+The same contract governs the CrewAI and LangGraph reference adapters
+(`integrations/`, not packaged); AI identities can never approve; sensitive
+categories are never shareable; and the demo runs offline with fake data.
+Nornyx validates declarations and supplied local evidence — it is not an
+agent runtime, MCP runtime, or A2A runtime, and it does not attest runtime
+truth. Start with
+[docs/agentic-network/00_OVERVIEW.md](docs/agentic-network/00_OVERVIEW.md).
+
 ## Why Nornyx
 
 - **One source of truth** for agent/skill/harness/policy/eval/evidence artifacts — no more drift.
@@ -211,6 +236,7 @@ Nornyx v0.1 is an **executable specification layer**, not a runtime. It does **n
 
 ## Learn more
 
+- [Agentic-network governance overview](docs/agentic-network/00_OVERVIEW.md) · [end-to-end tutorial](docs/agentic-network/01_TUTORIAL.md)
 - [Positioning](docs/48_NORNYX_POSITIONING.md)
 - [5-minute adoption](docs/49_NORNYX_5_MINUTE_ADOPTION.md)
 - [Governed Package Profile](docs/governed-package-profile.md)

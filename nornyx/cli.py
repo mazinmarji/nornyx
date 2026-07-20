@@ -9,6 +9,17 @@ import yaml
 
 from . import __version__
 from .adoption import adoption_status, write_lite_nyx
+from .agentic_artifacts import (
+    DEFAULT_ARTIFACT_DIR,
+    DEFAULT_LOCK_NAME,
+    agentic_network_lock_digest,
+    build_agentic_network_lock,
+    load_agentic_network_lock,
+    verify_agentic_network_lock,
+    write_agentic_network_artifacts,
+    write_agentic_network_lock,
+)
+from .agentic_evidence import load_runtime_events, validate_runtime_events
 from .checker import check_document, has_errors
 from .connector_runtime import (
     ConnectorRuntimeError,
@@ -30,6 +41,11 @@ from .editor_tools import (
     lsp_diagnostics_for_file,
     syntax_highlighting_spec,
     write_json_payload,
+)
+from .eval_import import (
+    EvalImportError,
+    convert_promptfoo_results,
+    write_imported_results,
 )
 from .evidence import create_evidence_pack
 from .explain import explain_document
@@ -464,6 +480,50 @@ def cmd_eval_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval_import(args: argparse.Namespace) -> int:
+    if args.tool != "promptfoo":
+        print(
+            json.dumps(
+                {
+                    "level": "error",
+                    "code": "UNSUPPORTED_EVAL_TOOL",
+                    "message": f"unsupported eval tool: {args.tool}",
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        results = convert_promptfoo_results(
+            args.report_path,
+            eval_name=args.eval_name,
+            subject_revision=args.subject_revision,
+        )
+        out_path = write_imported_results(results, args.out)
+    except (EvalImportError, OSError) as exc:
+        print(
+            json.dumps(
+                {"level": "error", "code": "EVAL_IMPORT_ERROR", "message": str(exc)},
+                indent=2,
+            )
+        )
+        return 1
+    print(
+        json.dumps(
+            {
+                "status": "pass",
+                "tool": args.tool,
+                "eval_name": args.eval_name,
+                "out": out_path.as_posix(),
+                "metrics": sorted(results["evals"][args.eval_name]["metrics"]),
+                "report_sha256": results["provenance"]["report_sha256"],
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
 def cmd_connector_plan(args: argparse.Namespace) -> int:
     try:
         doc = load_nyx(args.file)
@@ -618,6 +678,181 @@ def cmd_language_evolution(args: argparse.Namespace) -> int:
         )
     )
     if args.strict and report["summary"]["blocking_issues"]:
+        return 1
+    return 0
+
+
+def _agentic_document_and_composition(
+    args: argparse.Namespace,
+) -> tuple[dict, "object"]:
+    """Load, fully validate, and compose one agentic-network contract.
+
+    Raises SystemExit-style tuples via ValueError paths; callers translate
+    GovernanceError/NornyxParseError into diagnostics output.
+    """
+
+    registry = registry_for_contract(args.file)
+    doc = load_nyx(args.file)
+    contract_path, trust_root = _absolute_contract_path(args.file)
+    contract_path = Path(os.path.realpath(contract_path))
+    document_root = contract_path.parent
+    lock_path = _optional_profile_lock(document_root, trust_root=trust_root)
+    as_of = getattr(args, "as_of", None) or datetime.now(timezone.utc).isoformat()
+    diagnostics = list(check_document(doc))
+    composition = compose_document_governance(
+        doc,
+        registry=registry,
+        lock_path=lock_path,
+    )
+    if composition is not None:
+        contributed_blocks = {item.block for item in composition.block_schemas}
+        diagnostics = [
+            item
+            for item in diagnostics
+            if not (
+                item.code == "UNKNOWN_TOP_LEVEL_BLOCK"
+                and item.path in contributed_blocks
+            )
+        ]
+    diagnostics.extend(
+        evaluate_document_governance(
+            doc,
+            registry=registry,
+            lock_path=lock_path,
+            as_of=as_of,
+            document_root=document_root,
+        )
+    )
+    if has_errors(diagnostics):
+        raise GovernanceError(*[d for d in diagnostics if d.level == "error"])
+    if composition is None:
+        raise governance_error(
+            "AN_ARTIFACT_PROFILE_MISSING",
+            "Agentic-network commands require a resolved governance profile.",
+            path="project.profile",
+        )
+    return doc, composition
+
+
+def cmd_agentic_network_generate(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        paths = write_agentic_network_artifacts(doc, composition, args.out)
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    payload = {
+        "status": "pass",
+        "out": Path(args.out).as_posix(),
+        "artifact_count": len(paths),
+        "artifacts": [path.name for path in paths],
+    }
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def cmd_agentic_network_lock(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        lock_payload = build_agentic_network_lock(doc, composition)
+        mismatches = verify_agentic_network_lock(
+            lock_payload,
+            doc,
+            composition,
+            artifacts_dir=args.artifacts,
+        )
+        if mismatches:
+            payload = {
+                "status": "fail",
+                "diagnostics": [item.to_dict() for item in mismatches],
+            }
+            print(json.dumps(payload, indent=2))
+            return 1
+        written = write_agentic_network_lock(lock_payload, args.out)
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    payload = {
+        "status": "pass",
+        "lock_path": Path(written).as_posix(),
+        "lock_digest": agentic_network_lock_digest(lock_payload),
+        "artifact_count": len(lock_payload["artifacts"]),
+    }
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def cmd_agentic_network_lock_check(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        lock_payload = load_agentic_network_lock(args.lock)
+        diagnostics = verify_agentic_network_lock(
+            lock_payload,
+            doc,
+            composition,
+            artifacts_dir=args.artifacts,
+        )
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    payload = {
+        "schema": "nornyx.agentic_network_lock_check.v1",
+        "status": "fail" if diagnostics else "pass",
+        "lock_digest": agentic_network_lock_digest(lock_payload),
+        "diagnostics": [item.to_dict() for item in diagnostics],
+    }
+    print(json.dumps(payload, indent=2))
+    return 1 if diagnostics else 0
+
+
+def cmd_agentic_network_evidence_validate(args: argparse.Namespace) -> int:
+    try:
+        doc, composition = _agentic_document_and_composition(args)
+        lock_payload = load_agentic_network_lock(args.lock)
+        events_payload, events_root = load_runtime_events(args.events)
+        report = validate_runtime_events(
+            doc,
+            composition,
+            lock_payload,
+            events_payload,
+            events_root=events_root,
+        )
+    except NornyxParseError as exc:
+        print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
+        return 2
+    except GovernanceError as exc:
+        _print_pack_error(exc, as_json=getattr(args, "json", False))
+        return 1
+    if args.out:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(report, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(f"Evidence report written to {out_path.as_posix()}")
+    print(
+        json.dumps(
+            {
+                "status": report["status"],
+                "event_count": report["event_count"],
+                "mission_count": report["mission_count"],
+                "diagnostic_count": len(report["diagnostics"]),
+            },
+            indent=2,
+        )
+    )
+    if args.strict and report["status"] != "pass":
         return 1
     return 0
 
@@ -1245,6 +1480,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_eval_run)
 
     p = sub.add_parser(
+        "eval-import",
+        help="Convert an external eval-tool results file for eval-run --results",
+    )
+    p.add_argument("tool", choices=["promptfoo"])
+    p.add_argument("report_path")
+    p.add_argument("--eval-name", required=True, help="Declared eval to bind")
+    p.add_argument("--subject-revision", help="Exact revision the results evaluate")
+    p.add_argument("--out", default="dist/imported_eval_results.json")
+    p.set_defaults(func=cmd_eval_import)
+
+    p = sub.add_parser(
         "connector-plan",
         help="Create a safe local connector/plugin adapter manifest",
     )
@@ -1303,6 +1549,57 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("evidence-pack", help="Create an evidence pack scaffold")
     p.add_argument("--out", default="generated/evidence")
     p.set_defaults(func=cmd_evidence_pack)
+
+    agentic = sub.add_parser(
+        "agentic-network",
+        help="Deterministic agentic-network governance artifacts, lock, and evidence",
+    )
+    agentic_sub = agentic.add_subparsers(dest="agentic_command", required=True)
+
+    p = agentic_sub.add_parser(
+        "generate",
+        help="Generate deterministic agentic-network declaration artifacts",
+    )
+    p.add_argument("file")
+    p.add_argument("--out", default=DEFAULT_ARTIFACT_DIR)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_generate)
+
+    p = agentic_sub.add_parser(
+        "lock",
+        help="Write the content-addressed agentic-network lock",
+    )
+    p.add_argument("file")
+    p.add_argument("--artifacts", default=DEFAULT_ARTIFACT_DIR)
+    p.add_argument("--out", default=DEFAULT_LOCK_NAME)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_lock)
+
+    p = agentic_sub.add_parser(
+        "lock-check",
+        help="Verify the agentic-network lock against the current contract",
+    )
+    p.add_argument("file")
+    p.add_argument("--lock", default=DEFAULT_LOCK_NAME)
+    p.add_argument("--artifacts", default=DEFAULT_ARTIFACT_DIR)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_lock_check)
+
+    p = agentic_sub.add_parser(
+        "evidence-validate",
+        help="Validate supplied local runtime-event evidence against the lock",
+    )
+    p.add_argument("file")
+    p.add_argument("--events", required=True, help="Local runtime-events JSON file")
+    p.add_argument("--lock", default=DEFAULT_LOCK_NAME)
+    p.add_argument("--as-of", help="Explicit offset timestamp for validation")
+    p.add_argument("--out", help="Optional deterministic report output path")
+    p.add_argument("--strict", action="store_true", help="Exit nonzero on failure")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_agentic_network_evidence_validate)
 
     p = sub.add_parser("profiles", help="Inspect and validate local Nornyx profiles")
     p.set_defaults(func=cmd_profiles, profiles_command=None)

@@ -4,6 +4,40 @@ All notable changes to the Nornyx package are recorded here. The package
 distribution version is independent of the Nornyx **language/schema** version
 (still 1.0): a package patch can ship without changing the contract language.
 
+## [Unreleased]
+
+### Added
+- AN-002 evolves the `agentic_network_governance` module to 0.2.0: the
+  `agentic_network` block gains closed, optional `delegations`, `handoffs`,
+  and `relations` records; capabilities may declare `delegable: true` with a
+  bounded `max_delegation_depth`; and the new fixed structural check
+  `agentic_network_delegation.v1` validates delegation possession, subset
+  scopes and actions, bounded acyclic chains, onward-delegation policy,
+  revocation and expiry, cross-zone controls, handoff
+  responsibility-not-authority semantics, and a closed relation vocabulary.
+  Everything remains static, local-only declarations; nothing executes.
+  The module-catalog surface change is bound by the marker
+  `migration:modules-agentic-network-governance-v2`.
+- AN-003 adds deterministic agentic-network governance artifacts and a
+  content-addressed network lock (`nornyx.agentic_network_lock.v1`) behind the
+  new `nornyx agentic-network generate|lock|lock-check` commands. Outputs are
+  canonical, timestamp-free JSON declarations (including A2A-compatible and
+  MCP-compatible declaration exports with `execution_mode: contract_only`);
+  the lock binds contract, composition, schemas, records, and artifact hashes
+  and never attests runtime behavior.
+- AN-004 adds `nornyx agentic-network evidence-validate`: local, closed-set
+  runtime-event evidence validation (`nornyx.agentic_runtime_events.v1`)
+  against the exact contract, lock, and subject revision with bounded
+  per-mission ordering rules. Hash validity proves content binding, not event
+  truth; Nornyx does not observe, operate, or monitor runtimes.
+- AN-005 adds optional, unpackaged reference adapters under `integrations/`
+  (CrewAI and LangGraph) built on a framework-free governance kernel plus a
+  deterministic local harness; stable Nornyx core imports no framework.
+- AN-006 adds the Governed Customer Support Network end-to-end example,
+  a bounded Promptfoo-style results importer (`nornyx eval-import promptfoo`),
+  a reference CI script (`scripts/agentic_network_ci.py`), and the
+  agentic-network documentation set under `docs/agentic-network/`.
+
 ## [1.6.2] - 2026-07-17
 
 ### Added
