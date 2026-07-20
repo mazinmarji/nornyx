@@ -58,7 +58,7 @@ def test_compatibility_corpus_declares_every_required_class() -> None:
     manifest = _manifest()
 
     assert manifest["schema"] == "nornyx.governance_compatibility_corpus.v1"
-    assert manifest["baseline"]["package_version"] == __version__ == "1.6.2"
+    assert manifest["baseline"]["package_version"] == __version__
     assert set(manifest["classes"]) == {
         "byte_identical",
         "canonical_lf_identical",

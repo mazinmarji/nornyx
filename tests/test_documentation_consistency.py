@@ -55,6 +55,14 @@ def test_package_version_is_consistent_across_all_locations() -> None:
         f"docs/VERSIONING.md does not record the current package version {version}"
     )
 
+    # Any README "pin from source" tag must match the released version so the
+    # documented source install is reproducible and never points at a stale tag.
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for pin in re.findall(r"nornyx@v(\d+\.\d+\.\d+)", readme):
+        assert pin == version, (
+            f"README pins nornyx@v{pin} but the package version is {version}"
+        )
+
 
 def test_readme_lists_the_actual_runtime_dependencies() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
