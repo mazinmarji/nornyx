@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from .governance.agentic_network import SENSITIVE_CATEGORIES, _IMMUTABLE_REVISION_RE
-from .governance.errors import GovernanceError, error
+from .governance.errors import GovernanceError
 from .governance.loader import (
     MAX_PACK_BYTES,
     _is_link_or_reparse,
@@ -121,6 +121,21 @@ _SCHEMA_ID_RE = re.compile(
 
 class AgenticArtifactError(GovernanceError):
     """Raised when generation or locking must fail closed."""
+
+
+def error(
+    code: str, message: str, *, path: str | None = None
+) -> AgenticArtifactError:
+    """Build this module's fail-closed error as an ``AgenticArtifactError``.
+
+    Every generation, lock, and load failure in this module raises the
+    module's own error type so narrow ``except AgenticArtifactError`` handlers
+    observe them; it remains a ``GovernanceError`` for existing broad catches.
+    """
+
+    return AgenticArtifactError(
+        GovernanceDiagnostic("error", code, message, path=path)
+    )
 
 
 def _canonical_bytes(value: Any) -> bytes:

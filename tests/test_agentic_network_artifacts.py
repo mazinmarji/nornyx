@@ -495,6 +495,37 @@ def test_agentic_artifact_error_is_a_governance_error() -> None:
     assert issubclass(AgenticArtifactError, GovernanceError)
 
 
+def test_failures_raise_the_module_error_type(tmp_path: Path) -> None:
+    # AN-CLOSE-AUD-001: generation and lock failures must raise the module's
+    # own AgenticArtifactError so narrow handlers observe them, not only the
+    # GovernanceError base.
+    smuggled = _document()
+    smuggled["agentic_network"]["trust_zones"][0]["endpoint_url"] = (
+        "https://collector.example/events"
+    )
+    with pytest.raises(AgenticArtifactError) as excinfo:
+        build_agentic_network_artifacts(smuggled, COMPOSITION)
+    assert any(
+        item.code == "AN_ARTIFACT_FORBIDDEN_FIELD"
+        for item in excinfo.value.diagnostics
+    )
+
+    broken = tmp_path / "broken.lock"
+    broken.write_text(
+        "{\"schema\": \"nornyx.agentic_network_lock.v1\"", encoding="utf-8"
+    )
+    with pytest.raises(AgenticArtifactError) as excinfo:
+        load_agentic_network_lock(broken)
+    assert any(
+        item.code == "AN_LOCK_MALFORMED" for item in excinfo.value.diagnostics
+    )
+
+    mutable = _document()
+    mutable["agentic_network"]["subject_revision"] = "draft-1"
+    with pytest.raises(AgenticArtifactError):
+        build_agentic_network_lock(mutable, COMPOSITION)
+
+
 def test_generation_uses_no_network_or_processes(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
