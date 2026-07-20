@@ -81,7 +81,11 @@ language expansion. The profile selects the data-only
 `agentic_network_governance` module, three reviewed bundled schemas, and the
 fixed `agentic_network_foundation.v1` check. It declares static identities,
 capabilities, memberships, zones, gates, contract-only protocol targets, and
-revocations. The pipeline remains local parse → deterministic composition →
-schema/fixed-check validation. It never authenticates, discovers, connects,
-orchestrates, executes, delegates, hands off, loads credentials, or grants
-approval.
+revocations. AN-002 through AN-006 (ADR-0034–ADR-0038) extend the profile to
+**declare and statically validate** delegations, handoffs, and relations, to
+emit deterministic control artifacts bound by a content-addressed network lock,
+and to validate supplied runtime-event evidence — all still static, local-only
+declarations that never execute. The pipeline remains local parse →
+deterministic composition → schema/fixed-check validation. It never
+authenticates, discovers, connects, orchestrates, executes, *performs*
+delegation or handoff at runtime, loads credentials, or grants approval.

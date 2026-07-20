@@ -14,7 +14,7 @@ configs, policy docs, evidence templates, and approval checklists with a single
 
 ## What Nornyx Is Not
 
-Nornyx v1.0.0 is not:
+Nornyx is not:
 
 - a full autonomous runtime;
 - a general-purpose programming language;
@@ -33,16 +33,18 @@ Nornyx v1.0.0 is not:
 - Prepare optional profile and adapter contracts without enabling runtime
   execution.
 
-## v1.0.0 Meaning
+## Release and Distribution
 
-Nornyx v1.0.0 is a GitHub source release for the stable generalized agentic
-contract/control-plane language. It does not publish a Python package, deploy
-software, enable live connectors, call models, grant automatic approvals, or
-unlock GOAL-100.
+Nornyx publishes a Python package to PyPI (`pip install nornyx`) for the stable
+generalized agentic contract/control-plane language on the 1.x line. The package
+(distribution) version is independent of the Nornyx language/schema version — see
+[VERSIONING.md](VERSIONING.md). Publishing the package does not deploy software,
+enable live connectors, call models, grant automatic approvals, or unlock
+GOAL-100. Nornyx remains an executable specification layer, not a runtime.
 
 ## Future Tracks
 
 Future work may include schema splits, sharper adoption docs, static Nornyx
-Graph demos, editor tooling, package publication, and optional connector/runtime
-research. Each track requires scoped goals, validation, evidence, and explicit
-approval.
+Graph demos, editor tooling, distributable framework adapters, and optional
+connector/runtime research. Each track requires scoped goals, validation,
+evidence, and explicit approval.

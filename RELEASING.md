@@ -7,9 +7,13 @@ automatically (see [`.github/workflows/release.yml`](.github/workflows/release.y
 
 ## Cut a release
 
-1. **Bump the version** in two places (keep them in sync):
+1. **Bump the version** in three places (keep them in sync — see
+   [`docs/VERSIONING.md`](docs/VERSIONING.md); `tests/test_documentation_consistency.py` fails the
+   build if they diverge):
    - `pyproject.toml` → `version = "X.Y.Z"`
    - `nornyx/__init__.py` → `__version__ = "X.Y.Z"`
+   - `manifest.json` → `"version": "X.Y.Z"`
+   - and update the package-version row in `docs/VERSIONING.md`.
 
 2. **Add a `CHANGELOG.md` entry** under a new `## [X.Y.Z] - YYYY-MM-DD` heading.
 

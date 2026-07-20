@@ -1,10 +1,14 @@
 # AN-002..AN-006 — Agentic-Network Completion Program
 
-Status: implementation complete on branch `claude/agentic-full-goal-c44671`;
-**pending human review**. This record documents evidence only. It does not
-grant or claim merge, release, publication, deployment, runtime enablement,
-automatic approval, or human acceptance — the repository owner remains the
-closure authority after independent review.
+Status: **merged and closed.** Delivered via PR #37 (merge commit `e4fb39e0`,
+base `e252bbe`, final audited head `8ddf0187`); the implementation branch has
+been deleted. The independent detached-head audit closed both findings
+(AN-CLOSE-AUD-001, LOW, fix `ed166309`; AN-CLOSE-AUD-003, MEDIUM, fix
+`8ddf0187`), and post-merge CI on `main` passed on every job. This record
+documents evidence only; merging the AN program did not by itself perform a
+release, publication, deployment, runtime enablement, or automatic approval —
+those remain separate, explicitly authorized actions (the package release ships
+as 1.7.0).
 
 ## Scope delivered
 
