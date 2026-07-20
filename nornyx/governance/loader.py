@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-from importlib.resources.abc import Traversable
 import os
 from pathlib import Path
 import stat
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 import yaml
+
+if TYPE_CHECKING:
+    # `importlib.resources.abc` exists only on Python 3.11+. `Traversable` is
+    # used purely as a type annotation here and (with `from __future__ import
+    # annotations`) is never evaluated at runtime, so guarding the import keeps
+    # the package importable on the advertised Python 3.10 floor.
+    from importlib.resources.abc import Traversable
 
 from nornyx.path_security import is_remote_or_device_path
 from nornyx.parser import NornyxSafeLoader

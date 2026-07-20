@@ -25,10 +25,12 @@ Nornyx does **not** replace Codex, Claude Code, Cursor, Copilot, CI/CD, or human
 ```bash
 pip install nornyx          # from PyPI
 # or pin from source:
-pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.1.1"
+pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@main"
 ```
 
-Requires Python 3.10+. The only runtime dependency is PyYAML.
+Requires Python 3.10–3.13. Runtime dependencies: **PyYAML**, **jsonschema**, and **referencing**.
+The package (distribution) version is independent of the Nornyx language/schema version — see
+[docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Quick start (5 minutes)
 
@@ -228,11 +230,11 @@ truth. Start with
 - **Context trust model:** mark which context is `trusted` vs `untrusted` so untrusted input can't define policy, and deny `secrets_to_llm` at the contract level.
 - **Generators + a checker:** turn `.nyx` into the files your tools read, and verify references and required fields.
 - **Generated-artifact drift gate:** catch when regenerated output diverges from a committed baseline.
-- **YAML-compatible syntax** — no new parser to learn for v0.1.
+- **YAML-compatible syntax** — no new parser to learn.
 
 ## Scope and safety
 
-Nornyx v0.1 is an **executable specification layer**, not a runtime. It does **not** implement autonomous system modification, production deployment, destructive tool use, credential handling, or arbitrary command execution. The name *Nornyx* is a provisional working brand (no formal legal clearance claimed).
+Nornyx is an **executable specification layer**, not a runtime. It does **not** implement autonomous system modification, production deployment, destructive tool use, credential handling, or arbitrary command execution. The name *Nornyx* is a provisional working brand (no formal legal clearance claimed).
 
 ## Learn more
 
