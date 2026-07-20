@@ -14,6 +14,8 @@ generated/
 .private-boundary-terms.txt
 private-boundary-terms.txt
 # AI/dev generated noise
+demo_out/
+examples/crewai_nornyx_comparison/demo_out/
 node_modules/
 apps/**/node_modules/
 *.egg-info/

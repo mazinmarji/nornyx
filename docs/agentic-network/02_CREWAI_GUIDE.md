@@ -68,3 +68,12 @@ Records with a non-human `actor_type` are rejected
 The adapter cannot cover every CrewAI escape path — CrewAI code that bypasses
 the guard runs ungoverned. Validate the emitted evidence with
 `nornyx agentic-network evidence-validate` as the final authority.
+
+## Framework-native A/B example
+
+For a side-by-side comparison of the *same* workflow run as plain CrewAI versus
+CrewAI governed by Nornyx — using real `Agent`/`Task`/`Crew`/`Crew.kickoff()`
+across a 14-scenario matrix with reproducible evidence — see
+[`examples/crewai_nornyx_comparison/`](../../examples/crewai_nornyx_comparison/README.md).
+It shows what governance prevents, what it records, and what stays outside the
+enforcement boundary (including the deliberate-bypass negative control).
