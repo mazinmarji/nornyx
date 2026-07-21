@@ -55,14 +55,19 @@ os.environ.setdefault(
 AS_OF = "2026-07-17T00:00:00Z"
 MISSION = "GOAL-SUPPORT-001"
 
-# Captured once at import — BEFORE any offline guard is installed — so that
-# capturing the environment never triggers a subprocess inside the guard. On
-# Linux ``platform.platform()`` lazily shells out (``uname``) for the processor;
-# the offline demonstration itself must remain subprocess-free.
+# Composed from subprocess-free fields ONLY. ``platform.platform()`` is avoided
+# entirely (not merely cached) because on Linux it lazily shells out via ``uname``
+# for the processor — and the complete demonstration, including this module's
+# import, must never spawn a subprocess. ``system``/``release``/``machine`` read
+# ``os.uname()`` or environment variables, never a child process.
 try:
-    _PLATFORM = platform.platform()
-except Exception:  # pragma: no cover - degrade to subprocess-free fields
-    _PLATFORM = f"{platform.system()} {platform.release()} {platform.machine()}"
+    _PLATFORM = "-".join(
+        part
+        for part in (platform.system(), platform.release(), platform.machine())
+        if part
+    )
+except Exception:  # pragma: no cover - last-resort, still subprocess-free
+    _PLATFORM = sys.platform
 
 # CrewAI agent roles are exactly the `crewai` framework_bindings agent_key
 # values declared in support_network.nyx.

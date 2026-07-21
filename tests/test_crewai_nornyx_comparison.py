@@ -187,25 +187,28 @@ def test_deterministic_repeated_results(tmp_path: Path) -> None:
     assert events_a == events_b
 
 
-def test_capture_environment_is_subprocess_free() -> None:
-    # Regression guard: capturing the environment must not shell out under the
-    # offline guard. On Linux `platform.platform()` lazily runs `uname` via
-    # subprocess; the platform string is cached at import instead.
+def test_environment_capture_never_shells_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The complete demonstration must run without a subprocess, INCLUDING at
+    # import: on Linux `platform.platform()` lazily runs `uname` for the
+    # processor. It must never be consulted — not at import, not in
+    # capture_environment(). Monkeypatch it to fail and reload the module; a
+    # clean reload proves the import-time path does not call it.
+    import importlib
     import platform as _platform
 
-    from common import capture_environment
+    import common as _common
 
-    original = _platform.platform
+    def boom(*_a: object, **_k: object) -> str:
+        raise AssertionError(
+            "platform.platform() shells out on Linux and must never be called"
+        )
 
-    def shelling_platform(*_a: object, **_k: object) -> str:
-        return subprocess.check_output(["uname"])  # noqa: S603,S607 - intercepted
-
-    _platform.platform = shelling_platform
-    try:
-        with no_external_io():
-            env = capture_environment()
-    finally:
-        _platform.platform = original
+    monkeypatch.setattr(_platform, "platform", boom)
+    importlib.reload(_common)  # re-executes module-level code; must not raise
+    assert _common._PLATFORM
+    # And capturing the environment must also never consult it.
+    with no_external_io():
+        env = _common.capture_environment()
     assert env["platform"]
     assert env["nornyx_version"] == "1.7.0"
 
