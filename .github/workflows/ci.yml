@@ -110,8 +110,29 @@ jobs:
         env:
           CREWAI_DISABLE_TELEMETRY: "true"
           OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
         run: |
-          python -m pytest tests/test_agentic_crewai_native.py tests/test_agentic_integrations.py -v -rs
+          python -m pytest \
+            tests/test_agentic_crewai_native.py \
+            tests/test_agentic_integrations.py \
+            tests/test_crewai_nornyx_comparison.py \
+            -v -rs
+      - name: CrewAI x Nornyx A/B comparison (run + machine-check artifacts)
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          python examples/crewai_nornyx_comparison/compare.py \
+            --no-benchmark --out "$RUNNER_TEMP/crewai-nornyx-comparison"
+          python examples/crewai_nornyx_comparison/ci_check_artifacts.py \
+            "$RUNNER_TEMP/crewai-nornyx-comparison"
+      - name: Isolated published Nornyx 1.7.0 verification (installs from PyPI)
+        run: |
+          python examples/crewai_nornyx_comparison/verify_published_nornyx.py \
+            --out "$RUNNER_TEMP/nornyx-published-verify"
 
   windows:
     runs-on: windows-latest

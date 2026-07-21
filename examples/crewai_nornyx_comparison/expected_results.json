@@ -1,0 +1,140 @@
+{
+  "schema": "nornyx.crewai_ab_expected.v1",
+  "contract_digest": "sha256:3cdf632c08684efa2382a047b474b8f56ea4a83c5ed2f86c05918c29d0ac8eda",
+  "network_lock_digest": "sha256:e4725b0a138ebfd1f58c43ed22ce184d6cdaff08e7a358a29cfeea8852cbb3ba",
+  "allowed_output_equivalence": true,
+  "evidence_validation_status": "pass",
+  "governed_events_emitted": 27,
+  "runtime_business_callables_executed_in_baseline": 9,
+  "runtime_business_callables_prevented_by_nornyx": 9,
+  "false_denials_of_allowed_actions": 0,
+  "initialization_failure": "AN_ADAPTER_LOCK_STALE",
+  "scenarios": {
+    "S1": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "allowed",
+      "baseline_work_executed": true,
+      "governed_work_executed": true,
+      "diagnostic_code": null,
+      "emitted_event_types": ["capability_requested", "capability_allowed", "tool_invoked"]
+    },
+    "S2": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_CAPABILITY_UNKNOWN",
+      "emitted_event_types": ["policy_violation"]
+    },
+    "S3": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_CAPABILITY_DENIED",
+      "emitted_event_types": ["capability_requested", "capability_denied"]
+    },
+    "S4": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "allowed",
+      "baseline_work_executed": true,
+      "governed_work_executed": true,
+      "diagnostic_code": null,
+      "emitted_event_types": ["delegation_requested", "delegation_accepted", "capability_requested", "capability_allowed", "tool_invoked"]
+    },
+    "S5": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_CAPABILITY_DENIED",
+      "emitted_event_types": ["capability_requested", "capability_denied"]
+    },
+    "S6": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_CAPABILITY_DENIED",
+      "emitted_event_types": ["handoff_initiated", "handoff_completed", "capability_requested", "capability_denied"]
+    },
+    "S7": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_CROSSING_APPROVAL_REQUIRED",
+      "emitted_event_types": ["policy_violation"]
+    },
+    "S8": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "allowed",
+      "baseline_work_executed": true,
+      "governed_work_executed": true,
+      "diagnostic_code": null,
+      "emitted_event_types": ["approval_requested", "approval_granted", "capability_requested", "capability_allowed", "tool_invoked", "trust_zone_crossed", "data_shared"]
+    },
+    "S9": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_APPROVAL_NON_HUMAN",
+      "emitted_event_types": ["approval_requested", "policy_violation"]
+    },
+    "S10": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_SENSITIVE_SHARING",
+      "emitted_event_types": ["policy_violation"]
+    },
+    "S11": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_ZONE_CROSSING_DENIED",
+      "emitted_event_types": ["policy_violation"]
+    },
+    "S12": {
+      "kind": "initialization",
+      "baseline_outcome": "unaffected",
+      "governed_outcome": "refused_init",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_LOCK_STALE",
+      "emitted_event_types": []
+    },
+    "S13": {
+      "kind": "runtime",
+      "baseline_outcome": "executed",
+      "governed_outcome": "denied",
+      "baseline_work_executed": true,
+      "governed_work_executed": false,
+      "diagnostic_code": "AN_ADAPTER_IDENTITY_UNKNOWN",
+      "emitted_event_types": []
+    },
+    "S14": {
+      "kind": "bypass",
+      "baseline_outcome": "bypassed",
+      "governed_outcome": "bypassed",
+      "baseline_work_executed": true,
+      "governed_work_executed": true,
+      "diagnostic_code": null,
+      "emitted_event_types": []
+    }
+  }
+}
