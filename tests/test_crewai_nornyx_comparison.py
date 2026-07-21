@@ -187,6 +187,29 @@ def test_deterministic_repeated_results(tmp_path: Path) -> None:
     assert events_a == events_b
 
 
+def test_capture_environment_is_subprocess_free() -> None:
+    # Regression guard: capturing the environment must not shell out under the
+    # offline guard. On Linux `platform.platform()` lazily runs `uname` via
+    # subprocess; the platform string is cached at import instead.
+    import platform as _platform
+
+    from common import capture_environment
+
+    original = _platform.platform
+
+    def shelling_platform(*_a: object, **_k: object) -> str:
+        return subprocess.check_output(["uname"])  # noqa: S603,S607 - intercepted
+
+    _platform.platform = shelling_platform
+    try:
+        with no_external_io():
+            env = capture_environment()
+    finally:
+        _platform.platform = original
+    assert env["platform"]
+    assert env["nornyx_version"] == "1.7.0"
+
+
 # ---------------------------------------------------- no external operations
 def test_guard_blocks_network_and_subprocess() -> None:
     with no_external_io():

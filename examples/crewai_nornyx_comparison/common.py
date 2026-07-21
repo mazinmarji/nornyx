@@ -55,6 +55,15 @@ os.environ.setdefault(
 AS_OF = "2026-07-17T00:00:00Z"
 MISSION = "GOAL-SUPPORT-001"
 
+# Captured once at import — BEFORE any offline guard is installed — so that
+# capturing the environment never triggers a subprocess inside the guard. On
+# Linux ``platform.platform()`` lazily shells out (``uname``) for the processor;
+# the offline demonstration itself must remain subprocess-free.
+try:
+    _PLATFORM = platform.platform()
+except Exception:  # pragma: no cover - degrade to subprocess-free fields
+    _PLATFORM = f"{platform.system()} {platform.release()} {platform.machine()}"
+
 # CrewAI agent roles are exactly the `crewai` framework_bindings agent_key
 # values declared in support_network.nyx.
 ROLE_COORDINATOR = "support_coordinator"
@@ -156,7 +165,7 @@ def capture_environment() -> dict[str, object]:
 
     return {
         "python_version": platform.python_version(),
-        "platform": platform.platform(),
+        "platform": _PLATFORM,  # cached at import; never a subprocess under the guard
         "executable": sys.executable,
         "nornyx_version": _version("nornyx"),
         "nornyx_file": str(Path(nornyx.__file__).resolve()),
