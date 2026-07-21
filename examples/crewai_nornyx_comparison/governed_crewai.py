@@ -1,27 +1,28 @@
 """Variant B: the same CrewAI, governed by Nornyx 1.7.0.
 
-Same agents, tasks, tools, deterministic model, and inputs as Variant A. The
-only addition is Nornyx governance on the integrated path:
+Same agents, tasks, tools, deterministic model, and inputs as Variant A. Each
+runtime scenario runs the *same* ``Agent``/``Task``/business tool through a
+genuine ``Crew.kickoff()``; the only difference is that the business callable is
+wrapped so a Nornyx check runs immediately before the shared, ledger-backed side
+effect. On denial the check refuses and the business work never runs — proved by
+the side-effect ledger staying at zero, not by inferring intent from an
+exception. On the allowed path the work runs and the kernel emits standardized
+evidence bound to the exact contract + lock digest.
 
-* a ``GovernanceKernel`` loaded and lock-verified from the exact local
-  ``support_network.nyx`` contract via ``from_local_controls``;
-* a ``CrewAIGovernanceAdapter`` that maps CrewAI agent roles onto declared
-  Nornyx identities and wraps tool work in a fail-closed capability check;
-* declared delegations, handoffs, trust zones, and an externally supplied human
-  approval record;
-* standardized runtime-event evidence bound to the exact contract + lock digest.
+Two scenarios are, by nature, not runtime tool A/B tests and are reported as
+such: S12 (stale-lock initialization refusal) and S14 (deliberate adapter
+bypass, a negative control). S5 (escalation without delegation) runs on a
+distinct contract variant with its own digest.
 
-Allowed work runs through a genuine ``Crew.kickoff()``. Denied work is refused
-at the adapter boundary before the work callable runs — the same enforcement
-pattern the repository's native CrewAI verification suite exercises. Nornyx does
-not operate CrewAI, execute the model, authenticate agents, or observe code that
-bypasses the adapter (see scenario S14).
+Nornyx never operates CrewAI, executes the model, authenticates agents, or
+observes code that bypasses the adapter (S14).
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Callable
 
 _HERE = str(Path(__file__).resolve().parent)
 if _HERE not in sys.path:
@@ -32,7 +33,6 @@ from common import (  # noqa: E402  (imported before crewai for the kill switche
     AS_OF,
     CLASSIFICATION,
     CONTRACT,
-    CUSTOMER_RESPONSE,
     DELETE_RECORDS_OUTPUT,
     HUMAN_APPROVAL,
     MISSION,
@@ -40,12 +40,12 @@ from common import (  # noqa: E402  (imported before crewai for the kill switche
     REFUND_PROPOSAL,
     ROLE_ADVISOR,
     ROLE_COORDINATOR,
-    ROLE_ESCALATION,
     ROLE_REFUND,
     ROLE_UNKNOWN,
 )
 from crew_runtime import build_agent, kickoff_single_task  # noqa: E402
 from crewai import Crew, Process, Task  # noqa: E402
+from scenarios import RUNTIME  # noqa: E402
 from tools import SideEffectLedger, make_tool, make_work  # noqa: E402
 
 from nornyx.agentic_artifacts import (  # noqa: E402
@@ -62,6 +62,37 @@ from nornyx_agentic_adapters.governance_kernel import (  # noqa: E402
     GovernanceKernel,
     GovernanceViolation,
 )
+
+
+class GuardedRunner:
+    """A tool callable that runs a Nornyx check before the business side effect.
+
+    On denial it records the diagnostic code and returns a sentinel string
+    instead of raising, so CrewAI does not retry-and-swallow the tool: the tool
+    is invoked exactly once, exactly one governance event is emitted, and the
+    business callable never runs. Memoized so any CrewAI re-entry is a no-op.
+    """
+
+    def __init__(self, check: Callable[[], object], work: Callable[[], str]):
+        self._check = check
+        self._work = work
+        self.denied: str | None = None
+        self.executed_result: str | None = None
+        self._done = False
+
+    def __call__(self) -> str:
+        if self.denied is not None:
+            return f"GOVERNANCE_DENIED:{self.denied}"
+        if self._done:
+            return self.executed_result or ""
+        try:
+            self._check()
+        except GovernanceViolation as violation:
+            self.denied = violation.code
+            return f"GOVERNANCE_DENIED:{violation.code}"
+        self.executed_result = self._work()
+        self._done = True
+        return self.executed_result
 
 
 class GovernedSupportNetwork:
@@ -83,182 +114,162 @@ class GovernedSupportNetwork:
             self.lock_payload, self.out_dir / "nornyx.agentic_network.lock"
         )
         self.kernel = GovernanceKernel.from_local_controls(
-            CONTRACT,
-            self.lock_path,
-            framework="crewai",
-            as_of=AS_OF,
+            CONTRACT, self.lock_path, framework="crewai", as_of=AS_OF,
             clock=DeterministicClock(),
         )
         self.adapter = CrewAIGovernanceAdapter(self.kernel)
 
     # ---------------------------------------------------------------- helpers
-    def _events(self) -> list[dict]:
-        return self.kernel.events_payload()["events"]
+    def _events(self, kernel: GovernanceKernel | None = None) -> list[dict]:
+        return (kernel or self.kernel).events_payload()["events"]
 
-    def _slice(self, start: int) -> list[str]:
-        return [event["event_type"] for event in self._events()[start:]]
-
-    def _allowed_kickoff(
-        self, sid: str, role: str, capability: str, tool_name: str, output: str
+    def _runtime(
+        self, sid: str, check: Callable[[], object],
+        *, kernel: GovernanceKernel | None = None, note_allow: str = "", note_deny: str = "",
     ) -> dict:
-        start = len(self._events())
-        agent = build_agent(role, tool_name, output)
-        work = make_work(self.ledger, sid, output)
-        guarded = self.adapter.guarded_task(
-            agent, capability, work, mission_id=MISSION
-        )
+        """Run one scenario through the same kickoff topology as the baseline."""
+
+        kernel = kernel or self.kernel
+        spec = RUNTIME[sid]
+        start = len(self._events(kernel))
+        agent = build_agent(spec["role"], spec["tool"], spec["final"])
+        work = make_work(self.ledger, sid, spec["output"])
+        runner = GuardedRunner(check, work)
         result = kickoff_single_task(
-            agent,
-            tool_name,
-            guarded,
-            description=f"Use the {tool_name} tool under governance, then answer.",
-            expected_output="A short deterministic answer.",
+            agent, spec["tool"], runner,
+            description=spec["desc"], expected_output="A short deterministic answer.",
         )
+        events = self._events(kernel)[start:]
+        executed = self.ledger.executed(sid)
         return {
-            "outcome": "allowed",
-            "protected_work_executed": self.ledger.executed(sid),
-            "diagnostic_code": None,
-            "event_types": self._slice(start),
-            "business_output": result,
-            "note": f"Kernel allowed {capability!r}; evidence emitted.",
+            "outcome": "allowed" if runner.denied is None else "denied",
+            "protected_work_executed": executed,
+            "diagnostic_code": runner.denied,
+            "event_types": [e["event_type"] for e in events],
+            "event_contract_bound": (
+                all(e["contract_digest"] == kernel.contract_digest for e in events)
+                if events else None
+            ),
+            "event_lock_bound": (
+                all(e["network_lock_digest"] == kernel.lock_digest for e in events)
+                if events else None
+            ),
+            "business_output": result if executed else None,
+            "note": note_allow if executed else note_deny,
         }
 
-    def _deny_capability(
-        self, sid: str, role: str, capability: str, output: str, note: str
-    ) -> dict:
-        start = len(self._events())
-        agent = build_agent(role, None, "unused")
-        work = make_work(self.ledger, sid, output)
-        guarded = self.adapter.guarded_task(
-            agent, capability, work, mission_id=MISSION
+    # -------------------------------------------------------------- scenarios
+    def run_scenarios(self) -> dict[str, dict]:
+        s: dict[str, dict] = {}
+        K = self.kernel
+        M = MISSION
+        coord = K.resolve_identity(ROLE_COORDINATOR)
+        advisor = K.resolve_identity(ROLE_ADVISOR)
+        refund = K.resolve_identity(ROLE_REFUND)
+        escalation = K.resolve_identity("escalation_agent")
+
+        def s4_check() -> None:
+            K.request_delegation("delegation.refund_proposal", mission_id=M)
+            K.invoke_tool(refund, "propose_refund_under_limit", mission_id=M)
+
+        def s6_check() -> None:
+            K.request_handoff("handoff.high_value_escalation", mission_id=M)
+            K.complete_handoff("handoff.high_value_escalation", mission_id=M)
+            K.invoke_tool(escalation, "propose_refund_under_limit", mission_id=M)
+
+        def s8_check() -> None:
+            K.require_human_approval(HUMAN_APPROVAL, mission_id=M, actor_ref=escalation)
+            K.invoke_tool(refund, "produce_customer_safe_response", mission_id=M)
+            K.record_zone_crossing(
+                refund, "zone.support_internal", "zone.customer_channel",
+                mission_id=M, approval_ref="agentic_network_authority",
+            )
+            K.record_data_shared(
+                refund, coord, ["customer_response"], mission_id=M,
+                source_zone="zone.support_internal", target_zone="zone.customer_channel",
+            )
+
+        # Canonical mission stream, in a valid emission order.
+        s["S1"] = self._runtime(
+            "S1", lambda: K.invoke_tool(coord, "classify_support_request", mission_id=M),
+            note_allow="Kernel allowed classify_support_request; evidence emitted.",
         )
-        code = None
-        try:
-            guarded()
-        except GovernanceViolation as violation:
-            code = violation.code
-        return {
-            "outcome": "denied",
-            "protected_work_executed": self.ledger.executed(sid),
-            "diagnostic_code": code,
-            "event_types": self._slice(start),
-            "business_output": None,
-            "note": note,
+        s["S3"] = self._runtime(
+            "S3", lambda: K.invoke_tool(advisor, "propose_refund_under_limit", mission_id=M),
+            note_deny="policy_advisor neither holds nor is delegated the refund capability.",
+        )
+        s["S4"] = self._runtime(
+            "S4", s4_check,
+            note_allow="Allowed via delegation.refund_proposal; delegation in evidence.",
+        )
+        s["S2"] = self._runtime(
+            "S2", lambda: K.invoke_tool(coord, "delete_customer_records", mission_id=M),
+            note_deny="delete_customer_records is not a declared capability.",
+        )
+        s["S6"] = self._runtime(
+            "S6", s6_check,
+            note_deny="Handoff recorded, but the target cannot use an undelegated "
+            "capability.",
+        )
+        s["S7"] = self._runtime(
+            "S7", lambda: K.record_zone_crossing(
+                refund, "zone.support_internal", "zone.customer_channel", mission_id=M),
+            note_deny="External customer-channel crossing requires human approval.",
+        )
+        s["S9"] = self._runtime(
+            "S9", lambda: K.require_human_approval(AI_APPROVAL, mission_id=M, actor_ref=escalation),
+            note_deny="An AI actor_type cannot approve; the record is rejected.",
+        )
+        s["S8"] = self._runtime(
+            "S8", s8_check,
+            note_allow="Human approval accepted (adapter never self-grants); response "
+            "produced, crossed, and shared.",
+        )
+        s["S10"] = self._runtime(
+            "S10", lambda: K.record_data_shared(
+                refund, coord, ["customer_response", "private_memory"], mission_id=M,
+                source_zone="zone.support_internal", target_zone="zone.support_internal"),
+            note_deny="private_memory is never shareable.",
+        )
+        s["S11"] = self._runtime(
+            "S11", lambda: K.record_zone_crossing(
+                refund, "zone.customer_channel", "zone.support_internal", mission_id=M),
+            note_deny="The reverse crossing is not a declared allowed transition.",
+        )
+        s["S13"] = self._runtime(
+            "S13", lambda: K.resolve_identity(ROLE_UNKNOWN),
+            note_deny="A CrewAI role with no unique declared binding fails closed.",
+        )
+
+        self.allowed_outputs = {
+            "classify": s["S1"]["business_output"],
+            "refund": s["S4"]["business_output"],
+            "response": s["S8"]["business_output"],
         }
 
-    def _op(self, fn, *, note: str) -> dict:
-        start = len(self._events())
-        code = None
-        try:
-            fn()
-        except GovernanceViolation as violation:
-            code = violation.code
-        return {
-            "outcome": "allowed" if code is None else "denied",
-            "protected_work_executed": code is None,
-            "diagnostic_code": code,
-            "event_types": self._slice(start),
-            "business_output": None,
-            "note": note,
-        }
+        # Distinct-contract, initialization, and bypass controls.
+        s["S5"] = self._s5_escalation_without_delegation()
+        s["S12"] = self._s12_stale_lock()
+        s["S14"] = self._s14_bypass()
+        return s
 
-    # -------------------------------------------------------------- workflow
-    def run_workflow(self) -> dict:
-        """A real multi-agent sequential ``Crew.kickoff()`` on a fresh kernel."""
-
-        kernel = GovernanceKernel.from_local_controls(
-            CONTRACT, self.lock_path, framework="crewai", as_of=AS_OF,
-            clock=DeterministicClock(),
-        )
-        adapter = CrewAIGovernanceAdapter(kernel)
-        ledger = SideEffectLedger()
-        coordinator = build_agent(ROLE_COORDINATOR, "classify_tool", CLASSIFICATION)
-        advisor = build_agent(ROLE_ADVISOR, "policy_tool", POLICY_TEXT)
-        refund = build_agent(ROLE_REFUND, "refund_tool", REFUND_PROPOSAL)
-        kernel.request_delegation("delegation.refund_proposal", mission_id=MISSION)
-        t1 = Task(
-            description="Classify the sanitized refund request under governance.",
-            expected_output="A classification.",
-            agent=coordinator,
-            tools=[make_tool(
-                "classify_tool",
-                adapter.guarded_task(
-                    coordinator, "classify_support_request",
-                    make_work(ledger, "wf", CLASSIFICATION), mission_id=MISSION,
-                ),
-            )],
-        )
-        t2 = Task(
-            description="Cite the applicable declared refund policy.",
-            expected_output="A policy citation.",
-            agent=advisor,
-            tools=[make_tool(
-                "policy_tool",
-                adapter.guarded_task(
-                    advisor, "retrieve_declared_policy",
-                    make_work(ledger, "wf", POLICY_TEXT), mission_id=MISSION,
-                ),
-            )],
-        )
-        t3 = Task(
-            description="Propose a refund within the declared limit via delegation.",
-            expected_output="A refund proposal.",
-            agent=refund,
-            tools=[make_tool(
-                "refund_tool",
-                adapter.guarded_task(
-                    refund, "propose_refund_under_limit",
-                    make_work(ledger, "wf", REFUND_PROPOSAL), mission_id=MISSION,
-                ),
-            )],
-        )
-        crew = Crew(
-            agents=[coordinator, advisor, refund],
-            tasks=[t1, t2, t3],
-            process=Process.sequential,
-        )
-        output = str(crew.kickoff())
-        report = validate_runtime_events(
-            self.document, self.composition, self.lock_payload,
-            kernel.events_payload(), events_root=self.out_dir,
-        )
-        return {
-            "output": output,
-            "final_step": "refund_proposal",
-            "event_types": [e["event_type"] for e in kernel.events_payload()["events"]],
-            "evidence_status": report["status"],
-            "event_count": report["event_count"],
-        }
-
-    # ------------------------------------------------------- separate kernels
+    # ---------------------------------------------------------- special cases
     def _s5_escalation_without_delegation(self) -> dict:
         stripped = load_nyx(CONTRACT)
         stripped["agentic_network"]["delegations"] = []
         kernel = GovernanceKernel(
-            stripped,
-            self.composition,
-            build_agentic_network_lock(stripped, self.composition),
-            framework="crewai",
+            stripped, self.composition,
+            build_agentic_network_lock(stripped, self.composition), framework="crewai",
         )
-        adapter = CrewAIGovernanceAdapter(kernel)
-        agent = build_agent(ROLE_REFUND, None, "unused")
-        work = make_work(self.ledger, "S5", REFUND_PROPOSAL)
-        guarded = adapter.guarded_task(
-            agent, "propose_refund_under_limit", work, mission_id=MISSION
+        refund = kernel.resolve_identity(ROLE_REFUND)
+        result = self._runtime(
+            "S5",
+            lambda: kernel.invoke_tool(refund, "propose_refund_under_limit", mission_id=MISSION),
+            kernel=kernel,
+            note_deny="With the delegation removed, escalation of authority is denied "
+            "(distinct contract variant + digest).",
         )
-        code = None
-        try:
-            guarded()
-        except GovernanceViolation as violation:
-            code = violation.code
-        return {
-            "outcome": "denied",
-            "protected_work_executed": self.ledger.executed("S5"),
-            "diagnostic_code": code,
-            "event_types": [e["event_type"] for e in kernel.events_payload()["events"]],
-            "business_output": None,
-            "note": "With the delegation removed, escalation of authority is denied.",
-        }
+        return result
 
     def _s12_stale_lock(self) -> dict:
         drifted = load_nyx(CONTRACT)
@@ -287,27 +298,13 @@ class GovernedSupportNetwork:
             "protected_work_executed": False,
             "diagnostic_code": code,
             "event_types": [],
+            "event_contract_bound": None,
+            "event_lock_bound": None,
             "business_output": None,
             "note": (
                 "Governed init refuses a lock that does not match the contract; "
                 f"artifact-layer drift codes: {', '.join(artifact_codes) or 'none'}."
             ),
-        }
-
-    def _s13_unknown_identity(self) -> dict:
-        agent = build_agent(ROLE_UNKNOWN, None, "unused")
-        code = None
-        try:
-            self.adapter.resolve_identity(agent)
-        except GovernanceViolation as violation:
-            code = violation.code
-        return {
-            "outcome": "denied",
-            "protected_work_executed": False,
-            "diagnostic_code": code,
-            "event_types": [],
-            "business_output": None,
-            "note": "A CrewAI role with no unique declared binding fails closed.",
         }
 
     def _s14_bypass(self) -> dict:
@@ -319,129 +316,62 @@ class GovernedSupportNetwork:
             "protected_work_executed": self.ledger.executed("S14"),
             "diagnostic_code": None,
             "event_types": [],
+            "event_contract_bound": None,
+            "event_lock_bound": None,
             "business_output": output,
             "note": (
-                "Enforcement-boundary limitation: code that bypasses the adapter "
-                "runs; no capability event is emitted for it."
+                "Enforcement-boundary limitation: code that bypasses the adapter runs; "
+                "no capability event is emitted for it."
             ),
         }
 
-    # -------------------------------------------------------------- scenarios
-    def run_scenarios(self) -> dict[str, dict]:
-        s: dict[str, dict] = {}
-        coordinator_id = self.kernel.resolve_identity(ROLE_COORDINATOR)
-        refund_id = self.kernel.resolve_identity(ROLE_REFUND)
-        escalation_id = self.kernel.resolve_identity(ROLE_ESCALATION)
+    # -------------------------------------------------------------- workflow
+    def run_workflow(self) -> dict:
+        """A real multi-agent sequential ``Crew.kickoff()`` on a fresh kernel."""
 
-        # S1 valid low-risk classify (allowed, native kickoff)
-        s["S1"] = self._allowed_kickoff(
-            "S1", ROLE_COORDINATOR, "classify_support_request", "classify_tool",
-            CLASSIFICATION,
+        kernel = GovernanceKernel.from_local_controls(
+            CONTRACT, self.lock_path, framework="crewai", as_of=AS_OF,
+            clock=DeterministicClock(),
         )
-        self.allowed_outputs["classify"] = s["S1"]["business_output"]
-
-        # S3 known capability used by the wrong agent (denied)
-        s["S3"] = self._deny_capability(
-            "S3", ROLE_ADVISOR, "propose_refund_under_limit", REFUND_PROPOSAL,
-            "policy_advisor neither holds nor is delegated the refund capability.",
+        adapter = CrewAIGovernanceAdapter(kernel)
+        ledger = SideEffectLedger()
+        coordinator = build_agent(ROLE_COORDINATOR, "classify_tool", CLASSIFICATION)
+        advisor = build_agent(ROLE_ADVISOR, "policy_tool", POLICY_TEXT)
+        refund = build_agent(ROLE_REFUND, "refund_tool", REFUND_PROPOSAL)
+        kernel.request_delegation("delegation.refund_proposal", mission_id=MISSION)
+        crew = Crew(
+            agents=[coordinator, advisor, refund],
+            tasks=[
+                Task(description="Classify the sanitized refund request under governance.",
+                     expected_output="A classification.", agent=coordinator,
+                     tools=[make_tool("classify_tool", adapter.guarded_task(
+                         coordinator, "classify_support_request",
+                         make_work(ledger, "wf", CLASSIFICATION), mission_id=MISSION))]),
+                Task(description="Cite the applicable declared refund policy.",
+                     expected_output="A policy citation.", agent=advisor,
+                     tools=[make_tool("policy_tool", adapter.guarded_task(
+                         advisor, "retrieve_declared_policy",
+                         make_work(ledger, "wf", POLICY_TEXT), mission_id=MISSION))]),
+                Task(description="Propose a refund within the declared limit via delegation.",
+                     expected_output="A refund proposal.", agent=refund,
+                     tools=[make_tool("refund_tool", adapter.guarded_task(
+                         refund, "propose_refund_under_limit",
+                         make_work(ledger, "wf", REFUND_PROPOSAL), mission_id=MISSION))]),
+            ],
+            process=Process.sequential,
         )
-
-        # S4 valid bounded delegation (allowed, native kickoff, delegation in evidence)
-        self.kernel.request_delegation("delegation.refund_proposal", mission_id=MISSION)
-        s["S4"] = self._allowed_kickoff(
-            "S4", ROLE_REFUND, "propose_refund_under_limit", "refund_tool",
-            REFUND_PROPOSAL,
+        output = str(crew.kickoff())
+        report = validate_runtime_events(
+            self.document, self.composition, self.lock_payload,
+            kernel.events_payload(), events_root=self.out_dir,
         )
-        self.allowed_outputs["refund"] = s["S4"]["business_output"]
-
-        # S2 undeclared capability (denied before work runs)
-        s["S2"] = self._deny_capability(
-            "S2", ROLE_COORDINATOR, "delete_customer_records", DELETE_RECORDS_OUTPUT,
-            "delete_customer_records is not a declared capability.",
-        )
-
-        # S6 handoff transfers responsibility, never authority
-        self.kernel.request_handoff("handoff.high_value_escalation", mission_id=MISSION)
-        self.kernel.complete_handoff("handoff.high_value_escalation", mission_id=MISSION)
-        s["S6"] = self._deny_capability(
-            "S6", ROLE_ESCALATION, "propose_refund_under_limit", REFUND_PROPOSAL,
-            "Handoff was recorded, but the target still cannot use an undelegated "
-            "capability.",
-        )
-        s["S6"]["event_types"] = ["handoff_initiated", "handoff_completed"] + s["S6"][
-            "event_types"
-        ]
-
-        # S7 high-risk external crossing without human approval (denied)
-        s["S7"] = self._op(
-            lambda: self.kernel.record_zone_crossing(
-                refund_id, "zone.support_internal", "zone.customer_channel",
-                mission_id=MISSION,
-            ),
-            note="External customer-channel crossing requires human approval.",
-        )
-
-        # S9 AI-generated approval (rejected)
-        s["S9"] = self._op(
-            lambda: self.kernel.require_human_approval(
-                AI_APPROVAL, mission_id=MISSION, actor_ref=escalation_id
-            ),
-            note="An AI actor_type cannot approve; the record is rejected.",
-        )
-
-        # S8 valid externally supplied human approval -> response + crossing + share
-        start = len(self._events())
-        self.kernel.require_human_approval(
-            HUMAN_APPROVAL, mission_id=MISSION, actor_ref=escalation_id
-        )
-        response = self._allowed_kickoff(
-            "S8", ROLE_REFUND, "produce_customer_safe_response", "publish_tool",
-            CUSTOMER_RESPONSE,
-        )
-        self.allowed_outputs["response"] = response["business_output"]
-        self.kernel.record_zone_crossing(
-            refund_id, "zone.support_internal", "zone.customer_channel",
-            mission_id=MISSION, approval_ref="agentic_network_authority",
-        )
-        self.kernel.record_data_shared(
-            refund_id, coordinator_id, ["customer_response"], mission_id=MISSION,
-            source_zone="zone.support_internal", target_zone="zone.customer_channel",
-        )
-        s["S8"] = {
-            "outcome": "allowed",
-            "protected_work_executed": True,
-            "diagnostic_code": None,
-            "event_types": self._slice(start),
-            "business_output": response["business_output"],
-            "note": "Human approval accepted (adapter never self-grants); response "
-            "produced and shared through the approved crossing.",
+        return {
+            "output": output,
+            "final_step": "refund_proposal",
+            "event_types": [e["event_type"] for e in kernel.events_payload()["events"]],
+            "evidence_status": report["status"],
+            "event_count": report["event_count"],
         }
-
-        # S10 sensitive data sharing (denied)
-        s["S10"] = self._op(
-            lambda: self.kernel.record_data_shared(
-                refund_id, coordinator_id, ["customer_response", "private_memory"],
-                mission_id=MISSION, source_zone="zone.support_internal",
-                target_zone="zone.support_internal",
-            ),
-            note="private_memory is never shareable.",
-        )
-
-        # S11 undeclared trust-zone crossing (denied)
-        s["S11"] = self._op(
-            lambda: self.kernel.record_zone_crossing(
-                refund_id, "zone.customer_channel", "zone.support_internal",
-                mission_id=MISSION,
-            ),
-            note="The reverse crossing is not a declared allowed transition.",
-        )
-
-        # Separate-kernel / init / bypass controls
-        s["S5"] = self._s5_escalation_without_delegation()
-        s["S12"] = self._s12_stale_lock()
-        s["S13"] = self._s13_unknown_identity()
-        s["S14"] = self._s14_bypass()
-        return s
 
     # ---------------------------------------------------------------- evidence
     def write_events(self, path: str | Path) -> Path:
@@ -449,9 +379,6 @@ class GovernedSupportNetwork:
 
     def evidence_report(self) -> dict:
         return validate_runtime_events(
-            self.document,
-            self.composition,
-            self.lock_payload,
-            self.kernel.events_payload(),
-            events_root=self.out_dir,
+            self.document, self.composition, self.lock_payload,
+            self.kernel.events_payload(), events_root=self.out_dir,
         )

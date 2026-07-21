@@ -65,10 +65,13 @@ MISSION = "GOAL-SUPPORT-001"
 # Only the adapter tree goes on the path; never the repo root.
 sys.path.insert(0, INTEGRATIONS)
 
+import sysconfig
 import nornyx
 nornyx_version = md.version("nornyx")
 nornyx_file = str(Path(nornyx.__file__).resolve())
-site_packages = str((Path(sys.prefix) / "Lib" / "site-packages").resolve())
+# Cross-platform site-packages (Windows: Lib/site-packages; POSIX venv:
+# lib/pythonX.Y/site-packages). sysconfig is the source of truth.
+site_packages = str(Path(sysconfig.get_paths()["purelib"]).resolve())
 
 resolves_to_installed = nornyx_file.startswith(site_packages)
 not_repo_checkout = not nornyx_file.startswith(str(Path(REPO_ROOT).resolve()))

@@ -5,11 +5,13 @@
   "allowed_output_equivalence": true,
   "evidence_validation_status": "pass",
   "governed_events_emitted": 27,
-  "unauthorized_actions_executed_in_baseline": 9,
-  "unauthorized_actions_prevented_by_nornyx": 9,
+  "runtime_business_callables_executed_in_baseline": 9,
+  "runtime_business_callables_prevented_by_nornyx": 9,
   "false_denials_of_allowed_actions": 0,
+  "initialization_failure": "AN_ADAPTER_LOCK_STALE",
   "scenarios": {
     "S1": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "allowed",
       "baseline_work_executed": true,
@@ -18,6 +20,7 @@
       "emitted_event_types": ["capability_requested", "capability_allowed", "tool_invoked"]
     },
     "S2": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -26,6 +29,7 @@
       "emitted_event_types": ["policy_violation"]
     },
     "S3": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -34,14 +38,16 @@
       "emitted_event_types": ["capability_requested", "capability_denied"]
     },
     "S4": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "allowed",
       "baseline_work_executed": true,
       "governed_work_executed": true,
       "diagnostic_code": null,
-      "emitted_event_types": ["capability_requested", "capability_allowed", "tool_invoked"]
+      "emitted_event_types": ["delegation_requested", "delegation_accepted", "capability_requested", "capability_allowed", "tool_invoked"]
     },
     "S5": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -50,6 +56,7 @@
       "emitted_event_types": ["capability_requested", "capability_denied"]
     },
     "S6": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -58,6 +65,7 @@
       "emitted_event_types": ["handoff_initiated", "handoff_completed", "capability_requested", "capability_denied"]
     },
     "S7": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -66,6 +74,7 @@
       "emitted_event_types": ["policy_violation"]
     },
     "S8": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "allowed",
       "baseline_work_executed": true,
@@ -74,6 +83,7 @@
       "emitted_event_types": ["approval_requested", "approval_granted", "capability_requested", "capability_allowed", "tool_invoked", "trust_zone_crossed", "data_shared"]
     },
     "S9": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -82,6 +92,7 @@
       "emitted_event_types": ["approval_requested", "policy_violation"]
     },
     "S10": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -90,6 +101,7 @@
       "emitted_event_types": ["policy_violation"]
     },
     "S11": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -98,6 +110,7 @@
       "emitted_event_types": ["policy_violation"]
     },
     "S12": {
+      "kind": "initialization",
       "baseline_outcome": "unaffected",
       "governed_outcome": "refused_init",
       "baseline_work_executed": true,
@@ -106,6 +119,7 @@
       "emitted_event_types": []
     },
     "S13": {
+      "kind": "runtime",
       "baseline_outcome": "executed",
       "governed_outcome": "denied",
       "baseline_work_executed": true,
@@ -114,6 +128,7 @@
       "emitted_event_types": []
     },
     "S14": {
+      "kind": "bypass",
       "baseline_outcome": "bypassed",
       "governed_outcome": "bypassed",
       "baseline_work_executed": true,

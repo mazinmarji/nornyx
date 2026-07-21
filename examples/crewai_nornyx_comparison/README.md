@@ -25,6 +25,32 @@ paths, deterministic control artifacts, human-approval constraints, and
 independently validatable runtime evidence. This example lets you **verify that
 statement against actual output** rather than take it on faith.
 
+## Methodology (equivalent execution paths)
+
+Every **runtime** scenario is built identically in both variants: the same
+`Agent`, the same `Task`, the same business tool, and a real `Crew.kickoff()`.
+The only difference is the callable the tool wraps:
+
+- **Variant A**: the raw business callable (records a side effect, returns output).
+- **Variant B**: the *same* business callable, wrapped so a Nornyx check runs
+  **immediately before** it. On denial the check refuses and returns a sentinel,
+  so the business callable never runs — proved by a **side-effect ledger** that
+  stays at zero, not by inferring intent from an exception.
+
+Because the topology is identical, a denied runtime scenario is a genuine
+apples-to-apples result: *the same operation, governance on vs off.* Two
+scenarios are **not** runtime tool A/B tests and are labelled `initialization`
+and `bypass` respectively:
+
+- **S12 (stale lock)** is a control-plane check that happens before any crew can
+  run; it is reported separately, never counted among runtime callables prevented.
+- **S14 (bypass)** is a negative control: the work runs in both variants.
+
+`compare.py` exits **non-zero** unless the full expected-result contract holds
+(`verify_contract`), and the hosted `native-frameworks` CI job runs the tests,
+the comparison, an artifact machine-check, and the published-package
+verification (see below).
+
 ## Architecture
 
 ```mermaid
@@ -116,44 +142,53 @@ python examples/crewai_nornyx_comparison/verify_published_nornyx.py
 
 ## Scenario matrix
 
-| # | Scenario | Plain CrewAI | Governed | Nornyx diagnostic |
-|---|----------|--------------|----------|-------------------|
-| S1 | Valid low-risk capability | executes | allowed + evidence | — |
-| S2 | Undeclared capability (`delete_customer_records`) | **executes** | denied before work runs | `AN_ADAPTER_CAPABILITY_UNKNOWN` |
-| S3 | Known capability, wrong agent | **executes** | denied | `AN_ADAPTER_CAPABILITY_DENIED` |
-| S4 | Valid bounded delegation | executes (no proof) | allowed w/ delegation ref | — |
-| S5 | Escalation without delegation | **executes** | denied | `AN_ADAPTER_CAPABILITY_DENIED` |
-| S6 | Handoff ≠ authority | **executes** | handoff recorded, capability denied | `AN_ADAPTER_CAPABILITY_DENIED` |
-| S7 | High-risk action, no human approval | **executes** | denied | `AN_ADAPTER_CROSSING_APPROVAL_REQUIRED` |
-| S8 | Valid human approval | executes | allowed (adapter never self-grants) | — |
-| S9 | AI-generated approval | **executes** (naive boolean) | rejected | `AN_ADAPTER_APPROVAL_NON_HUMAN` |
-| S10 | Sensitive data sharing (`private_memory`) | **executes** | denied | `AN_ADAPTER_SENSITIVE_SHARING` |
-| S11 | Undeclared trust-zone crossing | **executes** | denied | `AN_ADAPTER_ZONE_CROSSING_DENIED` |
-| S12 | Contract drift / stale lock | unaffected | refuses to initialize | `AN_ADAPTER_LOCK_STALE` |
-| S13 | Unknown / unbound runtime identity | **executes** | fails closed | `AN_ADAPTER_IDENTITY_UNKNOWN` |
-| S14 | Deliberate adapter bypass | executes | **also executes** (negative control) | — |
+`Kind` = `runtime` (identical `Crew.kickoff()` topology, ledger-backed),
+`init` (control-plane, before any crew), or `bypass` (negative control).
+
+| # | Scenario | Kind | Plain CrewAI | Governed | Nornyx diagnostic |
+|---|----------|------|--------------|----------|-------------------|
+| S1 | Valid low-risk capability | runtime | executes | allowed + evidence | — |
+| S2 | Undeclared capability (`delete_customer_records`) | runtime | **executes** | denied before work runs | `AN_ADAPTER_CAPABILITY_UNKNOWN` |
+| S3 | Known capability, wrong agent | runtime | **executes** | denied | `AN_ADAPTER_CAPABILITY_DENIED` |
+| S4 | Valid bounded delegation | runtime | executes (no proof) | allowed w/ delegation ref | — |
+| S5 | Escalation without delegation | runtime | **executes** | denied | `AN_ADAPTER_CAPABILITY_DENIED` |
+| S6 | Handoff ≠ authority | runtime | **executes** | handoff recorded, capability denied | `AN_ADAPTER_CAPABILITY_DENIED` |
+| S7 | High-risk action, no human approval | runtime | **executes** | denied | `AN_ADAPTER_CROSSING_APPROVAL_REQUIRED` |
+| S8 | Valid human approval | runtime | executes | allowed (adapter never self-grants) | — |
+| S9 | AI-generated approval | runtime | **executes** (naive boolean) | rejected | `AN_ADAPTER_APPROVAL_NON_HUMAN` |
+| S10 | Sensitive data sharing (`private_memory`) | runtime | **executes** | denied | `AN_ADAPTER_SENSITIVE_SHARING` |
+| S11 | Undeclared trust-zone crossing | runtime | **executes** | denied | `AN_ADAPTER_ZONE_CROSSING_DENIED` |
+| S12 | Contract drift / stale lock | init | unaffected | refuses to initialize | `AN_ADAPTER_LOCK_STALE` |
+| S13 | Unknown / unbound runtime identity | runtime | **executes** | fails closed | `AN_ADAPTER_IDENTITY_UNKNOWN` |
+| S14 | Deliberate adapter bypass | bypass | executes | **also executes** (negative control) | — |
 
 A **side-effect ledger** proves the point mechanically: for every denied
-scenario the governed protected-work counter stays at **0** — the work callable
-never ran. Under Nornyx, only the allowed scenarios (S1, S4, S8) and the
-deliberate bypass (S14) increment it.
+runtime scenario the governed protected-work counter stays at **0** — the work
+callable never ran, through the same `Crew.kickoff()` path the baseline used.
+Under Nornyx, only the allowed scenarios (S1, S4, S8) and the deliberate bypass
+(S14) increment it. The nine denied runtime scenarios are therefore *business
+work callables prevented*, reported distinctly from the S12 initialization
+failure.
 
 ## Representative output
 
 ```json
 {
   "allowed_output_equivalence": true,
-  "unauthorized_actions_executed_in_baseline": 9,
-  "unauthorized_actions_prevented_by_nornyx": 9,
+  "runtime_business_callables_executed_in_baseline": 9,
+  "runtime_business_callables_prevented_by_nornyx": 9,
+  "runtime_prevention_by_category": {
+    "approval": 2, "capability": 4, "identity": 1, "sharing": 1, "zone": 1
+  },
   "false_denials_of_allowed_actions": 0,
   "governed_events_emitted": 27,
   "evidence_validation_status": "pass",
   "events_bound_to_contract_digest": 27,
   "events_bound_to_network_lock_digest": 27,
-  "stale_lock_detection": "AN_ADAPTER_LOCK_STALE",
+  "initialization_failure": "AN_ADAPTER_LOCK_STALE",
   "ai_approval_rejection": "AN_ADAPTER_APPROVAL_NON_HUMAN",
   "identity_binding_enforcement": "AN_ADAPTER_IDENTITY_UNKNOWN",
-  "deliberate_bypass_result": { "governed_protected_work_executed": true }
+  "deliberate_bypass_executed_in_both": true
 }
 ```
 
@@ -250,10 +285,16 @@ examples/crewai_nornyx_comparison/
 ├── crew_runtime.py         # shared Agent/Task/Crew helpers
 ├── plain_crewai.py         # Variant A
 ├── governed_crewai.py      # Variant B
-├── scenarios.py            # scenario metadata + comparison assembly
-├── compare.py              # runner + artifacts
+├── scenarios.py            # scenario metadata, shared runtime specs, metrics
+├── compare.py              # runner + artifacts + strict contract (non-zero exit)
 ├── expected_results.json   # golden expected outcomes
+├── ci_check_artifacts.py   # machine-checks generated artifacts in CI
 └── verify_published_nornyx.py  # isolated PyPI-core verification
 ```
+
+Hosted CI (`.github/workflows/ci.yml`, `native-frameworks` job) runs
+`tests/test_crewai_nornyx_comparison.py`, executes `compare.py`, machine-checks
+the artifacts with `ci_check_artifacts.py`, and runs
+`verify_published_nornyx.py` against the published Nornyx 1.7.0 wheel.
 
 See also the repository's [CrewAI integration guide](../../docs/agentic-network/02_CREWAI_GUIDE.md).
