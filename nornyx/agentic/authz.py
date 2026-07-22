@@ -689,16 +689,21 @@ class Authorizer:
                 basis=(DecisionBasis("zone", request.target_zone),),
                 event_intents=(_intent("approval_requested", actor_ref=actor, approval_ref=AGENTIC_APPROVAL_ID),),
             )
+        approval_intents: tuple[DecisionEventIntent, ...] = ()
         if needs_approval:
             sub = self._approval(ApprovalRequest(actor, request.approval), ts)
             if not sub.allowed:
                 return sub
+            # The approval materially authorized the crossing; its decision-event
+            # intents (approval_requested + approval_granted) are preserved.
+            approval_intents = sub.event_intents
         # Authorized. trust_zone_crossed is a post-action OBSERVATION.
         return Decision(
             DecisionEffect.ALLOW,
             DecisionCode.ALLOWED,
             "",
             basis=(DecisionBasis("zone", request.target_zone),),
+            event_intents=approval_intents,
         )
 
     def _data_share(self, request: DataShareRequest, ts: datetime | None) -> Decision:
@@ -799,15 +804,23 @@ class EvidenceRecorder:
     Turns decision-event intents and adapter-supplied post-action observations
     into a schema-valid ``nornyx.agentic_runtime_events.v1`` stream bound to the
     contract, lock, and already-verified observed subject revision. It stamps ids,
-    mission-local sequence numbers, producer, timestamps (from ``decision_at`` —
-    no wall-clock), and binding digests. It provides construction and consistency
-    binding ONLY: it does not authenticate the adapter, attest the occurrence, or
-    make an event true.
+    mission-local sequence numbers, producer, timestamps (from the bound
+    ``context.decision_at`` — no wall-clock), and binding digests.
+
+    The bound ``EvaluationContext`` is validated **once at construction**: the
+    recorder fails closed (``ValueError``) if ``context.observed_subject_revision``
+    does not exactly equal the authorizer's ``subject_revision``. This refuses to
+    silently stamp the contract revision over a mismatched runtime binding, even
+    though the stamped value would itself be valid.
+
+    It provides construction and consistency binding ONLY: it does not
+    authenticate the adapter, attest the occurrence, or make an event true.
     """
 
     def __init__(
         self,
         authorizer: Authorizer,
+        context: EvaluationContext,
         *,
         producer_id: str,
         producer_version: str = "1.0",
@@ -815,12 +828,18 @@ class EvidenceRecorder:
     ) -> None:
         if producer_type not in {"framework_adapter", "synthetic_harness"}:
             raise ValueError(f"invalid producer_type {producer_type!r}")
+        if context.observed_subject_revision != authorizer.subject_revision:
+            raise ValueError(
+                "observed_subject_revision does not match the contract subject_revision; "
+                "the recorder refuses to bind a mismatched runtime revision."
+            )
         self._authorizer = authorizer
+        self._context = context
         self._producer = {"type": producer_type, "id": producer_id, "version": producer_version}
         self._events: list[dict[str, Any]] = []
         self._sequences: dict[str, int] = {}
 
-    def _stamp(self, event_type: str, context: EvaluationContext, mission_id: str, fields: Mapping[str, Any]) -> None:
+    def _stamp(self, event_type: str, mission_id: str, fields: Mapping[str, Any]) -> None:
         seq = self._sequences.get(mission_id, 0) + 1
         self._sequences[mission_id] = seq
         event: dict[str, Any] = {
@@ -828,35 +847,35 @@ class EvidenceRecorder:
             "event_type": event_type,
             "mission_id": mission_id,
             "sequence": seq,
-            "timestamp": context.decision_at,
+            "timestamp": self._context.decision_at,
             "network_id": self._authorizer.network_id,
             "contract_digest": self._authorizer.contract_digest,
             "network_lock_digest": self._authorizer.network_lock_digest,
+            # equals context.observed_subject_revision (verified at construction).
             "subject_revision": self._authorizer.subject_revision,
             "producer": dict(self._producer),
         }
         event.update({k: v for k, v in fields.items() if v is not None})
         self._events.append(event)
 
-    def record_decision(self, decision: Decision, *, context: EvaluationContext, mission_id: str) -> None:
+    def record_decision(self, decision: Decision, *, mission_id: str) -> None:
         """Record the decision's intents. Intents only — never observations."""
         for intent in decision.event_intents:
             if intent.event_type not in PHASE_INTENT:
                 raise ValueError(f"{intent.event_type!r} is not a decision-event intent")
-            self._stamp(intent.event_type, context, mission_id, intent.fields)
+            self._stamp(intent.event_type, mission_id, intent.fields)
 
     def record_observation(
         self,
         event_type: str,
         *,
-        context: EvaluationContext,
         mission_id: str,
         **fields: Any,
     ) -> None:
         """Record a post-action observation. Only the adapter, after the action."""
         if event_type not in PHASE_OBSERVATION:
             raise ValueError(f"{event_type!r} is not a post-action observation")
-        self._stamp(event_type, context, mission_id, fields)
+        self._stamp(event_type, mission_id, fields)
 
     def stream(self) -> dict[str, Any]:
         return {

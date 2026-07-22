@@ -318,11 +318,11 @@ def test_approval_unknown_ref_is_malformed(authz: Authorizer):
 def test_recorder_produces_valid_evidence(authz: Authorizer):
     context = ctx()
     d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
-    rec = EvidenceRecorder(authz, producer_id="tests", producer_type="synthetic_harness")
-    rec.record_decision(d, context=context, mission_id="GOAL-001")
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")
     # A post-action observation is recorded after the fact by the adapter.
     rec.record_observation(
-        "tool_invoked", context=context, mission_id="GOAL-001",
+        "tool_invoked", mission_id="GOAL-001",
         actor_ref="identity.researcher.local", capability_ref="read_governed_context",
     )
     report = rec.validate()
@@ -331,14 +331,39 @@ def test_recorder_produces_valid_evidence(authz: Authorizer):
 
 
 def test_recorder_rejects_observation_as_intent(authz: Authorizer):
-    rec = EvidenceRecorder(authz, producer_id="t")
+    rec = EvidenceRecorder(authz, ctx(), producer_id="t")
     with pytest.raises(ValueError):
-        rec.record_observation("capability_allowed", context=ctx(), mission_id="m")
+        rec.record_observation("capability_allowed", mission_id="m")
     from nornyx.agentic import DecisionEventIntent
 
     fake = Decision(DecisionEffect.ALLOW, DecisionCode.ALLOWED, event_intents=(DecisionEventIntent("tool_invoked", {}),))
     with pytest.raises(ValueError):
-        rec.record_decision(fake, context=ctx(), mission_id="m")
+        rec.record_decision(fake, mission_id="m")
+
+
+def test_recorder_rejects_mismatched_revision(authz: Authorizer):
+    # F2: fail closed when the bound context's observed revision != contract.
+    with pytest.raises(ValueError):
+        EvidenceRecorder(authz, ctx(revision="git:" + "c" * 40), producer_id="t")
+
+
+def test_zone_crossing_with_valid_approval_preserves_intents(authz: Authorizer):
+    # F1: an approval that authorizes an external crossing must keep its intents.
+    approval = _approval(action_ref="external_share")
+    context = ctx()
+    d = authz.evaluate(
+        ZoneCrossingRequest(
+            "identity.researcher.local", "zone.local_governed", "zone.external_contract", approval
+        ),
+        context=context,
+    )
+    assert d.effect is DecisionEffect.ALLOW
+    assert [i.event_type for i in d.event_intents] == ["approval_requested", "approval_granted"]
+    # And those intents produce runtime-event evidence that validates.
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")
+    report = rec.validate()
+    assert report["status"] == "pass", report["diagnostics"]
 
 
 def test_authorizer_is_deterministic_and_immutable(authz: Authorizer):
