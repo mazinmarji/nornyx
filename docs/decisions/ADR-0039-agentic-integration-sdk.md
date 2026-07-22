@@ -2,13 +2,16 @@
 
 - Status: Proposed (design only; execution is a separate, owner-authorized milestone)
 - Date: 2026-07-20
-- Revised: 2026-07-22 (pilot-derived authorization-SPI correction; supersedes the
-  original "re-export-only facade / kernel stays in adapters" decision)
+- Revised: 2026-07-22 (pilot-derived authorization-SPI correction, with the Step-3
+  independent-audit findings F1–F8 and their binding refinements resolved;
+  supersedes the original "re-export-only facade / kernel stays in adapters"
+  decision)
 - Decision owner: human repository owner
-- Relates to: ADR-0037 (AN-005 reference adapters, deliberately unpackaged),
-  ADR-0040 (governance assurance tiers — this SPI is a **Tier 2, cooperative**
-  boundary), and the external OpenHands governance pilot (external-adopter
-  requirement that drove this revision)
+- Relates to: ADR-0032 (verifiable effective approvals), ADR-0037 (AN-005
+  reference adapters, deliberately unpackaged), ADR-0040 (governance assurance
+  tiers — this SPI is a **Tier 2, cooperative** boundary), and the external
+  OpenHands governance pilot (external-adopter requirement that drove this
+  revision)
 
 ## Context
 
@@ -65,84 +68,189 @@ lock/schema constants; `validate_runtime_events`, `load_runtime_events`;
 `registry_for_contract`, `compose_document_governance`, `GovernanceError`). A
 surface-freeze test pins the exported set.
 
-**(b) A framework-neutral authorization engine** — a small, typed, supported
-protocol (illustrative signatures; final shapes fixed during the independent API
-review that precedes implementation):
+**(b) A framework-neutral authorization engine** — lives in the submodule
+`nornyx.agentic.authz` and is re-exported through `nornyx.agentic`. The shapes
+below are **frozen** by the Step-3 independent API-design audit; the subsections
+that follow fix the lifecycle, revision binding, temporal semantics, event
+phases, evidence recorder, and code taxonomy.
 
 ```python
-# nornyx.agentic
+# nornyx.agentic.authz  (re-exported via nornyx.agentic)
 SPI_VERSION = "1.0"
 
-def load_authorizer(contract_path, lock_path, *, as_of: str) -> "Authorizer":
-    """Load, validate, and lock-verify one local contract. Fail-closed;
-    raises with an AuthorizerLoadCode on invalid/stale contract or lock."""
+def load_authorizer(contract_path, lock_path, *, validation_as_of: str) -> "Authorizer":
+    """Load, validate (as of validation_as_of), and lock-verify one local
+    contract. Fail-closed; raises with an AuthorizerLoadCode."""
 
 @dataclass(frozen=True)
 class EvaluationContext:
-    as_of: str                        # decision time (ISO-8601)
-    observed_subject_revision: str    # MANDATORY — the external target's revision
+    decision_at: str                   # evaluation instant for ALL temporal semantics
+    observed_subject_revision: str     # MANDATORY; must equal the contract's subject_revision
 
-# Discriminated request union — each variant carries ONLY fields valid for it.
+# Discriminated request union — each variant carries ONLY its valid fields.
+CapabilityRequest(identity_ref: str, capability_ref: str)
+DelegationRequest(delegation_id: str)
+HandoffRequest(handoff_id: str)
+ApprovalRequest(identity_ref: str, approval: "ApprovalAssertion")
+ZoneCrossingRequest(identity_ref: str, source_zone: str, target_zone: str, approval: "ApprovalAssertion | None" = None)
+DataShareRequest(identity_ref: str, target_ref: str, categories: tuple[str, ...], source_zone: str, target_zone: str)
 AuthorizationRequest = (
     CapabilityRequest | DelegationRequest | HandoffRequest
     | ApprovalRequest | ZoneCrossingRequest | DataShareRequest
 )
 
 @dataclass(frozen=True)
-class ApprovalAssertion:              # typed; never a raw Mapping
-    claimed_actor_type: str; role: str; approval_ref: str
-    action_or_scope: str; subject_revision: str
-    issued_at: str | None = None; expires_at: str | None = None
+class ApprovalAssertion:                # typed; never a raw Mapping
+    approval_ref: str
+    claimed_approver_ref: str
+    claimed_actor_type: str
+    role: str
+    granted: bool
+    action_ref: str
+    subject_revision: str
+    issued_at: str | None = None
+    expires_at: str | None = None
     evidence_refs: tuple[str, ...] = ()
 
 @dataclass(frozen=True)
+class DecisionBasis:                    # provenance via DECLARED ids only (stable)
+    kind: str                          # "membership"|"delegation"|"capability"|"approval"|"zone"|"share"|"binding"
+    ref: str                           # declared element id
+    detail: str = ""
+
+@dataclass(frozen=True)
+class DecisionEventIntent:
+    event_type: str                    # a decision-phase event type only (see "Event phases")
+    fields: Mapping[str, Any]          # NO timestamp/sequence/producer/digests — the recorder stamps those
+
+@dataclass(frozen=True)
 class Decision:
-    effect: DecisionEffect            # ALLOW | DENY | APPROVAL_REQUIRED
-    code: DecisionCode                # ALWAYS present, including ALLOWED
+    effect: DecisionEffect             # ALLOW | DENY | APPROVAL_REQUIRED
+    code: DecisionCode                 # ALWAYS present, including ALLOWED
     reason: str
-    basis: tuple[DecisionBasis, ...]  # provenance of the outcome
-    event_intents: tuple[DecisionEventIntent, ...]  # decision events only
+    basis: tuple[DecisionBasis, ...]
+    event_intents: tuple[DecisionEventIntent, ...]
 
 class Authorizer(Protocol):
     contract_digest: str
     network_lock_digest: str
-    def resolve_identity(self, framework: str, agent_key: str) -> str: ...
+    subject_revision: str              # the contract's bound agentic_network.subject_revision
+    def resolve_identity(self, framework: str, agent_key: str) -> str: ...  # raises IdentityResolutionError
     def evaluate(self, request: AuthorizationRequest, *, context: EvaluationContext) -> Decision: ...
 ```
 
-Design principles the SPI must honor:
+**Lifecycle.** The loaded `Authorizer` is **immutable, synchronous,
+deterministic, reusable, and safe for concurrent evaluation**; it performs **no
+I/O after load** and **reads no wall-clock time** during evaluation or evidence
+recording. It holds no clock, event list, or per-mission counters (that state
+lives in the evidence recorder). Identity is resolved separately by
+`resolve_identity(framework, agent_key)`, which raises `IdentityResolutionError`
+(carrying an `IdentityResolutionCode`) — not a `Decision`. Malformed or
+incomplete requests fail closed with `DecisionCode.REQUEST_MALFORMED`.
 
-- **Immutable & thread-safe.** The `Authorizer` holds no clock, no event list,
-  and no per-mission counters. (The seed kernel is stateful through all three;
-  that state moves to a separate evidence recorder.)
-- **Discriminated requests.** No option-heavy request object; each operation is
-  its own type carrying only valid fields. Identity is resolved by a separate
-  `resolve_identity(framework, agent_key)` call, not a boolean flag.
-- **Mandatory bound context.** `EvaluationContext.observed_subject_revision` is
-  **required** — the engine governs an external subject whose revision is
-  observed at runtime, not the contract's own declared revision.
-- **Typed approval assertion.** Approvals are a typed `ApprovalAssertion`, not a
-  raw mapping. Nornyx checks its **consistency** against the composed
-  `EffectiveApproval` (denied actor types, eligible roles, revision binding /
-  exact-revision requirement, expiry, invalidation). Nornyx does **not**
-  authenticate the approver (a consistency binding, not a signature — ADR-0040
-  Tier-2 boundary).
-- **Decision intents, not finalized events.** `evaluate` returns
-  **decision-event intents only** (`capability_requested`,
-  `capability_allowed`/`_denied`, `approval_*`). It **must not** return
-  `tool_invoked` or any post-execution observation. Adapters record execution
-  observations **only after the tool actually runs** — otherwise a pre-execution
-  authorization could assert that a tool was invoked when it was not.
-- **Separate load-error and decision taxonomies.** `AuthorizerLoadCode`
-  (contract invalid / profile missing / lock invalid / lock stale) is distinct
-  from `DecisionCode` (allowed, capability denied, approval required, revision
-  mismatch, zone crossing denied, …). Every `Decision` carries a code, including
-  `ALLOWED` (never `None`).
-- **Fail-closed.** Malformed or incomplete requests deny
-  (`DecisionCode.REQUEST_MALFORMED`); they never allow by default.
-- **No argument interpretation.** The engine authorizes *declared Nornyx
-  concepts*. It never parses raw shell commands, file paths, URLs, or tool
-  arguments.
+**Revision binding — two independent, always-exact checks.**
+- *Runtime target binding.* `context.observed_subject_revision` **must exactly
+  equal** the loaded contract's `agentic_network.subject_revision`. Any mismatch
+  is **always** `DENY` / `REVISION_MISMATCH` — never conditional on any approval
+  flag. (This mirrors the existing runtime validator, which treats an event
+  revision different from the contract revision as `AN_EVT_REVISION_MISMATCH`; it
+  permits no weaker non-exact runtime binding.)
+- *Approval binding.* When the composed `EffectiveApproval` declares a
+  `revision_binding`, the `ApprovalAssertion.subject_revision` **must exactly
+  match it**; otherwise `DENY` / `APPROVAL_REVISION_MISMATCH`. A mismatched bound
+  approval is never allowed-with-basis.
+- *Canonical revision syntax* (no branch names, abbreviated SHAs, or implicit
+  normalization aliases): `git:<40-lowercase-hex>`, `git:<64-lowercase-hex>`, or
+  `sha256:<64-lowercase-hex>`.
+
+**Temporal semantics.** `validation_as_of` governs deterministic document/load
+validation at `load_authorizer`. `context.decision_at` governs **all** temporal
+action semantics at evaluation: identity validity, membership validity,
+delegation validity, revocations, and approval issuance/expiry/invalidation. The
+two are distinct arguments and must not be conflated; the authorizer reads no
+wall-clock time.
+
+**Approvals.** A typed `ApprovalAssertion` (never a raw mapping). Nornyx validates
+it for **consistency** against the composed `EffectiveApproval` (denied actor
+types, eligible roles, `revision_binding`, expiry/invalidation evaluated at
+`decision_at`, and `granted`). Nornyx does **not authenticate** the claimed
+approver; stronger authenticity requires trusted caller-supplied source context
+or external attestation, as established by ADR-0032. This is a consistency
+binding, not a signature (ADR-0040 Tier-2 boundary).
+
+**Decisions.** `evaluate` returns **decision-event intents only** and **never**
+any post-action observation; a pre-execution authorization must never assert that
+an action occurred. Every `Decision` carries a `DecisionCode`, including
+`ALLOWED` (never `None`). `APPROVAL_REQUIRED` is a distinct effect from an
+ordinary `DENY`. `DecisionBasis` expresses provenance using **declared element
+ids only**, exposing no unstable internals.
+
+**No argument interpretation.** The engine authorizes *declared Nornyx concepts*
+only. It never parses raw shell commands, file paths, URLs, or tool arguments —
+argument→concept normalization is the adapter's job.
+
+**Surface scope.** A `Decision` governs exactly **one request and its declared
+surface**. It never establishes whole-application coverage or assurance
+(ADR-0040).
+
+#### Event phases (frozen)
+
+The authorizer may return **only decision-event intents**. An adapter triggers
+**observation** recording only **after** the represented occurrence has actually
+happened.
+
+- **Decision-event intents:** `capability_requested`, `capability_allowed`,
+  `capability_denied`, `delegation_requested`, `delegation_accepted`,
+  `delegation_rejected`, `approval_requested`, `approval_granted`,
+  `approval_rejected`, `policy_violation`.
+- **Post-action observations:** `agent_invoked`, `tool_invoked`,
+  `handoff_initiated`, `handoff_completed`, `trust_zone_crossed`, `data_shared`,
+  `identity_revoked`, `runtime_failed`.
+
+`handoff_initiated` is an **observation**: it asserts that initiation occurred,
+not merely that it was authorized.
+
+#### Evidence recorder (core mechanism, in `nornyx.agentic.authz`, re-exported)
+
+A **core** recorder — not per-adapter — turns intents (and adapter-supplied
+observations) into a schema-valid `nornyx.agentic_runtime_events.v1` stream. It:
+
+- assigns event ids and **mission-local sequence numbers**;
+- stamps **producer** metadata;
+- stamps the loaded **contract and lock digests**;
+- stamps the **already-verified observed subject revision**;
+- validates the **closed event field set**;
+- produces a schema-valid events envelope (via `validate_runtime_events`).
+
+It provides **deterministic construction and consistency binding only.** It does
+**not** authenticate the adapter, attest that the occurrence happened, or make an
+event *true* — the schema validates supplied-record conformance, not runtime
+truth (ADR-0040 Tier 2). A cooperative adapter can still fabricate an
+observation; the recorder does not prevent that.
+
+#### Code taxonomy (frozen — three enums)
+
+```python
+class AuthorizerLoadCode(Enum):        # raised by load_authorizer
+    CONTRACT_INVALID; PROFILE_MISSING; LOCK_INVALID; LOCK_STALE
+
+class IdentityResolutionCode(Enum):    # raised by resolve_identity (IdentityResolutionError)
+    IDENTITY_UNKNOWN; IDENTITY_AMBIGUOUS
+
+class DecisionCode(Enum):              # returned by evaluate (every Decision, incl. allow)
+    ALLOWED
+    CAPABILITY_UNKNOWN; CAPABILITY_DENIED
+    DELEGATION_UNKNOWN; DELEGATION_INACTIVE
+    HANDOFF_UNKNOWN; HANDOFF_AUTHORITY
+    APPROVAL_REQUIRED; APPROVAL_NON_HUMAN; APPROVAL_ROLE_INVALID
+    APPROVAL_NOT_GRANTED; APPROVAL_STALE; APPROVAL_REVISION_MISMATCH
+    ZONE_CROSSING_DENIED; CROSSING_APPROVAL_REQUIRED
+    SENSITIVE_SHARING; SHARE_NOT_ALLOWED
+    REVISION_MISMATCH; REQUEST_MALFORMED
+```
+
+Identity-resolution outcomes live in `IdentityResolutionCode` (not
+`DecisionCode`) because `resolve_identity` raises before `evaluate` is called.
 
 ### 2. `nornyx-agentic-adapters` — the distributable package (framework glue only)
 
@@ -155,9 +263,9 @@ everything framework-specific:
   terminal command / file path / MCP call, a CrewAI task, a LangGraph node) to a
   declared Nornyx concept (identity + capability / zone / category), i.e.
   building a typed `AuthorizationRequest`;
-- an **evidence recorder** that stamps decision-event intents (and post-execution
-  observations) with timestamp / sequence / producer and validates them via
-  `validate_runtime_events`;
+- **triggering** the core evidence recorder — recording decision intents from a
+  `Decision`, and recording observations **only after** the real action has
+  happened; it never re-implements binding;
 - framework **version compatibility**.
 
 Core `nornyx` never imports CrewAI/LangGraph/OpenHands; the packaging guard
@@ -168,19 +276,30 @@ is preserved and extended to the authorization engine.
 
 The existing `integrations/.../governance_kernel.py` logic is **migrated into
 core** behind the `Authorizer` protocol (return a `Decision` rather than raising;
-return event *intents* rather than emitting; drop internal clock/counters). The
-in-tree kernel remains for **one release** as a **temporary adapter
-compatibility shim**. Its legacy `AN_ADAPTER_*` codes stay **in that shim** and
-are **not** promoted into the new public `nornyx.agentic` namespace — they were
-never a public SPI.
+return event *intents* rather than emitting; drop the internal clock/counters;
+read time only from `decision_at`). The in-tree kernel remains as a **temporary
+adapter compatibility shim** for **at least one published minor release**; its
+removal must **not** occur before the following minor release and **only after**
+completed migration documentation and compatibility tests. Its legacy
+`AN_ADAPTER_*` codes stay **in that shim** (with a documented `AN_ADAPTER_*` ⇄
+`DecisionCode` mapping) and are **not** promoted into the new public
+`nornyx.agentic` namespace — they were never a public SPI.
 
-### 4. Versioning & surface guards
+### 4. Versioning, surface guards & compatibility
 
 `SPI_VERSION` is the integration-contract version, independent of the package
 version. Adapters declare the SPI range they support and assert it at import. A
 facade **surface-freeze test** pins `nornyx.agentic.__all__` (and the typed
 protocol names); an **import-boundary test** in the adapter package proves it
 imports only `nornyx.agentic`.
+
+**Compatibility.** Requests and decisions are **in-process** SPI objects governed
+by `SPI_VERSION`; the **only serialized contract** is the runtime-events stream
+(`nornyx.agentic_runtime_events.v1`). Minor-compatible: a new request variant, a
+new *optional* field, or a new decision-code member. Breaking: removing or
+renaming a variant/field, making an optional field required, or changing the
+meaning of an existing code. The surface-freeze and import-boundary tests enforce
+this.
 
 ### 5. Compatibility matrix (published in the adapter README + CI)
 
@@ -193,17 +312,20 @@ imports only `nornyx.agentic`.
 - **Positive.** External adopters get a **stable, typed authorization API**, not
   a set of internal names; Nornyx contract semantics live in Nornyx, not in a
   framework distribution; core stays framework-free; the adapter package versions
-  on its own cadence; the decision/observation split makes evidence honest
-  (no pre-execution "invoked" claims); the typed approval assertion and mandatory
-  observed-revision close the provenance and binding gaps the pilot found.
-- **Cost.** A larger core surface to maintain (the authorization protocol, not
-  just re-exports) and a one-release migration of the reference adapters through
-  the shim. Accepted — the alternative ships Nornyx's core policy semantics
-  inside an adapter wheel.
+  on its own cadence; the decision/observation split makes evidence honest (no
+  pre-execution "it happened" claims); the typed approval assertion, mandatory
+  observed-revision, and `decision_at` close the provenance, binding, and
+  temporal gaps the pilot found.
+- **Cost.** A larger core surface to maintain (the authorization protocol and the
+  evidence-recorder mechanism, not just re-exports) and a multi-step migration of
+  the reference adapters through the shim. Accepted — the alternative ships
+  Nornyx's core policy semantics inside an adapter wheel.
 - **Assurance boundary (ADR-0040).** This SPI is **Tier 2, cooperative**:
   bypassing the adapter bypasses enforcement; the engine authorizes declared,
   wrapped surfaces only; it does not authenticate agents or approvers, execute
-  tools, or assert runtime-event truth. It never, on its own, establishes Tier 3.
+  tools, or assert runtime-event truth; a `Decision` is scoped to one declared
+  surface and never upgrades the whole application. It never, on its own,
+  establishes Tier 3.
 
 ## Non-goals
 
@@ -212,10 +334,13 @@ The `nornyx.agentic` authorization engine does **not**:
 - interpret raw framework paths, shell commands, URLs, or tool arguments
   (argument→concept normalization is the adapter's job; deep argument semantics
   are a separate, deferred concern);
+- read wall-clock time during evaluation or recording (all temporal semantics use
+  `decision_at`);
 - import any agent framework, execute tools, or run a workflow;
 - authenticate approvers, grant approvals, or issue identities;
-- claim that any runtime event is *true* (evidence is contract-state binding
-  only);
+- attest that an observation occurred, or claim that any runtime event is *true*
+  (evidence is contract-state binding only);
+- imply whole-application coverage from a single-surface decision;
 - provide Tier 3 independent runtime assurance (ADR-0040).
 
 ## Alternatives considered
@@ -229,10 +354,14 @@ The `nornyx.agentic` authorization engine does **not**:
   fields static types should exclude, and passes a `GovernanceRegistry` (a pack
   registry) where a loaded, lock-verified contract is required.
 - **Return finalized events (including `tool_invoked`) from `evaluate`.**
-  Rejected: a pre-execution decision must never assert that a tool ran; intents +
-  a separate recorder keep evidence truthful.
+  Rejected: a pre-execution decision must never assert that an action occurred;
+  intents + a separate recorder keep evidence truthful.
+- **Condition runtime revision binding on approval `exact_revision_required`.**
+  Rejected: the runtime target binding is always exact and unconditional
+  (`REVISION_MISMATCH`), independent of any approval flag; a mismatched bound
+  approval is a separate, also-unconditional `APPROVAL_REVISION_MISMATCH`.
 - **Promote `AN_ADAPTER_*` as public aliases.** Rejected: those codes were never
-  a public SPI; they remain behind the adapter shim.
+  a public SPI; they remain behind the adapter shim with a documented mapping.
 - **Two packages (`nornyx-crewai` / `nornyx-langgraph`).** Deferred: the adapters
   share one kernel; revisit only if the frameworks diverge enough to justify it.
 
@@ -241,25 +370,30 @@ The `nornyx.agentic` authorization engine does **not**:
 1. Land `nornyx/agentic/` (re-exports + `SPI_VERSION` + surface-freeze test) in a
    `nornyx` minor release (≥1.8).
 2. Migrate the `GovernanceKernel` decision logic into the core `Authorizer`
-   (return `Decision`; intents not events; immutable); add the typed
-   `ApprovalAssertion`, `EvaluationContext`, and split code taxonomies.
+   (return `Decision`; intents not events; immutable; time from `decision_at`);
+   add the typed `ApprovalAssertion`, `EvaluationContext`, the core evidence
+   recorder, and the three code enums.
 3. Stand up `nornyx-agentic-adapters` (framework extras + argument normalization +
-   evidence recorder + import-boundary test + matrix CI), depending only on
+   recorder triggering + import-boundary test + matrix CI), depending only on
    `nornyx.agentic`.
-4. Keep the in-tree `integrations/` kernel one release as a deprecated compat
-   shim (retaining `AN_ADAPTER_*`); update AN-005/AN-006 docs and `run_demo.py`
-   to the new SPI; re-baseline example evidence fixtures affected by the stricter
-   approval and observed-revision checks.
+4. Keep the in-tree `integrations/` kernel as a deprecated compat shim for **at
+   least one published minor release** (retaining `AN_ADAPTER_*` with the mapping
+   table); removal not before the following minor release and only after
+   completed migration documentation and compatibility tests. Update AN-005/AN-006
+   docs and `run_demo.py` to the new SPI; re-baseline example evidence fixtures
+   affected by the stricter approval and observed-revision checks.
 5. Ship a pip-only example that runs without cloning `nornyx`.
 
 ## Execution checklist (follow-on milestone, not this ADR)
 
-1. **Independent API-design audit** of the protocol in §1(b) *before* any code
-   (the next milestone after this ADR).
+1. **Independent API-design audit** — completed; findings F1–F8 and their binding
+   refinements are folded into §1(b) above.
 2. Facade re-exports + `SPI_VERSION` + surface-freeze test.
-3. Core `Authorizer` (migrate kernel; return `Decision`/intents; immutable) +
-   typed `ApprovalAssertion` + `EvaluationContext` + `AuthorizerLoadCode`/
+3. Core `Authorizer` (migrate kernel; return `Decision`/intents; immutable; time
+   from `decision_at`) + typed `ApprovalAssertion` + `EvaluationContext` + core
+   evidence recorder + `AuthorizerLoadCode` / `IdentityResolutionCode` /
    `DecisionCode`.
-4. `nornyx-agentic-adapters` package (extras, normalization, evidence recorder,
-   import-boundary test, matrix CI); deprecate the in-repo kernel to a shim.
+4. `nornyx-agentic-adapters` package (extras, normalization, recorder triggering,
+   import-boundary test, matrix CI); deprecate the in-repo kernel to a shim with
+   the `AN_ADAPTER_*` ⇄ `DecisionCode` mapping.
 5. Pip-only example; external pilot consumes the SPI.
