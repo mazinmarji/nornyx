@@ -16,9 +16,11 @@ Boundaries (ADR-0039 / ADR-0040 Tier 2, cooperative):
   grants no approval, and asserts no runtime-event truth.
 - It reads no wall-clock time. ``validation_as_of`` governs load-time document
   validation; ``EvaluationContext.decision_at`` governs *all* temporal action
-  semantics at evaluation.
-- The ``Authorizer`` is immutable, synchronous, deterministic, reusable, and safe
-  for concurrent evaluation; per-mission sequencing state lives only in the
+  semantics at evaluation (identity/membership/delegation/handoff/approval and
+  revocation validity).
+- The ``Authorizer`` is immutable (structurally: attributes cannot be reassigned
+  and its derived state is read-only), synchronous, deterministic, reusable, and
+  safe for concurrent evaluation; per-mission sequencing state lives only in the
   ``EvidenceRecorder``.
 """
 
@@ -29,6 +31,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Mapping
 
 from ..agentic_artifacts import (
@@ -47,15 +50,15 @@ from ..governance import (
     registry_for_contract,
 )
 from ..governance.agentic_network import (
-    AGENTIC_APPROVAL_ID,
     EXTERNAL_ZONE_CLASSIFICATIONS,
     SENSITIVE_CATEGORIES,
     _mapping_items,
+    _parse_duration,
     _parse_time,
     _revocation_target_key,
     _strings,
 )
-from ..parser import load_nyx
+from ..parser import NornyxParseError, load_nyx
 
 SPI_VERSION = "1.0"
 
@@ -63,9 +66,16 @@ SPI_VERSION = "1.0"
 # sha256 64 lowercase hex. No branch names, abbreviated SHAs, or aliases.
 _REVISION_RE = re.compile(r"^(?:git:[0-9a-f]{40}|git:[0-9a-f]{64}|sha256:[0-9a-f]{64})$")
 
+# Runtime-event producer types permitted by nornyx.agentic_runtime_events.v1.
+_PRODUCER_TYPES = frozenset({"framework_adapter", "synthetic_harness", "external_runtime"})
+
 
 def _valid_revision(value: Any) -> bool:
     return isinstance(value, str) and bool(_REVISION_RE.match(value))
+
+
+def _all_str(value: Any) -> bool:
+    return isinstance(value, tuple) and all(isinstance(item, str) for item in value)
 
 
 # --------------------------------------------------------------------------- enums
@@ -101,6 +111,10 @@ class DecisionCode(Enum):
     APPROVAL_NOT_GRANTED = "APPROVAL_NOT_GRANTED"
     APPROVAL_STALE = "APPROVAL_STALE"
     APPROVAL_REVISION_MISMATCH = "APPROVAL_REVISION_MISMATCH"
+    # Added under ADR-0039 minor-compatibility (new decision-code members):
+    APPROVAL_ACTION_MISMATCH = "APPROVAL_ACTION_MISMATCH"
+    APPROVAL_EVIDENCE_MISSING = "APPROVAL_EVIDENCE_MISSING"
+    PARTY_INEFFECTIVE = "PARTY_INEFFECTIVE"
     ZONE_CROSSING_DENIED = "ZONE_CROSSING_DENIED"
     CROSSING_APPROVAL_REQUIRED = "CROSSING_APPROVAL_REQUIRED"
     SENSITIVE_SHARING = "SENSITIVE_SHARING"
@@ -259,9 +273,13 @@ def _intent(event_type: str, **fields: Any) -> DecisionEventIntent:
     )
 
 
+def _deny(code: DecisionCode, reason: str, *, basis: tuple[DecisionBasis, ...] = (), intents: tuple[DecisionEventIntent, ...] = ()) -> Decision:
+    return Decision(DecisionEffect.DENY, code, reason, basis=basis, event_intents=intents)
+
+
 # ---------------------------------------------------------------------- authorizer
 class Authorizer:
-    """One loaded, lock-verified contract. Immutable and concurrency-safe."""
+    """One loaded, lock-verified contract. Structurally immutable and thread-safe."""
 
     def __init__(
         self,
@@ -269,6 +287,7 @@ class Authorizer:
         composition: Any,
         lock_payload: Mapping[str, Any],
     ) -> None:
+        object.__setattr__(self, "_frozen", False)
         self._document = document
         self._composition = composition
         self._lock_payload = lock_payload
@@ -279,35 +298,55 @@ class Authorizer:
         self.network_id = str(self._network.get("id"))
         self.subject_revision = str(self._network.get("subject_revision"))
 
-        self._identities = {
-            str(item["id"]): item
-            for item in _mapping_items(document.get("agent_identities"))
-            if isinstance(item.get("id"), str)
-        }
-        self._capabilities = {
-            str(item["name"]): item
-            for item in _mapping_items(document.get("capabilities"))
-            if isinstance(item.get("name"), str)
-        }
-        self._memberships = _mapping_items(self._network.get("memberships"))
-        self._zones = {
-            str(item["id"]): item
-            for item in _mapping_items(self._network.get("trust_zones"))
-            if isinstance(item.get("id"), str)
-        }
-        self._delegations = {
-            str(item["id"]): item
-            for item in _mapping_items(self._network.get("delegations"))
-            if isinstance(item.get("id"), str)
-        }
-        self._handoffs = {
-            str(item["id"]): item
-            for item in _mapping_items(self._network.get("handoffs"))
-            if isinstance(item.get("id"), str)
-        }
-        self._revocations = _mapping_items(self._network.get("revocations"))
-        # Approval requirements keyed by id, with the composed authority roles.
-        self._approvals = {req.id: req for req in composition.approval_requirements}
+        self._identities = MappingProxyType(
+            {
+                str(item["id"]): item
+                for item in _mapping_items(document.get("agent_identities"))
+                if isinstance(item.get("id"), str)
+            }
+        )
+        self._capabilities = MappingProxyType(
+            {
+                str(item["name"]): item
+                for item in _mapping_items(document.get("capabilities"))
+                if isinstance(item.get("name"), str)
+            }
+        )
+        self._memberships = tuple(_mapping_items(self._network.get("memberships")))
+        self._zones = MappingProxyType(
+            {
+                str(item["id"]): item
+                for item in _mapping_items(self._network.get("trust_zones"))
+                if isinstance(item.get("id"), str)
+            }
+        )
+        self._gates = tuple(_mapping_items(self._network.get("network_gates")))
+        self._delegations = MappingProxyType(
+            {
+                str(item["id"]): item
+                for item in _mapping_items(self._network.get("delegations"))
+                if isinstance(item.get("id"), str)
+            }
+        )
+        self._handoffs = MappingProxyType(
+            {
+                str(item["id"]): item
+                for item in _mapping_items(self._network.get("handoffs"))
+                if isinstance(item.get("id"), str)
+            }
+        )
+        self._revocations = tuple(_mapping_items(self._network.get("revocations")))
+        self._approvals = MappingProxyType({req.id: req for req in composition.approval_requirements})
+        object.__setattr__(self, "_frozen", True)
+
+    # ---- structural immutability ----
+    def __setattr__(self, name: str, value: Any) -> None:
+        if getattr(self, "_frozen", False):
+            raise AttributeError(f"Authorizer is immutable; cannot set {name!r}")
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name: str) -> None:
+        raise AttributeError("Authorizer is immutable")
 
     # ---- identity resolution (separate from policy decisions) ----
     def resolve_identity(self, framework: str, agent_key: str) -> str:
@@ -360,6 +399,21 @@ class Authorizer:
             "agent_identity", ref, ts
         )
 
+    def _zone_member(self, actor: str, zone: str, ts: datetime | None) -> bool:
+        for membership in self._memberships:
+            if membership.get("identity_ref") != actor:
+                continue
+            if membership.get("trust_zone_ref") != zone:
+                continue
+            if membership.get("status") != "authorized":
+                continue
+            if self._interval_contains(membership, ts) is not True:
+                continue
+            if self._revoked_at("membership", str(membership.get("id")), ts):
+                continue
+            return True
+        return False
+
     def _holds_capability(self, actor: str, capability: str, ts: datetime | None) -> bool:
         identity = self._identities.get(actor)
         if identity is None or capability not in _strings(identity.get("capability_refs")):
@@ -389,28 +443,57 @@ class Authorizer:
                 return delegation_id
         return None
 
+    # ---- request-shape validation (fail closed) ----
+    @staticmethod
+    def _shape_ok(request: AuthorizationRequest) -> bool:
+        if isinstance(request, CapabilityRequest):
+            return isinstance(request.identity_ref, str) and isinstance(request.capability_ref, str)
+        if isinstance(request, DelegationRequest):
+            return isinstance(request.delegation_id, str)
+        if isinstance(request, HandoffRequest):
+            return isinstance(request.handoff_id, str)
+        if isinstance(request, ApprovalRequest):
+            return isinstance(request.identity_ref, str) and _approval_shape_ok(request.approval)
+        if isinstance(request, ZoneCrossingRequest):
+            return (
+                isinstance(request.identity_ref, str)
+                and isinstance(request.source_zone, str)
+                and isinstance(request.target_zone, str)
+                and (request.approval is None or _approval_shape_ok(request.approval))
+            )
+        if isinstance(request, DataShareRequest):
+            return (
+                isinstance(request.identity_ref, str)
+                and isinstance(request.target_ref, str)
+                and isinstance(request.source_zone, str)
+                and isinstance(request.target_zone, str)
+                and _all_str(request.categories)
+            )
+        return False
+
     # ---- evaluation ----
     def evaluate(self, request: AuthorizationRequest, *, context: EvaluationContext) -> Decision:
         # Context validity (fail closed).
+        if not isinstance(context, EvaluationContext):
+            return _deny(DecisionCode.REQUEST_MALFORMED, "context is not an EvaluationContext.")
         ts = _parse_time(context.decision_at)
         if ts is None or not _valid_revision(context.observed_subject_revision):
-            return Decision(
-                DecisionEffect.DENY,
+            return _deny(
                 DecisionCode.REQUEST_MALFORMED,
                 "Malformed evaluation context (decision_at or observed_subject_revision).",
             )
+        # Request-shape validity (fail closed before any dict/set access).
+        if not isinstance(request, AuthorizationRequest) or not self._shape_ok(request):
+            return _deny(DecisionCode.REQUEST_MALFORMED, "Malformed authorization request.")
         # Runtime target binding: always exact, unconditional.
         if context.observed_subject_revision != self.subject_revision:
             actor = self._actor_of(request)
-            # policy_violation carries the schema-required actor_ref; omit the
-            # intent when no actor is derivable (delegation/handoff requests).
             intents = (_intent("policy_violation", actor_ref=actor),) if actor else ()
-            return Decision(
-                DecisionEffect.DENY,
+            return _deny(
                 DecisionCode.REVISION_MISMATCH,
                 "observed_subject_revision does not exactly match the contract subject_revision.",
                 basis=(DecisionBasis("binding", self.subject_revision),),
-                event_intents=intents,
+                intents=intents,
             )
         if isinstance(request, CapabilityRequest):
             return self._capability(request, ts)
@@ -424,319 +507,303 @@ class Authorizer:
             return self._zone_crossing(request, ts)
         if isinstance(request, DataShareRequest):
             return self._data_share(request, ts)
-        return Decision(
-            DecisionEffect.DENY,
-            DecisionCode.REQUEST_MALFORMED,
-            f"Unsupported request type {type(request).__name__!r}.",
-        )
+        return _deny(DecisionCode.REQUEST_MALFORMED, f"Unsupported request type {type(request).__name__!r}.")
 
     @staticmethod
     def _actor_of(request: AuthorizationRequest) -> str | None:
         return getattr(request, "identity_ref", None)
 
+    def _known_effective(self, ref: str, ts: datetime | None) -> Decision | None:
+        """Return a fail-closed Decision if ``ref`` is unknown/ineffective, else None."""
+        if ref not in self._identities:
+            return _deny(DecisionCode.REQUEST_MALFORMED, f"Identity {ref!r} is not declared; resolve it first.")
+        if not self._identity_effective(ref, ts):
+            return _deny(
+                DecisionCode.PARTY_INEFFECTIVE,
+                f"Identity {ref!r} is inactive, outside its validity window, or revoked at decision_at.",
+                basis=(DecisionBasis("binding", ref),),
+                intents=(_intent("policy_violation", actor_ref=ref),),
+            )
+        return None
+
     def _capability(self, request: CapabilityRequest, ts: datetime | None) -> Decision:
         actor, capability = request.identity_ref, request.capability_ref
-        if actor not in self._identities:
-            return Decision(
-                DecisionEffect.DENY,
-                DecisionCode.REQUEST_MALFORMED,
-                f"Identity {actor!r} is not declared; resolve it first.",
-            )
+        bad = self._known_effective(actor, ts)
+        if bad is not None:
+            return bad
         if capability not in self._capabilities:
-            return Decision(
-                DecisionEffect.DENY,
+            return _deny(
                 DecisionCode.CAPABILITY_UNKNOWN,
                 f"Capability {capability!r} is not declared in the contract.",
-                event_intents=(_intent("policy_violation", actor_ref=actor),),
+                intents=(_intent("policy_violation", actor_ref=actor),),
             )
         requested = _intent("capability_requested", actor_ref=actor, capability_ref=capability)
-        held = self._holds_capability(actor, capability, ts) and self._identity_effective(actor, ts)
         delegation_ref = None
-        if not held:
+        if not self._holds_capability(actor, capability, ts):
             delegation_ref = self._delegated(actor, capability, ts)
-            if delegation_ref is None or not self._identity_effective(actor, ts):
-                return Decision(
-                    DecisionEffect.DENY,
+            if delegation_ref is None:
+                return _deny(
                     DecisionCode.CAPABILITY_DENIED,
                     f"Identity {actor!r} neither holds nor validly receives {capability!r} at decision_at.",
                     basis=(DecisionBasis("capability", capability),),
-                    event_intents=(
+                    intents=(
                         requested,
-                        _intent(
-                            "capability_denied",
-                            actor_ref=actor,
-                            capability_ref=capability,
-                            policy_decision="deny",
-                        ),
+                        _intent("capability_denied", actor_ref=actor, capability_ref=capability, policy_decision="deny"),
                     ),
                 )
-        basis_kind = "membership" if delegation_ref is None else "delegation"
-        basis_ref = capability if delegation_ref is None else delegation_ref
+        basis = DecisionBasis("membership" if delegation_ref is None else "delegation", capability if delegation_ref is None else delegation_ref)
         return Decision(
             DecisionEffect.ALLOW,
             DecisionCode.ALLOWED,
             "",
-            basis=(DecisionBasis(basis_kind, basis_ref),),
+            basis=(basis,),
             event_intents=(
                 requested,
-                _intent(
-                    "capability_allowed",
-                    actor_ref=actor,
-                    capability_ref=capability,
-                    policy_decision="allow",
-                    delegation_ref=delegation_ref,
-                ),
+                _intent("capability_allowed", actor_ref=actor, capability_ref=capability, policy_decision="allow", delegation_ref=delegation_ref),
             ),
         )
 
     def _delegation(self, request: DelegationRequest, ts: datetime | None) -> Decision:
         delegation = self._delegations.get(request.delegation_id)
         if delegation is None:
-            return Decision(
-                DecisionEffect.DENY,
-                DecisionCode.DELEGATION_UNKNOWN,
-                f"Delegation {request.delegation_id!r} is not declared.",
-            )
+            return _deny(DecisionCode.DELEGATION_UNKNOWN, f"Delegation {request.delegation_id!r} is not declared.")
         delegator = str(delegation.get("delegator_ref"))
         delegate = str(delegation.get("delegate_ref"))
-        requested = _intent(
-            "delegation_requested",
-            actor_ref=delegator,
-            target_ref=delegate,
-            delegation_ref=request.delegation_id,
-        )
+        for party in (delegator, delegate):
+            bad = self._known_effective(party, ts)
+            if bad is not None:
+                return bad
+        requested = _intent("delegation_requested", actor_ref=delegator, target_ref=delegate, delegation_ref=request.delegation_id)
         active = (
             delegation.get("status") == "active"
             and self._interval_contains(delegation, ts) is True
             and not self._revoked_at("delegation", request.delegation_id, ts)
         )
         if not active:
-            return Decision(
-                DecisionEffect.DENY,
+            return _deny(
                 DecisionCode.DELEGATION_INACTIVE,
                 f"Delegation {request.delegation_id!r} is not active at decision_at.",
                 basis=(DecisionBasis("delegation", request.delegation_id),),
-                event_intents=(
-                    requested,
-                    _intent(
-                        "delegation_rejected",
-                        actor_ref=delegate,
-                        delegation_ref=request.delegation_id,
-                    ),
-                ),
+                intents=(requested, _intent("delegation_rejected", actor_ref=delegate, delegation_ref=request.delegation_id)),
             )
         return Decision(
             DecisionEffect.ALLOW,
             DecisionCode.ALLOWED,
             "",
             basis=(DecisionBasis("delegation", request.delegation_id),),
-            event_intents=(
-                requested,
-                _intent(
-                    "delegation_accepted",
-                    actor_ref=delegate,
-                    delegation_ref=request.delegation_id,
-                ),
-            ),
+            event_intents=(requested, _intent("delegation_accepted", actor_ref=delegate, delegation_ref=request.delegation_id)),
         )
 
     def _handoff(self, request: HandoffRequest, ts: datetime | None) -> Decision:
         handoff = self._handoffs.get(request.handoff_id)
         if handoff is None:
-            return Decision(
-                DecisionEffect.DENY,
-                DecisionCode.HANDOFF_UNKNOWN,
-                f"Handoff {request.handoff_id!r} is not declared.",
-            )
+            return _deny(DecisionCode.HANDOFF_UNKNOWN, f"Handoff {request.handoff_id!r} is not declared.")
         source = str(handoff.get("from_identity_ref"))
         target = str(handoff.get("to_identity_ref"))
+        for party in (source, target):
+            bad = self._known_effective(party, ts)
+            if bad is not None:
+                return bad
         for capability in _strings(handoff.get("required_capability_refs")):
-            if not self._holds_capability(target, capability, ts) and (
-                self._delegated(target, capability, ts) is None
-            ):
-                return Decision(
-                    DecisionEffect.DENY,
+            if not self._holds_capability(target, capability, ts) and self._delegated(target, capability, ts) is None:
+                return _deny(
                     DecisionCode.HANDOFF_AUTHORITY,
-                    "A handoff transfers responsibility, never authority: the target "
-                    f"does not hold {capability!r}.",
+                    f"A handoff transfers responsibility, never authority: the target does not hold {capability!r}.",
                     basis=(DecisionBasis("capability", capability),),
-                    event_intents=(
-                        _intent(
-                            "policy_violation",
-                            actor_ref=source,
-                            target_ref=target,
-                            handoff_ref=request.handoff_id,
-                        ),
-                    ),
+                    intents=(_intent("policy_violation", actor_ref=source, target_ref=target, handoff_ref=request.handoff_id),),
                 )
         # Authorized. handoff_initiated is a post-action OBSERVATION (adapter-emitted).
-        return Decision(
-            DecisionEffect.ALLOW,
-            DecisionCode.ALLOWED,
-            "",
-            basis=(DecisionBasis("binding", request.handoff_id, "handoff authorized"),),
-        )
+        return Decision(DecisionEffect.ALLOW, DecisionCode.ALLOWED, "", basis=(DecisionBasis("binding", request.handoff_id, "handoff authorized"),))
 
-    def _approval(self, request: ApprovalRequest, ts: datetime | None) -> Decision:
+    def _approval(
+        self,
+        request: ApprovalRequest,
+        ts: datetime | None,
+        *,
+        governed_actions: frozenset[str] | None = None,
+    ) -> Decision:
         actor = request.identity_ref
         a = request.approval
+        bad = self._known_effective(actor, ts)
+        if bad is not None:
+            return bad
         requested = _intent("approval_requested", actor_ref=actor, approval_ref=a.approval_ref)
         effective = self._approvals.get(a.approval_ref)
         if effective is None:
-            return Decision(
-                DecisionEffect.DENY,
-                DecisionCode.REQUEST_MALFORMED,
-                f"Approval {a.approval_ref!r} is not a declared requirement.",
-                event_intents=(requested,),
-            )
+            return _deny(DecisionCode.REQUEST_MALFORMED, f"Approval {a.approval_ref!r} is not a declared requirement.", intents=(requested,))
 
         def rejected(code: DecisionCode, reason: str) -> Decision:
-            return Decision(
-                DecisionEffect.DENY,
+            return _deny(
                 code,
                 reason,
                 basis=(DecisionBasis("approval", a.approval_ref),),
-                event_intents=(
-                    requested,
-                    _intent(
-                        "approval_rejected",
-                        actor_ref=actor,
-                        approval_ref=a.approval_ref,
-                        approver={"role": a.role, "actor_type": a.claimed_actor_type},
-                    ),
-                ),
+                intents=(requested, _intent("approval_rejected", actor_ref=actor, approval_ref=a.approval_ref, approver={"role": a.role, "actor_type": a.claimed_actor_type})),
             )
 
         # Revision binding (independent, exact) when the requirement binds a revision.
         binding = effective.revision_binding
         if isinstance(binding, Mapping) and binding.get("revision"):
             if a.subject_revision != str(binding.get("revision")):
-                return rejected(
-                    DecisionCode.APPROVAL_REVISION_MISMATCH,
-                    "Approval subject_revision does not match the required revision binding.",
-                )
+                return rejected(DecisionCode.APPROVAL_REVISION_MISMATCH, "Approval subject_revision does not match the required revision binding.")
+        # Action scope: the assertion must be for a governed action. For a zone
+        # crossing the governed action set is the governing gate's action_classes;
+        # otherwise it is the requirement's actions_requiring_approval.
+        action_scope = governed_actions if governed_actions is not None else frozenset(getattr(effective, "actions_requiring_approval", ()) or ())
+        if action_scope and a.action_ref not in action_scope:
+            return rejected(DecisionCode.APPROVAL_ACTION_MISMATCH, f"Approval action {a.action_ref!r} is outside the governed action scope.")
         # Actor type: a human is required; a denied actor type is rejected.
         denied_types = set(getattr(effective, "denied_actor_types", ()) or ())
         if a.claimed_actor_type != "human" or a.claimed_actor_type in denied_types:
-            return rejected(
-                DecisionCode.APPROVAL_NON_HUMAN,
-                "AI systems, tools, models, and execution surfaces cannot approve.",
-            )
+            return rejected(DecisionCode.APPROVAL_NON_HUMAN, "AI systems, tools, models, and execution surfaces cannot approve.")
         # Role: must be an eligible/required role of the composed requirement.
-        eligible = set(getattr(effective, "eligible_roles", ()) or ()) | set(
-            getattr(effective, "required_roles", ()) or ()
-        )
+        eligible = set(getattr(effective, "eligible_roles", ()) or ()) | set(getattr(effective, "required_roles", ()) or ())
         if a.role not in eligible:
-            return rejected(
-                DecisionCode.APPROVAL_ROLE_INVALID,
-                f"Role {a.role!r} is outside the composed approval authority.",
-            )
-        # Temporal staleness/invalidation at decision_at.
-        expires = _parse_time(a.expires_at) or _parse_time(getattr(effective, "expires_at", None))
-        if expires is not None and ts is not None and ts >= expires:
-            return rejected(DecisionCode.APPROVAL_STALE, "The approval is expired at decision_at.")
+            return rejected(DecisionCode.APPROVAL_ROLE_INVALID, f"Role {a.role!r} is outside the composed approval authority.")
+        # Required evidence must be covered by the assertion's evidence references.
+        required_evidence = set(getattr(effective, "required_evidence", ()) or ())
+        if required_evidence and not required_evidence.issubset(set(a.evidence_refs)):
+            return rejected(DecisionCode.APPROVAL_EVIDENCE_MISSING, "The approval does not reference all required evidence.")
+        # Temporal validity at decision_at: earliest applicable expiry across the
+        # assertion expiry, the effective absolute expiry, and issued_at + the
+        # relative expires_after policy. Future-issued approvals fail closed.
+        issued = _parse_time(a.issued_at)
+        max_age = _parse_duration(getattr(effective, "expires_after", None))
+        if getattr(effective, "expires_after", None) is not None and issued is None:
+            return rejected(DecisionCode.APPROVAL_STALE, "The requirement uses a relative expiry but the approval declares no issuance time.")
+        if issued is not None and ts is not None and ts < issued:
+            return rejected(DecisionCode.APPROVAL_STALE, "The approval is issued after decision_at (not yet valid).")
+        expiries: list[datetime] = []
+        for candidate in (_parse_time(a.expires_at), _parse_time(getattr(effective, "expires_at", None))):
+            if candidate is not None:
+                expiries.append(candidate)
+        if issued is not None and max_age is not None:
+            expiries.append(issued + max_age)
+        if expiries and ts is not None and ts >= min(expiries):
+            return rejected(DecisionCode.APPROVAL_STALE, "The approval is expired at decision_at (earliest applicable expiry).")
+        # invalidation_conditions: revision-based conditions are enforced by the
+        # revision binding above and the runtime target binding; structural
+        # conditions (identity/capability/trust_zone/membership change) are
+        # enforced by lock verification at load. They are not silently ignored.
         if not a.granted:
-            return rejected(
-                DecisionCode.APPROVAL_NOT_GRANTED,
-                "The supplied human approval record does not grant approval.",
-            )
+            return rejected(DecisionCode.APPROVAL_NOT_GRANTED, "The supplied human approval record does not grant approval.")
         return Decision(
             DecisionEffect.ALLOW,
             DecisionCode.ALLOWED,
             "",
             basis=(DecisionBasis("approval", a.approval_ref),),
-            event_intents=(
-                requested,
-                _intent(
-                    "approval_granted",
-                    actor_ref=actor,
-                    approval_ref=a.approval_ref,
-                    approver={"role": a.role, "actor_type": "human"},
-                ),
-            ),
+            event_intents=(requested, _intent("approval_granted", actor_ref=actor, approval_ref=a.approval_ref, approver={"role": a.role, "actor_type": "human"})),
         )
+
+    def _governing_gates(self, source: str, target: str) -> list[Mapping[str, Any]]:
+        return [
+            gate
+            for gate in self._gates
+            if source in _strings(gate.get("source_zone_refs")) and target in _strings(gate.get("target_zone_refs"))
+        ]
 
     def _zone_crossing(self, request: ZoneCrossingRequest, ts: datetime | None) -> Decision:
         actor = request.identity_ref
+        bad = self._known_effective(actor, ts)
+        if bad is not None:
+            return bad
         zone = self._zones.get(request.source_zone)
-        if zone is None or request.target_zone not in _strings(
-            zone.get("allowed_transition_targets")
-        ):
-            return Decision(
-                DecisionEffect.DENY,
+        if zone is None or request.target_zone not in _strings(zone.get("allowed_transition_targets")):
+            return _deny(
                 DecisionCode.ZONE_CROSSING_DENIED,
                 f"Crossing {request.source_zone!r} -> {request.target_zone!r} is not declared.",
                 basis=(DecisionBasis("zone", request.target_zone),),
-                event_intents=(
-                    _intent(
-                        "policy_violation",
-                        actor_ref=actor,
-                        source_zone_ref=request.source_zone if request.source_zone in self._zones else None,
-                        target_zone_ref=request.target_zone if request.target_zone in self._zones else None,
-                    ),
-                ),
+                intents=(_intent("policy_violation", actor_ref=actor,
+                                 source_zone_ref=request.source_zone if request.source_zone in self._zones else None,
+                                 target_zone_ref=request.target_zone if request.target_zone in self._zones else None),),
+            )
+        # The actor must hold a valid membership in the source zone.
+        if not self._zone_member(actor, request.source_zone, ts):
+            return _deny(
+                DecisionCode.ZONE_CROSSING_DENIED,
+                f"Identity {actor!r} has no valid membership in source zone {request.source_zone!r}.",
+                basis=(DecisionBasis("zone", request.source_zone),),
+                intents=(_intent("policy_violation", actor_ref=actor, source_zone_ref=request.source_zone, target_zone_ref=request.target_zone),),
             )
         destination = self._zones.get(request.target_zone)
-        needs_approval = (
-            destination is not None
-            and destination.get("classification") in EXTERNAL_ZONE_CLASSIFICATIONS
-        )
-        if needs_approval and request.approval is None:
-            return Decision(
-                DecisionEffect.APPROVAL_REQUIRED,
-                DecisionCode.CROSSING_APPROVAL_REQUIRED,
-                "External trust-zone crossings require a human approval.",
-                basis=(DecisionBasis("zone", request.target_zone),),
-                event_intents=(_intent("approval_requested", actor_ref=actor, approval_ref=AGENTIC_APPROVAL_ID),),
-            )
+        needs_approval = destination is not None and destination.get("classification") in EXTERNAL_ZONE_CLASSIFICATIONS
         approval_intents: tuple[DecisionEventIntent, ...] = ()
         if needs_approval:
-            sub = self._approval(ApprovalRequest(actor, request.approval), ts)
+            gates = self._governing_gates(request.source_zone, request.target_zone)
+            if not gates:
+                return _deny(
+                    DecisionCode.ZONE_CROSSING_DENIED,
+                    "No declared gate governs this external trust-zone crossing.",
+                    basis=(DecisionBasis("zone", request.target_zone),),
+                    intents=(_intent("policy_violation", actor_ref=actor, source_zone_ref=request.source_zone, target_zone_ref=request.target_zone),),
+                )
+            gate_actions: frozenset[str] = frozenset(a for g in gates for a in _strings(g.get("action_classes")))
+            gate_approvals: frozenset[str] = frozenset(a for g in gates for a in _strings(g.get("required_approval_refs")))
+            if request.approval is None:
+                return Decision(
+                    DecisionEffect.APPROVAL_REQUIRED,
+                    DecisionCode.CROSSING_APPROVAL_REQUIRED,
+                    "External trust-zone crossings require a human approval.",
+                    basis=(DecisionBasis("zone", request.target_zone),),
+                    event_intents=(_intent("approval_requested", actor_ref=actor, approval_ref=(sorted(gate_approvals)[0] if gate_approvals else None)),),
+                )
+            # The supplied approval must be one the governing gate requires.
+            if gate_approvals and request.approval.approval_ref not in gate_approvals:
+                return _deny(
+                    DecisionCode.CROSSING_APPROVAL_REQUIRED,
+                    f"Approval {request.approval.approval_ref!r} is not the approval the governing gate requires.",
+                    basis=(DecisionBasis("zone", request.target_zone),),
+                    intents=(_intent("policy_violation", actor_ref=actor, source_zone_ref=request.source_zone, target_zone_ref=request.target_zone),),
+                )
+            sub = self._approval(ApprovalRequest(actor, request.approval), ts, governed_actions=gate_actions)
             if not sub.allowed:
                 return sub
-            # The approval materially authorized the crossing; its decision-event
-            # intents (approval_requested + approval_granted) are preserved.
             approval_intents = sub.event_intents
         # Authorized. trust_zone_crossed is a post-action OBSERVATION.
-        return Decision(
-            DecisionEffect.ALLOW,
-            DecisionCode.ALLOWED,
-            "",
-            basis=(DecisionBasis("zone", request.target_zone),),
-            event_intents=approval_intents,
-        )
+        return Decision(DecisionEffect.ALLOW, DecisionCode.ALLOWED, "", basis=(DecisionBasis("zone", request.target_zone),), event_intents=approval_intents)
 
     def _data_share(self, request: DataShareRequest, ts: datetime | None) -> Decision:
         actor = request.identity_ref
+        for party in (actor, request.target_ref):
+            bad = self._known_effective(party, ts)
+            if bad is not None:
+                return bad
         categories = set(request.categories)
         sensitive = SENSITIVE_CATEGORIES & categories
         if sensitive:
-            return Decision(
-                DecisionEffect.DENY,
+            return _deny(
                 DecisionCode.SENSITIVE_SHARING,
                 "Sensitive categories are never shareable: " + ", ".join(sorted(sensitive)) + ".",
                 basis=(DecisionBasis("share", sorted(sensitive)[0]),),
-                event_intents=(_intent("policy_violation", actor_ref=actor, target_ref=request.target_ref),),
+                intents=(_intent("policy_violation", actor_ref=actor, target_ref=request.target_ref),),
             )
         for zone_id in (request.source_zone, request.target_zone):
             zone = self._zones.get(zone_id)
             allowlist = set(_strings(zone.get("share_allowlist"))) if zone else set()
             uncovered = sorted(categories - allowlist)
             if uncovered:
-                return Decision(
-                    DecisionEffect.DENY,
+                return _deny(
                     DecisionCode.SHARE_NOT_ALLOWED,
                     f"Zone {zone_id!r} does not allow sharing: " + ", ".join(uncovered) + ".",
                     basis=(DecisionBasis("share", uncovered[0]),),
-                    event_intents=(_intent("policy_violation", actor_ref=actor, target_ref=request.target_ref),),
+                    intents=(_intent("policy_violation", actor_ref=actor, target_ref=request.target_ref),),
                 )
         # Authorized. data_shared is a post-action OBSERVATION.
-        return Decision(
-            DecisionEffect.ALLOW,
-            DecisionCode.ALLOWED,
-            "",
-            basis=(DecisionBasis("share", "allowlisted"),),
-        )
+        return Decision(DecisionEffect.ALLOW, DecisionCode.ALLOWED, "", basis=(DecisionBasis("share", "allowlisted"),))
+
+
+def _approval_shape_ok(a: Any) -> bool:
+    if not isinstance(a, ApprovalAssertion):
+        return False
+    strs = (a.approval_ref, a.claimed_approver_ref, a.claimed_actor_type, a.role, a.action_ref, a.subject_revision)
+    if not all(isinstance(v, str) for v in strs):
+        return False
+    if not isinstance(a.granted, bool):
+        return False
+    if a.issued_at is not None and not isinstance(a.issued_at, str):
+        return False
+    if a.expires_at is not None and not isinstance(a.expires_at, str):
+        return False
+    return _all_str(a.evidence_refs)
 
 
 def load_authorizer(
@@ -747,52 +814,45 @@ def load_authorizer(
 ) -> Authorizer:
     """Load, validate (as of ``validation_as_of``), and lock-verify one contract.
 
-    Fails closed with an :class:`AuthorizerLoadError` on any contract diagnostic,
-    missing composition, invalid lock, or stale/mismatched lock.
+    Fails closed with an :class:`AuthorizerLoadError` on any parser/registry
+    error, contract diagnostic, missing composition, invalid lock, or
+    stale/mismatched lock.
     """
-    registry = registry_for_contract(contract_path)
-    document = load_nyx(contract_path)
+    try:
+        registry = registry_for_contract(contract_path)
+        document = load_nyx(contract_path)
+    except (NornyxParseError, GovernanceError, OSError, ValueError) as exc:
+        raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, f"Cannot load the contract: {exc}") from exc
+    if not isinstance(document, Mapping):
+        raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, "The contract is not a mapping/object.")
     document_root = Path(contract_path).resolve().parent
-    diagnostics = list(check_document(document))
-    composition = compose_document_governance(document, registry=registry)
+    try:
+        diagnostics = list(check_document(document))
+        composition = compose_document_governance(document, registry=registry)
+    except (NornyxParseError, GovernanceError, ValueError) as exc:
+        raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, f"The contract fails to compose: {exc}") from exc
     if composition is None:
-        raise AuthorizerLoadError(
-            AuthorizerLoadCode.PROFILE_MISSING,
-            "The contract does not resolve a governance profile.",
-        )
+        raise AuthorizerLoadError(AuthorizerLoadCode.PROFILE_MISSING, "The contract does not resolve a governance profile.")
     contributed = {item.block for item in (composition.block_schemas or ())}
-    diagnostics = [
-        item
-        for item in diagnostics
-        if not (item.code == "UNKNOWN_TOP_LEVEL_BLOCK" and item.path in contributed)
-    ]
-    diagnostics.extend(
-        evaluate_document_governance(
-            document,
-            registry=registry,
-            as_of=validation_as_of,
-            document_root=document_root,
+    diagnostics = [item for item in diagnostics if not (item.code == "UNKNOWN_TOP_LEVEL_BLOCK" and item.path in contributed)]
+    try:
+        diagnostics.extend(
+            evaluate_document_governance(document, registry=registry, as_of=validation_as_of, document_root=document_root)
         )
-    )
+    except (NornyxParseError, GovernanceError, ValueError) as exc:
+        raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, f"The contract fails governance evaluation: {exc}") from exc
     if has_errors(diagnostics):
         codes = sorted({item.code for item in diagnostics if item.level == "error"})
-        raise AuthorizerLoadError(
-            AuthorizerLoadCode.CONTRACT_INVALID,
-            "The contract fails governance validation: " + ", ".join(codes),
-        )
+        raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, "The contract fails governance validation: " + ", ".join(codes))
     try:
         lock_payload = load_agentic_network_lock(lock_path)
-    except GovernanceError as exc:
-        raise AuthorizerLoadError(
-            AuthorizerLoadCode.LOCK_INVALID,
-            f"Cannot load the agentic-network lock: {exc}",
-        ) from exc
+    except (GovernanceError, NornyxParseError, OSError, ValueError) as exc:
+        raise AuthorizerLoadError(AuthorizerLoadCode.LOCK_INVALID, f"Cannot load the agentic-network lock: {exc}") from exc
     stale = verify_agentic_network_lock(lock_payload, document, composition)
     if stale:
         raise AuthorizerLoadError(
             AuthorizerLoadCode.LOCK_STALE,
-            "Stale or mismatched agentic-network lock: "
-            + ", ".join(sorted({item.code for item in stale})),
+            "Stale or mismatched agentic-network lock: " + ", ".join(sorted({item.code for item in stale})),
         )
     return Authorizer(document, composition, lock_payload)
 
@@ -826,8 +886,8 @@ class EvidenceRecorder:
         producer_version: str = "1.0",
         producer_type: str = "framework_adapter",
     ) -> None:
-        if producer_type not in {"framework_adapter", "synthetic_harness"}:
-            raise ValueError(f"invalid producer_type {producer_type!r}")
+        if producer_type not in _PRODUCER_TYPES:
+            raise ValueError(f"invalid producer_type {producer_type!r}; permitted: {sorted(_PRODUCER_TYPES)}")
         if context.observed_subject_revision != authorizer.subject_revision:
             raise ValueError(
                 "observed_subject_revision does not match the contract subject_revision; "
@@ -865,13 +925,7 @@ class EvidenceRecorder:
                 raise ValueError(f"{intent.event_type!r} is not a decision-event intent")
             self._stamp(intent.event_type, mission_id, intent.fields)
 
-    def record_observation(
-        self,
-        event_type: str,
-        *,
-        mission_id: str,
-        **fields: Any,
-    ) -> None:
+    def record_observation(self, event_type: str, *, mission_id: str, **fields: Any) -> None:
         """Record a post-action observation. Only the adapter, after the action."""
         if event_type not in PHASE_OBSERVATION:
             raise ValueError(f"{event_type!r} is not a post-action observation")

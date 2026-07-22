@@ -281,8 +281,10 @@ def _approval(**overrides) -> ApprovalAssertion:
         claimed_actor_type="human",
         role="network_governance_owner",
         granted=True,
-        action_ref="approve_agentic_network_contract",
+        action_ref="approve_agentic_network_contract",  # in actions_requiring_approval
         subject_revision=REVISION,
+        issued_at="2026-07-17T09:00:00Z",               # 1h before decision_at (P7D policy)
+        evidence_refs=("agentic_network_contract_review",),  # covers required_evidence
     )
     base.update(overrides)
     return ApprovalAssertion(**base)
@@ -374,3 +376,174 @@ def test_authorizer_is_deterministic_and_immutable(authz: Authorizer):
     # decision intents are decision-phase only
     for intent in a.event_intents:
         assert intent.event_type in PHASE_INTENT
+
+
+# ================================ adversarial tests ================================
+
+# ---- approvals: temporal, action, and evidence binding ----
+def test_approval_action_mismatch(authz: Authorizer):
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(action_ref="unrelated_action")), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_ACTION_MISMATCH
+
+
+def test_approval_evidence_missing(authz: Authorizer):
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(evidence_refs=())), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_EVIDENCE_MISSING
+
+
+def test_approval_future_issued_fails_closed(authz: Authorizer):
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(issued_at="2026-07-18T00:00:00Z")), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_STALE
+
+
+def test_approval_later_assertion_expiry_cannot_beat_policy(authz: Authorizer):
+    # A caller-supplied far-future expiry must not bypass the P7D relative policy.
+    stale = _approval(issued_at="2026-07-01T00:00:00Z", expires_at="2027-01-01T00:00:00Z")
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", stale), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_STALE
+
+
+def test_approval_relative_expiry_requires_issuance(authz: Authorizer):
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(issued_at=None)), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_STALE
+
+
+def test_zone_crossing_cross_action_replay_rejected(authz: Authorizer):
+    # An approval whose action is not the governing gate's action must not authorize the crossing.
+    wrong = _approval(action_ref="approve_agentic_network_contract")  # not in gate action_classes
+    d = authz.evaluate(
+        ZoneCrossingRequest("identity.researcher.local", "zone.local_governed", "zone.external_contract", wrong),
+        context=ctx(),
+    )
+    assert d.code is DecisionCode.APPROVAL_ACTION_MISMATCH
+
+
+# ---- party validity (identity/membership/revocation) across every request family ----
+def _doc_inactive_reviewer() -> dict:
+    document = _rich_document()
+    for ident in document["agent_identities"]:
+        if ident["id"] == "identity.reviewer.local":
+            ident["status"] = "inactive"
+    return document
+
+
+@pytest.fixture(scope="module")
+def inactive() -> Authorizer:
+    return _inmemory(_doc_inactive_reviewer())
+
+
+def test_ineffective_party_capability(inactive: Authorizer):
+    d = inactive.evaluate(CapabilityRequest("identity.reviewer.local", "read_governed_context"), context=ctx())
+    assert d.code is DecisionCode.PARTY_INEFFECTIVE
+
+
+def test_ineffective_party_delegation(inactive: Authorizer):
+    d = inactive.evaluate(DelegationRequest("delegation.research"), context=ctx())  # delegate is the inactive reviewer
+    assert d.code is DecisionCode.PARTY_INEFFECTIVE
+
+
+def test_ineffective_party_handoff(inactive: Authorizer):
+    d = inactive.evaluate(HandoffRequest("handoff.review"), context=ctx())  # to_identity is the inactive reviewer
+    assert d.code is DecisionCode.PARTY_INEFFECTIVE
+
+
+def test_ineffective_party_approval(inactive: Authorizer):
+    d = inactive.evaluate(ApprovalRequest("identity.reviewer.local", _approval()), context=ctx())
+    assert d.code is DecisionCode.PARTY_INEFFECTIVE
+
+
+def test_ineffective_party_zone_crossing(inactive: Authorizer):
+    d = inactive.evaluate(
+        ZoneCrossingRequest("identity.reviewer.local", "zone.local_governed", "zone.external_contract"), context=ctx()
+    )
+    assert d.code is DecisionCode.PARTY_INEFFECTIVE
+
+
+def test_ineffective_party_data_share(inactive: Authorizer):
+    d = inactive.evaluate(
+        DataShareRequest("identity.researcher.local", "identity.reviewer.local", ("finding_summary",), "zone.local_governed", "zone.local_governed"),
+        context=ctx(),
+    )
+    assert d.code is DecisionCode.PARTY_INEFFECTIVE
+
+
+def test_zone_crossing_requires_source_zone_membership(authz: Authorizer):
+    # Reviewer holds no membership in the (declared) external source zone.
+    d = authz.evaluate(
+        ZoneCrossingRequest("identity.reviewer.local", "zone.local_governed", "zone.external_contract"), context=ctx()
+    )
+    # reviewer IS a member of local_governed, so this crosses to the approval branch:
+    assert d.code in {DecisionCode.CROSSING_APPROVAL_REQUIRED}
+
+
+# ---- malformed requests fail closed (never an incidental exception) ----
+def test_malformed_non_str_field(authz: Authorizer):
+    d = authz.evaluate(CapabilityRequest(123, "read_governed_context"), context=ctx())  # type: ignore[arg-type]
+    assert d.code is DecisionCode.REQUEST_MALFORMED
+
+
+def test_malformed_unhashable_category(authz: Authorizer):
+    d = authz.evaluate(
+        DataShareRequest("identity.researcher.local", "identity.reviewer.local", ([],), "zone.local_governed", "zone.local_governed"),  # type: ignore[arg-type]
+        context=ctx(),
+    )
+    assert d.code is DecisionCode.REQUEST_MALFORMED
+
+
+# ---- structural immutability ----
+def test_authorizer_rejects_mutation(authz: Authorizer):
+    with pytest.raises(AttributeError):
+        authz.subject_revision = "git:" + "0" * 40
+    with pytest.raises(AttributeError):
+        authz.new_attribute = 1
+    with pytest.raises(TypeError):
+        authz._identities["x"] = {}  # read-only mapping
+
+
+# ---- every load-error code ----
+def test_load_code_contract_invalid(tmp_path):
+    p = tmp_path / "c.nyx"
+    p.write_text("::: not yaml :::\n", encoding="utf-8")
+    (tmp_path / "l.lock").write_text("{}", encoding="utf-8")
+    with pytest.raises(AuthorizerLoadError) as e:
+        load_authorizer(p, tmp_path / "l.lock", validation_as_of=AS_OF)
+    assert e.value.code is AuthorizerLoadCode.CONTRACT_INVALID
+
+
+def test_load_code_profile_missing(tmp_path):
+    p = tmp_path / "c.nyx"
+    p.write_text(yaml.safe_dump({"nornyx": "0.2", "project": {"name": "X"}}), encoding="utf-8")
+    (tmp_path / "l.lock").write_text("{}", encoding="utf-8")
+    with pytest.raises(AuthorizerLoadError) as e:
+        load_authorizer(p, tmp_path / "l.lock", validation_as_of=AS_OF)
+    assert e.value.code is AuthorizerLoadCode.PROFILE_MISSING
+
+
+def test_load_code_lock_invalid(tmp_path):
+    (tmp_path / "bad.lock").write_text("{ not json", encoding="utf-8")
+    with pytest.raises(AuthorizerLoadError) as e:
+        load_authorizer(EXAMPLE, tmp_path / "bad.lock", validation_as_of=AS_OF)
+    assert e.value.code is AuthorizerLoadCode.LOCK_INVALID
+
+
+def test_load_code_lock_stale(tmp_path):
+    document = _base_document()
+    document["agentic_network"]["id"] = "network.mutated"
+    composition = A.compose_document_governance(document, registry=A.registry_for_contract(EXAMPLE))
+    lock = build_agentic_network_lock(document, composition)
+    lock_path = tmp_path / "stale.lock"
+    write_agentic_network_lock(lock, lock_path)
+    with pytest.raises(AuthorizerLoadError) as e:
+        load_authorizer(EXAMPLE, lock_path, validation_as_of=AS_OF)
+    assert e.value.code is AuthorizerLoadCode.LOCK_STALE
+
+
+# ---- runtime-event producer compatibility ----
+def test_recorder_accepts_all_schema_producer_types(authz: Authorizer):
+    for producer_type in ("framework_adapter", "synthetic_harness", "external_runtime"):
+        EvidenceRecorder(authz, ctx(), producer_id="p", producer_type=producer_type)  # must not raise
+
+
+def test_recorder_rejects_unknown_producer_type(authz: Authorizer):
+    with pytest.raises(ValueError):
+        EvidenceRecorder(authz, ctx(), producer_id="p", producer_type="bogus")
