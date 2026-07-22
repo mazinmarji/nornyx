@@ -547,3 +547,105 @@ def test_recorder_accepts_all_schema_producer_types(authz: Authorizer):
 def test_recorder_rejects_unknown_producer_type(authz: Authorizer):
     with pytest.raises(ValueError):
         EvidenceRecorder(authz, ctx(), producer_id="p", producer_type="bogus")
+
+
+# ===================== residual-boundary corrections (A–E) =====================
+
+# A. Universal approval context binding.
+def test_approval_wrong_revision_rejected_without_binding(authz: Authorizer):
+    # agentic_network_authority declares no revision_binding, yet a mismatched
+    # subject_revision must still be rejected (universal context binding).
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(subject_revision="git:" + "9" * 40)), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_REVISION_MISMATCH
+
+
+@pytest.mark.parametrize("change", ["identity", "capability", "membership", "zone", "policy"])
+def test_stale_approval_reuse_after_state_revision_rejected(change):
+    # Any governed change bumps subject_revision; an approval issued under the
+    # prior revision is rejected against the new-revision contract.
+    doc = _base_document()
+    new_rev = "git:" + ("a1b2c3d4" * 5)
+    doc["agentic_network"]["subject_revision"] = new_rev
+    az = _inmemory(doc)
+    d = az.evaluate(
+        ApprovalRequest("identity.researcher.local", _approval(subject_revision=REVISION)),
+        context=EvaluationContext(decision_at=AS_OF, observed_subject_revision=new_rev),
+    )
+    assert d.code is DecisionCode.APPROVAL_REVISION_MISMATCH, change
+
+
+# B. Per-gate zone-crossing authorization.
+def _doc_with_second_gate() -> dict:
+    document = _base_document()
+    document["agentic_network"]["network_gates"].append({
+        "id": "gate.second",
+        "action_classes": ["read_context"],
+        "source_zone_refs": ["zone.local_governed"],
+        "target_zone_refs": ["zone.external_contract"],
+        "required_policy_refs": [],
+        "required_approval_refs": ["governance_authority"],
+        "required_evidence_refs": [],
+    })
+    return document
+
+
+@pytest.fixture(scope="module")
+def multigate() -> Authorizer:
+    return _inmemory(_doc_with_second_gate())
+
+
+def test_zone_crossing_cross_gate_combo_denied(multigate: Authorizer):
+    # gate.second requires governance_authority for read_context; external_share
+    # is only gate.external_share's action (requires agentic_network_authority).
+    cross = _approval(approval_ref="governance_authority", action_ref="external_share")
+    d = multigate.evaluate(ZoneCrossingRequest("identity.researcher.local", "zone.local_governed", "zone.external_contract", cross), context=ctx())
+    assert d.code is DecisionCode.APPROVAL_ACTION_MISMATCH
+
+
+def test_zone_crossing_valid_gate_pair_allows_with_gate_basis(multigate: Authorizer):
+    ok = _approval(action_ref="external_share")  # agentic_network_authority + external_share = gate.external_share
+    d = multigate.evaluate(ZoneCrossingRequest("identity.researcher.local", "zone.local_governed", "zone.external_contract", ok), context=ctx())
+    assert d.effect is DecisionEffect.ALLOW
+    assert any(b.kind == "gate" for b in d.basis)
+
+
+def test_zone_crossing_no_governing_gate_denied():
+    doc = _base_document()
+    doc["agentic_network"]["network_gates"] = []
+    az = _inmemory(doc)
+    d = az.evaluate(ZoneCrossingRequest("identity.researcher.local", "zone.local_governed", "zone.external_contract", _approval(action_ref="external_share")), context=ctx())
+    assert d.code is DecisionCode.ZONE_CROSSING_DENIED
+
+
+# C. Deep immutability.
+def test_deep_immutability_nested_references(authz: Authorizer):
+    with pytest.raises(TypeError):
+        authz._identities["identity.researcher.local"]["status"] = "inactive"  # frozen mapping
+    with pytest.raises(TypeError):
+        authz._document["agentic_network"]["id"] = "x"  # frozen mapping item assign
+    with pytest.raises(AttributeError):
+        authz._document["agentic_network"]["memberships"].append({})  # tuple: no append
+
+
+def test_mutating_original_input_after_construction_does_not_alter_state():
+    doc = _base_document()
+    az = _inmemory(doc)
+    before = az.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=ctx()).code
+    digest_before = az.contract_digest
+    # Mutate the caller's original objects after construction.
+    doc["agent_identities"][0]["status"] = "inactive"
+    doc["agentic_network"]["memberships"].clear()
+    after = az.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=ctx()).code
+    assert before is after is DecisionCode.ALLOWED
+    assert az.contract_digest == digest_before
+
+
+# D. Malformed temporal values fail closed.
+def test_malformed_expires_at_fails_closed(authz: Authorizer):
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(expires_at="garbage")), context=ctx())
+    assert d.code is DecisionCode.REQUEST_MALFORMED
+
+
+def test_malformed_issued_at_fails_closed(authz: Authorizer):
+    d = authz.evaluate(ApprovalRequest("identity.researcher.local", _approval(issued_at="not-a-time")), context=ctx())
+    assert d.code is DecisionCode.REQUEST_MALFORMED
