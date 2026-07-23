@@ -1,7 +1,7 @@
 {
   "project": "Nornyx",
   "category": "AI Engineering Control-Plane Language",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "language_version": "1.0.0",
   "status": "Package 1.7.0 on main; AN-001 through AN-006 agentic-network program merged and released",
   "source_of_truth": [

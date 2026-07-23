@@ -13,7 +13,9 @@
   - Implementation head: `8b3c8b2eee4d181b7a896097b7210644c8ff4ce0`
   - Merge commit: `c83a8a4897f1de8ab776885be52992bbf2280594`
   - Post-merge CI: run 29956041864 — success
-  - Package state: merged on `main`, not yet released; repository version remains 1.7.0
+  - Package state: merged on `main`; core SPI implementation is complete and
+    included in Nornyx **1.8.0**. Publication (GitHub Release / PyPI) remains a
+    separately authorized operational action until it succeeds.
 - Relates to: ADR-0032 (verifiable effective approvals), ADR-0037 (AN-005
   reference adapters, deliberately unpackaged), ADR-0040 (governance assurance
   tiers — this SPI is a **Tier 2, cooperative** boundary), and the external
@@ -458,7 +460,10 @@ The `nornyx.agentic` authorization engine does **not**:
 | External pilot consumption | Pending |
 | Nornyx 1.8.0 publication | Pending |
 
-The **Complete** items landed via PR #44 (merge `c83a8a4`). The **Pending** items
-are subsequent, separately-audited milestones; the in-tree `GovernanceKernel`
-removal remains time-gated to no earlier than the following published minor
-release.
+The **Complete** items landed via PR #44 (merge `c83a8a4`) and are included in
+Nornyx **1.8.0**. The **Pending** items — the separate adapter package,
+legacy-kernel shim migration, pip-only example, and external pilot
+consumption — are subsequent, separately-audited milestones; the in-tree
+`GovernanceKernel` removal remains time-gated to no earlier than the following
+published minor release. Nornyx 1.8.0 publication itself remains a separately
+authorized operational action until the GitHub Release succeeds.

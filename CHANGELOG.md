@@ -6,9 +6,10 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-23
+
 ### Added
-- ADR-0039 M1 — core `nornyx.agentic` authorization SPI (merged, not yet released
-  on PyPI):
+- ADR-0039 M1 — core `nornyx.agentic` authorization SPI:
   - the supported `nornyx.agentic` facade with `SPI_VERSION = "1.0"` and a frozen
     export surface;
   - an immutable, lock-verified `Authorizer` that evaluates authorization requests
@@ -23,8 +24,7 @@ distribution version is independent of the Nornyx **language/schema** version
     lock, and observed subject revision.
   - Scope: cooperative **Tier 2** (ADR-0040) only — no agent/approver
     authentication, no tool execution, no runtime-event truth claim. The
-    distributable adapter package and external pilot remain pending. Not yet
-    released on PyPI; the package version remains 1.7.0.
+    distributable adapter package and external pilot remain pending.
 
 ## [1.7.0] - 2026-07-20
 
