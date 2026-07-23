@@ -1,8 +1,11 @@
 name: release
 
 # Publishes Nornyx to PyPI via Trusted Publishing (OIDC) — no API token stored
-# anywhere. Publishing fires only when a GitHub Release is published. Manual
-# dispatch runs the test job without deploying to PyPI.
+# anywhere. Publishing fires only when a GitHub Release is published AND its
+# tag matches the core package's own `vX.Y.Z` convention exactly — this is a
+# positive eligibility gate, not merely "not an adapter tag": any other tag
+# shape (adapters-vX.Y.Z, a prerelease suffix, an unrelated tag) is excluded.
+# Manual dispatch runs the test job without deploying to PyPI.
 on:
   release:
     types: [published]
@@ -28,9 +31,27 @@ jobs:
       # `scripts` helper modules imported by the test suite are resolvable.
       - run: python -m pytest -q
 
-  publish:
+  check-core-tag:
+    # Only a 'release' event has a tag_name to evaluate; workflow_dispatch has
+    # none, so it is correctly excluded from ever setting eligible=true.
     if: github.event_name == 'release'
-    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      eligible: ${{ steps.check.outputs.eligible }}
+    steps:
+      - name: Verify the release tag matches the core vX.Y.Z convention exactly
+        id: check
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    if: github.event_name == 'release' && needs.check-core-tag.outputs.eligible == 'true'
+    needs: [test, check-core-tag]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

@@ -1,0 +1,103 @@
+name: adapters-release
+
+# Publishes nornyx-agentic-adapters to PyPI via Trusted Publishing (OIDC) — no
+# API token stored anywhere. This is a SEPARATE release cadence from the core
+# nornyx package's own release.yml. Publishing requires a positive binding
+# check: the release tag must match `adapters-vX.Y.Z` exactly, and that X.Y.Z
+# must equal the adapter package's own pyproject.toml version at the exact
+# commit the tag targets — a tag/version mismatch (e.g. tagging
+# adapters-v0.1.1 while the package still declares 0.1.0) fails closed rather
+# than publishing. Manual dispatch runs the test job without deploying to
+# PyPI and cannot satisfy the binding check (there is no release tag to
+# evaluate). This workflow never creates, moves, or repairs tags.
+#
+# Requires its own one-time PyPI trusted-publisher registration for the
+# `nornyx-agentic-adapters` project (repo mazinmarji/nornyx, workflow
+# adapters-release.yml, environment pypi-adapters) — a separate, owner
+# performed operational prerequisite. Until that registration exists, the
+# `publish` job's OIDC exchange will simply fail; nothing here can publish
+# on its own.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install and test the adapter package
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest -q
+
+  check-adapter-tag:
+    # Only a 'release' event has a tag_name to evaluate; workflow_dispatch has
+    # none, so it is correctly excluded from ever setting eligible=true.
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    outputs:
+      eligible: ${{ steps.check.outputs.eligible }}
+    steps:
+      - name: Checkout the exact commit the release tag targets
+        uses: actions/checkout@v4
+      - name: Verify tag matches adapters-vX.Y.Z and binds to the package version
+        id: check
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [[ "$tag" =~ ^adapters-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            tag_version="${BASH_REMATCH[1]}"
+            pkg_version="$(grep -m1 -E '^version[[:space:]]*=' adapters/nornyx-agentic-adapters/pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
+            if [[ "$tag_version" == "$pkg_version" ]]; then
+              echo "eligible=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "eligible=false" >> "$GITHUB_OUTPUT"
+              echo "::error::release tag adapters-v${tag_version} does not match adapter package version ${pkg_version} at this commit"
+            fi
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    if: github.event_name == 'release' && needs.check-adapter-tag.outputs.eligible == 'true'
+    needs: [test, check-adapter-tag]
+    runs-on: ubuntu-latest
+    environment: pypi-adapters
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build adapter distributions
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python -m pip install build
+          python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        # No token needed: PyPI verifies the OIDC identity of this workflow.
+        with:
+          packages-dir: adapters/nornyx-agentic-adapters/dist
