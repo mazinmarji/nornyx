@@ -203,6 +203,8 @@ def test_environment_capture_never_shells_out(monkeypatch: pytest.MonkeyPatch) -
             "platform.platform() shells out on Linux and must never be called"
         )
 
+    import nornyx
+
     monkeypatch.setattr(_platform, "platform", boom)
     importlib.reload(_common)  # re-executes module-level code; must not raise
     assert _common._PLATFORM
@@ -210,7 +212,7 @@ def test_environment_capture_never_shells_out(monkeypatch: pytest.MonkeyPatch) -
     with no_external_io():
         env = _common.capture_environment()
     assert env["platform"]
-    assert env["nornyx_version"] == "1.7.0"
+    assert env["nornyx_version"] == nornyx.__version__
 
 
 # ---------------------------------------------------- no external operations
