@@ -6,6 +6,26 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Added
+- ADR-0039 M1 — core `nornyx.agentic` authorization SPI (merged, not yet released
+  on PyPI):
+  - the supported `nornyx.agentic` facade with `SPI_VERSION = "1.0"` and a frozen
+    export surface;
+  - an immutable, lock-verified `Authorizer` that evaluates authorization requests
+    against Nornyx contract semantics (identity, capabilities, delegation,
+    handoffs, approvals, trust-zone crossings, data sharing) with `decision_at`
+    temporal validity and universal subject-revision binding;
+  - typed authorization requests, `ApprovalAssertion`, `Decision`, and the
+    separated `AuthorizerLoadCode` / `IdentityResolutionCode` / `DecisionCode`
+    taxonomies;
+  - decision-event-intent vs. post-action-observation separation;
+  - a deterministic core `EvidenceRecorder` that binds records to the contract,
+    lock, and observed subject revision.
+  - Scope: cooperative **Tier 2** (ADR-0040) only — no agent/approver
+    authentication, no tool execution, no runtime-event truth claim. The
+    distributable adapter package and external pilot remain pending. Not yet
+    released on PyPI; the package version remains 1.7.0.
+
 ## [1.7.0] - 2026-07-20
 
 ### Added

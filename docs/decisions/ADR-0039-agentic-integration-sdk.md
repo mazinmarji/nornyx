@@ -1,12 +1,19 @@
 # ADR-0039 — Agentic Integration SDK: `nornyx.agentic` authorization SPI and distributable adapters
 
-- Status: Proposed (design only; execution is a separate, owner-authorized milestone)
+- Status: Accepted — M1 core authorization SPI implemented; adapter distribution
+  and migration phases remain pending
 - Date: 2026-07-20
 - Revised: 2026-07-22 (pilot-derived authorization-SPI correction, with the Step-3
   independent-audit findings F1–F8 and their binding refinements resolved;
   supersedes the original "re-export-only facade / kernel stays in adapters"
   decision)
 - Decision owner: human repository owner
+- Implemented (M1 — core authorization SPI):
+  - Implementation PR: #44
+  - Implementation head: `8b3c8b2eee4d181b7a896097b7210644c8ff4ce0`
+  - Merge commit: `c83a8a4897f1de8ab776885be52992bbf2280594`
+  - Post-merge CI: run 29956041864 — success
+  - Package state: merged on `main`, not yet released; repository version remains 1.7.0
 - Relates to: ADR-0032 (verifiable effective approvals), ADR-0037 (AN-005
   reference adapters, deliberately unpackaged), ADR-0040 (governance assurance
   tiers — this SPI is a **Tier 2, cooperative** boundary), and the external
@@ -155,10 +162,16 @@ incomplete requests fail closed with `DecisionCode.REQUEST_MALFORMED`.
   flag. (This mirrors the existing runtime validator, which treats an event
   revision different from the contract revision as `AN_EVT_REVISION_MISMATCH`; it
   permits no weaker non-exact runtime binding.)
-- *Approval binding.* When the composed `EffectiveApproval` declares a
-  `revision_binding`, the `ApprovalAssertion.subject_revision` **must exactly
-  match it**; otherwise `DENY` / `APPROVAL_REVISION_MISMATCH`. A mismatched bound
-  approval is never allowed-with-basis.
+- *Approval binding (universal).* Every `ApprovalAssertion.subject_revision`
+  **must exactly equal** the loaded contract's `subject_revision`, whether or not
+  a `revision_binding` is declared; mismatch → `DENY` /
+  `APPROVAL_REVISION_MISMATCH`. Because any governed change bumps the
+  `subject_revision` (and lock verification rejects drift), this universal binding
+  enforces the revision-linked invalidation conditions that the assertion alone
+  cannot otherwise establish. When the composed `EffectiveApproval` **additionally**
+  declares a `revision_binding`, the assertion's `subject_revision` **must also**
+  exactly match it — an additional, independent exact check that is not weakened.
+  A mismatched bound approval is never allowed-with-basis.
 - *Canonical revision syntax* (no branch names, abbreviated SHAs, or implicit
   normalization aliases): `git:<40-lowercase-hex>`, `git:<64-lowercase-hex>`, or
   `sha256:<64-lowercase-hex>`.
@@ -244,6 +257,7 @@ class DecisionCode(Enum):              # returned by evaluate (every Decision, i
     HANDOFF_UNKNOWN; HANDOFF_AUTHORITY
     APPROVAL_REQUIRED; APPROVAL_NON_HUMAN; APPROVAL_ROLE_INVALID
     APPROVAL_NOT_GRANTED; APPROVAL_STALE; APPROVAL_REVISION_MISMATCH
+    APPROVAL_ACTION_MISMATCH; APPROVAL_EVIDENCE_MISSING; PARTY_INEFFECTIVE
     ZONE_CROSSING_DENIED; CROSSING_APPROVAL_REQUIRED
     SENSITIVE_SHARING; SHARE_NOT_ALLOWED
     REVISION_MISMATCH; REQUEST_MALFORMED
@@ -251,6 +265,53 @@ class DecisionCode(Enum):              # returned by evaluate (every Decision, i
 
 Identity-resolution outcomes live in `IdentityResolutionCode` (not
 `DecisionCode`) because `resolve_identity` raises before `evaluate` is called.
+`APPROVAL_ACTION_MISMATCH`, `APPROVAL_EVIDENCE_MISSING`, and `PARTY_INEFFECTIVE`
+were added during M1 under this ADR's minor-compatibility rule (a new
+decision-code member is minor-compatible); they do not change the exported
+surface (`nornyx.agentic.__all__`).
+
+#### M1 implementation reconciliation
+
+These behaviors are implemented on `main` (PR #44) and are recorded here so the
+normative design matches the merged `nornyx/agentic/authz.py`:
+
+- **Universal approval revision binding.** Every `ApprovalAssertion` is bound to
+  the loaded contract `subject_revision` (above), independent of any declared
+  `revision_binding`, which remains an additional exact check.
+- **Approval action binding.** An approval authorizes only a governed action.
+  For a **zone crossing** the governed action set is derived **per gate** — one
+  individual governing gate must both require the supplied approval
+  (`required_approval_refs`) and govern the action (`action_classes`); the sets
+  are **not** unioned across gates. For a direct `ApprovalRequest` the scope is
+  the requirement's `actions_requiring_approval`. A mismatch is
+  `APPROVAL_ACTION_MISMATCH`.
+- **Required-evidence validation.** The assertion's `evidence_refs` must cover
+  `EffectiveApproval.required_evidence`, else `APPROVAL_EVIDENCE_MISSING`.
+- **Earliest-applicable approval expiry.** Validity at `decision_at` uses the
+  **earliest** of the assertion `expires_at`, the effective absolute `expires_at`,
+  and `issued_at` + `expires_after`; future-issued approvals fail closed
+  (`APPROVAL_STALE`). Malformed temporal fields fail closed as `REQUEST_MALFORMED`.
+- **Party validity across all request families.** Every request's parties
+  (actor, delegator/delegate, handoff from/to, data-share target, zone actor with
+  a valid source-zone membership) must be declared and effective at `decision_at`
+  (active, in-window, not revoked); otherwise `PARTY_INEFFECTIVE` (or
+  `REQUEST_MALFORMED` for an undeclared identity).
+- **Deep immutability of retained state.** The loaded `Authorizer` holds
+  recursively frozen, detached snapshots of the document, lock, and every derived
+  index (mappings → read-only, lists → tuples, sets → frozensets); attribute
+  reassignment and nested mutation both fail, and mutating the caller's original
+  inputs after construction cannot alter decisions, digests, or evidence.
+  Validators receive detached thawed copies.
+- **Deterministic fail-closed load taxonomy.** `load_authorizer` maps every stage
+  failure into the four frozen `AuthorizerLoadCode` values with cause chaining
+  (parser/registry/check/composition → `CONTRACT_INVALID`; missing profile →
+  `PROFILE_MISSING`; lock read/parse → `LOCK_INVALID`; lock verification →
+  `LOCK_STALE`); it does not catch `BaseException`, and exposed messages are
+  deterministic (exception type names, no platform paths).
+- **Boundaries unchanged.** The SPI remains cooperative **Tier 2** (ADR-0040): it
+  authenticates no agent or approver, executes no tool, and asserts no
+  runtime-event truth; permitting the `external_runtime` producer label confers
+  no Tier-3 assurance.
 
 ### 2. `nornyx-agentic-adapters` — the distributable package (framework glue only)
 
@@ -384,16 +445,20 @@ The `nornyx.agentic` authorization engine does **not**:
    affected by the stricter approval and observed-revision checks.
 5. Ship a pip-only example that runs without cloning `nornyx`.
 
-## Execution checklist (follow-on milestone, not this ADR)
+## Execution checklist
 
-1. **Independent API-design audit** — completed; findings F1–F8 and their binding
-   refinements are folded into §1(b) above.
-2. Facade re-exports + `SPI_VERSION` + surface-freeze test.
-3. Core `Authorizer` (migrate kernel; return `Decision`/intents; immutable; time
-   from `decision_at`) + typed `ApprovalAssertion` + `EvaluationContext` + core
-   evidence recorder + `AuthorizerLoadCode` / `IdentityResolutionCode` /
-   `DecisionCode`.
-4. `nornyx-agentic-adapters` package (extras, normalization, recorder triggering,
-   import-boundary test, matrix CI); deprecate the in-repo kernel to a shim with
-   the `AN_ADAPTER_*` ⇄ `DecisionCode` mapping.
-5. Pip-only example; external pilot consumes the SPI.
+| Work item | Status |
+| --- | --- |
+| Independent API-design audit | Complete |
+| Facade, `SPI_VERSION`, frozen exports | Complete |
+| Core `Authorizer`, typed models and recorder | Complete |
+| Separate adapter package (`nornyx-agentic-adapters`) | Pending |
+| Legacy-kernel shim migration (`AN_ADAPTER_*` ⇄ `DecisionCode`) | Pending |
+| Pip-only example | Pending |
+| External pilot consumption | Pending |
+| Nornyx 1.8.0 publication | Pending |
+
+The **Complete** items landed via PR #44 (merge `c83a8a4`). The **Pending** items
+are subsequent, separately-audited milestones; the in-tree `GovernanceKernel`
+removal remains time-gated to no earlier than the following published minor
+release.
