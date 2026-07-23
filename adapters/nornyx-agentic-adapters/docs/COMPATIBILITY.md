@@ -18,11 +18,14 @@
   repository's test suite is declared supported. A wider range is not claimed
   until new test evidence justifies it — widening a pin without new tests
   would be a compatibility regression risk, not a convenience.
-- **This 0.1.x release ships no framework-specific adapter module yet** (see
-  the README's Status table) — the CrewAI/LangGraph columns above describe
-  what the *future* `[crewai]`/`[langgraph]` extras will support once M2-B/C
-  land, recorded here now so the compatibility contract is fixed before
-  implementation.
+- **CrewAI (M2-B) is implemented; LangGraph (M2-C) is not yet** (see the
+  README's Status table). The CrewAI column above is live: `[crewai]`
+  installs `nornyx_agentic_adapters.crewai_adapter`, which wraps tool
+  invocation only (see the README's Coverage note) — agent invocation, task
+  invocation, delegation, and handoff are declared `unsupported`, not silently
+  omitted. The LangGraph column describes what the *future* `[langgraph]`
+  extra will support once M2-C lands, recorded here now so the compatibility
+  contract is fixed before implementation.
 
 ## Minor-compatible vs. breaking changes
 

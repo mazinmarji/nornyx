@@ -39,8 +39,9 @@ A subsequent, separately-audited milestone (ADR-0039 M2-D,
 
 ## Using this package today
 
-Since no framework-specific adapter module exists yet in this 0.1.x release,
-there is nothing to migrate *to* yet. Consumers of the existing
-`integrations/nornyx_agentic_adapters/` reference code should continue using
-it unchanged until M2-B (CrewAI) and M2-C (LangGraph) ship real,
-supported adapters in this package, followed by M2-D's shim migration.
+CrewAI is now supported (`nornyx_agentic_adapters.crewai_adapter`, M2-B, tool
+invocation only — see README Coverage). LangGraph is not yet (M2-C).
+Consumers of the existing `integrations/nornyx_agentic_adapters/` reference
+code for CrewAI may migrate to this package's `crewai_adapter` module now;
+LangGraph consumers should continue using the existing reference code
+unchanged until M2-C ships, followed by M2-D's shim migration.

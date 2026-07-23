@@ -112,6 +112,49 @@ jobs:
           test -n "$wheel"
           python scripts/test_wheel_install.py "$wheel"
 
+  adapter-crewai-native:
+    # ADR-0039 M2-B: exercises adapters/nornyx-agentic-adapters' CrewAI
+    # submodule against the real, pinned crewai==1.15.4 (not a mock), same
+    # single-version convention as the root package's own native-frameworks
+    # job. Builds the core nornyx wheel from this candidate first, exactly
+    # like adapter-foundation, so the adapter is tested against itself, never
+    # against a previously published PyPI core release.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install the adapter package with the CrewAI extra
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m pip install -e ".[crewai,dev]"
+      - name: Record the CrewAI version and forbid silent skips
+        run: python -c "import crewai; print('crewai', crewai.__version__)"
+      - name: Native CrewAI adapter tests
+        working-directory: adapters/nornyx-agentic-adapters
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: python -m pytest tests/test_crewai_adapter.py tests/test_crewai_adapter_missing_dependency.py -v -rs
+
   quality:
     runs-on: ubuntu-latest
     steps:

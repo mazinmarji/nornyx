@@ -8,17 +8,17 @@ framework and implements no framework glue.
 
 ## Status
 
-**This is the M2-A foundation release.** It ships the public contract —
-adapter metadata, a coverage-inventory type, the declarative-binding
-primitive, and the `enforce()` evaluate/record/execute boundary — that
-framework-specific adapters build on. **It does not yet contain a CrewAI or
-LangGraph implementation.** Those land in separate, subsequent releases
-(ADR-0039 M2-B and M2-C).
+**M2-A (foundation) and M2-B (CrewAI) have landed.** M2-A ships the public
+contract — adapter metadata, a coverage-inventory type, the
+declarative-binding primitive, and the `enforce()` evaluate/record/execute
+boundary — that framework-specific adapters build on. M2-B adds a supported
+CrewAI adapter on top of it. **LangGraph is not yet implemented** (ADR-0039
+M2-C, a separate, subsequent release).
 
 | Component | Status |
 | --- | --- |
 | Public contract (`AdapterMetadata`, `CoverageInventory`, `SurfaceBinding`, `enforce`) | Available |
-| CrewAI adapter (`nornyx_agentic_adapters.crewai`) | Pending |
+| CrewAI adapter (`nornyx_agentic_adapters.crewai_adapter`) | Available — tool invocation only, see Coverage below |
 | LangGraph adapter (`nornyx_agentic_adapters.langgraph`) | Pending |
 | Legacy `integrations/` compatibility shim | Pending (existing reference kernel unaffected by this package) |
 
@@ -28,16 +28,50 @@ LangGraph implementation.** Those land in separate, subsequent releases
 pip install nornyx-agentic-adapters
 ```
 
-Framework extras (**not yet functional** — see Status above; installing them
-now only pulls in the pinned framework package, since no framework-specific
-adapter module exists yet in this release):
+Framework extras:
 
 ```bash
-pip install "nornyx-agentic-adapters[crewai]"
-pip install "nornyx-agentic-adapters[langgraph]"
+pip install "nornyx-agentic-adapters[crewai]"    # CrewAI adapter — available
+pip install "nornyx-agentic-adapters[langgraph]" # LangGraph adapter — pending (M2-C); installs the pinned package only
 ```
 
 Requires Python 3.10–3.13 and `nornyx>=1.8,<2`.
+
+## CrewAI adapter
+
+```python
+from nornyx_agentic_adapters import SurfaceBinding
+from nornyx_agentic_adapters.crewai_adapter import make_governed_tool, resolve_identity
+
+identity_ref = resolve_identity(authorizer, agent)  # maps agent.role -> a declared Nornyx identity
+
+tool = make_governed_tool(
+    name="governed_reader",
+    description="Read governed context.",
+    binding=SurfaceBinding(
+        surface="tool:governed_reader",
+        identity_ref=identity_ref,
+        capability_ref="read_governed_context",
+    ),
+    authorizer=authorizer,
+    context=context,
+    recorder=recorder,
+    mission_id=mission_id,
+    action=lambda: "the tool's real work",
+)
+# Attach `tool` to a crewai.Task like any other BaseTool; the wrapped action
+# never runs unless the SPI evaluates ALLOW for the declared binding.
+```
+
+**Coverage (cooperative Tier 2 — declared, wrapped surfaces only):** the only
+verified CrewAI extension point is subclassing `crewai.tools.BaseTool` and
+overriding `_run`, reached through `Crew.kickoff()`'s native executor. Agent
+invocation, task invocation, delegation, and handoff have no verified, stable
+public CrewAI hook distinct from tool-level interception and are declared
+`unsupported` in `crewai_adapter.COVERAGE_INVENTORY` rather than wrapped
+through undocumented internals. Bypassing the adapter — calling the
+underlying action directly instead of through the governed tool — bypasses
+enforcement entirely; see Assurance boundary below.
 
 ## Assurance boundary (ADR-0040)
 
