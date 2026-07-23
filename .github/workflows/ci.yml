@@ -55,6 +55,63 @@ jobs:
       - name: Check a bundled example contract
         run: python -m nornyx.cli check examples/governed_delivery_control_plane.nyx
 
+  adapter-foundation:
+    # ADR-0039 M2-A: nornyx-agentic-adapters is a separate distribution built
+    # from adapters/nornyx-agentic-adapters/, depending on the core nornyx
+    # wheel built from this SAME candidate commit (never from PyPI), so a
+    # future PR touching both packages together is tested against each other.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install the adapter package
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m ruff check .
+      - name: Run adapter package tests
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m pytest -q
+      - name: Check candidate diff hygiene
+        if: github.event_name == 'pull_request'
+        run: git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
+      - name: Build adapter distributions
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m build
+      - name: Check adapter distributions
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m twine check dist/*
+      - name: Run installed-wheel no-network smoke
+        working-directory: adapters/nornyx-agentic-adapters
+        shell: bash
+        run: |
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx_agentic_adapters-*.whl' -print -quit)"
+          test -n "$wheel"
+          python scripts/test_wheel_install.py "$wheel"
+
   quality:
     runs-on: ubuntu-latest
     steps:

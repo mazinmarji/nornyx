@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nornyx-agentic-adapters"
+version = "0.1.0"
+description = "Framework adapters (CrewAI, LangGraph) for the Nornyx nornyx.agentic authorization SPI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Mazin Marji and Nornyx Contributors"}]
+keywords = ["nornyx", "agentic", "authorization", "governance", "crewai", "langgraph"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = ["nornyx>=1.8,<2"]
+
+[project.optional-dependencies]
+crewai = ["crewai==1.15.4"]
+langgraph = ["langgraph==1.2.2"]
+dev = ["pytest>=8.0", "ruff>=0.4", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/mazinmarji/nornyx"
+Repository = "https://github.com/mazinmarji/nornyx"
+"ADR-0039" = "https://github.com/mazinmarji/nornyx/blob/main/docs/decisions/ADR-0039-agentic-integration-sdk.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["nornyx_agentic_adapters*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

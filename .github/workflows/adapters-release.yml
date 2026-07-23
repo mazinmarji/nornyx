@@ -1,0 +1,72 @@
+name: adapters-release
+
+# Publishes nornyx-agentic-adapters to PyPI via Trusted Publishing (OIDC) — no
+# API token stored anywhere. This is a SEPARATE release cadence from the core
+# nornyx package's own release.yml: publishing fires only for a GitHub Release
+# whose tag starts with `adapters-v`, so the core package's own `vX.Y.Z`
+# releases never trigger this workflow. Manual dispatch runs the test job
+# without deploying to PyPI.
+#
+# Requires its own one-time PyPI trusted-publisher registration for the
+# `nornyx-agentic-adapters` project (repo mazinmarji/nornyx, workflow
+# adapters-release.yml, environment pypi-adapters) — a separate, owner
+# performed operational prerequisite. Until that registration exists, the
+# `publish` job's OIDC exchange will simply fail; nothing here can publish
+# on its own.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'adapters-v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install and test the adapter package
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest -q
+
+  publish:
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'adapters-v')
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi-adapters
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build adapter distributions
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python -m pip install build
+          python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        # No token needed: PyPI verifies the OIDC identity of this workflow.
+        with:
+          packages-dir: adapters/nornyx-agentic-adapters/dist
