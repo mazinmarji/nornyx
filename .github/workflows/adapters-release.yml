@@ -2,10 +2,14 @@ name: adapters-release
 
 # Publishes nornyx-agentic-adapters to PyPI via Trusted Publishing (OIDC) — no
 # API token stored anywhere. This is a SEPARATE release cadence from the core
-# nornyx package's own release.yml: publishing fires only for a GitHub Release
-# whose tag starts with `adapters-v`, so the core package's own `vX.Y.Z`
-# releases never trigger this workflow. Manual dispatch runs the test job
-# without deploying to PyPI.
+# nornyx package's own release.yml. Publishing requires a positive binding
+# check: the release tag must match `adapters-vX.Y.Z` exactly, and that X.Y.Z
+# must equal the adapter package's own pyproject.toml version at the exact
+# commit the tag targets — a tag/version mismatch (e.g. tagging
+# adapters-v0.1.1 while the package still declares 0.1.0) fails closed rather
+# than publishing. Manual dispatch runs the test job without deploying to
+# PyPI and cannot satisfy the binding check (there is no release tag to
+# evaluate). This workflow never creates, moves, or repairs tags.
 #
 # Requires its own one-time PyPI trusted-publisher registration for the
 # `nornyx-agentic-adapters` project (repo mazinmarji/nornyx, workflow
@@ -23,7 +27,7 @@ permissions:
 
 jobs:
   test:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'adapters-v')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact candidate
@@ -47,9 +51,36 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pytest -q
 
+  check-adapter-tag:
+    # Only a 'release' event has a tag_name to evaluate; workflow_dispatch has
+    # none, so it is correctly excluded from ever setting eligible=true.
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    outputs:
+      eligible: ${{ steps.check.outputs.eligible }}
+    steps:
+      - name: Checkout the exact commit the release tag targets
+        uses: actions/checkout@v4
+      - name: Verify tag matches adapters-vX.Y.Z and binds to the package version
+        id: check
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [[ "$tag" =~ ^adapters-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            tag_version="${BASH_REMATCH[1]}"
+            pkg_version="$(grep -m1 -E '^version[[:space:]]*=' adapters/nornyx-agentic-adapters/pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
+            if [[ "$tag_version" == "$pkg_version" ]]; then
+              echo "eligible=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "eligible=false" >> "$GITHUB_OUTPUT"
+              echo "::error::release tag adapters-v${tag_version} does not match adapter package version ${pkg_version} at this commit"
+            fi
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
-    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'adapters-v')
-    needs: test
+    if: github.event_name == 'release' && needs.check-adapter-tag.outputs.eligible == 'true'
+    needs: [test, check-adapter-tag]
     runs-on: ubuntu-latest
     environment: pypi-adapters
     permissions:

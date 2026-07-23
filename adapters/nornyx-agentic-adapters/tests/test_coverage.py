@@ -7,7 +7,12 @@ import json
 
 import pytest
 
-from nornyx_agentic_adapters import CoverageInventory, SurfaceCoverage, SurfaceStatus
+from nornyx_agentic_adapters import (
+    AdapterConfigurationError,
+    CoverageInventory,
+    SurfaceCoverage,
+    SurfaceStatus,
+)
 
 
 def _inventory() -> CoverageInventory:
@@ -75,3 +80,46 @@ def test_coverage_never_claims_unnamed_surfaces() -> None:
     inventory = _inventory()
     named = {entry.surface for entry in inventory.entries}
     assert named == {"tool_invocation", "delegation"}
+
+
+def test_entries_canonicalized_to_tuple_from_a_list() -> None:
+    inventory = CoverageInventory(
+        entries=[SurfaceCoverage("tool_invocation", "crewai", SurfaceStatus.WRAPPED)]
+    )
+    assert isinstance(inventory.entries, tuple)
+
+
+def test_retained_caller_list_mutation_after_construction_has_no_effect() -> None:
+    """F-2 regression: a caller building this from a retained list must not be
+    able to alter the inventory by mutating that list afterward."""
+    source = [SurfaceCoverage("tool_invocation", "crewai", SurfaceStatus.WRAPPED)]
+    inventory = CoverageInventory(entries=source)
+    before = inventory.as_dict()
+    source.append(SurfaceCoverage("delegation", "crewai", SurfaceStatus.UNSUPPORTED))
+    after = inventory.as_dict()
+    assert before == after
+    assert len(inventory.entries) == 1
+
+
+def test_as_dict_is_stable_across_repeated_calls() -> None:
+    inventory = _inventory()
+    assert inventory.as_dict() == inventory.as_dict()
+
+
+def test_equal_inventories_compare_equal_and_hash_equal() -> None:
+    a = _inventory()
+    b = _inventory()
+    assert a == b
+    assert hash(a) == hash(b)
+
+
+def test_valid_tuple_construction_still_works() -> None:
+    inventory = CoverageInventory(
+        entries=(SurfaceCoverage("tool_invocation", "crewai", SurfaceStatus.WRAPPED),)
+    )
+    assert len(inventory.entries) == 1
+
+
+def test_malformed_entry_fails_deterministically() -> None:
+    with pytest.raises(AdapterConfigurationError):
+        CoverageInventory(entries=({"surface": "tool_invocation"},))  # type: ignore[arg-type]
