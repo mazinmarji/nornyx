@@ -1,7 +1,7 @@
 {
   "schema": "nornyx.governance_compatibility_corpus.v1",
   "baseline": {
-    "package_version": "1.7.0",
+    "package_version": "1.8.0",
     "main_commit": "95952226999327458c6fea81cb32d82539bcae5b"
   },
   "classes": [

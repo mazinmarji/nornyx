@@ -25,7 +25,7 @@ Nornyx does **not** replace Codex, Claude Code, Cursor, Copilot, CI/CD, or human
 ```bash
 pip install nornyx          # from PyPI
 # or pin from source:
-pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.7.0"
+pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.8.0"
 ```
 
 Requires Python 3.10–3.13. Runtime dependencies: **PyYAML**, **jsonschema**, and **referencing**.

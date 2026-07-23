@@ -169,12 +169,16 @@ eligibility criteria.
 ### What Nornyx alone can establish
 
 Current Nornyx can establish **Tier 1** for qualifying evidence packages and
-demonstrates mechanisms that **contribute to Tier 2**. **Nornyx 1.7.0 does not
-yet qualify as a supported Tier 2 integration** because ADR-0039's stable SPI
-and distributable adapter package are not implemented, and no standardized
-coverage inventory is emitted or verified. Nornyx **cannot award Tier 3** —
-that requires an external enforcement/attestation system that Nornyx neither
-provides nor verifies.
+demonstrates mechanisms that **contribute to Tier 2**. **Nornyx 1.8.0 contains
+the supported core `nornyx.agentic` authorization SPI** (ADR-0039, M1), but the
+separately distributed supported adapter package and a standardized coverage
+inventory remain unimplemented; **Nornyx therefore does not yet provide a
+complete supported Tier 2 integration package**. Qualifying third-party
+integrations may use the SPI to construct cooperative, surface-scoped Tier 2
+controls, but must independently satisfy all Tier 2 eligibility requirements
+below. Nornyx **cannot award Tier 3** — that remains external and unavailable
+from Nornyx alone; it requires an external enforcement/attestation system that
+Nornyx neither provides nor verifies.
 
 ### Claim-eligibility summary
 

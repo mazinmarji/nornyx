@@ -12,7 +12,7 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
 
 | Axis | Current | Bumped when… | Source of truth |
 | --- | --- | --- | --- |
-| **Package (distribution)** | `1.7.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
+| **Package (distribution)** | `1.8.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
 | **Language / schema** | `1.0` | the `.nyx` contract language or its schema targets change in a way authors must know about | `manifest.json` `language_version`, `nornyx.cli schema --version` |
 | **`agentic_network_governance` module** | `0.2.0` | the composed agentic-network governance module changes its catalog surface (bound by a `migration:` marker) | `nornyx/profiles_data/module_agentic_network_governance.yaml` `version` |
 | **Agentic schema targets** | `v1` | a new major schema id is minted (breaking) | `$id` tokens: `agentic_network_v1`, `agentic_capabilities_v1`, `agentic_network_lock_v1`, `agentic_runtime_events_v1` |
