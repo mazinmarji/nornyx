@@ -9,17 +9,27 @@ Importing this submodule without it installed raises
 ``ImportError``.
 
 The only CrewAI extension point this package has verified is subclassing
-``crewai.tools.BaseTool`` and overriding ``_run`` — reached through
-``Crew.kickoff()``'s native ReAct executor. CrewAI exposes no callback or
-event-bus hook this package uses. Agent invocation, task invocation, and
-CrewAI's own internal coworker-delegation mechanism have no verified, stable
-public hook distinct from tool-level interception; ``COVERAGE_INVENTORY``
-below declares them ``unsupported`` rather than wrapping them through
-undocumented CrewAI internals.
+``crewai.tools.BaseTool`` and overriding ``_run`` (the SYNCHRONOUS tool path)
+— reached through ``Crew.kickoff()``'s native ReAct executor. CrewAI exposes
+no callback or event-bus hook this package uses. This adapter does NOT override
+``_arun``: CrewAI's asynchronous tool path (``arun``/``_arun``) is not a
+governed surface — the inherited ``BaseTool._arun`` raises
+``NotImplementedError``, so the wrapped action never runs and no observation is
+recorded. Agent invocation, task invocation, and CrewAI's own internal
+coworker-delegation mechanism likewise have no verified, stable public hook
+distinct from tool-level interception; ``COVERAGE_INVENTORY`` below declares
+async tool invocation and all of these ``unsupported`` rather than wrapping
+them through undocumented CrewAI internals.
+
+Importing this module fails closed unless the installed ``crewai`` distribution
+is exactly the single tested version (``METADATA.framework_version_range``): a
+different installed version raises ``AdapterConfigurationError``, a missing
+distribution raises ``MissingOptionalDependencyError``.
 """
 
 from __future__ import annotations
 
+import importlib.metadata
 from collections.abc import Callable
 from typing import Any
 
@@ -38,8 +48,60 @@ from .enforcement import enforce
 from .errors import AdapterConfigurationError
 from .metadata import AdapterMetadata
 
+# The single CrewAI version this M2-B adapter is tested and supported against.
+# ``METADATA.framework_version_range`` and the import-time compatibility check
+# both derive from this constant, so they can never drift apart.
+_REQUIRED_CREWAI_VERSION = "1.15.4"
+
 _crewai_tools = require_extra("crewai.tools", extra="crewai")
 BaseTool = _crewai_tools.BaseTool
+
+# The crewai extra guarantees pydantic; import it only after require_extra has
+# confirmed the framework is present, so a missing extra still yields the
+# precise MissingOptionalDependencyError rather than a bare pydantic ImportError.
+from pydantic import BaseModel as _PydanticBaseModel  # noqa: E402
+
+
+def _installed_crewai_version() -> str:
+    """Return the installed ``crewai`` distribution version, or fail closed.
+
+    Missing or malformed installed-version metadata is treated as an
+    unsupported configuration (``AdapterConfigurationError``), never assumed
+    compatible.
+    """
+    try:
+        version = importlib.metadata.version("crewai")
+    except Exception as exc:  # PackageNotFoundError / malformed metadata: fail closed
+        raise AdapterConfigurationError(
+            "Unable to determine the installed 'crewai' version (missing or "
+            "malformed distribution metadata); this adapter requires exactly "
+            f"crewai=={_REQUIRED_CREWAI_VERSION}."
+        ) from exc
+    if not isinstance(version, str) or not version.strip():
+        raise AdapterConfigurationError(
+            "The installed 'crewai' distribution reports an empty or malformed "
+            f"version; this adapter requires exactly crewai=={_REQUIRED_CREWAI_VERSION}."
+        )
+    return version
+
+
+def _check_crewai_version(installed: str) -> None:
+    """Fail closed unless ``installed`` is exactly the supported CrewAI version.
+
+    A wider range is never assumed: this adapter names exactly one tested
+    framework version and refuses any other, rather than silently running
+    against an untested CrewAI.
+    """
+    if installed != _REQUIRED_CREWAI_VERSION:
+        raise AdapterConfigurationError(
+            f"Unsupported CrewAI version {installed!r}: this adapter (ADR-0039 "
+            f"M2-B) is tested and supported only against "
+            f"crewai=={_REQUIRED_CREWAI_VERSION}. Install the pinned version, "
+            f"e.g. 'pip install nornyx-agentic-adapters[crewai]'."
+        )
+
+
+_check_crewai_version(_installed_crewai_version())
 
 FRAMEWORK = "crewai"
 
@@ -48,7 +110,7 @@ METADATA = AdapterMetadata(
     adapter_version="0.1.0",
     spi_version=SPI_VERSION,
     framework_name=FRAMEWORK,
-    framework_version_range="==1.15.4",
+    framework_version_range=f"=={_REQUIRED_CREWAI_VERSION}",
     nornyx_version_range=">=1.8,<2",
 )
 
@@ -59,8 +121,23 @@ COVERAGE_INVENTORY = CoverageInventory(
             framework=FRAMEWORK,
             status=SurfaceStatus.WRAPPED,
             reason=(
-                "Wrapped via a crewai.tools.BaseTool._run override, reached "
-                "through Crew.kickoff()'s native ReAct executor."
+                "Synchronous tool execution wrapped via a "
+                "crewai.tools.BaseTool._run override, reached through "
+                "Crew.kickoff()'s native ReAct executor. Covers the sync "
+                "_run path only; see async_tool_invocation for the async path."
+            ),
+        ),
+        SurfaceCoverage(
+            surface="async_tool_invocation",
+            framework=FRAMEWORK,
+            status=SurfaceStatus.UNSUPPORTED,
+            reason=(
+                "M2-B overrides only the synchronous BaseTool._run and does NOT "
+                "override _arun. CrewAI's asynchronous tool path (arun/_arun) is "
+                "not a governed surface: the inherited BaseTool._arun raises "
+                "NotImplementedError, so the wrapped action never executes and no "
+                "tool_invoked observation is recorded. Callers must not infer that "
+                "synchronous tool coverage extends to async execution."
             ),
         ),
         SurfaceCoverage(
@@ -178,6 +255,7 @@ def make_governed_tool(
     recorder: EvidenceRecorder,
     mission_id: str,
     action: Callable[..., Any],
+    args_schema: type | None = None,
 ) -> Any:
     """Build a CrewAI ``BaseTool`` instance enforcing ``binding`` around ``action``.
 
@@ -187,9 +265,34 @@ def make_governed_tool(
     ``tool_invoked`` post-action observation is recorded — never before
     ``action`` actually returns. ``binding`` is validated (fails closed on any
     blank required field) before the tool is constructed.
+
+    ``args_schema`` is an optional CrewAI-compatible pydantic ``BaseModel``
+    subclass describing the tool's structured inputs. When supplied it is
+    exposed to CrewAI so the executor validates and passes structured arguments
+    through the governed ``_run`` — the validated arguments reach ``action``
+    only after an ALLOW decision, never bypassing authorization. When omitted
+    (the default), behavior is unchanged: a no-argument governed tool. An
+    ``args_schema`` that is not a pydantic ``BaseModel`` subclass fails closed
+    at construction with ``AdapterConfigurationError``. The schema describes
+    tool inputs only; the authorizer, recorder, binding, and other governance
+    state are attached out-of-band via ``object.__setattr__`` and are never
+    part of the schema (and so are never serialized as tool arguments).
+
+    This is NOT arbitrary CrewAI-tool wrapping: it constructs a governed tool
+    from an explicit ``action`` and (optional) ``args_schema``.
     """
     validate_binding(binding)
-    tool = _GovernedTool(name=name, description=description)
+    if args_schema is not None and not (
+        isinstance(args_schema, type) and issubclass(args_schema, _PydanticBaseModel)
+    ):
+        raise AdapterConfigurationError(
+            "args_schema must be a CrewAI-compatible pydantic BaseModel subclass "
+            f"or None; got {args_schema!r}."
+        )
+    if args_schema is None:
+        tool = _GovernedTool(name=name, description=description)
+    else:
+        tool = _GovernedTool(name=name, description=description, args_schema=args_schema)
     object.__setattr__(tool, "_nornyx_binding", binding)
     object.__setattr__(tool, "_nornyx_authorizer", authorizer)
     object.__setattr__(tool, "_nornyx_context", context)

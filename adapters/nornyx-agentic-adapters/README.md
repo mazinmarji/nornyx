@@ -65,13 +65,32 @@ tool = make_governed_tool(
 
 **Coverage (cooperative Tier 2 — declared, wrapped surfaces only):** the only
 verified CrewAI extension point is subclassing `crewai.tools.BaseTool` and
-overriding `_run`, reached through `Crew.kickoff()`'s native executor. Agent
-invocation, task invocation, delegation, and handoff have no verified, stable
-public CrewAI hook distinct from tool-level interception and are declared
-`unsupported` in `crewai_adapter.COVERAGE_INVENTORY` rather than wrapped
-through undocumented internals. Bypassing the adapter — calling the
+overriding the **synchronous** `_run`, reached through `Crew.kickoff()`'s
+native executor. Coverage is the sync `_run` path only. **Asynchronous tool
+execution (`arun`/`_arun`) is not a governed surface:** this adapter does not
+override `_arun`, so CrewAI's async path hits the inherited
+`BaseTool._arun`, which raises `NotImplementedError` — the wrapped action never
+runs and no observation is recorded. It is declared `async_tool_invocation` /
+`unsupported` in `crewai_adapter.COVERAGE_INVENTORY`; do not assume synchronous
+tool coverage extends to async execution. Agent invocation, task invocation,
+delegation, and handoff likewise have no verified, stable public CrewAI hook
+distinct from tool-level interception and are declared `unsupported` rather than
+wrapped through undocumented internals. Bypassing the adapter — calling the
 underlying action directly instead of through the governed tool — bypasses
 enforcement entirely; see Assurance boundary below.
+
+**Structured tool arguments.** `make_governed_tool` accepts an optional
+`args_schema` (a CrewAI-compatible pydantic `BaseModel` subclass) describing the
+tool's inputs. When supplied it is exposed to CrewAI so the executor validates
+and passes structured arguments through the governed `_run` — validated
+arguments reach `action` only after an ALLOW decision, never bypassing
+authorization; DENY/APPROVAL_REQUIRED still prevent execution regardless of
+valid input. Omit it for a no-argument governed tool (unchanged default). The
+schema describes tool inputs only and never carries the authorizer, recorder,
+or binding. An `args_schema` that is not a pydantic `BaseModel` subclass fails
+closed at construction with `AdapterConfigurationError`. This is not arbitrary
+CrewAI-tool wrapping: the API constructs a governed tool from an explicit
+`action` and optional `args_schema`.
 
 ## Assurance boundary (ADR-0040)
 
@@ -106,7 +125,17 @@ immediately, rather than failing later with a confusing error.
 
 Framework version pins are intentionally narrow: they name the only version
 of each framework this package has been tested against. A wider range is not
-claimed until new test evidence supports it.
+claimed until new test evidence supports it. The CrewAI pin is **enforced at
+import time**, not merely declared. Importing
+`nornyx_agentic_adapters.crewai_adapter` distinguishes three cases:
+
+- **CrewAI missing** — raises `MissingOptionalDependencyError` naming the
+  `pip install nornyx-agentic-adapters[crewai]` remedy.
+- **CrewAI installed but not the supported version** (or missing/malformed
+  version metadata) — raises `AdapterConfigurationError` immediately, naming the
+  installed version and the required `crewai==1.15.4`; it never runs against an
+  untested CrewAI.
+- **CrewAI == 1.15.4** — imports and operates normally.
 
 ## Design
 

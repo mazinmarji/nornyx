@@ -20,12 +20,20 @@
   would be a compatibility regression risk, not a convenience.
 - **CrewAI (M2-B) is implemented; LangGraph (M2-C) is not yet** (see the
   README's Status table). The CrewAI column above is live: `[crewai]`
-  installs `nornyx_agentic_adapters.crewai_adapter`, which wraps tool
-  invocation only (see the README's Coverage note) — agent invocation, task
-  invocation, delegation, and handoff are declared `unsupported`, not silently
-  omitted. The LangGraph column describes what the *future* `[langgraph]`
-  extra will support once M2-C lands, recorded here now so the compatibility
-  contract is fixed before implementation.
+  installs `nornyx_agentic_adapters.crewai_adapter`, which wraps **synchronous**
+  tool invocation only (see the README's Coverage note) — agent invocation,
+  task invocation, delegation, handoff, and **asynchronous tool invocation
+  (`arun`/`_arun`)** are declared `unsupported`, not silently omitted. Async is
+  not governed: the adapter does not override `_arun`, so CrewAI's async path
+  raises `NotImplementedError` and the wrapped action never runs. The LangGraph
+  column describes what the *future* `[langgraph]` extra will support once M2-C
+  lands, recorded here now so the compatibility contract is fixed before
+  implementation.
+- **The CrewAI pin is enforced at import time, not just declared.** Importing
+  the CrewAI submodule fails closed on any unsupported configuration: a missing
+  CrewAI distribution raises `MissingOptionalDependencyError`; an installed but
+  non-`1.15.4` version — or missing/malformed version metadata — raises
+  `AdapterConfigurationError`; only `crewai==1.15.4` imports and operates.
 
 ## Minor-compatible vs. breaking changes
 

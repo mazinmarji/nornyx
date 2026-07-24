@@ -14,6 +14,8 @@ without skips.
 
 from __future__ import annotations
 
+import asyncio
+import importlib.metadata
 import os
 
 # Telemetry must be off before the first `crewai` import in this process.
@@ -30,31 +32,40 @@ import yaml
 
 crewai = pytest.importorskip("crewai")
 
-import nornyx.agentic as A
-from crewai import Agent, BaseLLM, Crew, Process, Task
-from nornyx.agentic import (
+# Imports that must follow the telemetry env setup / importorskip above; the
+# E402 exception here matches the repository's established native-CrewAI test
+# convention (see tests/test_agentic_crewai_native.py at the monorepo root).
+import nornyx.agentic as A  # noqa: E402
+from crewai import Agent, BaseLLM, Crew, Process, Task  # noqa: E402
+from nornyx.agentic import (  # noqa: E402
     Authorizer,
     EvaluationContext,
     EvidenceRecorder,
     IdentityResolutionCode,
     IdentityResolutionError,
 )
-from nornyx.agentic_artifacts import build_agentic_network_lock
-from nornyx.governance import GovernanceRegistry
+from nornyx.agentic_artifacts import build_agentic_network_lock  # noqa: E402
+from nornyx.governance import GovernanceRegistry  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 
-from nornyx_agentic_adapters import (
+from nornyx_agentic_adapters import (  # noqa: E402
     AdapterConfigurationError,
     AdapterDenied,
     SurfaceBinding,
 )
-from nornyx_agentic_adapters.coverage import SurfaceStatus
-from nornyx_agentic_adapters.crewai_adapter import (
+from nornyx_agentic_adapters.coverage import SurfaceStatus  # noqa: E402
+from nornyx_agentic_adapters.crewai_adapter import (  # noqa: E402
     COVERAGE_INVENTORY,
     FRAMEWORK,
     METADATA,
     agent_identity_key,
     make_governed_tool,
     resolve_identity,
+)
+from nornyx_agentic_adapters.crewai_adapter import (  # noqa: E402
+    _check_crewai_version,
+    _installed_crewai_version,
+    _REQUIRED_CREWAI_VERSION,
 )
 
 # This test file lives at adapters/nornyx-agentic-adapters/tests/; the shared
@@ -107,10 +118,11 @@ class DeterministicLLM(BaseLLM):
     a network, an API key, or an external model.
     """
 
-    def __init__(self, tool_name: str | None, final_answer: str):
+    def __init__(self, tool_name: str | None, final_answer: str, action_input: str = "{}"):
         super().__init__(model="nornyx-deterministic-offline")
         self._tool_name = tool_name
         self._final_answer = final_answer
+        self._action_input = action_input
         self._call_count = 0
 
     def call(
@@ -126,7 +138,7 @@ class DeterministicLLM(BaseLLM):
             return (
                 "Thought: I must use the governed tool.\n"
                 f"Action: {self._tool_name}\n"
-                "Action Input: {}"
+                f"Action Input: {self._action_input}"
             )
         return f"Thought: I now can give a great answer\nFinal Answer: {self._final_answer}"
 
@@ -166,7 +178,13 @@ def test_coverage_inventory_declares_only_tool_invocation_wrapped() -> None:
         for entry in COVERAGE_INVENTORY.entries
         if entry.status is SurfaceStatus.UNSUPPORTED
     }
-    assert unsupported == {"agent_invocation", "task_invocation", "delegation", "handoff"}
+    assert unsupported == {
+        "async_tool_invocation",
+        "agent_invocation",
+        "task_invocation",
+        "delegation",
+        "handoff",
+    }
     # Every unsupported entry names a reason; the inventory never hides a gap.
     for entry in COVERAGE_INVENTORY.entries:
         if entry.status is SurfaceStatus.UNSUPPORTED:
@@ -446,3 +464,332 @@ def test_native_crew_kickoff_denied_capability_side_effect_never_runs(
     assert set(event_types) <= {"capability_requested", "capability_denied"}
     assert "capability_denied" in event_types
     assert "tool_invoked" not in event_types
+
+
+# --------------------------------------------------------------- F2: async tool invocation unsupported
+def test_coverage_inventory_declares_async_tool_invocation_unsupported() -> None:
+    entry = next(
+        e for e in COVERAGE_INVENTORY.entries if e.surface == "async_tool_invocation"
+    )
+    assert entry.status is SurfaceStatus.UNSUPPORTED
+    # The reason states the concrete mechanism: no _arun override; async fails closed.
+    assert "_arun" in entry.reason
+    assert "NotImplementedError" in entry.reason
+    # Async is never presented as a wrapped/governed surface.
+    wrapped = {e.surface for e in COVERAGE_INVENTORY.wrapped()}
+    assert "async_tool_invocation" not in wrapped
+    assert wrapped == {"tool_invocation"}
+
+
+def test_async_tool_invocation_reason_is_deterministic() -> None:
+    reasons = [
+        e.reason
+        for e in COVERAGE_INVENTORY.entries
+        if e.surface == "async_tool_invocation"
+    ]
+    # Exactly one async entry, with a stable non-empty reason; the deterministic
+    # as_dict() serialization exposes the same reason string.
+    assert len(reasons) == 1
+    reason = reasons[0]
+    assert reason.strip()
+    serialized = {
+        s["surface"]: s["reason"] for s in COVERAGE_INVENTORY.as_dict()["surfaces"]
+    }
+    assert serialized["async_tool_invocation"] == reason
+
+
+def test_async_arun_fails_closed_and_records_nothing(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+    calls: list[Any] = []
+    binding = SurfaceBinding(
+        surface="tool:governed_reader",
+        identity_ref="identity.researcher.local",
+        capability_ref="read_governed_context",
+    )
+    tool = make_governed_tool(
+        name="governed_reader",
+        description="Read governed context.",
+        binding=binding,
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=lambda: calls.append(1),
+    )
+    # The inherited BaseTool._arun raises; the wrapped action never runs and the
+    # governed _run (hence enforce/record) is never reached.
+    with pytest.raises(NotImplementedError):
+        asyncio.run(tool.arun())
+    assert calls == []  # the wrapped side effect never ran
+    event_types = [e["event_type"] for e in recorder.stream()["events"]]
+    assert "tool_invoked" not in event_types
+    assert event_types == []  # no decision recorded either
+
+
+# --------------------------------------------------------------- F3: structured args_schema
+class _TopicInput(BaseModel):
+    topic: str
+
+
+class _MultiInput(BaseModel):
+    topic: str
+    limit: int = Field(default=5, description="max results")
+
+
+def _researcher_read_binding() -> SurfaceBinding:
+    return SurfaceBinding(
+        surface="tool:reader",
+        identity_ref="identity.researcher.local",
+        capability_ref="read_governed_context",
+    )
+
+
+def test_structured_scalar_arg_exposed_and_allowed_runs_once(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+    seen: list[Any] = []
+
+    def action(topic: str) -> str:
+        seen.append(topic)
+        return f"read:{topic}"
+
+    tool = make_governed_tool(
+        name="reader",
+        description="Read a topic.",
+        binding=_researcher_read_binding(),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+        args_schema=_TopicInput,
+    )
+    # CrewAI sees the caller-supplied schema (not an empty auto-generated one).
+    assert "topic" in tool.args_schema.model_fields
+    result = tool.run(topic="alpha")
+    assert result == "read:alpha"
+    assert seen == ["alpha"]
+    event_types = [e["event_type"] for e in recorder.stream()["events"]]
+    assert event_types == ["capability_requested", "capability_allowed", "tool_invoked"]
+
+
+def test_structured_multiple_required_and_optional_fields(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+    got: dict[str, Any] = {}
+
+    def action(topic: str, limit: int = 5) -> str:
+        got["topic"] = topic
+        got["limit"] = limit
+        return "ok"
+
+    tool = make_governed_tool(
+        name="reader",
+        description="Read a topic with a limit.",
+        binding=_researcher_read_binding(),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+        args_schema=_MultiInput,
+    )
+    assert tool.run(topic="a") == "ok"  # optional defaults via the schema
+    assert got == {"topic": "a", "limit": 5}
+    assert tool.run(topic="b", limit=9) == "ok"
+    assert got == {"topic": "b", "limit": 9}
+
+
+def test_structured_invalid_input_rejected_before_side_effect(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+    side: list[Any] = []
+
+    def action(topic: str) -> str:
+        side.append(topic)
+        return "x"
+
+    tool = make_governed_tool(
+        name="reader",
+        description="Read a topic.",
+        binding=_researcher_read_binding(),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+        args_schema=_TopicInput,
+    )
+    # Missing the required 'topic' field: CrewAI rejects before _run/enforce.
+    with pytest.raises(ValueError):
+        tool.run(not_topic="x")
+    assert side == []
+    assert recorder.stream()["events"] == []
+
+
+def test_structured_denied_executes_zero_times(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+    side: list[Any] = []
+
+    def action(topic: str) -> str:
+        side.append(topic)
+        return "x"
+
+    # reviewer does not hold propose_research_finding: DENY despite valid input.
+    tool = make_governed_tool(
+        name="proposer",
+        description="Propose with a topic.",
+        binding=SurfaceBinding(
+            surface="tool:proposer",
+            identity_ref="identity.reviewer.local",
+            capability_ref="propose_research_finding",
+        ),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+        args_schema=_TopicInput,
+    )
+    with pytest.raises(AdapterDenied):
+        tool.run(topic="alpha")
+    assert side == []
+    event_types = [e["event_type"] for e in recorder.stream()["events"]]
+    assert "tool_invoked" not in event_types
+
+
+def test_make_governed_tool_rejects_non_model_args_schema(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+
+    def build(schema: Any) -> Any:
+        return make_governed_tool(
+            name="reader",
+            description="d",
+            binding=_researcher_read_binding(),
+            authorizer=authorizer,
+            context=_context(),
+            recorder=recorder,
+            mission_id=MISSION_ID,
+            action=lambda: "ok",
+            args_schema=schema,
+        )
+
+    with pytest.raises(AdapterConfigurationError):
+        build(dict)  # a type, but not a pydantic BaseModel subclass
+    with pytest.raises(AdapterConfigurationError):
+        build(object())  # not even a type
+
+
+def test_structured_schema_does_not_serialize_governance_state(authorizer: Authorizer) -> None:
+    recorder = _recorder(authorizer)
+    tool = make_governed_tool(
+        name="reader",
+        description="Read a topic.",
+        binding=_researcher_read_binding(),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=lambda topic: f"read:{topic}",
+        args_schema=_TopicInput,
+    )
+    # The exposed schema carries tool inputs only — never authorizer/recorder/binding.
+    assert set(tool.args_schema.model_fields) == {"topic"}
+    dumped = tool.model_dump()
+    assert not any(k.startswith("_nornyx") for k in dumped)
+
+
+def test_native_crew_kickoff_structured_tool_allowed_end_to_end(
+    authorizer: Authorizer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def forbidden(*_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError("native crewai flow attempted an external operation")
+
+    real_connect = socket.socket.connect
+
+    def loopback_only_connect(sock: socket.socket, address: Any) -> Any:
+        host = address[0] if isinstance(address, tuple) else address
+        if isinstance(host, str) and host in ("127.0.0.1", "::1", "localhost"):
+            return real_connect(sock, address)
+        raise AssertionError(f"native crewai flow attempted an external connection: {address!r}")
+
+    monkeypatch.setattr(socket.socket, "connect", loopback_only_connect)
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+    monkeypatch.setattr(socket, "getaddrinfo", forbidden)
+    monkeypatch.setattr(subprocess, "run", forbidden)
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    monkeypatch.setattr(os, "system", forbidden)
+
+    recorder = _recorder(authorizer)
+    llm = DeterministicLLM("governed_reader", "structured research complete", action_input='{"topic": "alpha"}')
+    agent = _agent("researcher", llm)
+    seen: list[Any] = []
+
+    def action(topic: str) -> str:
+        seen.append(topic)
+        return f"sanitized:{topic}"
+
+    tool = make_governed_tool(
+        name="governed_reader",
+        description="Read governed context for a topic.",
+        binding=SurfaceBinding(
+            surface="tool:governed_reader",
+            identity_ref="identity.researcher.local",
+            capability_ref="read_governed_context",
+        ),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+        args_schema=_TopicInput,
+    )
+    task = Task(
+        description="Read the governed context for topic alpha with the governed tool.",
+        expected_output="A short governed answer.",
+        agent=agent,
+        tools=[tool],
+    )
+    crew = Crew(agents=[agent], tasks=[task], process=Process.sequential)
+    result = crew.kickoff()
+
+    assert "structured research complete" in str(result)
+    assert seen == ["alpha"], "the governed action received the structured argument"
+    event_types = [e["event_type"] for e in recorder.stream()["events"]]
+    assert event_types == ["capability_requested", "capability_allowed", "tool_invoked"]
+    report = recorder.validate()
+    assert report["status"] == "pass"
+
+
+# --------------------------------------------------------------- F4: CrewAI version enforcement
+def test_installed_crewai_version_is_the_supported_exact_version() -> None:
+    # Real environment: the [crewai] extra pins crewai==1.15.4.
+    assert _REQUIRED_CREWAI_VERSION == "1.15.4"
+    assert _installed_crewai_version() == _REQUIRED_CREWAI_VERSION
+    assert crewai.__version__ == _REQUIRED_CREWAI_VERSION
+    # The supported version passes the compatibility check without raising.
+    _check_crewai_version(_REQUIRED_CREWAI_VERSION)
+
+
+def test_check_crewai_version_rejects_unsupported_version() -> None:
+    with pytest.raises(AdapterConfigurationError) as excinfo:
+        _check_crewai_version("1.14.0")
+    message = str(excinfo.value)
+    assert "1.14.0" in message
+    assert _REQUIRED_CREWAI_VERSION in message
+
+
+def test_installed_crewai_version_fails_closed_on_missing_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _raise(_name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError("crewai")
+
+    monkeypatch.setattr(importlib.metadata, "version", _raise)
+    with pytest.raises(AdapterConfigurationError):
+        _installed_crewai_version()
+
+
+def test_installed_crewai_version_fails_closed_on_malformed_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "   ")
+    with pytest.raises(AdapterConfigurationError):
+        _installed_crewai_version()
