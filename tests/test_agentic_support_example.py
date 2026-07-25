@@ -324,3 +324,63 @@ def test_reference_ci_workflow_passes_offline(tmp_path: Path) -> None:
     assert "crewai_evidence_report.json" in manifest["contents"]
     assert "langgraph_evidence_report.json" in manifest["contents"]
     assert any(item.startswith("artifacts/") for item in manifest["contents"])
+
+
+def test_check_cli_accepts_as_of_flag() -> None:
+    stdout = StringIO()
+    with redirect_stdout(stdout):
+        code = cli_main(["check", str(CONTRACT), "--as-of", AS_OF])
+    assert code == 0, stdout.getvalue()
+    assert "Nornyx check passed" in stdout.getvalue()
+
+
+def test_check_with_historical_as_of_passes_after_real_time_expiry() -> None:
+    """The support-network contract's evidence expires at a fixed historical
+    timestamp (2026-07-24T00:00:00Z); --as-of pins evaluation to the
+    contract's own declared AS_OF, so `check` passes deterministically no
+    matter how far the real wall clock has moved past that expiry."""
+    stdout = StringIO()
+    with redirect_stdout(stdout):
+        code = cli_main(["check", str(CONTRACT), "--as-of", AS_OF])
+    assert code == 0, stdout.getvalue()
+
+    # A real, non-"Z" UTC offset form must resolve identically.
+    stdout = StringIO()
+    with redirect_stdout(stdout):
+        code = cli_main(["check", str(CONTRACT), "--as-of", "2026-07-17T00:00:00+00:00"])
+    assert code == 0, stdout.getvalue()
+
+
+def test_check_without_as_of_uses_live_clock_and_does_not_weaken_expiration() -> None:
+    """Omitting --as-of must NOT silently fall back to the contract's lenient
+    historical AS_OF: it evaluates against the real current clock. The
+    support-network evidence's fixed expires_at (2026-07-24T00:00:00Z) is
+    already in the past relative to any run of this test from here forward
+    (real time only moves forward), so the live-clock path deterministically
+    -- and permanently -- rejects it as expired. This proves --as-of is
+    opt-in only and never weakens live enforcement."""
+    stdout = StringIO()
+    with redirect_stdout(stdout):
+        code = cli_main(["check", str(CONTRACT)])
+    assert code == 1, stdout.getvalue()
+    output = stdout.getvalue()
+    assert "STALE" in output or "EXPIRED" in output
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        "not-a-timestamp",
+        "2026-07-17",  # date only, no time component
+        "2026-07-17T00:00:00",  # naive (no timezone offset)
+        "2026-13-40T00:00:00Z",  # out-of-range month/day
+    ],
+)
+def test_check_with_malformed_as_of_fails_closed(malformed: str) -> None:
+    stdout = StringIO()
+    with redirect_stdout(stdout):
+        code = cli_main(["check", str(CONTRACT), "--as-of", malformed])
+    assert code == 2, stdout.getvalue()
+    diagnostic = json.loads(stdout.getvalue())
+    assert diagnostic["code"] == "AS_OF_INVALID"
+    assert malformed in diagnostic["message"]
