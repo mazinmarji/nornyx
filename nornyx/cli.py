@@ -130,7 +130,35 @@ def _optional_profile_lock(directory: Path, *, trust_root: Path) -> Path | None:
         raise GovernanceLockError(*exc.diagnostics) from exc
 
 
+def _resolve_as_of(raw: str | None) -> str | None:
+    """Resolve an optional CLI ``--as-of`` value to a canonical UTC ISO-8601
+    timestamp, or return ``None`` if ``raw`` does not parse as a timezone-aware
+    timestamp (fail closed; callers must not fall back to the live clock)."""
+    if raw is None:
+        return datetime.now(timezone.utc).isoformat()
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (OverflowError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
 def cmd_check(args: argparse.Namespace) -> int:
+    as_of = _resolve_as_of(getattr(args, "as_of", None))
+    if as_of is None:
+        print(
+            json.dumps(
+                {
+                    "level": "error",
+                    "code": "AS_OF_INVALID",
+                    "message": f"--as-of value {args.as_of!r} is not a valid timezone-aware ISO-8601 timestamp.",
+                },
+                indent=2,
+            )
+        )
+        return 2
     try:
         registry = registry_for_contract(args.file)
     except GovernanceError as exc:
@@ -168,7 +196,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 doc,
                 registry=registry,
                 lock_path=lock_path,
-                as_of=datetime.now(timezone.utc).isoformat(),
+                as_of=as_of,
                 document_root=document_root,
             )
         )
@@ -1347,6 +1375,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("check", help="Validate a .nyx file")
     p.add_argument("file")
+    p.add_argument("--as-of", help="Explicit offset timestamp for governance validation")
     p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("examples", help="Copy bundled .nyx examples into a directory")

@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         python = _prepare_python(out, args.wheel)
         nornyx = [*python, "-m", "nornyx.cli"]
 
-        _run("check-contract", [*nornyx, "check", str(CONTRACT)])
+        _run("check-contract", [*nornyx, "check", str(CONTRACT), "--as-of", AS_OF])
         _run(
             "resolve-governance",
             [*nornyx, "governance", "resolve", str(CONTRACT), "--as-of", AS_OF, "--json"],
