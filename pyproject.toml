@@ -35,7 +35,10 @@ Changelog = "https://github.com/mazinmarji/nornyx/blob/main/CHANGELOG.md"
 Issues = "https://github.com/mazinmarji/nornyx/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+# Ruff is bounded to a single tested minor series (see [tool.ruff.lint] below):
+# an unbounded lower pin let a fresh install resolve a newer Ruff whose changed
+# default rule set failed CI non-reproducibly.
+dev = ["pytest>=8.0", "ruff>=0.16.0,<0.17"]
 
 [project.scripts]
 nornyx = "nornyx.cli:main"
@@ -52,3 +55,13 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+# Explicit lint contract for the repository. This pins the established rule
+# set (Ruff's historical E4/E7/E9/F default — pycodestyle error subset plus
+# Pyflakes) rather than depending on Ruff's evolving built-in defaults, so
+# `ruff check .` is reproducible across Ruff releases within the bounded dev
+# pin above. `select` replaces the default rule set entirely; new default
+# rules in future Ruff versions cannot silently change the result. No
+# per-file ignores are used to force green CI.
+select = ["E4", "E7", "E9", "F"]

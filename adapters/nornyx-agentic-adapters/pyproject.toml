@@ -26,7 +26,10 @@ dependencies = ["nornyx>=1.8,<2"]
 [project.optional-dependencies]
 crewai = ["crewai==1.15.4"]
 langgraph = ["langgraph==1.2.2"]
-dev = ["pytest>=8.0", "ruff>=0.4", "build", "twine"]
+# Ruff is bounded to a single tested minor series (see [tool.ruff.lint] below):
+# an unbounded lower pin let a fresh install resolve a newer Ruff whose changed
+# default rule set failed CI non-reproducibly.
+dev = ["pytest>=8.0", "ruff>=0.16.0,<0.17", "build", "twine"]
 
 [project.urls]
 Homepage = "https://github.com/mazinmarji/nornyx"
@@ -42,3 +45,13 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+# Explicit lint contract for the adapter package. This pins the repository's
+# established rule set (Ruff's historical E4/E7/E9/F default — pycodestyle
+# error subset plus Pyflakes) rather than depending on Ruff's evolving built-in
+# defaults, so `ruff check .` is reproducible across Ruff releases within the
+# bounded dev pin above. `select` replaces the default rule set entirely; new
+# default rules in future Ruff versions cannot silently change the result. No
+# per-file ignores are used to force green CI.
+select = ["E4", "E7", "E9", "F"]
