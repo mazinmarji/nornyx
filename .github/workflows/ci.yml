@@ -112,6 +112,137 @@ jobs:
           test -n "$wheel"
           python scripts/test_wheel_install.py "$wheel"
 
+  adapter-crewai-native:
+    # ADR-0039 M2-B: exercises adapters/nornyx-agentic-adapters' CrewAI
+    # submodule against the real, pinned crewai==1.15.4 (not a mock), same
+    # single-version convention as the root package's own native-frameworks
+    # job. Builds the core nornyx wheel from this candidate first, exactly
+    # like adapter-foundation, so the adapter is tested against itself, never
+    # against a previously published PyPI core release.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install the adapter package with the CrewAI extra
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m pip install -e ".[crewai,dev]"
+      - name: Record the CrewAI version and forbid silent skips
+        run: python -c "import crewai; print('crewai', crewai.__version__); assert crewai.__version__ == '1.15.4', crewai.__version__"
+      - name: Native CrewAI adapter tests (no skips permitted)
+        working-directory: adapters/nornyx-agentic-adapters
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          python -m pytest tests/test_crewai_adapter.py tests/test_crewai_adapter_missing_dependency.py \
+            -v -rs --junitxml=crewai-native-results.xml
+          # Fail closed if ANY focused CrewAI test skipped (e.g. crewai silently
+          # absent): deterministic skip check, not a printed version string.
+          python -c "import xml.etree.ElementTree as ET, sys; suites = ET.parse('crewai-native-results.xml').getroot().findall('.//testsuite'); skipped = sum(int(s.get('skipped', 0)) for s in suites); tests = sum(int(s.get('tests', 0)) for s in suites); print('crewai-native tests', tests, 'skipped', skipped); sys.exit(1 if (skipped or not tests) else 0)"
+      - name: Build the candidate adapter wheel
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m build --wheel
+      - name: Installed-wheel CrewAI smoke in a fresh env, outside all source roots
+        shell: bash
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          set -euo pipefail
+          core_wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          adapter_wheel="$(find adapters/nornyx-agentic-adapters/dist -maxdepth 1 -type f -name 'nornyx_agentic_adapters-*.whl' -print -quit)"
+          test -n "$core_wheel"
+          test -n "$adapter_wheel"
+          venv="$RUNNER_TEMP/wheel-crewai-venv"
+          python -m venv "$venv"
+          # Install the candidate core wheel + the built adapter wheel WITH the
+          # CrewAI extra into a fresh env; editable-source success is insufficient.
+          "$venv/bin/python" -m pip install --disable-pip-version-check "$core_wheel" "${adapter_wheel}[crewai]"
+          "$venv/bin/python" -c "import crewai; assert crewai.__version__ == '1.15.4', crewai.__version__; print('wheel-env crewai', crewai.__version__)"
+          # Import and smoke the installed wheel from OUTSIDE all repo/source roots.
+          cd "$RUNNER_TEMP"
+          "$venv/bin/python" - <<'PY'
+          import socket
+          import sys
+
+          def _blocked(*_a, **_k):
+              raise AssertionError("network access attempted during wheel crewai smoke")
+
+          socket.socket.connect = _blocked
+          socket.create_connection = _blocked
+
+          from nornyx.agentic import Decision, DecisionCode, DecisionEffect, EvaluationContext
+          from nornyx_agentic_adapters import AdapterDenied, SurfaceBinding
+          from nornyx_agentic_adapters.crewai_adapter import COVERAGE_INVENTORY, make_governed_tool
+
+          REV = "git:0123456789abcdef0123456789abcdef01234567"
+          CTX = EvaluationContext(decision_at="2026-07-23T00:00:00Z", observed_subject_revision=REV)
+
+          class _Rec:
+              def record_decision(self, decision, *, mission_id):
+                  pass
+              def record_observation(self, *_a, **_k):
+                  pass
+
+          class _Allow:
+              def evaluate(self, request, *, context):
+                  return Decision(DecisionEffect.ALLOW, DecisionCode.ALLOWED, "")
+
+          class _Deny:
+              def evaluate(self, request, *, context):
+                  return Decision(DecisionEffect.DENY, DecisionCode.CAPABILITY_DENIED, "denied")
+
+          BINDING = SurfaceBinding("tool:x", "identity:agent-1", "capability:read")
+
+          ran = []
+          allow_tool = make_governed_tool(
+              name="allow_reader", description="d", binding=BINDING, authorizer=_Allow(),
+              context=CTX, recorder=_Rec(), mission_id="m", action=lambda: (ran.append(1) or "ok"),
+          )
+          assert allow_tool.run() == "ok"
+          assert ran == [1], "allowed governed tool must run its action exactly once"
+
+          side = []
+          deny_tool = make_governed_tool(
+              name="deny_reader", description="d", binding=BINDING, authorizer=_Deny(),
+              context=CTX, recorder=_Rec(), mission_id="m", action=lambda: side.append(1),
+          )
+          try:
+              deny_tool.run()
+              raise SystemExit("DENY did not block the governed tool")
+          except AdapterDenied:
+              pass
+          assert side == [], "denied governed tool must execute zero side effects"
+
+          surfaces = {e.surface: e.status.value for e in COVERAGE_INVENTORY.entries}
+          assert surfaces["tool_invocation"] == "wrapped"
+          assert surfaces["async_tool_invocation"] == "unsupported"
+
+          print("WHEEL_CREWAI_SMOKE_OK crewai_in_sys_modules=%s" % ("crewai" in sys.modules))
+          PY
+
   quality:
     runs-on: ubuntu-latest
     steps:
