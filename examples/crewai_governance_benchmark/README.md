@@ -17,7 +17,9 @@ code, not a copy.
 python examples/crewai_governance_benchmark/benchmark.py --out benchmark_out
 ```
 
-Exits non-zero unless every clause of the benchmark contract holds.
+Exits non-zero unless every clause of the benchmark contract holds **and** the
+complete evidence stream validates. There is no partial pass: the verdict is
+`GO` or `NO_GO`.
 
 - **Just want to read the outcome?** → [`results/`](results/) has a recorded run,
   including a self-contained [`dashboard.html`](results/dashboard.html).
@@ -28,8 +30,9 @@ Exits non-zero unless every clause of the benchmark contract holds.
 Not an LLM-quality benchmark — the model is scripted and identical in both arms.
 Not a production-performance benchmark — the timing figures are a local
 microbenchmark and say so. Not a marketing demo — the negative control, the
-fairness control, the unsupported surfaces, and three real defects in the audited
-packages are all part of the deliverable.
+fairness control, the unsupported surfaces, and the three defects this benchmark
+found in the audited packages (now fixed, and regression-tested) are all part of
+the deliverable.
 
 ## Which Nornyx path this uses
 
@@ -41,10 +44,10 @@ The **supported** one, as of the audited revision:
 | Adapter | `nornyx-agentic-adapters` 0.1.0 — `SurfaceBinding`, `enforce`, `crewai_adapter.make_governed_tool`, `resolve_identity` |
 | Framework | `crewai==1.15.4` (the single version the adapter supports, enforced at import) |
 
-It does **not** use the legacy, unpackaged reference kernel under
-`integrations/nornyx_agentic_adapters/` — which claims the *same import name* as
-the installed distribution, so the benchmark resolves that name explicitly (see
-[`FINDINGS.md` F3](FINDINGS.md)). The older
+It does **not** use the legacy, unpackaged reference kernel, which now lives
+under its own import name at `integrations/nornyx_reference_adapters/` (it used
+to claim the same name as the installed distribution — see
+[`FINDINGS.md` F3](FINDINGS.md), resolved). The older
 [`examples/crewai_nornyx_comparison`](../crewai_nornyx_comparison) example targets
 Nornyx 1.7.0 and that legacy kernel; it is preserved unchanged and still has its
 own tests. This benchmark is its successor on the supported stack, not a
@@ -110,23 +113,47 @@ counts toward any prevention metric.
 | `plain_results.json` / `governed_results.json` | per-scenario results plus the full ledger timeline |
 | `nornyx_runtime_events.json` | the governed evidence stream |
 | `nornyx_evidence_report.json` | Nornyx's validation of that stream |
-| `validation_manifest.json` | sha256 of every governance input, benchmark source file, and output |
+| `validation_manifest.json` | sha256 of every governance input, benchmark source file, and output, plus the candidate digest |
 
 ## Findings
 
-The evidence stream does **not** fully validate on the audited revision. Two
-defects in the audited packages are each reproduced by a mandatory scenario, with
-minimal reproductions in [`FINDINGS.md`](FINDINGS.md):
+Building this benchmark surfaced three real defects in the audited packages. All
+three are **fixed in this repository**, each with its own regression test, and
+the reproductions are kept in [`FINDINGS.md`](FINDINGS.md) so the fixes stay
+auditable:
 
-- a correctly refused **non-human approval** emits an event the validator rejects;
-- a **delegated capability**'s `tool_invoked` event omits the delegation
-  reference the validator needs;
-- the legacy `integrations/` tree **shadows the supported adapter package**, so
-  the two cannot coexist in one Python process.
+- **F1** — a correctly refused **non-human approval** emitted an event the
+  evidence validator rejected, so exercising the product's headline guarantee
+  made the stream unvalidatable.
+- **F2** — a **delegated capability**'s `tool_invoked` event omitted the
+  authorizing delegation, so delegation and validatable evidence were mutually
+  exclusive on the supported CrewAI path.
+- **F3** — the legacy `integrations/` tree **claimed the supported adapter's
+  import name**, so the two could not coexist in one Python process.
 
-Neither affects an enforcement result. Both block a clean evidence claim, which
-is why the benchmark's own verdict is `CONDITIONAL_GO` rather than `GO`. Nothing
-in the audited packages was modified to make the benchmark pass.
+None of them ever affected an enforcement result — every decision in every run
+was correct and every prevented callable stayed at zero side effects. What they
+blocked was a clean *evidence* claim. With the fixes in place the full event
+stream validates with zero diagnostics and the verdict is `GO`.
+
+## Reading a committed result
+
+`results/` is a **snapshot of one run**, not a continuously verified claim. Two
+digests in `validation_manifest.json` are reproducible on any machine and are the
+ones worth comparing:
+
+- `candidate_digest` — folds every governance input and benchmark source file
+  into one value, so it identifies the exact candidate a result came from. It is
+  also recorded in `benchmark.json`, `benchmark.md`, and `dashboard.html`.
+- `deterministic_outputs_digest` — folds only the outputs that are byte-stable
+  across machines (the evidence stream, its validation report, and the two
+  per-scenario result files).
+
+`benchmark.json`, `benchmark.md`, `dashboard.html`, and `environment.json` embed
+installed versions, the host platform, and local wall-clock timings, so their
+bytes legitimately differ between machines and they are marked
+`"deterministic": false` in the manifest. No artifact contains an absolute local
+path. Rerun the benchmark rather than trusting the snapshot.
 
 ## Layout
 

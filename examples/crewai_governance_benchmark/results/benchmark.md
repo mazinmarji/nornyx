@@ -7,7 +7,7 @@ One customer-support and financial-remediation workflow, run twice: once as an o
 
 ## Verdict
 
-**CONDITIONAL_GO** — Every A/B and side-effect claim in this report is mechanically verified: valid actions were allowed with identical output, every prohibited callable the baseline executed was prevented with zero side effects, and every event binds the exact contract and lock digest. The full evidence stream does not validate, because two mandatory scenarios each reproduce a real defect in the audited packages (AN_EVT_APPROVAL_NON_HUMAN, AN_EVT_CAPABILITY_NOT_HELD). Those defects block a clean evidence claim until fixed upstream; they do not affect any enforcement result.
+**GO** — Every benchmark-contract check passed and the full evidence stream validates against the exact contract and lock revision, with zero diagnostics.
 
 ## Environment
 
@@ -21,8 +21,11 @@ One customer-support and financial-remediation workflow, run twice: once as an o
 | `as_of` | `2026-07-17T00:00:00Z` |
 | adapters published on PyPI | **False** |
 | adapters install source | repository (adapters/nornyx-agentic-adapters) |
+| candidate digest | `sha256:3da9e0d27fe985a4563fc97745bc7214dd6c929c8e6427a747ec4e10c4ec1c1c` |
 
 `nornyx` is published on PyPI. **`nornyx-agentic-adapters` is not**: it is installed from this repository. Nothing in this benchmark implies otherwise.
+
+The candidate digest folds every governance input and benchmark source file into one value. It is identical on every machine, so it — not the timing figures or the platform string — is what identifies the exact candidate a result came from.
 
 ## Headline results
 
@@ -47,8 +50,8 @@ One customer-support and financial-remediation workflow, run twice: once as an o
 | Post-success observations vs governed-surface completions | 4 vs 4 |
 | Events bound to contract digest | 51 / 51 |
 | Events bound to lock digest | 51 / 51 |
-| Evidence validation (full stream) | **fail** |
-| Evidence validation excluding known upstream defects | pass |
+| Evidence validation (full stream) | **pass** |
+| Evidence diagnostics | 0 |
 | Bypass control executed in both variants | True |
 
 ## Architecture
@@ -346,24 +349,15 @@ flowchart TB
 
 This table is the adapter's own `COVERAGE_INVENTORY`, printed verbatim. Anything not marked `wrapped` is outside the enforcement boundary of this benchmark.
 
-## Findings against the audited revision
-
-The full evidence stream does not validate. Both remaining diagnostics are defects in the audited packages, not in the benchmark, and both are reproduced by mandatory scenarios:
-
-- `AN_EVT_APPROVAL_NON_HUMAN` at `events[18].approver.actor_type` — Approval outcomes require a human approver.
-- `AN_EVT_CAPABILITY_NOT_HELD` at `events[40].capability_ref` — Actor 'identity.remediation_agent' neither holds nor validly receives capability 'propose_refund' at the event time.
-
-See `FINDINGS.md` for minimal reproductions, root causes, and the exact source locations. Removing only the events these two defects affect makes the rest of the stream validate (`pass`), which is reported as a diagnostic aid and never as a passing result.
-
 ## Timing (local microbenchmark only)
 
 | Measurement | Value | Unit |
 |---|---|---|
-| `authorizer_load_seconds` | 19.1143 | s |
-| `evidence_validation_seconds` | 0.5386 | s |
-| `governed_variant_seconds` | 39.2848 | s |
-| `mean_evaluate_milliseconds` | 0.0081 | ms |
-| `plain_variant_seconds` | 0.6875 | s |
+| `authorizer_load_seconds` | 2.4055 | s |
+| `evidence_validation_seconds` | 0.0634 | s |
+| `governed_variant_seconds` | 5.3312 | s |
+| `mean_evaluate_milliseconds` | 0.0146 | ms |
+| `plain_variant_seconds` | 1.6858 | s |
 
 The two variant totals are not a like-for-like per-call comparison: the governed total includes loading and lock-verifying the contract once, running the drift probe, and constructing an evidence stream. `authorizer_load_seconds` is that one-time control-plane cost and `mean_evaluate_milliseconds` is the per-decision cost, which is what a per-call overhead question is actually asking about.
 
@@ -375,4 +369,6 @@ The two variant totals are not a like-for-like per-call comparison: the governed
 python examples/crewai_governance_benchmark/benchmark.py --out benchmark_out
 ```
 
-The command exits non-zero unless every clause of the benchmark contract in `scenarios.py` holds. See `REVIEWER_QUICKSTART.md`.
+The command exits non-zero unless every clause of the benchmark contract in `scenarios.py` holds **and** the full evidence stream validates. See `REVIEWER_QUICKSTART.md`.
+
+Any committed copy of this report is a **snapshot of one run**, not a continuously verified claim. It can go stale the moment the candidate changes. Compare the candidate digest above, and rerun the benchmark rather than trusting the file.

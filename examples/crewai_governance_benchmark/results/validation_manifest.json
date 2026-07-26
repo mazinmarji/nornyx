@@ -1,235 +1,247 @@
 {
   "benchmark_sources": [
     {
-      "bytes": 16335,
-      "digest": "sha256:264ca9cc5fe3501ba3f1c9b5d283bc1d637983ce5f696f21f7f749731fda23e7",
+      "bytes": 18290,
+      "digest": "sha256:5d3b106e78de2af4d9ad861f4b67c852f618c37e97485d1f83e4a98151cc8af5",
       "path": "benchmark.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 5608,
-      "digest": "sha256:d56b9fd8b2dd638e55553c505f303f31a0a2d40f2f1621ee425cb179e3a3857f",
+      "bytes": 5755,
+      "digest": "sha256:2fb0c1f4e78f844666962103b4e7a1967940f4bca6318fd55c8f558feb30c47e",
       "path": "business.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 11673,
-      "digest": "sha256:0ab4fb6208e587a5aa5bee251199c29c4a9403f8affa4e25e7fec5e901bdae76",
+      "bytes": 11726,
+      "digest": "sha256:5873759d8c2e7b956eac44d8306b34153a90208ec09d34a51da2e6385b304f2a",
       "path": "config.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 1967,
-      "digest": "sha256:d404d81f9052a6214d78704fb02e86e0b48857ea90abebad549fc3b7ea3e5ced",
+      "bytes": 2027,
+      "digest": "sha256:bb814654566a2c970fd0ea284e2c656f13b6a14b6a1b311ee04748d726c3d66b",
       "path": "deterministic_llm.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 6456,
-      "digest": "sha256:3f3c900e320f8a39d64c6bd3eb68bc9d567be11f05ce211e239877ea65da3e9f",
+      "bytes": 6613,
+      "digest": "sha256:1292ce92fbd2db59ef9262b42f76ccfaad6df8cc5bfa11a6e04679295058226d",
       "path": "ledger.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 3045,
-      "digest": "sha256:941e3b1cb347279df28a2bc4f381f56c57594590ff0e790b6bc348fb434ccdb9",
+      "bytes": 6792,
+      "digest": "sha256:6b1abfc426e931e182b41701ff1fcb289e1473d77969c0a8cdc9c285f5599014",
       "path": "manifest.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 9905,
-      "digest": "sha256:eeaa49316d64c1011f1d2bdcc6b6ad2c503d75ddcc6492c8c8b80ab0a906342f",
+      "bytes": 10149,
+      "digest": "sha256:48afa3bb5a3a266127f3ab7ca1b3cf85875afc41e27d8150aaa90a0d2596e4e2",
       "path": "metrics.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 35349,
-      "digest": "sha256:b56f1fa5216ec648fe259b254c2052d261d4c549959edbb355e55a7b136e115d",
+      "bytes": 36583,
+      "digest": "sha256:6d263da11314d7f91711ea67f2023a832154abe60d27a01278eaf1f03478bad3",
       "path": "report.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 3148,
-      "digest": "sha256:8968951f6c2c3e67815004dd823e7da53ce45d3c6f359ff5d1256b025404c3c9",
+      "bytes": 3231,
+      "digest": "sha256:1e2d05c29b57a89224f959b99bda69730a29fcfb5ade9155d749228a11b041df",
       "path": "runtime.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 23213,
-      "digest": "sha256:ba679425a72df09a62356e7ba44a19bdb1212f6b10099dcf5c74da2cd08a0cc5",
+      "bytes": 23794,
+      "digest": "sha256:6beb7d6da85c9ab08b5c2004bc0b5bf448e1aa8dbdb82787d9e36be11187ce70",
       "path": "scenarios.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 21067,
-      "digest": "sha256:c6987b84a49cf361fcdd85c718bdf5fdfef946d4eeed54c42d3a27d451d32d6e",
+      "bytes": 21621,
+      "digest": "sha256:67b9df8fa82f14d9f4d50d9fe28e188344b37218818080a7c028a450b38e8d0f",
       "path": "variant_governed.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 3448,
-      "digest": "sha256:ce4c1fe853d926f0210a97aa264beb2d4c920083c3d4c888e45ccd98eee981ae",
+      "bytes": 3536,
+      "digest": "sha256:76bc7428e3c6e54e7ce13be949f3648e49eee845f66cfa4bcf57afd190954dcb",
       "path": "variant_plain.py",
       "role": "benchmark_source"
     }
   ],
+  "candidate_digest": "sha256:3da9e0d27fe985a4563fc97745bc7214dd6c929c8e6427a747ec4e10c4ec1c1c",
   "collects_reviewer_data": false,
   "counts": {
     "benchmark_sources": 12,
+    "deterministic_outputs": 4,
     "inputs": 16,
     "outputs": 8
   },
+  "deterministic_outputs_digest": "sha256:5ecc2c40890d6c21da4b1f361a109df9e90311650c8ae7aeeb5f0f9ccf0ebb3c",
   "governance_digests": {
     "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
     "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8"
   },
   "inputs": [
     {
-      "bytes": 18840,
-      "digest": "sha256:f29f934b90bfb27f55838c2f1b7823ce46b5ed8403e19dda4904902c8d172760",
+      "bytes": 19315,
+      "digest": "sha256:d36ac70918bd038e2dbd63547498852c104493d6ad2ad579a5434a6f8dcf5e8d",
       "path": "remediation_network.nyx",
       "role": "benchmark_contract"
     },
     {
-      "bytes": 8636,
-      "digest": "sha256:721878abbdb491988e0e588ae2d34445b7f8a51a9a0e370ad0fdb9fd41003fec",
+      "bytes": 8898,
+      "digest": "sha256:ac26a0d3df8f040f5bf7bfbcf266065fa1df22c5c43f0b03dcc259a47a62cec9",
       "path": "nornyx.agentic_network.lock",
       "role": "network_lock"
     },
     {
-      "bytes": 1257,
-      "digest": "sha256:2283f524adba3a6d915fae78d15ec5ca0402ce4442cfc3bbc5f27ddcccffbf30",
-      "path": "control_artifacts/a2a_declaration.json",
+      "bytes": 1301,
+      "digest": "sha256:a963ff638234977df5151d132c9b647039871921c0fdbfc09fc86bc1a719c4e4",
+      "path": "control_artifacts\\a2a_declaration.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 1577,
-      "digest": "sha256:010bc8a30ea6b692d766b33636688d705985e1c14d3128b81aa13f11edbb15fb",
-      "path": "control_artifacts/agentic_generation_manifest.json",
+      "bytes": 1622,
+      "digest": "sha256:5692cc3990b19574b41f0efa12a92dc7b2f48268de8574f5ba10932527900fa4",
+      "path": "control_artifacts\\agentic_generation_manifest.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 6588,
-      "digest": "sha256:745230d344465f84f4dce89223c9d6f7c7ee31561ad89aafe87d6e02171d6c28",
-      "path": "control_artifacts/capability_matrix.json",
+      "bytes": 6840,
+      "digest": "sha256:885c404254c3fea4070402de9fd364086aec67f61d5575372d75e10c2065975c",
+      "path": "control_artifacts\\capability_matrix.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 2662,
-      "digest": "sha256:201ad81b6363d168b4e4473082a0d6f4faae928a6c088b00f5cb4d868c5a748b",
-      "path": "control_artifacts/delegation_policy_bundle.json",
+      "bytes": 2760,
+      "digest": "sha256:d26b2ff027569bd025b2621072b6755b32c5b21f29fe06650bc08f51e75b8453",
+      "path": "control_artifacts\\delegation_policy_bundle.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 3097,
-      "digest": "sha256:dba121401e8d3e944574d888c4af7b4b031d57f28450b658db8b36f65ce3c9b7",
-      "path": "control_artifacts/handoff_manifest.json",
+      "bytes": 3198,
+      "digest": "sha256:9044e710c566cda7b790b486655c88e87e51b648b36a163868f3ce8d86287898",
+      "path": "control_artifacts\\handoff_manifest.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 3750,
-      "digest": "sha256:a54deb9e2ee565b859f30d7192d02f78625dcbe3d1b4d29752ca4dfcc8001119",
-      "path": "control_artifacts/identity_manifest.json",
+      "bytes": 3875,
+      "digest": "sha256:1521c91ceaf47c8af3b398e66655cc6e1497e14bd7cd462e2eaf01f8af9bbd4c",
+      "path": "control_artifacts\\identity_manifest.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 613,
-      "digest": "sha256:a5a371cd0c9246ef3373f508a1cb42691e97cbced8e64ed763fa4f814d99a6a3",
-      "path": "control_artifacts/mcp_capability_declaration.json",
+      "bytes": 630,
+      "digest": "sha256:47e6527bd3cbe5c8bcad76301ec5fc8d24534625e26de35f8ad01a7ee3d34aa2",
+      "path": "control_artifacts\\mcp_capability_declaration.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 2139,
-      "digest": "sha256:8a052ddaa327a490a2ce5de83fdb55362855583645cffb4776cbd7436daf9eb1",
-      "path": "control_artifacts/network_manifest.json",
+      "bytes": 2207,
+      "digest": "sha256:30fbe546c200716c1ed774ca9a091aa63beddf697d1114bdd03583b27b7d12b7",
+      "path": "control_artifacts\\network_manifest.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 1216,
-      "digest": "sha256:444a522adf3ab1337420aea44868aa246c7630eb40de6a3539aec2953fccc83f",
-      "path": "control_artifacts/runtime_evidence_contract.json",
+      "bytes": 1255,
+      "digest": "sha256:a18690d33a881127e5aebe39da60acc1098c02134b9883b051f3e30349a7718a",
+      "path": "control_artifacts\\runtime_evidence_contract.json",
       "role": "generated_control_artifact"
     },
     {
-      "bytes": 4716,
-      "digest": "sha256:12f319b2cbe1abfd61771e145ddee2dc9efdd15968de8ce3a114150dd7a1ec87",
-      "path": "control_artifacts/trust_zone_map.json",
+      "bytes": 4890,
+      "digest": "sha256:694a009c6f9230374716eccf88fec854ba06845eacfdb75f3962d52e6b080e5f",
+      "path": "control_artifacts\\trust_zone_map.json",
       "role": "generated_control_artifact"
     },
     {
       "bytes": 224,
       "digest": "sha256:c9b935676bfb0e3dfc61d28789dc7cdc2ed8665c2ab91c1eb738cbcab411a38d",
-      "path": "governance_evidence/approval_record.json",
+      "path": "governance_evidence\\approval_record.json",
       "role": "governance_evidence_record"
     },
     {
       "bytes": 167,
       "digest": "sha256:539c35f66c13b26cd28c0c9b0b1dfc8b88691a44b3a77ec06a2da9a1722db1bc",
-      "path": "governance_evidence/evidence_manifest.json",
+      "path": "governance_evidence\\evidence_manifest.json",
       "role": "governance_evidence_record"
     },
     {
       "bytes": 242,
       "digest": "sha256:1e9b2112c80f2061062808697993e9cf18c9b8b9db003a785f93628888c45669",
-      "path": "governance_evidence/independent_review_record.json",
+      "path": "governance_evidence\\independent_review_record.json",
       "role": "governance_evidence_record"
     },
     {
       "bytes": 184,
       "digest": "sha256:cca3acad0859f5dcb822d12187202f73377b930b11e5ef2365aec49693f577ac",
-      "path": "governance_evidence/remediation_eval_report_record.json",
+      "path": "governance_evidence\\remediation_eval_report_record.json",
       "role": "governance_evidence_record"
     }
   ],
+  "note": "candidate_digest and deterministic_outputs_digest are reproducible on any machine and are the values to compare across runs. The remaining output digests cover this snapshot's exact bytes only: benchmark.json, benchmark.md, dashboard.html and environment.json embed installed versions, the host platform, and local wall-clock timings.",
   "outputs": [
     {
-      "bytes": 66761,
-      "digest": "sha256:10855540f1f475a2aab8cf194e4da1ca29b8a370dc9798a122222c2e8044f8f6",
+      "bytes": 67753,
+      "deterministic": false,
+      "digest": "sha256:8057e0392afc946436a7065084f2c3077457ea31cb0fc0b67a07a1adb716ebda",
       "path": "benchmark.json",
       "role": "benchmark_output"
     },
     {
-      "bytes": 25239,
-      "digest": "sha256:709aaa12e1f766c06382bec68b9028f362f817b8a3c04c52f6a754d0730fd2f9",
+      "bytes": 24999,
+      "deterministic": false,
+      "digest": "sha256:a51ba1fbf8cbd76e29967b8e6bbaf34940bae646262ddd1d08050a1e350fc4b8",
       "path": "benchmark.md",
       "role": "benchmark_output"
     },
     {
-      "bytes": 21544,
-      "digest": "sha256:8e6cc986cead5a84c0005ed8f948b2ab1108677f7482b8a9492fa8e57e43dc19",
+      "bytes": 20971,
+      "deterministic": false,
+      "digest": "sha256:d35de1f78324f107bff053fa34003a3bcc602754b681ee144c72b0f900cbcf60",
       "path": "dashboard.html",
       "role": "benchmark_output"
     },
     {
-      "bytes": 1029,
-      "digest": "sha256:29afc5ff75d46ec589d257ddf187c54f01745e7f1c0beaf69f0c55fdac130d2b",
+      "bytes": 750,
+      "deterministic": false,
+      "digest": "sha256:6e301a0961271e90a868d71de167ff33bc4eac96ecf7e1f68ecef80f2ee252a0",
       "path": "environment.json",
       "role": "benchmark_output"
     },
     {
-      "bytes": 24492,
-      "digest": "sha256:01ad2f57aeafa43385ea02ec903523e8b5d4814de6ec408d7903d671d83f8785",
+      "bytes": 25308,
+      "deterministic": true,
+      "digest": "sha256:a39abffc99834243e5f42e4d4dabb7e74ba730e19c8d35b3a69175f177247022",
       "path": "governed_results.json",
       "role": "benchmark_output"
     },
     {
-      "bytes": 1777,
-      "digest": "sha256:663ef3e2097c231f9c4fa25389caa25e4ae49378fbabfae2c37c3a4ffdf2979e",
+      "bytes": 1250,
+      "deterministic": true,
+      "digest": "sha256:ecd4b96974abcf9cc43f383abf36036be22aa9fb06b2123c718b3b8168b3d31f",
       "path": "nornyx_evidence_report.json",
       "role": "benchmark_output"
     },
     {
-      "bytes": 41593,
-      "digest": "sha256:5c8c9ec772992a2e309e16c044b395b67a32e954cf692355d578d2db866219cb",
+      "bytes": 42610,
+      "deterministic": true,
+      "digest": "sha256:c272cda57bc807742afdf9ffd856bd0a02a32f6e566bc3dd16722b4680581011",
       "path": "nornyx_runtime_events.json",
       "role": "benchmark_output"
     },
     {
-      "bytes": 17279,
-      "digest": "sha256:e7c0931bbe71c7fc8f86c28a4a61697693c28c752693a212ffd6384b47538968",
+      "bytes": 17821,
+      "deterministic": true,
+      "digest": "sha256:432c500acbb68849568095fa4c2ac12017d946ca3960e9955278d6f090aa5a12",
       "path": "plain_results.json",
       "role": "benchmark_output"
     }
   ],
-  "schema": "nornyx.benchmark_validation_manifest.v1"
+  "schema": "nornyx.benchmark_validation_manifest.v2"
 }

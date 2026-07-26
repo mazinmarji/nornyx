@@ -92,14 +92,15 @@ padding-top:14px}
     <span class="chip">crewai 1.15.4</span>
     <span class="chip">python 3.13.14</span>
     <span class="chip">as-of 2026-07-17T00:00:00Z</span>
+    <span class="chip">candidate sha256:3da9e0d27fe985a4563fc97745bc7214dd6c929c8e6427a747ec4e10c4ec1c1c</span>
   </div>
 </header>
 
 <section><h2>Verdict<span class="sub">independent-auditor assessment</span></h2>
-<div class="note"><b>CONDITIONAL_GO</b> — Every A/B and side-effect claim in this report is mechanically verified: valid actions were allowed with identical output, every prohibited callable the baseline executed was prevented with zero side effects, and every event binds the exact contract and lock digest. The full evidence stream does not validate, because two mandatory scenarios each reproduce a real defect in the audited packages (AN_EVT_APPROVAL_NON_HUMAN, AN_EVT_CAPABILITY_NOT_HELD). Those defects block a clean evidence claim until fixed upstream; they do not affect any enforcement result.</div></section>
+<div class="note"><b>GO</b> — Every benchmark-contract check passed and the full evidence stream validates against the exact contract and lock revision, with zero diagnostics.</div></section>
 
 <section><h2>Headline<span class="sub">measured, not asserted</span></h2>
-<div class="grid"><div class="card"><div class="k">Prohibited actions prevented</div><div class="v ok">11/11</div><div class="n">executed in baseline → blocked under governance</div></div><div class="card"><div class="k">False denials</div><div class="v ok">0</div><div class="n">valid actions wrongly refused</div></div><div class="card"><div class="k">False allows</div><div class="v ok">0</div><div class="n">prohibited actions that still ran</div></div><div class="card"><div class="k">Output equivalence</div><div class="v ok">yes</div><div class="n">identical business output on the allowed path</div></div><div class="card"><div class="k">Evidence events</div><div class="v ok">51</div><div class="n">51 bound to contract, 51 to lock</div></div><div class="card"><div class="k">Evidence validation</div><div class="v warn">fail</div><div class="n">excluding known upstream defects: pass</div></div></div></section>
+<div class="grid"><div class="card"><div class="k">Prohibited actions prevented</div><div class="v ok">11/11</div><div class="n">executed in baseline → blocked under governance</div></div><div class="card"><div class="k">False denials</div><div class="v ok">0</div><div class="n">valid actions wrongly refused</div></div><div class="card"><div class="k">False allows</div><div class="v ok">0</div><div class="n">prohibited actions that still ran</div></div><div class="card"><div class="k">Output equivalence</div><div class="v ok">yes</div><div class="n">identical business output on the allowed path</div></div><div class="card"><div class="k">Evidence events</div><div class="v ok">51</div><div class="n">51 bound to contract, 51 to lock</div></div><div class="card"><div class="k">Evidence validation</div><div class="v ok">pass</div><div class="n">full stream, 0 diagnostic(s)</div></div></div></section>
 
 <section><h2>Plain versus governed
 <span class="sub">bars are measured counts; red = plain, green = governed</span></h2>
@@ -145,14 +146,15 @@ padding-top:14px}
 enforcement boundary. The <span class="mono">S15</span> bypass control executes in both
 variants and is never counted as prevented.</p></section>
 
-<section><h2>Findings against the audited revision<span class=sub>defects in the audited packages, not in the benchmark</span></h2><div class='panel limit'><ul><li><b>AN_EVT_APPROVAL_NON_HUMAN</b><span class=mono>events[18].approver.actor_type</span> — Approval outcomes require a human approver.</li><li><b>AN_EVT_CAPABILITY_NOT_HELD</b><span class=mono>events[40].capability_ref</span> — Actor &#x27;identity.remediation_agent&#x27; neither holds nor validly receives capability &#x27;propose_refund&#x27; at the event time.</li></ul></div></section>
+
 
 <footer>
 Offline, deterministic, no API key and no network. The evaluation instant is pinned to
 2026-07-17T00:00:00Z because the SPI reads no wall clock.
 <b>nornyx-agentic-adapters is not published on PyPI</b>; it is installed from the repository.
 Timing figures elsewhere in this report are a local microbenchmark, not a production
-latency claim.
+latency claim. Any committed copy of this page is a snapshot of one run, not a
+continuously verified claim — compare the candidate digest and rerun the benchmark.
 </footer>
 </div>
 </body>

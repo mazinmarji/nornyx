@@ -6,6 +6,34 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Fixed
+- **A correctly refused non-human approval can now appear in a valid evidence
+  stream** (benchmark finding F1). `validate_runtime_events` applied its
+  human-approver and composed-role rules to `approval_granted` *and*
+  `approval_rejected` alike, but `approver` means different things on the two:
+  on a grant it names the party whose authority the action rests on; on a
+  refusal it records the *claimed* approver of an approval that was denied and
+  confers nothing. The result was that exercising one of the product's headline
+  guarantees — refusing an AI-issued approval — produced a stream that could not
+  validate. Both rules are now scoped to `approval_granted`. The engine is
+  unchanged: a non-human approval is still denied with `APPROVAL_NON_HUMAN` and
+  the claimant is still recorded truthfully, and a forged non-human or
+  unauthorized-role `approval_granted` still fails validation.
+
+### Changed
+- **The AN-005 reference adapters moved from `integrations/nornyx_agentic_adapters/`
+  to `integrations/nornyx_reference_adapters/`** (benchmark finding F3). They
+  claimed the same import name as the installed `nornyx-agentic-adapters`
+  distribution, so any process that put `integrations/` on `sys.path` — including
+  several of this repository's own test modules — silently rebound that name to
+  the unpackaged legacy tree, and the failure surfaced as an `ImportError` on a
+  public name. `nornyx_agentic_adapters` now unambiguously means the installed
+  distribution. This breaks no published package: the `integrations/` tree is
+  excluded from the `nornyx` wheel by construction and has never been published,
+  so it was reachable only by a caller that added that directory to `sys.path`
+  itself. See `adapters/nornyx-agentic-adapters/docs/MIGRATION.md` for the
+  old → new import mapping.
+
 ## [1.8.0] - 2026-07-23
 
 ### Added

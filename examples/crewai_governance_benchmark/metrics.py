@@ -15,6 +15,9 @@ Counting rules, stated once so the report cannot drift from them:
   summed into one headline number.
 * The bypass negative control and the application-rule fairness control are
   excluded from every prevention metric by construction.
+* ``evidence.validation_status`` is the status of the **complete** event stream.
+  There is no filtered, reduced, or defect-excluded variant of it: a status that
+  is only true of a subset of the evidence is not an evidence claim.
 """
 
 from __future__ import annotations
@@ -42,7 +45,6 @@ def build_metrics(
     governed: dict[str, dict[str, Any]],
     *,
     evidence_report: dict[str, Any],
-    evidence_report_excluding_known_defects: dict[str, Any],
     events: list[dict[str, Any]],
     contract_digest: str,
     lock_digest: str,
@@ -187,9 +189,6 @@ def build_metrics(
                 }
                 for d in evidence_report.get("diagnostics", [])
             ],
-            "validation_status_excluding_known_upstream_defects": (
-                evidence_report_excluding_known_defects["status"]
-            ),
             "events_bound_to_contract_digest": bound_contract,
             "events_bound_to_lock_digest": bound_lock,
             "all_events_bound_to_contract_digest": bound_contract == len(events),

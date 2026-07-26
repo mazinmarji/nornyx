@@ -753,6 +753,7 @@
       "actor_ref": "identity.remediation_agent",
       "capability_ref": "propose_refund",
       "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "delegation_ref": "delegation.refund_proposal",
       "event_id": "GOAL-REMEDIATION-001:S16:1-0003",
       "event_type": "tool_invoked",
       "mission_id": "GOAL-REMEDIATION-001:S16:1",

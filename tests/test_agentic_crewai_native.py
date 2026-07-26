@@ -47,10 +47,10 @@ INTEGRATIONS = ROOT / "integrations"
 if str(INTEGRATIONS) not in sys.path:
     sys.path.insert(0, str(INTEGRATIONS))
 
-from nornyx_agentic_adapters.crewai_adapter import (  # noqa: E402
+from nornyx_reference_adapters.crewai_adapter import (  # noqa: E402
     CrewAIGovernanceAdapter,
 )
-from nornyx_agentic_adapters.governance_kernel import (  # noqa: E402
+from nornyx_reference_adapters.governance_kernel import (  # noqa: E402
     DeterministicClock,
     GovernanceKernel,
     GovernanceViolation,

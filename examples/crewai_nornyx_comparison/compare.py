@@ -49,8 +49,8 @@ from nornyx.agentic_artifacts import (  # noqa: E402
 )
 from nornyx.governance import GovernanceRegistry, compose_governance  # noqa: E402
 from nornyx.parser import load_nyx  # noqa: E402
-from nornyx_agentic_adapters.crewai_adapter import CrewAIGovernanceAdapter  # noqa: E402
-from nornyx_agentic_adapters.governance_kernel import (  # noqa: E402
+from nornyx_reference_adapters.crewai_adapter import CrewAIGovernanceAdapter  # noqa: E402
+from nornyx_reference_adapters.governance_kernel import (  # noqa: E402
     DeterministicClock,
     GovernanceKernel,
     GovernanceViolation,

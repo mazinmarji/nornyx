@@ -6,8 +6,31 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+### Fixed
+
+- **A delegated capability's `tool_invoked` observation now carries the
+  authorizing delegation** (benchmark finding F2). When an identity held a
+  capability only by delegation, the decision was correctly ALLOW and
+  `capability_allowed` correctly carried `delegation_ref`, but the CrewAI
+  adapter's post-success observation dropped it — so the evidence validator's
+  possession check failed closed and reported a capability the actor does not
+  hold. Delegation and validatable evidence were therefore mutually exclusive on
+  the supported CrewAI path. `_GovernedTool._run` now reads
+  `DecisionBasis(kind="delegation")` off the authorizing decision and passes
+  `delegation_ref` to `record_observation`. The reference comes from the
+  decision, never from the tool's caller-controlled arguments, and is absent when
+  the capability is held directly. Exactly-once execution and fail-closed denial
+  are unchanged.
+
 ### Added
 
+- `enforce()` accepts an optional `on_decision` observation hook, called with the
+  authoritative `Decision` after its intents are recorded and before any branch
+  on the outcome. It lets an adapter read a decision's public `basis` without
+  re-evaluating the request or reaching into internals. It cannot change the
+  outcome; it runs on DENY as well as ALLOW; and an exception raised from it
+  propagates before `action` is reached, so the boundary still fails closed.
+  Omitting it is exactly the previous behavior.
 - ADR-0039 M2-B — a supported CrewAI adapter (`nornyx_agentic_adapters.crewai_adapter`,
   requires the `crewai` extra): `agent_identity_key`, `resolve_identity`,
   `make_governed_tool`, `METADATA`, `COVERAGE_INVENTORY`. Wraps CrewAI's only

@@ -70,12 +70,19 @@ print('adapter imported OK:', METADATA.adapter_name)
 python examples/crewai_governance_benchmark/benchmark.py --out benchmark_out
 ```
 
-Runs in roughly 40–90 seconds (42s on the reference machine; most of it is CrewAI import plus the one-time contract load). **It exits non-zero if any clause of the benchmark
-contract fails** — a zero exit is itself a machine-checked claim, not a courtesy.
+Runs in roughly 40–90 seconds on a typical laptop — most of it CrewAI import plus
+the one-time contract load. Treat any timing figure here or in the reports as a
+local observation, not a benchmark result. **It exits non-zero if any clause of
+the benchmark contract fails, or if the complete evidence stream does not
+validate** — a zero exit is itself a machine-checked claim, not a courtesy.
 
 ```bash
-echo $?      # 0 = every contract check passed
+echo $?      # 0 = every contract check passed AND the full stream validated
 ```
+
+The verdict is `GO` or `NO_GO`. There is no conditional verdict: a result that
+normalizes a known defect reads as a pass to everyone who does not also read the
+footnote.
 
 ## What you should get
 
@@ -179,11 +186,15 @@ nornyx agentic-network lock-check "$B/remediation_network.nyx" \
   --as-of 2026-07-17T00:00:00Z
 ```
 
-**Expect `status: fail` on the evidence stream.** Two diagnostics remain, both
-defects in the audited packages rather than in the benchmark, both reproduced by
-mandatory scenarios, and both documented with minimal reproductions in
-`FINDINGS.md`. The benchmark reports the failure rather than hiding it; the run
-still exits zero because its contract requires that *no other* diagnostic appear.
+**Expect `status: pass` and an empty `diagnostics` list** — for the *complete*
+event stream, with nothing filtered out. The benchmark has no allow-list of
+tolerated diagnostic codes and never re-validates a reduced stream: any
+diagnostic at all fails the `no_evidence_diagnostics` contract check, produces a
+`NO_GO` verdict, and exits non-zero.
+
+Earlier revisions of this benchmark did report `fail` here, because two defects
+in the audited packages (F1 and F2) made a truthful stream unvalidatable. Both
+are fixed and regression-tested; see `FINDINGS.md` for the reproductions.
 
 ### 5. Confirm nothing was tampered with
 
@@ -204,14 +215,44 @@ print("all manifest digests match")
 PY
 ```
 
+### 5b. Compare your run against the committed snapshot
+
+Only two digests are meant to match across machines, and the manifest says which
+outputs they cover:
+
+```bash
+python - <<'PY'
+import json
+mine = json.load(open("benchmark_out/validation_manifest.json"))
+theirs = json.load(open("examples/crewai_governance_benchmark/results/validation_manifest.json"))
+for key in ("candidate_digest", "deterministic_outputs_digest"):
+    print(f"{key}: {'MATCH' if mine[key] == theirs[key] else 'DIFFERENT'}")
+    print("   yours: ", mine[key])
+    print("   theirs:", theirs[key])
+PY
+```
+
+`candidate_digest` folds every governance input and benchmark source file into
+one value: if it differs, you are not running the same candidate, and no other
+comparison means much. `deterministic_outputs_digest` covers only the
+byte-stable outputs — the evidence stream, its validation report, and the two
+per-scenario result files.
+
+`benchmark.json`, `benchmark.md`, `dashboard.html`, and `environment.json` embed
+installed versions, the host platform, and local wall-clock timings, so their
+bytes will differ from the committed copies. They are marked
+`"deterministic": false` in the manifest for exactly that reason — a manifest
+that claimed they were reproducible would be claiming something false.
+
 ### 6. Confirm the benchmark cannot reach the network
 
 The run is wrapped in an offline guard. Prove the guard actually bites:
 
 ```bash
 python -c "
-import sys; sys.path.insert(0,'examples/crewai_governance_benchmark')
-import config, socket
+import sys; sys.path.insert(0,'examples')
+from crewai_governance_benchmark import config
+import socket
 with config.no_external_io():
     try: socket.getaddrinfo('example.com', 443)
     except AssertionError as e: print('blocked as expected:', e)
@@ -225,18 +266,30 @@ python examples/crewai_governance_benchmark/benchmark.py --out /tmp/one --scenar
 python examples/crewai_governance_benchmark/benchmark.py --out /tmp/two --scenario S06 --scenario S16
 ```
 
-This prints the baseline and governed record for those scenarios only —
-expected outcome, actual outcome, attempts, completions, diagnostic, and output.
+This prints the baseline and governed record for those scenarios only — expected
+outcome, actual outcome, attempts, completions, diagnostic, and output — and
+then **asserts the same per-scenario contract clauses the full run does**
+(expected side effects, expected diagnostic code, exactly-once on ALLOW). It
+exits non-zero if any selected scenario differs from its expected result, so a
+focused spot-check is a real check rather than a printout.
 
 ## Running the tests
 
 ```bash
-python -m pytest tests/test_crewai_governance_benchmark.py -q
+python -m pytest tests/test_crewai_governance_benchmark.py -q -rs
 ```
 
-37 tests. They execute the benchmark once and assert against its real artifacts,
-including that the dashboard is self-contained, that no report contains an
-absolute claim, and that the manifest digests match the files on disk.
+46 tests, **zero skips**. They execute the benchmark once and assert against its
+real artifacts, including that the full evidence stream validates with no
+diagnostics, that the benchmark uses no private Nornyx API, that no artifact
+contains an absolute local path, that the dashboard is self-contained, that no
+report contains an absolute claim, and that the manifest digests match the files
+on disk.
+
+The `crewai-governance-benchmark` CI job runs the benchmark and this suite
+against the exact PR head with `crewai==1.15.4` and the candidate adapter
+installed, and fails if any test skips, if none run, or if the benchmark exits
+non-zero.
 
 ## Things worth knowing before you judge the result
 
@@ -252,6 +305,19 @@ absolute claim, and that the manifest digests match the files on disk.
   unwrapped tool that proves enforcement is cooperative, not total.
 - **S18 is supposed to be refused by the application, not by Nornyx.** It exists
   so the benchmark cannot take credit for a control the baseline already had.
+- **Enforcement is cooperative.** The supported CrewAI adapter wraps synchronous
+  tool invocation only. Asynchronous tool invocation, agent invocation, task
+  invocation, CrewAI's own coworker delegation, and handoff are declared
+  `unsupported` in the adapter's coverage inventory — not silently covered.
+- **Identity resolution is binding, not authentication.** It maps a declared role
+  string to a declared identity; it never establishes that the caller is who it
+  claims to be.
+- **Validating evidence proves structure and binding, not truth.** It shows the
+  records are well formed and bound to the exact contract and lock revision. It
+  does not prove the emitter told the truth or that any external side effect
+  really happened.
+- **`results/` is a snapshot, not a live claim.** Rerun the benchmark; compare
+  `candidate_digest` first.
 
 ## Reporting an unexpected result
 

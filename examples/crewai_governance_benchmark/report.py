@@ -253,13 +253,8 @@ def terminal_summary(metrics: dict, rows: list[dict], env: dict) -> str:
         f" (governed-surface completions: {x['completed_side_effects_on_governed_surfaces']})",
         f"  full-stream validation             {e['validation_status'].upper()}",
     ]
-    if e["diagnostics"]:
-        lines.append(
-            f"  excluding known upstream defects   "
-            f"{e['validation_status_excluding_known_upstream_defects'].upper()}"
-        )
-        for d in e["diagnostics"]:
-            lines.append(f"    ! {d['code']} at {d['path']}")
+    for d in e["diagnostics"]:
+        lines.append(f"    ! {d['code']} at {d['path']}")
     lines += [
         "",
         "  SCENARIO HEAT MAP  (baseline -> governed)",
@@ -277,7 +272,14 @@ def terminal_summary(metrics: dict, rows: list[dict], env: dict) -> str:
 
 
 # ------------------------------------------------------------------- markdown
-def render_markdown(metrics: dict, rows: list[dict], env: dict, adapter: dict, verdict: dict) -> str:
+def render_markdown(
+    metrics: dict,
+    rows: list[dict],
+    env: dict,
+    adapter: dict,
+    verdict: dict,
+    candidate_digest: str = "",
+) -> str:
     a, p, e, b = (
         metrics["allowed_path"],
         metrics["prevention"],
@@ -322,10 +324,17 @@ def render_markdown(metrics: dict, rows: list[dict], env: dict, adapter: dict, v
         w(f"| `{key}` | `{env[key]}` |")
     w(f"| adapters published on PyPI | **{env['adapters_package_published_on_pypi']}** |")
     w(f"| adapters install source | {env['adapters_install_source']} |")
+    if candidate_digest:
+        w(f"| candidate digest | `{candidate_digest}` |")
     w("")
     w(
         "`nornyx` is published on PyPI. **`nornyx-agentic-adapters` is not**: it is installed "
         "from this repository. Nothing in this benchmark implies otherwise.\n"
+    )
+    w(
+        "The candidate digest folds every governance input and benchmark source file into one "
+        "value. It is identical on every machine, so it — not the timing figures or the "
+        "platform string — is what identifies the exact candidate a result came from.\n"
     )
 
     w("## Headline results\n")
@@ -362,10 +371,7 @@ def render_markdown(metrics: dict, rows: list[dict], env: dict, adapter: dict, v
     w(f"| Events bound to contract digest | {e['events_bound_to_contract_digest']} / {e['events_emitted']} |")
     w(f"| Events bound to lock digest | {e['events_bound_to_lock_digest']} / {e['events_emitted']} |")
     w(f"| Evidence validation (full stream) | **{e['validation_status']}** |")
-    w(
-        f"| Evidence validation excluding known upstream defects | "
-        f"{e['validation_status_excluding_known_upstream_defects']} |"
-    )
+    w(f"| Evidence diagnostics | {len(e['diagnostics'])} |")
     w(f"| Bypass control executed in both variants | {b['bypass_executed_in_baseline'] and b['bypass_executed_under_governance']} |")
     w("")
 
@@ -424,21 +430,16 @@ def render_markdown(metrics: dict, rows: list[dict], env: dict, adapter: dict, v
     )
 
     if e["diagnostics"]:
-        w("## Findings against the audited revision\n")
+        w("## Evidence diagnostics — the full stream did not validate\n")
         w(
-            "The full evidence stream does not validate. Both remaining diagnostics are "
-            "defects in the audited packages, not in the benchmark, and both are reproduced "
-            "by mandatory scenarios:\n"
+            "The complete event stream does not validate. Every diagnostic the validator "
+            "reported is listed here in full; nothing is filtered, excluded, or re-validated "
+            "against a reduced stream, and the verdict is `NO_GO`:\n"
         )
         for d in e["diagnostics"]:
             w(f"- `{d['code']}` at `{d['path']}` — {d['message']}")
         w("")
-        w(
-            "See `FINDINGS.md` for minimal reproductions, root causes, and the exact source "
-            "locations. Removing only the events these two defects affect makes the rest of "
-            f"the stream validate (`{e['validation_status_excluding_known_upstream_defects']}`), "
-            "which is reported as a diagnostic aid and never as a passing result.\n"
-        )
+        w("See `FINDINGS.md` for reproductions and root causes.\n")
 
     w("## Timing (local microbenchmark only)\n")
     t = metrics["timing_local_microbenchmark_only"]
@@ -465,7 +466,13 @@ def render_markdown(metrics: dict, rows: list[dict], env: dict, adapter: dict, v
     w("```")
     w(
         "\nThe command exits non-zero unless every clause of the benchmark contract in "
-        "`scenarios.py` holds. See `REVIEWER_QUICKSTART.md`.\n"
+        "`scenarios.py` holds **and** the full evidence stream validates. See "
+        "`REVIEWER_QUICKSTART.md`.\n"
+    )
+    w(
+        "Any committed copy of this report is a **snapshot of one run**, not a continuously "
+        "verified claim. It can go stale the moment the candidate changes. Compare the "
+        "candidate digest above, and rerun the benchmark rather than trusting the file.\n"
     )
     return "\n".join(out)
 
@@ -589,7 +596,14 @@ def _tile(label: str, value: Any, note: str = "", tone: str = "") -> str:
     )
 
 
-def render_dashboard(metrics: dict, rows: list[dict], env: dict, adapter: dict, verdict: dict) -> str:
+def render_dashboard(
+    metrics: dict,
+    rows: list[dict],
+    env: dict,
+    adapter: dict,
+    verdict: dict,
+    candidate_digest: str = "",
+) -> str:
     a, p, e = (
         metrics["allowed_path"],
         metrics["prevention"],
@@ -635,9 +649,8 @@ def render_dashboard(metrics: dict, rows: list[dict], env: dict, adapter: dict, 
             _tile(
                 "Evidence validation",
                 e["validation_status"],
-                f"excluding known upstream defects: "
-                f"{e['validation_status_excluding_known_upstream_defects']}",
-                "ok" if e["validation_status"] == "pass" else "warn",
+                f"full stream, {len(e['diagnostics'])} diagnostic(s)",
+                "ok" if e["validation_status"] == "pass" else "bad",
             ),
         ]
     )
@@ -671,8 +684,9 @@ def render_dashboard(metrics: dict, rows: list[dict], env: dict, adapter: dict, 
             for d in e["diagnostics"]
         )
         diagnostics = (
-            "<section><h2>Findings against the audited revision"
-            "<span class=sub>defects in the audited packages, not in the benchmark</span></h2>"
+            "<section><h2>Evidence diagnostics"
+            "<span class=sub>the full stream did not validate — reported in full,"
+            " nothing filtered</span></h2>"
             f"<div class='panel limit'><ul>{items}</ul></div></section>"
         )
 
@@ -728,6 +742,7 @@ def render_dashboard(metrics: dict, rows: list[dict], env: dict, adapter: dict, 
     <span class="chip">crewai {esc(str(env['crewai_version']))}</span>
     <span class="chip">python {esc(str(env['python_version']))}</span>
     <span class="chip">as-of {esc(str(env['as_of']))}</span>
+    <span class="chip">candidate {esc(str(candidate_digest))}</span>
   </div>
 </header>
 
@@ -772,7 +787,8 @@ Offline, deterministic, no API key and no network. The evaluation instant is pin
 {esc(str(env['as_of']))} because the SPI reads no wall clock.
 <b>nornyx-agentic-adapters is not published on PyPI</b>; it is installed from the repository.
 Timing figures elsewhere in this report are a local microbenchmark, not a production
-latency claim.
+latency claim. Any committed copy of this page is a snapshot of one run, not a
+continuously verified claim — compare the candidate digest and rerun the benchmark.
 </footer>
 </div>
 </body>

@@ -11,22 +11,7 @@
     "tool_invoked": 4,
     "trust_zone_crossed": 1
   },
-  "diagnostics": [
-    {
-      "code": "AN_EVT_APPROVAL_NON_HUMAN",
-      "level": "error",
-      "message": "Approval outcomes require a human approver.",
-      "path": "events[18].approver.actor_type",
-      "source_id": "nornyx.agentic_runtime_events.v1"
-    },
-    {
-      "code": "AN_EVT_CAPABILITY_NOT_HELD",
-      "level": "error",
-      "message": "Actor 'identity.remediation_agent' neither holds nor validly receives capability 'propose_refund' at the event time.",
-      "path": "events[40].capability_ref",
-      "source_id": "nornyx.agentic_runtime_events.v1"
-    }
-  ],
+  "diagnostics": [],
   "event_count": 51,
   "events_schema": "nornyx.agentic_runtime_events.v1",
   "events_schema_version": "1.0",
@@ -46,6 +31,6 @@
     "tools_executed": false
   },
   "schema": "nornyx.agentic_evidence_report.v1",
-  "status": "fail",
+  "status": "pass",
   "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
 }

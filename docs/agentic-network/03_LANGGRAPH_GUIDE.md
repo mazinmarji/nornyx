@@ -1,7 +1,7 @@
 # LangGraph Integration Guide
 
 The LangGraph reference adapter lives in
-`integrations/nornyx_agentic_adapters/langgraph_adapter.py` and is
+`integrations/nornyx_reference_adapters/langgraph_adapter.py` and is
 deliberately **not** part of the `nornyx` wheel. `langgraph` is imported only
 inside `build_governed_graph`; `guard_node` wrappers themselves are
 framework-free.
@@ -18,8 +18,8 @@ Node keys map to exactly one declared identity; unbound keys fail closed.
 ## Usage
 
 ```python
-from nornyx_agentic_adapters.governance_kernel import GovernanceKernel
-from nornyx_agentic_adapters.langgraph_adapter import LangGraphGovernanceAdapter
+from nornyx_reference_adapters.governance_kernel import GovernanceKernel
+from nornyx_reference_adapters.langgraph_adapter import LangGraphGovernanceAdapter
 
 kernel = GovernanceKernel.from_local_controls(
     "examples/agentic_network_support/support_network.nyx",

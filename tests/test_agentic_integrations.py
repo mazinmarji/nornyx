@@ -28,20 +28,20 @@ INTEGRATIONS = ROOT / "integrations"
 if str(INTEGRATIONS) not in sys.path:
     sys.path.insert(0, str(INTEGRATIONS))
 
-from nornyx_agentic_adapters.governance_kernel import (  # noqa: E402
+from nornyx_reference_adapters.governance_kernel import (  # noqa: E402
     DeterministicClock,
     GovernanceKernel,
     GovernanceViolation,
 )
-from nornyx_agentic_adapters.crewai_adapter import (  # noqa: E402
+from nornyx_reference_adapters.crewai_adapter import (  # noqa: E402
     CrewAIGovernanceAdapter,
     crewai_available,
 )
-from nornyx_agentic_adapters.langgraph_adapter import (  # noqa: E402
+from nornyx_reference_adapters.langgraph_adapter import (  # noqa: E402
     LangGraphGovernanceAdapter,
     langgraph_available,
 )
-from nornyx_agentic_adapters.local_harness import (  # noqa: E402
+from nornyx_reference_adapters.local_harness import (  # noqa: E402
     DuckAgent,
     FakeModel,
     InertTool,
@@ -644,11 +644,53 @@ def test_default_install_does_not_package_integrations() -> None:
 
     package_root = Path(nornyx.__file__).resolve().parent
     assert not (package_root / "integrations").exists()
-    assert not (package_root / "nornyx_agentic_adapters").exists()
+    assert not (package_root / "nornyx_reference_adapters").exists()
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert 'include = ["nornyx*"]' in pyproject
     assert "crewai" not in pyproject
     assert "langgraph" not in pyproject
+
+
+# --------------------------------- F3: the supported adapter owns its import name
+# This module puts `integrations/` on sys.path at import time (see the top of the
+# file), and it sorts alphabetically ahead of every module that uses the supported
+# `nornyx-agentic-adapters` distribution. Before the AN-005 reference tree was
+# renamed to `nornyx_reference_adapters`, that pollution silently rebound the
+# name `nornyx_agentic_adapters` to the unpackaged legacy tree for the rest of
+# the process, and the failure surfaced as an ImportError on a public name. These
+# two tests run *after* that pollution is already in place, so they fail if the
+# collision is ever reintroduced.
+def test_legacy_reference_tree_does_not_claim_the_supported_import_name() -> None:
+    """No importable name under integrations/ may collide with a distribution."""
+    assert str(INTEGRATIONS) in sys.path, "this module's own path pollution is the premise"
+    assert (INTEGRATIONS / "nornyx_reference_adapters").is_dir()
+    assert not (INTEGRATIONS / "nornyx_agentic_adapters").exists(), (
+        "integrations/ must not republish the supported distribution's import name"
+    )
+    published = {
+        entry.name
+        for entry in INTEGRATIONS.iterdir()
+        if entry.is_dir() and (entry / "__init__.py").is_file()
+    }
+    assert published == {"nornyx_reference_adapters"}
+
+
+def test_supported_adapter_resolves_despite_integrations_on_sys_path() -> None:
+    """With integrations/ already ahead on sys.path, a plain import still wins."""
+    import importlib
+    import importlib.metadata as md
+
+    try:
+        md.version("nornyx-agentic-adapters")
+    except md.PackageNotFoundError:
+        pytest.skip("nornyx-agentic-adapters is not installed in this environment")
+
+    package = importlib.import_module("nornyx_agentic_adapters")
+    resolved = Path(package.__file__).resolve()
+    assert INTEGRATIONS not in resolved.parents, resolved
+    # The public names that exist only in the supported distribution.
+    for name in ("AdapterDenied", "SurfaceBinding", "enforce"):
+        assert hasattr(package, name), name
 
 
 def test_kernel_never_writes_outside_requested_paths(

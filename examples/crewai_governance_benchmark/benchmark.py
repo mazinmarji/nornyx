@@ -3,9 +3,17 @@
 
     python examples/crewai_governance_benchmark/benchmark.py --out benchmark_out
 
-Exits non-zero unless every clause of the benchmark contract holds. The contract
-is asserted here; the metrics it is asserted against are computed in
-``metrics.py`` from actual execution, never read back from the expectations.
+Exits non-zero unless every clause of the benchmark contract holds **and** the
+complete runtime-event stream validates. The contract is asserted here; the
+metrics it is asserted against are computed in ``metrics.py`` from actual
+execution, never read back from the expectations.
+
+The verdict is ``GO`` or ``NO_GO``. There is no conditional verdict and no
+allow-list of tolerated evidence diagnostics: the authoritative evidence claim is
+the status of the full stream, never a filtered or reduced one.
+
+``--scenario`` reproduces selected rows and asserts the same per-scenario clauses
+the full run does, so a focused spot-check also exits non-zero on a mismatch.
 """
 
 from __future__ import annotations
@@ -30,7 +38,7 @@ from crewai_governance_benchmark.config import (  # noqa: E402
     capture_environment,
     no_external_io,
 )
-from crewai_governance_benchmark.manifest import build_manifest  # noqa: E402
+from crewai_governance_benchmark.manifest import build_manifest, candidate_digest  # noqa: E402
 from crewai_governance_benchmark.metrics import build_metrics  # noqa: E402
 from crewai_governance_benchmark.report import (  # noqa: E402
     heat_rows,
@@ -41,28 +49,44 @@ from crewai_governance_benchmark.report import (  # noqa: E402
 )
 from crewai_governance_benchmark.scenarios import BY_ID, SCENARIOS  # noqa: E402
 
-# Evidence diagnostics attributable to defects in the audited packages rather
-# than to this benchmark. They are disclosed in FINDINGS.md, reported in full,
-# and never removed from the headline validation status. The contract requires
-# that *no other* diagnostic appears — a new code fails the run.
-KNOWN_UPSTREAM_DEFECT_CODES = frozenset(
-    {"AN_EVT_APPROVAL_NON_HUMAN", "AN_EVT_CAPABILITY_NOT_HELD"}
-)
 
+def _scenario_checks(scenario: Any, governed: dict) -> list[dict[str, Any]]:
+    """The per-scenario clauses of the contract: side effects, code, exactly-once.
 
-def _affected_event_indices(report: dict[str, Any]) -> set[int]:
-    """Indices of events carrying a known-upstream-defect diagnostic."""
-    indices: set[int] = set()
-    for diagnostic in report.get("diagnostics", []):
-        if diagnostic.get("code") not in KNOWN_UPSTREAM_DEFECT_CODES:
-            continue
-        path = str(diagnostic.get("path", ""))
-        if path.startswith("events[") and "]" in path:
-            try:
-                indices.add(int(path[len("events[") : path.index("]")]))
-            except ValueError:  # pragma: no cover - defensive
-                continue
-    return indices
+    Shared by the full run and by ``--scenario``, so a focused run is held to
+    exactly the same expectations as the row it reproduces — a focused run that
+    printed its outcome without asserting it would let a reviewer "confirm" a
+    scenario that had in fact changed behavior.
+    """
+    g = governed[scenario.id]
+    completed = int(g["business_side_effects_completed"])
+    checks: list[dict[str, Any]] = [
+        {
+            "check": f"side_effects[{scenario.id}]",
+            "passed": completed == scenario.expected_governed_side_effects,
+            "detail": (
+                f"expected {scenario.expected_governed_side_effects} completed "
+                f"side effect(s), got {completed}."
+            ),
+        },
+        {
+            "check": f"diagnostic[{scenario.id}]",
+            "passed": (g.get("diagnostic_code") or "") == scenario.expected_code,
+            "detail": f"expected {scenario.expected_code!r}, got {g.get('diagnostic_code')!r}.",
+        },
+    ]
+    if scenario.expected_governed_side_effects == 1:
+        checks.append(
+            {
+                "check": f"exactly_once[{scenario.id}]",
+                "passed": int(g["business_callable_attempts"]) == 1 and completed == 1,
+                "detail": (
+                    f"ALLOW must execute the callable exactly once; attempts="
+                    f"{g['business_callable_attempts']}, completions={completed}."
+                ),
+            }
+        )
+    return checks
 
 
 def _checks(metrics: dict, plain: dict, governed: dict) -> list[dict[str, Any]]:
@@ -109,25 +133,7 @@ def _checks(metrics: dict, plain: dict, governed: dict) -> list[dict[str, Any]]:
 
     # Per-scenario mechanical proof.
     for scenario in SCENARIOS:
-        g = governed[scenario.id]
-        completed = int(g["business_side_effects_completed"])
-        check(
-            f"side_effects[{scenario.id}]",
-            completed == scenario.expected_governed_side_effects,
-            f"expected {scenario.expected_governed_side_effects} completed side effect(s), got {completed}.",
-        )
-        check(
-            f"diagnostic[{scenario.id}]",
-            (g.get("diagnostic_code") or "") == scenario.expected_code,
-            f"expected {scenario.expected_code!r}, got {g.get('diagnostic_code')!r}.",
-        )
-        if scenario.expected_governed_side_effects == 1:
-            check(
-                f"exactly_once[{scenario.id}]",
-                int(g["business_callable_attempts"]) == 1 and completed == 1,
-                f"ALLOW must execute the callable exactly once; attempts="
-                f"{g['business_callable_attempts']}, completions={completed}.",
-            )
+        checks.extend(_scenario_checks(scenario, governed))
 
     check(
         "decisions_recorded_before_execution",
@@ -158,13 +164,18 @@ def _checks(metrics: dict, plain: dict, governed: dict) -> list[dict[str, Any]]:
         e["all_events_bound_to_lock_digest"],
         f"{e['events_bound_to_lock_digest']}/{e['events_emitted']} bound.",
     )
-    unexpected = sorted(
-        {d["code"] for d in e["diagnostics"] if d["code"] not in KNOWN_UPSTREAM_DEFECT_CODES}
-    )
+    # The authoritative evidence claim: the FULL stream, with nothing filtered,
+    # excluded, or reduced. There is no allow-list of tolerated diagnostics.
     check(
-        "no_unexpected_evidence_diagnostics",
-        not unexpected,
-        f"unexpected diagnostics: {unexpected or 'none'}.",
+        "full_evidence_stream_validates",
+        e["validation_status"] == "pass",
+        f"full-stream validation status is {e['validation_status']!r}.",
+    )
+    diagnostic_codes = sorted({d["code"] for d in e["diagnostics"]})
+    check(
+        "no_evidence_diagnostics",
+        not diagnostic_codes,
+        f"evidence diagnostics: {diagnostic_codes or 'none'}.",
     )
     check(
         "bypass_control_visible_and_uncounted",
@@ -185,37 +196,47 @@ def _checks(metrics: dict, plain: dict, governed: dict) -> list[dict[str, Any]]:
 
 
 def _verdict(checks: list[dict], metrics: dict) -> dict[str, Any]:
+    """``GO`` only when every contract check passes and the full stream validates.
+
+    There is no conditional verdict. A verdict that normalizes a known defect
+    reads as a pass to everyone who does not also read the footnote, so the two
+    ways this benchmark can be untrustworthy — a failed contract clause, or an
+    evidence stream that does not validate in full — both produce ``NO_GO``.
+    """
     failed = [c for c in checks if not c["passed"]]
     evidence_ok = metrics["evidence"]["validation_status"] == "pass"
-    if failed:
+    blocking = [f"{c['check']}: {c['detail']}" for c in failed]
+    if not evidence_ok and not any(
+        c["check"] == "full_evidence_stream_validates" for c in failed
+    ):  # pragma: no cover - defence in depth if the check is ever removed
+        blocking.append(
+            "full_evidence_stream_validates: full-stream validation status is "
+            f"{metrics['evidence']['validation_status']!r}."
+        )
+    if blocking:
+        reasons = []
+        if failed:
+            reasons.append(f"{len(failed)} benchmark-contract check(s) failed")
+        if not evidence_ok:
+            codes = sorted({d["code"] for d in metrics["evidence"]["diagnostics"]})
+            reasons.append(
+                "the full evidence stream does not validate ("
+                + (", ".join(codes) or "no diagnostic reported")
+                + ")"
+            )
         return {
             "verdict": "NO_GO",
             "summary": (
-                f"{len(failed)} benchmark-contract check(s) failed; the A/B result is not "
-                f"trustworthy as reported."
+                " and ".join(reasons)
+                + "; the A/B result is not trustworthy as reported."
             ),
-            "blocking": [f"{c['check']}: {c['detail']}" for c in failed],
-        }
-    if not evidence_ok:
-        codes = sorted({d["code"] for d in metrics["evidence"]["diagnostics"]})
-        return {
-            "verdict": "CONDITIONAL_GO",
-            "summary": (
-                "Every A/B and side-effect claim in this report is mechanically verified: "
-                "valid actions were allowed with identical output, every prohibited callable "
-                "the baseline executed was prevented with zero side effects, and every event "
-                "binds the exact contract and lock digest. The full evidence stream does not "
-                "validate, because two mandatory scenarios each reproduce a real defect in "
-                f"the audited packages ({', '.join(codes)}). Those defects block a clean "
-                "evidence claim until fixed upstream; they do not affect any enforcement result."
-            ),
-            "blocking": [],
+            "blocking": blocking,
         }
     return {
         "verdict": "GO",
         "summary": (
             "Every benchmark-contract check passed and the full evidence stream validates "
-            "against the exact contract and lock revision."
+            "against the exact contract and lock revision, with zero diagnostics."
         ),
         "blocking": [],
     }
@@ -236,6 +257,11 @@ def run(out_dir: Path, only: tuple[str, ...] | None = None) -> int:
         start = time.perf_counter()
         governed, governed_ledger, recorder, authorizer = variant_governed.run(out_dir, only=only)
         timing["governed_variant_seconds"] = time.perf_counter() - start
+
+    # A focused run reproduces selected rows and is held to their contract; it
+    # emits no artifacts, so the timing probes and report rendering are skipped.
+    if only:
+        return _print_focus(only, plain, governed)
 
     stream = recorder.stream()
     events = stream["events"]
@@ -262,35 +288,12 @@ def run(out_dir: Path, only: tuple[str, ...] | None = None) -> int:
     elapsed = time.perf_counter() - start
     timing["mean_evaluate_milliseconds"] = (elapsed / iterations) * 1000.0
 
-    # Re-validate with only the events affected by disclosed upstream defects
-    # removed. Reported as a diagnostic aid, never as the headline status.
-    affected = _affected_event_indices(evidence_report)
-    if affected:
-        from nornyx.agentic import validate_runtime_events
-        from nornyx.agentic.authz import _thaw
-
-        reduced = dict(stream)
-        reduced["events"] = [e for i, e in enumerate(events) if i not in affected]
-        reduced_report = validate_runtime_events(
-            _thaw(authorizer._document),
-            authorizer._composition,
-            _thaw(authorizer._lock_payload),
-            reduced,
-        )
-    else:
-        reduced_report = evidence_report
-
-    if only:
-        _print_focus(only, plain, governed)
-        return 0
-
     adapter = variant_governed.adapter_surface()
     env = capture_environment()
     metrics = build_metrics(
         plain,
         governed,
         evidence_report=evidence_report,
-        evidence_report_excluding_known_defects=reduced_report,
         events=events,
         contract_digest=authorizer.contract_digest,
         lock_digest=authorizer.network_lock_digest,
@@ -303,6 +306,16 @@ def run(out_dir: Path, only: tuple[str, ...] | None = None) -> int:
 
     payload = {
         "benchmark": "nornyx.crewai_governance_ab.v1",
+        # Binds this result to the exact candidate tree that produced it: the
+        # governance inputs plus every benchmark source file. Reproducible on any
+        # machine, so a reviewer can tell in one comparison whether a committed
+        # result and their own run come from the same code and contract.
+        "candidate_digest": candidate_digest(),
+        "results_are_a_snapshot": (
+            "This file is a snapshot of one run. It is not continuously verified and can go "
+            "stale the moment the candidate changes; compare candidate_digest, and rerun "
+            "the benchmark rather than trusting this snapshot."
+        ),
         "verdict": verdict,
         "environment": env,
         "adapter_surface": adapter,
@@ -329,12 +342,13 @@ def run(out_dir: Path, only: tuple[str, ...] | None = None) -> int:
         "heat_map": rows,
     }
 
+    digest = payload["candidate_digest"]
     (out_dir / "benchmark.json").write_text(render_json(payload), encoding="utf-8")
     (out_dir / "benchmark.md").write_text(
-        render_markdown(metrics, rows, env, adapter, verdict), encoding="utf-8"
+        render_markdown(metrics, rows, env, adapter, verdict, digest), encoding="utf-8"
     )
     (out_dir / "dashboard.html").write_text(
-        render_dashboard(metrics, rows, env, adapter, verdict), encoding="utf-8"
+        render_dashboard(metrics, rows, env, adapter, verdict, digest), encoding="utf-8"
     )
     (out_dir / "environment.json").write_text(render_json(env), encoding="utf-8")
     (out_dir / "plain_results.json").write_text(
@@ -369,10 +383,14 @@ def run(out_dir: Path, only: tuple[str, ...] | None = None) -> int:
         print(f"  benchmark contract: {len(checks)} checks, all passed")
     print(f"  verdict: {verdict['verdict']}")
     print(f"  artifacts: {out_dir}\n")
-    return 1 if failed else 0
+    # Non-zero on anything short of GO: a failed contract clause, or a full
+    # evidence stream that does not validate.
+    return 0 if (not failed and verdict["verdict"] == "GO") else 1
 
 
-def _print_focus(only: tuple[str, ...], plain: dict, governed: dict) -> None:
+def _print_focus(only: tuple[str, ...], plain: dict, governed: dict) -> int:
+    """Print the selected scenarios and return non-zero if any differs from its contract."""
+    failed: list[dict[str, Any]] = []
     for sid in only:
         s = BY_ID[sid]
         print(f"\n=== {s.id} — {s.title} ({s.stage}/{s.category}) ===")
@@ -384,7 +402,16 @@ def _print_focus(only: tuple[str, ...], plain: dict, governed: dict) -> None:
                   f"completed={row['business_side_effects_completed']} "
                   f"diagnostic={row.get('diagnostic_code')}")
             print(f"            output={row['business_output']!r}")
+        checks = _scenario_checks(s, governed)
+        for c in checks:
+            print(f"  {'ok  ' if c['passed'] else 'FAIL'} {c['check']}: {c['detail']}")
+        failed.extend(c for c in checks if not c["passed"])
     print()
+    if failed:
+        print(f"  {len(failed)} focused contract check(s) failed")
+        print()
+        return 1
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -166,88 +166,63 @@ def _distribution_version(dist: str) -> str | None:
 
 
 # ------------------------------------------------- supported-adapter resolution
-# The repository's legacy reference adapters live at
-# ``integrations/nornyx_agentic_adapters/`` and use the **same import name** as
-# the supported, installed ``nornyx-agentic-adapters`` distribution. Any process
-# that puts ``integrations/`` on ``sys.path`` — several of this repo's own tests
-# do — shadows the installed package for everything that follows. This benchmark
-# claims to exercise the supported adapter, so it resolves that name explicitly
-# rather than inheriting whichever tree happened to be imported first.
+# The repository's unpackaged AN-005 reference adapters live at
+# ``integrations/nornyx_reference_adapters/``. They used to claim the same import
+# name as the supported ``nornyx-agentic-adapters`` distribution, so any process
+# that put ``integrations/`` on ``sys.path`` — several of this repo's own tests
+# do — silently rebound the name to the legacy tree. That collision is fixed at
+# the source (finding F3, resolved), so this benchmark imports the supported
+# adapter by its plain name and needs no import-shadowing workaround at all.
 INTEGRATIONS_DIR = REPO_ROOT / "integrations"
-
-
-def _under_integrations(path_like: object) -> bool:
-    if not path_like:
-        return False
-    try:
-        resolved = Path(str(path_like)).resolve()
-    except (OSError, ValueError):  # pragma: no cover - unresolvable entry
-        return False
-    return resolved == INTEGRATIONS_DIR or INTEGRATIONS_DIR in resolved.parents
-
-
-def _adapter_names() -> list[str]:
-    return [
-        name
-        for name in sys.modules
-        if name == "nornyx_agentic_adapters" or name.startswith("nornyx_agentic_adapters.")
-    ]
-
-
-def supported_adapter_is_shadowed() -> bool:
-    """True when the name currently resolves to the repo's legacy tree."""
-    module = sys.modules.get("nornyx_agentic_adapters")
-    if module is not None:
-        return _under_integrations(getattr(module, "__file__", None))
-    import importlib.util
-
-    try:
-        spec = importlib.util.find_spec("nornyx_agentic_adapters")
-    except (ImportError, ValueError):  # pragma: no cover - defensive
-        return False
-    return spec is not None and _under_integrations(spec.origin)
-
-
-@contextmanager
-def _legacy_shadow_lifted():
-    """Temporarily hide the legacy tree, then restore global state exactly.
-
-    Nothing is left mutated: ``sys.path`` and every ``nornyx_agentic_adapters``
-    entry in ``sys.modules`` are restored on exit, so the repo's own tests that
-    depend on the legacy adapters are unaffected by this benchmark having run.
-    """
-    saved_path = list(sys.path)
-    saved_modules = {name: sys.modules[name] for name in _adapter_names()}
-    try:
-        sys.path[:] = [entry for entry in sys.path if not _under_integrations(entry)]
-        for name in saved_modules:
-            del sys.modules[name]
-        yield
-    finally:
-        sys.path[:] = saved_path
-        for name in _adapter_names():
-            del sys.modules[name]
-        sys.modules.update(saved_modules)
+LEGACY_REFERENCE_PACKAGE = "nornyx_reference_adapters"
+SUPPORTED_ADAPTER_PACKAGE = "nornyx_agentic_adapters"
 
 
 def load_supported_adapter():
-    """Return ``(package, crewai_submodule)`` from the *installed* distribution.
+    """Return ``(package, crewai_submodule)`` from the installed distribution.
 
-    Returns the real modules regardless of whether the legacy same-named tree is
-    on ``sys.path``, and leaves no global side effect behind either way.
+    Fails closed rather than silently continuing if the name ever resolves to a
+    source tree under ``integrations/`` again: the benchmark's entire claim is
+    that it exercises the *supported* adapter.
     """
     import importlib
 
-    def _import():
-        return (
-            importlib.import_module("nornyx_agentic_adapters"),
-            importlib.import_module("nornyx_agentic_adapters.crewai_adapter"),
+    package = importlib.import_module(SUPPORTED_ADAPTER_PACKAGE)
+    resolved = Path(package.__file__ or "").resolve()
+    if resolved == INTEGRATIONS_DIR or INTEGRATIONS_DIR in resolved.parents:
+        raise RuntimeError(
+            f"{SUPPORTED_ADAPTER_PACKAGE!r} resolved to {resolved} under "
+            f"{INTEGRATIONS_DIR}; the benchmark requires the installed "
+            "nornyx-agentic-adapters distribution."
         )
+    return package, importlib.import_module(f"{SUPPORTED_ADAPTER_PACKAGE}.crewai_adapter")
 
-    if not supported_adapter_is_shadowed():
-        return _import()
-    with _legacy_shadow_lifted():
-        return _import()
+
+def _install_kind(module: object) -> str:
+    """Classify where an installed distribution's code actually came from.
+
+    Records the *kind* rather than the path: an absolute local path is
+    machine-specific noise in a committed artifact, but whether a distribution
+    resolves to a built wheel in ``site-packages`` or to an editable checkout is
+    a real, reviewable difference. Both are installed distributions; only one is
+    a wheel.
+    """
+    raw = getattr(module, "__file__", None)
+    if not raw:  # pragma: no cover - namespace package
+        return "unknown"
+    parts = {part.lower() for part in Path(raw).resolve().parts}
+    if "site-packages" in parts or "dist-packages" in parts:
+        return "site-packages (built distribution)"
+    return "editable or source checkout"
+
+
+def _repo_relative(path: Path) -> str:
+    """A repository-relative path, never an absolute one from this machine."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(REPO_ROOT).as_posix()
+    except ValueError:  # pragma: no cover - benchmark run from outside the repo
+        return resolved.name
 
 
 def capture_environment() -> dict[str, object]:
@@ -255,10 +230,13 @@ def capture_environment() -> dict[str, object]:
 
     Every version is read from *installed distribution metadata*
     (``importlib.metadata``), not from a source path, so the report states what
-    is genuinely installed. ``*_module_file`` is recorded alongside it so a
-    reviewer can see whether a distribution resolves to a site-packages copy or
-    to an editable checkout — both are installed distributions, but only one is
-    a wheel.
+    is genuinely installed.
+
+    No absolute local path is recorded. Committed results are read by people on
+    other machines, and a path like ``/home/someone/checkout/...`` is neither
+    reproducible nor useful — it only makes a snapshot look more portable than
+    it is. What matters about the location is captured as ``*_install_kind``,
+    and governance inputs are recorded repository-relative.
     """
 
     import nornyx
@@ -271,18 +249,18 @@ def capture_environment() -> dict[str, object]:
 
     return {
         "python_version": platform.python_version(),
+        "python_implementation": platform.python_implementation(),
         "platform": _PLATFORM,  # cached at import; never a subprocess under the guard
-        "executable": sys.executable,
         "nornyx_version": _distribution_version("nornyx"),
-        "nornyx_module_file": str(Path(nornyx.__file__).resolve()),
+        "nornyx_install_kind": _install_kind(nornyx),
         "nornyx_agentic_spi_version": SPI_VERSION,
         "adapters_version": _distribution_version("nornyx-agentic-adapters"),
-        "adapters_module_file": str(Path(nornyx_agentic_adapters.__file__).resolve()),
+        "adapters_install_kind": _install_kind(nornyx_agentic_adapters),
         "adapters_package_published_on_pypi": False,
         "adapters_install_source": "repository (adapters/nornyx-agentic-adapters)",
         "crewai_version": crewai_version,
-        "contract_path": str(CONTRACT.resolve()),
-        "lock_path": str(LOCK.resolve()),
+        "contract_path": _repo_relative(CONTRACT),
+        "lock_path": _repo_relative(LOCK),
         "as_of": AS_OF,
         "mission_id": MISSION,
     }

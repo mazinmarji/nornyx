@@ -4,8 +4,11 @@ The benchmark is executed once per session and every assertion reads that one
 run's artifacts, so the suite verifies the *shipped* outputs rather than a
 re-derived approximation of them.
 
-These tests are skipped when `crewai` or `nornyx_agentic_adapters` is absent, in
-the same way the repository's other native-framework tests are.
+These tests are skipped when `crewai` or the `nornyx-agentic-adapters`
+distribution is absent, in the same way the repository's other native-framework
+tests are. The dedicated `crewai-governance-benchmark` CI job installs both and
+fails closed if any test here skips or if none run, so the skip guard can never
+quietly turn this suite into zero assertions.
 """
 
 from __future__ import annotations
@@ -345,22 +348,61 @@ def test_every_event_binds_the_exact_contract_and_lock_digest(artifacts):
         assert event["network_lock_digest"] == evidence["network_lock_digest"]
 
 
-def test_only_known_upstream_defects_remain_in_evidence(artifacts):
-    from crewai_governance_benchmark import benchmark
-
-    codes = {d["code"] for d in artifacts["json"]["metrics"]["evidence"]["diagnostics"]}
-    assert codes <= benchmark.KNOWN_UPSTREAM_DEFECT_CODES, (
-        f"unexpected evidence diagnostics: {codes - benchmark.KNOWN_UPSTREAM_DEFECT_CODES}"
-    )
+def test_full_event_stream_validates_with_zero_diagnostics(artifacts):
+    """The authoritative claim: the complete stream, nothing filtered out."""
+    evidence = artifacts["json"]["metrics"]["evidence"]
+    assert evidence["validation_status"] == "pass", evidence["diagnostics"]
+    assert evidence["diagnostics"] == []
+    assert artifacts["evidence"]["status"] == "pass"
+    assert artifacts["evidence"]["diagnostics"] == []
+    assert artifacts["evidence"]["event_count"] == evidence["events_emitted"]
 
 
 def test_evidence_status_is_reported_verbatim_not_softened(artifacts):
-    """The headline status must be the full-stream result, never the reduced one."""
+    """The headline status must be the validator's own status for the full stream."""
     evidence = artifacts["json"]["metrics"]["evidence"]
     assert evidence["validation_status"] == artifacts["evidence"]["status"]
+    # No filtered / reduced / defect-excluded status may exist anywhere.
+    assert not [key for key in evidence if "excluding" in key], sorted(evidence)
+    raw = json.dumps(artifacts["json"])
+    assert "excluding_known" not in raw
     if evidence["diagnostics"]:
         assert evidence["validation_status"] == "fail"
         assert "fail" in artifacts["markdown"].lower()
+
+
+def test_verdict_is_go_and_conditional_go_is_not_a_possible_outcome(artifacts):
+    from crewai_governance_benchmark import benchmark
+
+    assert artifacts["json"]["verdict"]["verdict"] == "GO"
+    assert artifacts["json"]["verdict"]["blocking"] == []
+    assert "CONDITIONAL_GO" not in Path(benchmark.__file__).read_text(encoding="utf-8")
+
+    # A failing evidence stream must produce NO_GO, never a softened verdict.
+    failing = benchmark._verdict(
+        [{"check": "x", "passed": True, "detail": ""}],
+        {"evidence": {"validation_status": "fail", "diagnostics": [{"code": "AN_EVT_X"}]}},
+    )
+    assert failing["verdict"] == "NO_GO"
+    assert failing["blocking"]
+
+
+def test_benchmark_uses_no_private_nornyx_api():
+    """The external benchmark must run entirely on public APIs."""
+    from crewai_governance_benchmark.manifest import SOURCE_FILES
+
+    forbidden = (
+        "_document",
+        "_composition",
+        "_lock_payload",
+        "_thaw",
+        "authz._",
+        "sys.modules",
+    )
+    for name in SOURCE_FILES:
+        source = (BENCHMARK_DIR / name).read_text(encoding="utf-8")
+        for token in forbidden:
+            assert token not in source, f"{name} uses private API {token!r}"
 
 
 # ------------------------------------------------------- report agreement
@@ -415,6 +457,63 @@ def test_manifest_hashes_match_the_files_on_disk(artifacts):
     assert artifacts["manifest"]["benchmark_sources"], "benchmark sources are not hashed"
 
 
+def test_results_are_bound_to_the_exact_candidate_tree(artifacts):
+    """A recorded result must identify the code and contract that produced it."""
+    from crewai_governance_benchmark.manifest import candidate_digest
+
+    expected = candidate_digest()
+    assert expected.startswith("sha256:")
+    assert artifacts["json"]["candidate_digest"] == expected
+    assert artifacts["manifest"]["candidate_digest"] == expected
+    assert expected in artifacts["markdown"]
+    assert expected in artifacts["html"]
+    # Recomputing over the same tree is stable; it depends on no machine state.
+    assert candidate_digest() == expected
+
+
+def test_unstable_values_are_excluded_from_the_deterministic_comparison(artifacts):
+    """Timing- and environment-bearing artifacts must not be claimed reproducible."""
+    manifest = artifacts["manifest"]
+    by_name = {entry["path"]: entry for entry in manifest["outputs"]}
+    for unstable in ("benchmark.json", "benchmark.md", "dashboard.html", "environment.json"):
+        assert by_name[unstable]["deterministic"] is False, unstable
+    for stable in (
+        "nornyx_runtime_events.json",
+        "nornyx_evidence_report.json",
+        "plain_results.json",
+        "governed_results.json",
+    ):
+        assert by_name[stable]["deterministic"] is True, stable
+        text = (artifacts["out"] / stable).read_text(encoding="utf-8")
+        assert "seconds" not in text and "milliseconds" not in text, stable
+    assert manifest["deterministic_outputs_digest"].startswith("sha256:")
+
+
+def test_no_absolute_local_path_appears_in_any_artifact(artifacts):
+    """Committed results are read on other machines; local paths are noise at best."""
+    out = artifacts["out"]
+    roots = {
+        str(Path.home()),
+        str(out),
+        str(EXAMPLES_DIR.parents[0]),
+        sys.prefix,
+        sys.executable,
+    }
+    for path in sorted(out.iterdir()):
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for root in roots:
+            assert root not in text, f"{path.name} leaks the absolute path {root!r}"
+        assert "/mnt/c/" not in text, path.name
+
+
+def test_recorded_results_disclose_that_they_are_a_snapshot(artifacts):
+    assert "snapshot" in artifacts["json"]["results_are_a_snapshot"].lower()
+    assert "snapshot" in artifacts["markdown"].lower()
+    assert "snapshot" in artifacts["html"].lower()
+
+
 def test_dashboard_is_self_contained(artifacts):
     html = artifacts["html"]
     for forbidden in ("http://", "https://", "<script", "src=", "@import", "fetch("):
@@ -451,16 +550,23 @@ def test_runs_from_installed_distributions(artifacts):
     assert env["adapters_version"] == md.version("nornyx-agentic-adapters")
     assert env["crewai_version"] == md.version("crewai")
     assert env["nornyx_agentic_spi_version"] == "1.0"
+    # Where the code came from is recorded as a kind, never as a local path.
+    assert env["nornyx_install_kind"]
+    assert env["adapters_install_kind"]
+    assert not [key for key in env if key.endswith(("_module_file", "_path")) and Path(str(env[key])).is_absolute()]
 
 
-def test_supported_adapter_wins_over_the_legacy_same_named_tree():
-    """The benchmark must resolve the installed adapter, not the repo's legacy tree.
+def test_supported_adapter_is_not_shadowed_by_the_legacy_reference_tree():
+    """Order-dependent regression for F3: the legacy tree must not own the name.
 
-    `integrations/nornyx_agentic_adapters/` uses the same import name as the
-    installed distribution, and several of this repo's own test modules put that
-    directory on sys.path. This simulates that pollution and asserts both that
-    the benchmark still gets the supported package and that it restores global
-    state so the legacy-dependent tests are unaffected.
+    Several of this repo's own test modules put ``integrations/`` on sys.path and
+    sort alphabetically ahead of this one, so by the time this runs that directory
+    is typically already first on the path. Before the AN-005 reference tree was
+    renamed to ``nornyx_reference_adapters``, that silently rebound
+    ``nornyx_agentic_adapters`` to the unpackaged legacy tree for the rest of the
+    process. Here the pollution is reproduced explicitly and a plain import must
+    still resolve to the installed distribution — with no sys.path or sys.modules
+    workaround anywhere in the benchmark.
     """
     import importlib
 
@@ -468,39 +574,28 @@ def test_supported_adapter_wins_over_the_legacy_same_named_tree():
 
     integrations = str(config.INTEGRATIONS_DIR)
     saved_path = list(sys.path)
-    saved_modules = {
-        name: mod
-        for name, mod in sys.modules.items()
-        if name == "nornyx_agentic_adapters" or name.startswith("nornyx_agentic_adapters.")
-    }
     try:
-        # Reproduce the pollution: legacy tree first on the path, legacy module bound.
-        for name in list(saved_modules):
-            del sys.modules[name]
         sys.path.insert(0, integrations)
-        legacy = importlib.import_module("nornyx_agentic_adapters")
-        assert config._under_integrations(legacy.__file__), "shadow was not established"
-        assert config.supported_adapter_is_shadowed() is True
-
         package, crewai_submodule = config.load_supported_adapter()
 
-        assert not config._under_integrations(package.__file__)
+        resolved = Path(package.__file__).resolve()
+        assert config.INTEGRATIONS_DIR not in resolved.parents, resolved
         assert package.__version__ == md.version("nornyx-agentic-adapters")
         assert hasattr(package, "AdapterDenied")
         assert crewai_submodule.METADATA.framework_name == "crewai"
 
-        # Global state is left exactly as the polluting test arranged it.
-        assert sys.path[0] == integrations
-        assert config._under_integrations(sys.modules["nornyx_agentic_adapters"].__file__)
+        # The legacy tree is still importable — under its own, distinct name.
+        legacy = importlib.import_module(config.LEGACY_REFERENCE_PACKAGE)
+        assert config.INTEGRATIONS_DIR in Path(legacy.__file__).resolve().parents
     finally:
-        for name in [
-            n
-            for n in sys.modules
-            if n == "nornyx_agentic_adapters" or n.startswith("nornyx_agentic_adapters.")
-        ]:
-            del sys.modules[name]
         sys.path[:] = saved_path
-        sys.modules.update(saved_modules)
+
+
+def test_the_legacy_tree_no_longer_claims_the_supported_import_name():
+    from crewai_governance_benchmark import config
+
+    assert not (config.INTEGRATIONS_DIR / "nornyx_agentic_adapters").exists()
+    assert (config.INTEGRATIONS_DIR / config.LEGACY_REFERENCE_PACKAGE).is_dir()
 
 
 def test_no_network_is_used_during_the_run():
@@ -528,4 +623,33 @@ def test_individual_scenarios_can_be_rerun(tmp_path):
     """`--scenario` must work for reviewers checking one row."""
     from crewai_governance_benchmark import benchmark
 
+    assert benchmark.main(["--out", str(tmp_path), "--scenario", "S03"]) == 0
+
+
+def test_focused_scenario_run_fails_when_the_row_does_not_match_its_contract(tmp_path):
+    """A focused run must assert, not merely print.
+
+    Reviewers use `--scenario` to spot-check one row; a command that exits zero
+    whatever happens turns that check into theatre. The contract clause is
+    perturbed here rather than the run, so the assertion path itself is what is
+    under test.
+    """
+    from crewai_governance_benchmark import benchmark
+    from crewai_governance_benchmark.scenarios import BY_ID
+    import dataclasses
+
+    scenario = BY_ID["S03"]
+    # S03 is a denial: zero governed side effects, CAPABILITY_UNKNOWN.
+    assert scenario.expected_governed_side_effects == 0
+    wrong = dataclasses.replace(scenario, expected_governed_side_effects=1)
+
+    original = dict(BY_ID)
+    BY_ID["S03"] = wrong
+    try:
+        assert benchmark.main(["--out", str(tmp_path), "--scenario", "S03"]) == 1
+    finally:
+        BY_ID.clear()
+        BY_ID.update(original)
+
+    # And unchanged, the same command passes.
     assert benchmark.main(["--out", str(tmp_path), "--scenario", "S03"]) == 0

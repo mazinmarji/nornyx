@@ -77,9 +77,9 @@ from nornyx.agentic import (  # noqa: E402
 )
 from crewai.tools import BaseTool  # noqa: E402
 
-# Resolved explicitly rather than by a plain import: the repo's legacy
-# integrations/ tree uses the same package name, and several of this repo's own
-# tests put it on sys.path first. See config.load_supported_adapter.
+# A plain import of the installed distribution, guarded: load_supported_adapter
+# raises if the name ever resolves to a source tree under integrations/ again
+# (finding F3, resolved by renaming the legacy tree to nornyx_reference_adapters).
 _adapters, _crewai_adapter = config.load_supported_adapter()
 
 AdapterDenied = _adapters.AdapterDenied

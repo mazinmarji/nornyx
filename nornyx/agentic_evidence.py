@@ -657,7 +657,16 @@ def validate_runtime_events(
                         )
                     )
 
-        if event_type in {"approval_granted", "approval_rejected"}:
+        # ``approver`` means two different things on the two approval outcomes.
+        # On ``approval_granted`` it names the party whose authority the action
+        # now rests on, so it must be a human holding a composed module role. On
+        # ``approval_rejected`` it records the *claimed* approver of an approval
+        # that was refused and confers nothing — a refusal naming a model, or a
+        # role outside the composed authority, is the evidence of the refusal,
+        # not a violation. Applying the grant rules to rejections made the
+        # strongest governance outcome (refusing an AI-issued approval) the one
+        # that could not be evidenced.
+        if event_type == "approval_granted":
             approver = event.get("approver")
             if isinstance(approver, Mapping):
                 if approver.get("actor_type") != "human":

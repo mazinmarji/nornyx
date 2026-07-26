@@ -1,17 +1,17 @@
 {
+  "adapters_install_kind": "editable or source checkout",
   "adapters_install_source": "repository (adapters/nornyx-agentic-adapters)",
-  "adapters_module_file": "/mnt/c/Users/Hani/projects/nornyx/adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/__init__.py",
   "adapters_package_published_on_pypi": false,
   "adapters_version": "0.1.0",
   "as_of": "2026-07-17T00:00:00Z",
-  "contract_path": "/mnt/c/Users/Hani/projects/nornyx/examples/crewai_governance_benchmark/contract/remediation_network.nyx",
+  "contract_path": "examples/crewai_governance_benchmark/contract/remediation_network.nyx",
   "crewai_version": "1.15.4",
-  "executable": "/tmp/claude-1000/-mnt-c-Users-Hani-projects-nornyx/958d32a6-c1e9-41d1-9498-c8350aeaab71/scratchpad/venv/bin/python",
-  "lock_path": "/mnt/c/Users/Hani/projects/nornyx/examples/crewai_governance_benchmark/contract/nornyx.agentic_network.lock",
+  "lock_path": "examples/crewai_governance_benchmark/contract/nornyx.agentic_network.lock",
   "mission_id": "GOAL-REMEDIATION-001",
   "nornyx_agentic_spi_version": "1.0",
-  "nornyx_module_file": "/mnt/c/Users/Hani/projects/nornyx/nornyx/__init__.py",
+  "nornyx_install_kind": "editable or source checkout",
   "nornyx_version": "1.8.0",
-  "platform": "Linux-6.18.33.1-microsoft-standard-WSL2-x86_64",
+  "platform": "Windows-11-AMD64",
+  "python_implementation": "CPython",
   "python_version": "3.13.14"
 }

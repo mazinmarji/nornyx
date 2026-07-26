@@ -46,6 +46,7 @@
     ]
   },
   "benchmark": "nornyx.crewai_governance_ab.v1",
+  "candidate_digest": "sha256:3da9e0d27fe985a4563fc97745bc7214dd6c929c8e6427a747ec4e10c4ec1c1c",
   "contract_checks": [
     {
       "check": "allowed_path_output_equivalence",
@@ -313,8 +314,13 @@
       "passed": true
     },
     {
-      "check": "no_unexpected_evidence_diagnostics",
-      "detail": "unexpected diagnostics: none.",
+      "check": "full_evidence_stream_validates",
+      "detail": "full-stream validation status is 'pass'.",
+      "passed": true
+    },
+    {
+      "check": "no_evidence_diagnostics",
+      "detail": "evidence diagnostics: none.",
       "passed": true
     },
     {
@@ -334,20 +340,20 @@
     }
   ],
   "environment": {
+    "adapters_install_kind": "editable or source checkout",
     "adapters_install_source": "repository (adapters/nornyx-agentic-adapters)",
-    "adapters_module_file": "/mnt/c/Users/Hani/projects/nornyx/adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/__init__.py",
     "adapters_package_published_on_pypi": false,
     "adapters_version": "0.1.0",
     "as_of": "2026-07-17T00:00:00Z",
-    "contract_path": "/mnt/c/Users/Hani/projects/nornyx/examples/crewai_governance_benchmark/contract/remediation_network.nyx",
+    "contract_path": "examples/crewai_governance_benchmark/contract/remediation_network.nyx",
     "crewai_version": "1.15.4",
-    "executable": "/tmp/claude-1000/-mnt-c-Users-Hani-projects-nornyx/958d32a6-c1e9-41d1-9498-c8350aeaab71/scratchpad/venv/bin/python",
-    "lock_path": "/mnt/c/Users/Hani/projects/nornyx/examples/crewai_governance_benchmark/contract/nornyx.agentic_network.lock",
+    "lock_path": "examples/crewai_governance_benchmark/contract/nornyx.agentic_network.lock",
     "mission_id": "GOAL-REMEDIATION-001",
     "nornyx_agentic_spi_version": "1.0",
-    "nornyx_module_file": "/mnt/c/Users/Hani/projects/nornyx/nornyx/__init__.py",
+    "nornyx_install_kind": "editable or source checkout",
     "nornyx_version": "1.8.0",
-    "platform": "Linux-6.18.33.1-microsoft-standard-WSL2-x86_64",
+    "platform": "Windows-11-AMD64",
+    "python_implementation": "CPython",
     "python_version": "3.13.14"
   },
   "heat_map": [
@@ -677,25 +683,13 @@
       "all_events_bound_to_contract_digest": true,
       "all_events_bound_to_lock_digest": true,
       "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
-      "diagnostics": [
-        {
-          "code": "AN_EVT_APPROVAL_NON_HUMAN",
-          "message": "Approval outcomes require a human approver.",
-          "path": "events[18].approver.actor_type"
-        },
-        {
-          "code": "AN_EVT_CAPABILITY_NOT_HELD",
-          "message": "Actor 'identity.remediation_agent' neither holds nor validly receives capability 'propose_refund' at the event time.",
-          "path": "events[40].capability_ref"
-        }
-      ],
+      "diagnostics": [],
       "events_bound_to_contract_digest": 51,
       "events_bound_to_lock_digest": 51,
       "events_emitted": 51,
       "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
       "records_validated": 51,
-      "validation_status": "fail",
-      "validation_status_excluding_known_upstream_defects": "pass"
+      "validation_status": "pass"
     },
     "execution_integrity": {
       "completed_side_effects": 5,
@@ -805,12 +799,12 @@
       "governed_total": 5
     },
     "timing_local_microbenchmark_only": {
-      "authorizer_load_seconds": 19.1143426109993,
+      "authorizer_load_seconds": 2.405528199975379,
       "disclaimer": "Wall-clock seconds for this local, offline, single-process run. Not a production latency measurement and not a throughput claim.",
-      "evidence_validation_seconds": 0.5386158070014062,
-      "governed_variant_seconds": 39.284766601998854,
-      "mean_evaluate_milliseconds": 0.008106479999696603,
-      "plain_variant_seconds": 0.6875276940008916
+      "evidence_validation_seconds": 0.06340450001880527,
+      "governed_variant_seconds": 5.331212899996899,
+      "mean_evaluate_milliseconds": 0.014570400002412498,
+      "plain_variant_seconds": 1.6858026999980211
     },
     "totals": {
       "application_control": 1,
@@ -821,6 +815,7 @@
       "scenarios": 19
     }
   },
+  "results_are_a_snapshot": "This file is a snapshot of one run. It is not continuously verified and can go stale the moment the candidate changes; compare candidate_digest, and rerun the benchmark rather than trusting this snapshot.",
   "scenarios": [
     {
       "baseline": {
@@ -1767,7 +1762,7 @@
   ],
   "verdict": {
     "blocking": [],
-    "summary": "Every A/B and side-effect claim in this report is mechanically verified: valid actions were allowed with identical output, every prohibited callable the baseline executed was prevented with zero side effects, and every event binds the exact contract and lock digest. The full evidence stream does not validate, because two mandatory scenarios each reproduce a real defect in the audited packages (AN_EVT_APPROVAL_NON_HUMAN, AN_EVT_CAPABILITY_NOT_HELD). Those defects block a clean evidence claim until fixed upstream; they do not affect any enforcement result.",
-    "verdict": "CONDITIONAL_GO"
+    "summary": "Every benchmark-contract check passed and the full evidence stream validates against the exact contract and lock revision, with zero diagnostics.",
+    "verdict": "GO"
   }
 }

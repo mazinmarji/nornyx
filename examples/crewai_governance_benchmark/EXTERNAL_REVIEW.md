@@ -62,10 +62,17 @@ validated evidence means the recorded events are *true*.
 Candidates the benchmark already surfaces:
 
 - enforcement is cooperative, so the S15 bypass works
-- only synchronous CrewAI tool invocation is a wrapped surface
+- only synchronous CrewAI tool invocation is a wrapped surface; async tool
+  invocation, agent invocation, task invocation, coworker delegation, and handoff
+  are declared unsupported
 - one exact CrewAI version is supported (`==1.15.4`)
-- the two evidence defects in `FINDINGS.md`
-- the adapter package is not published
+- identity resolution is a binding, not cryptographic authentication
+- validated evidence proves structural and content integrity, not that any
+  external side effect really happened
+- the adapter package is not published on PyPI
+- the three defects in `FINDINGS.md` were found by this benchmark and are now
+  fixed — the question worth answering is whether the *class* of defect (correct
+  enforcement that cannot be evidenced) makes you less confident in the rest
 
 Which of these is actually disqualifying for you, and which are acceptable? Is
 there a limitation we did not list that matters more than the ones we did?
@@ -103,3 +110,11 @@ If you want to go looking for problems, these are the seams:
 - **The contract itself.** `contract/remediation_network.nyx` was written for this
   benchmark. Does it declare an unrealistically convenient set of capabilities,
   zones, and gates?
+- **The evidence verdict.** The full stream now validates with zero diagnostics.
+  Check that yourself against `nornyx_evidence_report.json` rather than the
+  report's summary of it: the benchmark deliberately has no allow-list of
+  tolerated diagnostic codes and no reduced-stream fallback, but the only way to
+  know is to read the raw report.
+- **The committed `results/`.** They are a snapshot of one run on one machine.
+  Compare `candidate_digest` before you compare anything else, and treat every
+  timing figure as a local observation.

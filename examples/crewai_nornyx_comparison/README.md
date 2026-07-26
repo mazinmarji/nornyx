@@ -240,7 +240,7 @@ revision-bound governance — not that the events actually happened.
 
 - **The adapter is unpackaged in Nornyx 1.7.0.** The core `nornyx` wheel does
   **not** contain the CrewAI adapter. This example uses the reference adapter
-  under `integrations/nornyx_agentic_adapters/`. A real consumer wires that tree
+  under `integrations/nornyx_reference_adapters/`. A real consumer wires that tree
   in alongside the published core (see `verify_published_nornyx.py`).
 - **Direct bypass remains possible (S14).** Enforcement is cooperative. Code
   that calls the work callable directly, around the adapter, runs — the
