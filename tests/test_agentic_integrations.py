@@ -644,7 +644,10 @@ def test_default_install_does_not_package_integrations() -> None:
 
     package_root = Path(nornyx.__file__).resolve().parent
     assert not (package_root / "integrations").exists()
+    # Neither the reference tree's own name nor the supported adapter
+    # distribution's name may be shipped inside the nornyx wheel.
     assert not (package_root / "nornyx_reference_adapters").exists()
+    assert not (package_root / "nornyx_agentic_adapters").exists()
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert 'include = ["nornyx*"]' in pyproject
     assert "crewai" not in pyproject
