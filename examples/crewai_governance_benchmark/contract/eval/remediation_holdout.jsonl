@@ -1,0 +1,2 @@
+{"expected": "refund_under_limit", "request": "A duplicate $9 charge appeared on my statement."}
+{"expected": "escalate_high_value", "request": "Cancel and refund my $7,500 annual contract."}

@@ -1,0 +1,252 @@
+{
+  "capabilities": [
+    {
+      "actions": [
+        "analyze_case"
+      ],
+      "delegable": false,
+      "digest": "sha256:8426dd728b58edf9f9f416bd22e36f76a6645aa1e3f4d6621dd8e957bb054fbb",
+      "name": "analyze_case",
+      "required_approval_refs": [],
+      "required_evidence_refs": [],
+      "required_gate_refs": [],
+      "risk": "low",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "close_case"
+      ],
+      "delegable": false,
+      "digest": "sha256:1609b68b15acaddf05c5456dfb8a520b83eeb6ca0e4c80012ba08d2833b3b191",
+      "name": "close_case",
+      "required_approval_refs": [],
+      "required_evidence_refs": [],
+      "required_gate_refs": [],
+      "risk": "low",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "issue_refund"
+      ],
+      "delegable": false,
+      "digest": "sha256:efdb9cc32acea11e6e17a6bf8edc34e00d3e231ee2b29f39e92cfa11ff77fac7",
+      "name": "issue_refund",
+      "required_approval_refs": [
+        "agentic_network_authority"
+      ],
+      "required_evidence_refs": [
+        "agentic_network_contract_review"
+      ],
+      "required_gate_refs": [
+        "gate.disbursement_review"
+      ],
+      "risk": "high",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "modify_account"
+      ],
+      "delegable": false,
+      "digest": "sha256:6315da7a1c09312f2195741cb07fa27931ebc7dd9c1f398bcc070323c1c4122d",
+      "name": "modify_account",
+      "required_approval_refs": [
+        "agentic_network_authority"
+      ],
+      "required_evidence_refs": [
+        "agentic_network_contract_review"
+      ],
+      "required_gate_refs": [
+        "gate.disbursement_review"
+      ],
+      "risk": "high",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "notify_customer",
+        "external_share"
+      ],
+      "delegable": false,
+      "digest": "sha256:208b28d25aa812e28ac46ffb62c10f6319bdf744031d416c1ccf814ff40fba56",
+      "name": "notify_customer_external",
+      "required_approval_refs": [],
+      "required_evidence_refs": [
+        "agentic_network_contract_review"
+      ],
+      "required_gate_refs": [
+        "gate.customer_notice"
+      ],
+      "risk": "medium",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "propose_refund"
+      ],
+      "delegable": true,
+      "digest": "sha256:b349fae7d915c955bb30b7e0ea4d08401db4bc940f0373f596209541170c82fc",
+      "max_delegation_depth": 1,
+      "name": "propose_refund",
+      "required_approval_refs": [],
+      "required_evidence_refs": [
+        "agentic_network_contract_review"
+      ],
+      "required_gate_refs": [
+        "gate.refund_review"
+      ],
+      "risk": "medium",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "read_case"
+      ],
+      "delegable": false,
+      "digest": "sha256:1fd93ae552611fb2373dbf0e70b1a5f345df12e2d5e6d8ba823c41104c20fc27",
+      "name": "read_customer_case",
+      "required_approval_refs": [],
+      "required_evidence_refs": [],
+      "required_gate_refs": [],
+      "risk": "low",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "request_approval"
+      ],
+      "delegable": false,
+      "digest": "sha256:bf12536cfdea0141f981ea6609d3b9765a3cbf4ae9cac45dce5b24c813f72373",
+      "name": "request_human_approval",
+      "required_approval_refs": [],
+      "required_evidence_refs": [],
+      "required_gate_refs": [],
+      "risk": "low",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    },
+    {
+      "actions": [
+        "share_context"
+      ],
+      "delegable": false,
+      "digest": "sha256:323f6b5ee0521cf9dbf01776d9c2375e502e2793af1cd338ae37909ace70f181",
+      "name": "share_case_context",
+      "required_approval_refs": [],
+      "required_evidence_refs": [],
+      "required_gate_refs": [],
+      "risk": "medium",
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "scope_type": "context"
+    }
+  ],
+  "identity_assignments": [
+    {
+      "capabilities": [
+        "analyze_case",
+        "propose_refund",
+        "read_customer_case",
+        "share_case_context"
+      ],
+      "identity": "identity.case_analyst"
+    },
+    {
+      "capabilities": [
+        "close_case",
+        "read_customer_case",
+        "request_human_approval"
+      ],
+      "identity": "identity.compliance_officer"
+    },
+    {
+      "capabilities": [
+        "analyze_case",
+        "close_case",
+        "read_customer_case"
+      ],
+      "identity": "identity.intake_agent"
+    },
+    {
+      "capabilities": [
+        "issue_refund",
+        "notify_customer_external",
+        "read_customer_case"
+      ],
+      "identity": "identity.remediation_agent"
+    }
+  ],
+  "membership_assignments": [
+    {
+      "capabilities": [
+        "analyze_case",
+        "propose_refund",
+        "read_customer_case",
+        "share_case_context"
+      ],
+      "identity": "identity.case_analyst",
+      "membership": "membership.case_analyst",
+      "trust_zone": "zone.remediation_internal"
+    },
+    {
+      "capabilities": [
+        "close_case",
+        "read_customer_case",
+        "request_human_approval"
+      ],
+      "identity": "identity.compliance_officer",
+      "membership": "membership.compliance_officer",
+      "trust_zone": "zone.remediation_internal"
+    },
+    {
+      "capabilities": [
+        "analyze_case",
+        "close_case",
+        "read_customer_case"
+      ],
+      "identity": "identity.intake_agent",
+      "membership": "membership.intake_agent",
+      "trust_zone": "zone.remediation_internal"
+    },
+    {
+      "capabilities": [
+        "issue_refund",
+        "notify_customer_external",
+        "read_customer_case"
+      ],
+      "identity": "identity.remediation_agent",
+      "membership": "membership.remediation_agent",
+      "trust_zone": "zone.remediation_internal"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "schema": "nornyx.agentic_capability_matrix.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

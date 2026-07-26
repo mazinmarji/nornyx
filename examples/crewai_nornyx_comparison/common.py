@@ -176,7 +176,7 @@ def capture_environment() -> dict[str, object]:
         "nornyx_file": str(Path(nornyx.__file__).resolve()),
         "crewai_version": crewai_version,
         "langgraph_version": _version("langgraph"),
-        "adapter_source": str((INTEGRATIONS / "nornyx_agentic_adapters").resolve()),
+        "adapter_source": str((INTEGRATIONS / "nornyx_reference_adapters").resolve()),
         "contract_path": str(CONTRACT.resolve()),
         "as_of": AS_OF,
         "mission_id": MISSION,

@@ -1,0 +1,39 @@
+{
+  "allowed_event_types": [
+    "agent_invoked",
+    "approval_granted",
+    "approval_rejected",
+    "approval_requested",
+    "capability_allowed",
+    "capability_denied",
+    "capability_requested",
+    "data_shared",
+    "delegation_accepted",
+    "delegation_rejected",
+    "delegation_requested",
+    "handoff_completed",
+    "handoff_initiated",
+    "identity_revoked",
+    "policy_violation",
+    "runtime_failed",
+    "tool_invoked",
+    "trust_zone_crossed"
+  ],
+  "events_schema": "nornyx.agentic_runtime_events.v1",
+  "events_schema_version": "1.0",
+  "limitations": [
+    "Validated evidence proves conformance of supplied records only.",
+    "Hash validity proves content binding, not event truth.",
+    "Nornyx does not observe, operate, or monitor the runtime."
+  ],
+  "network_id": "network.governed_remediation",
+  "required_event_binding": {
+    "contract_digest": true,
+    "network_id": true,
+    "network_lock_digest": true,
+    "subject_revision": true
+  },
+  "schema": "nornyx.agentic_runtime_evidence_contract.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

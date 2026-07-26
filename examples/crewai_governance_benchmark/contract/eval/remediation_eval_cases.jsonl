@@ -1,0 +1,3 @@
+{"expected": "status_lookup", "request": "Where is my order #4400?"}
+{"expected": "refund_under_limit", "request": "I was charged twice for $18 on case 4471."}
+{"expected": "escalate_high_value", "request": "Refund my $3,100 enterprise invoice."}

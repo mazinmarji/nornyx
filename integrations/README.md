@@ -12,7 +12,7 @@ Layer 3 — External framework runtime or the bundled deterministic harness
 
 ## Contents
 
-- `nornyx_agentic_adapters/governance_kernel.py` — framework-free enforcement
+- `nornyx_reference_adapters/governance_kernel.py` — framework-free enforcement
   kernel: loads local controls, verifies the agentic-network lock before use,
   maps framework agent keys to declared identities, checks capability
   ownership (including declared delegations), validates delegation and
@@ -20,10 +20,10 @@ Layer 3 — External framework runtime or the bundled deterministic harness
   verifies externally supplied **human** approval records (AI approval is
   rejected), and emits `nornyx.agentic_runtime_events.v1` evidence bound to
   the exact contract digest and lock digest.
-- `nornyx_agentic_adapters/crewai_adapter.py` — CrewAI mapping + task guard.
-- `nornyx_agentic_adapters/langgraph_adapter.py` — LangGraph node guard and
+- `nornyx_reference_adapters/crewai_adapter.py` — CrewAI mapping + task guard.
+- `nornyx_reference_adapters/langgraph_adapter.py` — LangGraph node guard and
   governed `StateGraph` builder.
-- `nornyx_agentic_adapters/local_harness.py` — deterministic fake model and
+- `nornyx_reference_adapters/local_harness.py` — deterministic fake model and
   inert tools for safe, offline, reproducible demonstrations.
 
 ## Boundaries

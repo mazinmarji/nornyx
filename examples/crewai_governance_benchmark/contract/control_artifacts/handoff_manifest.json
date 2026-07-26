@@ -1,0 +1,101 @@
+{
+  "handoffs": [
+    {
+      "delegation_refs": [],
+      "digest": "sha256:b17bd7ade59fe899cd42df49dc24742cad3d018aa651baba42eb6da654212c96",
+      "expires_at": "2026-12-01T00:00:00Z",
+      "from_identity_ref": "identity.intake_agent",
+      "from_zone_ref": "zone.remediation_internal",
+      "id": "handoff.compliance_closure",
+      "mission_ref": "GOAL-REMEDIATION-001",
+      "never_share": [
+        "secrets",
+        "credentials",
+        "tokens",
+        "private_memory"
+      ],
+      "purpose": "Transfer responsibility for closing a remediated case.",
+      "required_approval_refs": [
+        "agentic_network_authority"
+      ],
+      "required_capability_refs": [
+        "close_case"
+      ],
+      "required_evidence_refs": [
+        "agentic_network_contract_review"
+      ],
+      "required_gate_refs": [
+        "gate.case_review"
+      ],
+      "revocation_refs": [],
+      "shared_context": [
+        "sanitized_case",
+        "classification"
+      ],
+      "status": "initiated",
+      "to_identity_ref": "identity.compliance_officer",
+      "to_zone_ref": "zone.remediation_internal",
+      "valid_from": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "relations": [
+    {
+      "digest": "sha256:6ed6abd0e13945bd34ca37e183b3de6933d625b5a8dd835bde0d00c4dcf0ce72",
+      "handoff_ref": "handoff.compliance_closure",
+      "id": "relation.compliance_handoff",
+      "source": {
+        "kind": "agent_identity",
+        "ref": "identity.intake_agent"
+      },
+      "target": {
+        "kind": "agent_identity",
+        "ref": "identity.compliance_officer"
+      },
+      "type": "hands_off_to"
+    },
+    {
+      "digest": "sha256:07416c330751825bec995af7694d5928e71d8f0afaf2fb99db0e9dfeeed9feae",
+      "id": "relation.disbursement_approval",
+      "source": {
+        "kind": "capability",
+        "ref": "issue_refund"
+      },
+      "target": {
+        "kind": "human_role",
+        "ref": "network_governance_owner"
+      },
+      "type": "requires_approval_from"
+    },
+    {
+      "digest": "sha256:27807520698dc540b7976247eb9f88c412fbc00f749d7fd2c61b32966cff46fc",
+      "id": "relation.notice_advertisement",
+      "source": {
+        "kind": "agent_identity",
+        "ref": "identity.remediation_agent"
+      },
+      "target": {
+        "kind": "capability",
+        "ref": "notify_customer_external"
+      },
+      "type": "advertises_capability"
+    },
+    {
+      "delegation_ref": "delegation.refund_proposal",
+      "digest": "sha256:8408146e571af0fe21a32bd45772edbae09158245ecca99390116ba2987bcf9b",
+      "id": "relation.refund_delegation",
+      "source": {
+        "kind": "agent_identity",
+        "ref": "identity.case_analyst"
+      },
+      "target": {
+        "kind": "agent_identity",
+        "ref": "identity.remediation_agent"
+      },
+      "type": "delegates_to"
+    }
+  ],
+  "schema": "nornyx.agentic_handoff_manifest.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

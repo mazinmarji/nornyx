@@ -368,6 +368,119 @@ def test_zone_crossing_with_valid_approval_preserves_intents(authz: Authorizer):
     assert report["status"] == "pass", report["diagnostics"]
 
 
+class _MutatedStreamRecorder(EvidenceRecorder):
+    """An ``EvidenceRecorder`` whose assembled stream is altered before validation.
+
+    Used to forge an event the engine would never emit, so the validator's own
+    rule can be tested independently of what the emitter happens to produce.
+    """
+
+    def __init__(self, *args, mutate, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mutate = mutate
+
+    def stream(self):
+        payload = super().stream()
+        self._mutate(payload["events"])
+        return payload
+
+
+def _record_refused_approval(authz: Authorizer, approval: ApprovalAssertion, **recorder_kw):
+    context = ctx()
+    decision = authz.evaluate(
+        ApprovalRequest("identity.researcher.local", approval), context=context
+    )
+    recorder = EvidenceRecorder(
+        authz, context, producer_id="tests", producer_type="synthetic_harness", **recorder_kw
+    )
+    recorder.record_decision(decision, mission_id="GOAL-001")
+    return decision, recorder
+
+
+def test_refused_non_human_approval_is_evidenced_truthfully(authz: Authorizer):
+    """A refused AI approval must record the non-human claimant AND validate.
+
+    The engine names whoever actually claimed the approval; the validator's
+    human-approver rule governs grants, not refusals. Applying it to refusals
+    made exercising the product's headline guarantee — refusing an AI-issued
+    approval — the one outcome that could not be evidenced.
+    """
+    decision, recorder = _record_refused_approval(
+        authz, _approval(claimed_actor_type="model", claimed_approver_ref="model.remediation_llm")
+    )
+    assert decision.code is DecisionCode.APPROVAL_NON_HUMAN
+    assert decision.effect is DecisionEffect.DENY
+
+    events = recorder.stream()["events"]
+    assert [e["event_type"] for e in events] == ["approval_requested", "approval_rejected"]
+    # Truthful: the record names the claimant as it was claimed, not as "human".
+    assert events[-1]["approver"] == {
+        "role": "network_governance_owner",
+        "actor_type": "model",
+    }
+
+    report = recorder.validate()
+    assert report["status"] == "pass", report["diagnostics"]
+    assert report["diagnostics"] == []
+
+
+def test_refused_invalid_role_approval_is_evidenced_truthfully(authz: Authorizer):
+    """Same rule for the claimed role: a refusal records the claim, not an authority."""
+    decision, recorder = _record_refused_approval(authz, _approval(role="intern"))
+    assert decision.code is DecisionCode.APPROVAL_ROLE_INVALID
+    assert recorder.stream()["events"][-1]["approver"]["role"] == "intern"
+    report = recorder.validate()
+    assert report["status"] == "pass", report["diagnostics"]
+
+
+def test_granted_non_human_approval_still_fails_validation(authz: Authorizer):
+    """The grant rule is unchanged: only a human can carry a granted approval."""
+    context = ctx()
+    decision = authz.evaluate(
+        ApprovalRequest("identity.researcher.local", _approval()), context=context
+    )
+    assert decision.effect is DecisionEffect.ALLOW
+
+    def forge_non_human_grant(events):
+        granted = next(e for e in events if e["event_type"] == "approval_granted")
+        granted["approver"] = {"role": "network_governance_owner", "actor_type": "model"}
+
+    recorder = _MutatedStreamRecorder(
+        authz,
+        context,
+        producer_id="tests",
+        producer_type="synthetic_harness",
+        mutate=forge_non_human_grant,
+    )
+    recorder.record_decision(decision, mission_id="GOAL-001")
+    report = recorder.validate()
+    assert report["status"] == "fail"
+    assert [d["code"] for d in report["diagnostics"]] == ["AN_EVT_APPROVAL_NON_HUMAN"]
+
+
+def test_granted_invalid_role_approval_still_fails_validation(authz: Authorizer):
+    context = ctx()
+    decision = authz.evaluate(
+        ApprovalRequest("identity.researcher.local", _approval()), context=context
+    )
+
+    def forge_unlisted_role_grant(events):
+        granted = next(e for e in events if e["event_type"] == "approval_granted")
+        granted["approver"] = {"role": "unlisted_role", "actor_type": "human"}
+
+    recorder = _MutatedStreamRecorder(
+        authz,
+        context,
+        producer_id="tests",
+        producer_type="synthetic_harness",
+        mutate=forge_unlisted_role_grant,
+    )
+    recorder.record_decision(decision, mission_id="GOAL-001")
+    report = recorder.validate()
+    assert report["status"] == "fail"
+    assert [d["code"] for d in report["diagnostics"]] == ["AN_EVT_APPROVAL_ROLE_INVALID"]
+
+
 def test_authorizer_is_deterministic_and_immutable(authz: Authorizer):
     req = CapabilityRequest("identity.researcher.local", "read_governed_context")
     a = authz.evaluate(req, context=ctx())

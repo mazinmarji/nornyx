@@ -1,0 +1,36 @@
+{
+  "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "counts_by_type": {
+    "approval_granted": 1,
+    "approval_rejected": 2,
+    "approval_requested": 4,
+    "capability_allowed": 16,
+    "capability_denied": 1,
+    "capability_requested": 17,
+    "policy_violation": 5,
+    "tool_invoked": 4,
+    "trust_zone_crossed": 1
+  },
+  "diagnostics": [],
+  "event_count": 51,
+  "events_schema": "nornyx.agentic_runtime_events.v1",
+  "events_schema_version": "1.0",
+  "limitations": [
+    "Validated evidence proves conformance of supplied records only.",
+    "Hash validity proves content binding, not event truth.",
+    "Nornyx does not observe, operate, or monitor the runtime."
+  ],
+  "mission_count": 19,
+  "network_id": "network.governed_remediation",
+  "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+  "safety": {
+    "external_connectors_used": false,
+    "models_called": false,
+    "network_used": false,
+    "producers_executed": false,
+    "tools_executed": false
+  },
+  "schema": "nornyx.agentic_evidence_report.v1",
+  "status": "pass",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

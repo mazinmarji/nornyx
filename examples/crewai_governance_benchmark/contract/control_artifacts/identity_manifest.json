@@ -1,0 +1,125 @@
+{
+  "identities": [
+    {
+      "authority": "non_human",
+      "can_approve": false,
+      "capability_refs": [
+        "read_customer_case",
+        "analyze_case",
+        "propose_refund",
+        "share_case_context"
+      ],
+      "digest": "sha256:3686086d9833843b8c9e0a8a43c6460d251d79981e5f4389e570c6038f406378",
+      "expires_at": "2026-12-01T00:00:00Z",
+      "framework_bindings": [
+        {
+          "agent_key": "case_analyst",
+          "framework": "contract_fixture"
+        },
+        {
+          "agent_key": "case_analyst",
+          "framework": "crewai"
+        }
+      ],
+      "id": "identity.case_analyst",
+      "identity_class": "local_agent",
+      "namespace": "remediation.analysis",
+      "revocation_refs": [],
+      "role_ref": "CaseAnalyst",
+      "status": "active",
+      "subject": "case_analyst",
+      "valid_from": "2026-01-01T00:00:00Z"
+    },
+    {
+      "authority": "non_human",
+      "can_approve": false,
+      "capability_refs": [
+        "read_customer_case",
+        "request_human_approval",
+        "close_case"
+      ],
+      "digest": "sha256:ae82619b6ef44c150fb95da711af1ca5dea977fcbbb8ab1d6206429cdf1e5298",
+      "expires_at": "2026-12-01T00:00:00Z",
+      "framework_bindings": [
+        {
+          "agent_key": "compliance_officer",
+          "framework": "contract_fixture"
+        },
+        {
+          "agent_key": "compliance_officer",
+          "framework": "crewai"
+        }
+      ],
+      "id": "identity.compliance_officer",
+      "identity_class": "local_agent",
+      "namespace": "remediation.compliance",
+      "revocation_refs": [],
+      "role_ref": "ComplianceOfficer",
+      "status": "active",
+      "subject": "compliance_officer",
+      "valid_from": "2026-01-01T00:00:00Z"
+    },
+    {
+      "authority": "non_human",
+      "can_approve": false,
+      "capability_refs": [
+        "read_customer_case",
+        "analyze_case",
+        "close_case"
+      ],
+      "digest": "sha256:d6e1c895841bfcbb9f0491a0330dfb61a230797591f60e78a6129cbc78f3664c",
+      "expires_at": "2026-12-01T00:00:00Z",
+      "framework_bindings": [
+        {
+          "agent_key": "intake_agent",
+          "framework": "contract_fixture"
+        },
+        {
+          "agent_key": "intake_agent",
+          "framework": "crewai"
+        }
+      ],
+      "id": "identity.intake_agent",
+      "identity_class": "local_agent",
+      "namespace": "remediation.intake",
+      "revocation_refs": [],
+      "role_ref": "IntakeAgent",
+      "status": "active",
+      "subject": "intake_agent",
+      "valid_from": "2026-01-01T00:00:00Z"
+    },
+    {
+      "authority": "non_human",
+      "can_approve": false,
+      "capability_refs": [
+        "read_customer_case",
+        "issue_refund",
+        "notify_customer_external"
+      ],
+      "digest": "sha256:c8326585e91ebee9f28003e3b94ad95527397c19f78e3a33c865fda868ca55ef",
+      "expires_at": "2026-12-01T00:00:00Z",
+      "framework_bindings": [
+        {
+          "agent_key": "remediation_agent",
+          "framework": "contract_fixture"
+        },
+        {
+          "agent_key": "remediation_agent",
+          "framework": "crewai"
+        }
+      ],
+      "id": "identity.remediation_agent",
+      "identity_class": "local_agent",
+      "namespace": "remediation.disbursement",
+      "revocation_refs": [],
+      "role_ref": "RemediationAgent",
+      "status": "active",
+      "subject": "remediation_agent",
+      "valid_from": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "schema": "nornyx.agentic_identity_manifest.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

@@ -1,0 +1,262 @@
+{
+  "approval_requirements": [
+    "agentic_network_authority",
+    "governance_authority"
+  ],
+  "artifacts": [
+    {
+      "path": "a2a_declaration.json",
+      "sha256": "2283f524adba3a6d915fae78d15ec5ca0402ce4442cfc3bbc5f27ddcccffbf30"
+    },
+    {
+      "path": "agentic_generation_manifest.json",
+      "sha256": "010bc8a30ea6b692d766b33636688d705985e1c14d3128b81aa13f11edbb15fb"
+    },
+    {
+      "path": "capability_matrix.json",
+      "sha256": "745230d344465f84f4dce89223c9d6f7c7ee31561ad89aafe87d6e02171d6c28"
+    },
+    {
+      "path": "delegation_policy_bundle.json",
+      "sha256": "201ad81b6363d168b4e4473082a0d6f4faae928a6c088b00f5cb4d868c5a748b"
+    },
+    {
+      "path": "handoff_manifest.json",
+      "sha256": "dba121401e8d3e944574d888c4af7b4b031d57f28450b658db8b36f65ce3c9b7"
+    },
+    {
+      "path": "identity_manifest.json",
+      "sha256": "a54deb9e2ee565b859f30d7192d02f78625dcbe3d1b4d29752ca4dfcc8001119"
+    },
+    {
+      "path": "mcp_capability_declaration.json",
+      "sha256": "a5a371cd0c9246ef3373f508a1cb42691e97cbced8e64ed763fa4f814d99a6a3"
+    },
+    {
+      "path": "network_manifest.json",
+      "sha256": "8a052ddaa327a490a2ce5de83fdb55362855583645cffb4776cbd7436daf9eb1"
+    },
+    {
+      "path": "runtime_evidence_contract.json",
+      "sha256": "444a522adf3ab1337420aea44868aa246c7630eb40de6a3539aec2953fccc83f"
+    },
+    {
+      "path": "trust_zone_map.json",
+      "sha256": "12f319b2cbe1abfd61771e145ddee2dc9efdd15968de8ce3a114150dd7a1ec87"
+    }
+  ],
+  "block_schemas": [
+    {
+      "block": "agent_identities",
+      "schema_id": "https://nornyx.dev/schemas/agent_identities_v1.schema.json"
+    },
+    {
+      "block": "agentic_network",
+      "schema_id": "https://nornyx.dev/schemas/agentic_network_v1.schema.json"
+    },
+    {
+      "block": "capabilities",
+      "schema_id": "https://nornyx.dev/schemas/agentic_capabilities_v1.schema.json"
+    },
+    {
+      "block": "governance_evidence",
+      "schema_id": "https://nornyx.dev/schemas/governance_evidence_v1.schema.json"
+    }
+  ],
+  "evidence_requirements": [
+    "agentic_network_contract_review",
+    "approval_record",
+    "evidence_manifest"
+  ],
+  "generation_format_version": "1.0",
+  "lock_format_version": "1.0",
+  "modules": [
+    {
+      "content_hash": "sha256:bd2642620c670ef4320b76b3f4263c50f787279f1a613d4ab7f962bb08186d7b",
+      "id": "nornyx.builtin.module.agentic_network_governance",
+      "name": "agentic_network_governance",
+      "version": "0.2.0"
+    },
+    {
+      "content_hash": "sha256:460d9ca1ad53f634a2f7a344d7a8f3809546c49c78ee564e6b5bc466b8bb9ef8",
+      "id": "nornyx.builtin.module.evidence_integrity",
+      "name": "evidence_integrity",
+      "version": "1.0.0"
+    },
+    {
+      "content_hash": "sha256:8bc640928cba203cbdd2dba2d4f0eb3e4fabb5377f4c9d6821bd7624b7d34e46",
+      "id": "nornyx.builtin.module.human_approval",
+      "name": "human_approval",
+      "version": "1.0.0"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "profile": {
+    "content_hash": "sha256:94ab4650c2a24e8829e0df9accf8ca539a8e3e1f4dc477f9835eebfdbe62f944",
+    "id": "nornyx.builtin.agentic_network",
+    "name": "agentic_network",
+    "version": "0.1.0"
+  },
+  "protocol_declarations": [
+    {
+      "execution_mode": "contract_only",
+      "id": "protocol.customer_notice",
+      "protocol": "a2a",
+      "version_label": "declared-by-project"
+    }
+  ],
+  "records": {
+    "agent_identities": [
+      {
+        "digest": "sha256:3686086d9833843b8c9e0a8a43c6460d251d79981e5f4389e570c6038f406378",
+        "id": "identity.case_analyst"
+      },
+      {
+        "digest": "sha256:ae82619b6ef44c150fb95da711af1ca5dea977fcbbb8ab1d6206429cdf1e5298",
+        "id": "identity.compliance_officer"
+      },
+      {
+        "digest": "sha256:d6e1c895841bfcbb9f0491a0330dfb61a230797591f60e78a6129cbc78f3664c",
+        "id": "identity.intake_agent"
+      },
+      {
+        "digest": "sha256:c8326585e91ebee9f28003e3b94ad95527397c19f78e3a33c865fda868ca55ef",
+        "id": "identity.remediation_agent"
+      }
+    ],
+    "capabilities": [
+      {
+        "digest": "sha256:8426dd728b58edf9f9f416bd22e36f76a6645aa1e3f4d6621dd8e957bb054fbb",
+        "id": "analyze_case"
+      },
+      {
+        "digest": "sha256:1609b68b15acaddf05c5456dfb8a520b83eeb6ca0e4c80012ba08d2833b3b191",
+        "id": "close_case"
+      },
+      {
+        "digest": "sha256:efdb9cc32acea11e6e17a6bf8edc34e00d3e231ee2b29f39e92cfa11ff77fac7",
+        "id": "issue_refund"
+      },
+      {
+        "digest": "sha256:6315da7a1c09312f2195741cb07fa27931ebc7dd9c1f398bcc070323c1c4122d",
+        "id": "modify_account"
+      },
+      {
+        "digest": "sha256:208b28d25aa812e28ac46ffb62c10f6319bdf744031d416c1ccf814ff40fba56",
+        "id": "notify_customer_external"
+      },
+      {
+        "digest": "sha256:b349fae7d915c955bb30b7e0ea4d08401db4bc940f0373f596209541170c82fc",
+        "id": "propose_refund"
+      },
+      {
+        "digest": "sha256:1fd93ae552611fb2373dbf0e70b1a5f345df12e2d5e6d8ba823c41104c20fc27",
+        "id": "read_customer_case"
+      },
+      {
+        "digest": "sha256:bf12536cfdea0141f981ea6609d3b9765a3cbf4ae9cac45dce5b24c813f72373",
+        "id": "request_human_approval"
+      },
+      {
+        "digest": "sha256:323f6b5ee0521cf9dbf01776d9c2375e502e2793af1cd338ae37909ace70f181",
+        "id": "share_case_context"
+      }
+    ],
+    "delegations": [
+      {
+        "digest": "sha256:4da8eeaeb7ad9cba0b50b1dd35c15b6287d544e7e9ce4e9cadb56e8f23c691b8",
+        "id": "delegation.refund_proposal"
+      }
+    ],
+    "handoffs": [
+      {
+        "digest": "sha256:b17bd7ade59fe899cd42df49dc24742cad3d018aa651baba42eb6da654212c96",
+        "id": "handoff.compliance_closure"
+      }
+    ],
+    "memberships": [
+      {
+        "digest": "sha256:8e56ea89f4561ddeccd0ead2ea2575e9fe7b36d59f9d86c82cc44790f77dc4a8",
+        "id": "membership.case_analyst"
+      },
+      {
+        "digest": "sha256:c13682dc845b5221e635e9691bee59dd3a33d987ddb1588ed0187ef88b34ecd3",
+        "id": "membership.compliance_officer"
+      },
+      {
+        "digest": "sha256:7402059f1a436d130393ffd570f9a3bbd5f43095ca3a06ea6772269f9fa871eb",
+        "id": "membership.intake_agent"
+      },
+      {
+        "digest": "sha256:6e170b2572ea5b6f4c82010e3dbaac1f52293eedce3380d52869f78b1404bad7",
+        "id": "membership.remediation_agent"
+      }
+    ],
+    "network_gates": [
+      {
+        "digest": "sha256:55266ec6cbbcc026d5096aacffbb41e859ffc06fd53f84b9f1f047878d5d89ed",
+        "id": "gate.case_review"
+      },
+      {
+        "digest": "sha256:78fe768583c72769f16e683520b651515ec02e1e95d52c65e72d356635a58ef3",
+        "id": "gate.customer_notice"
+      },
+      {
+        "digest": "sha256:f80f7d89e388b492dc2258c0d108ebbb2473a16e50cb590a8a0dbc29749244d4",
+        "id": "gate.disbursement_review"
+      },
+      {
+        "digest": "sha256:16abe6d21a2a5fb4a99c6dd89b016733f88c53ff5d032359ad1886cf0ceea53f",
+        "id": "gate.refund_review"
+      }
+    ],
+    "protocol_targets": [
+      {
+        "digest": "sha256:fb1448311c5448688df52f76bc838ab7bc748bf0c4e78c1214ce9f82fa2e1a89",
+        "id": "protocol.customer_notice"
+      }
+    ],
+    "relations": [
+      {
+        "digest": "sha256:6ed6abd0e13945bd34ca37e183b3de6933d625b5a8dd835bde0d00c4dcf0ce72",
+        "id": "relation.compliance_handoff"
+      },
+      {
+        "digest": "sha256:07416c330751825bec995af7694d5928e71d8f0afaf2fb99db0e9dfeeed9feae",
+        "id": "relation.disbursement_approval"
+      },
+      {
+        "digest": "sha256:27807520698dc540b7976247eb9f88c412fbc00f749d7fd2c61b32966cff46fc",
+        "id": "relation.notice_advertisement"
+      },
+      {
+        "digest": "sha256:8408146e571af0fe21a32bd45772edbae09158245ecca99390116ba2987bcf9b",
+        "id": "relation.refund_delegation"
+      }
+    ],
+    "revocations": [],
+    "trust_zones": [
+      {
+        "digest": "sha256:04faf1e15488b2d21cfc27065f4e45fda20c4d72d9a3e25efc920cb2aa86bdb3",
+        "id": "zone.customer_channel"
+      },
+      {
+        "digest": "sha256:3b7d4a1944eb6b62865ccc1a6bbe53586bee1862f690ab93ee418c30308f0152",
+        "id": "zone.remediation_internal"
+      }
+    ]
+  },
+  "runtime_events_schema": {
+    "id": "nornyx.agentic_runtime_events.v1",
+    "version": "1.0"
+  },
+  "schema": "nornyx.agentic_network_lock.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "structural_checks": [
+    "agentic_network_delegation.v1",
+    "agentic_network_foundation.v1",
+    "evidence_integrity.v1",
+    "human_approval.v1"
+  ],
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

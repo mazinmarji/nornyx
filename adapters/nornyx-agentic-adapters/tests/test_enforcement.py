@@ -129,6 +129,70 @@ def test_unexpected_evaluate_error_fails_closed() -> None:
     assert recorder.recorded == []
 
 
+def test_on_decision_sees_the_recorded_decision_before_the_action_runs() -> None:
+    authorizer = _FakeAuthorizer(decision=_allow())
+    recorder = _FakeRecorder()
+    order: list[str] = []
+
+    def on_decision(decision: Decision) -> None:
+        order.append("decision")
+        assert decision is authorizer.decision
+        # Already recorded: the hook can never observe an unrecorded decision.
+        assert recorder.recorded == [(authorizer.decision, "mission-1")]
+
+    enforce(
+        authorizer,
+        _REQUEST,
+        context=_CONTEXT,
+        recorder=recorder,
+        mission_id="mission-1",
+        action=lambda: order.append("action"),
+        on_decision=on_decision,
+    )
+    assert order == ["decision", "action"]
+
+
+def test_on_decision_runs_on_deny_and_cannot_unblock_the_action() -> None:
+    authorizer = _FakeAuthorizer(decision=_deny())
+    recorder = _FakeRecorder()
+    seen: list[Decision] = []
+    calls: list[Any] = []
+
+    with pytest.raises(AdapterDenied):
+        enforce(
+            authorizer,
+            _REQUEST,
+            context=_CONTEXT,
+            recorder=recorder,
+            mission_id="mission-1",
+            action=lambda: calls.append(1),
+            on_decision=seen.append,
+        )
+    assert [d.allowed for d in seen] == [False]
+    assert calls == []
+
+
+def test_on_decision_error_fails_closed_before_the_action() -> None:
+    authorizer = _FakeAuthorizer(decision=_allow())
+    recorder = _FakeRecorder()
+    calls: list[Any] = []
+
+    def boom(_decision: Decision) -> None:
+        raise RuntimeError("observer bug")
+
+    with pytest.raises(RuntimeError, match="observer bug"):
+        enforce(
+            authorizer,
+            _REQUEST,
+            context=_CONTEXT,
+            recorder=recorder,
+            mission_id="mission-1",
+            action=lambda: calls.append(1),
+            on_decision=boom,
+        )
+    assert calls == []
+
+
 def test_unexpected_record_decision_error_also_fails_closed() -> None:
     """A bug in the recorder must also prevent the wrapped action from running."""
     authorizer = _FakeAuthorizer(decision=_allow())

@@ -1,0 +1,44 @@
+{
+  "compatibility": "a2a-compatible declaration; not a runtime, server, endpoint, or transport",
+  "declared_targets": [
+    {
+      "capabilities": [
+        "notify_customer_external"
+      ],
+      "id": "protocol.customer_notice",
+      "identities": [
+        "identity.remediation_agent"
+      ],
+      "message_classes": [
+        "external_share",
+        "notify_customer"
+      ],
+      "required_approvals": [
+        "agentic_network_authority"
+      ],
+      "required_evidence": [
+        "agentic_network_contract_review"
+      ],
+      "share": [
+        "customer_message",
+        "evidence_digest"
+      ],
+      "source_zone": "zone.remediation_internal",
+      "target_zone": "zone.customer_channel",
+      "version_label": "declared-by-project"
+    }
+  ],
+  "denied_sensitive_categories": [
+    "credentials",
+    "private_memory",
+    "secrets",
+    "tokens"
+  ],
+  "execution_mode": "contract_only",
+  "live_connector_execution": false,
+  "network_id": "network.governed_remediation",
+  "protocol": "a2a",
+  "schema": "nornyx.a2a_compatible_declaration.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

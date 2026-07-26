@@ -18,7 +18,7 @@ as 1.7.0).
 | AN-002 | ADR-0034 | `agentic_network_governance` 0.2.0: closed `delegations`/`handoffs`/`relations`, boolean `delegable` + `max_delegation_depth`, fixed check `agentic_network_delegation.v1`, migration `migration:modules-agentic-network-governance-v2` |
 | AN-003 | ADR-0035 | `nornyx/agentic_artifacts.py`: 10 deterministic artifacts, `nornyx.agentic_network_lock.v1`, CLI `agentic-network generate/lock/lock-check` |
 | AN-004 | ADR-0036 | `nornyx/agentic_evidence.py`: `nornyx.agentic_runtime_events.v1` (18 closed types), conformance + bounded ordering validation, CLI `agentic-network evidence-validate` |
-| AN-005 | ADR-0037 | `integrations/nornyx_agentic_adapters/`: framework-free kernel, CrewAI + LangGraph adapters, deterministic harness; not packaged |
+| AN-005 | ADR-0037 | `integrations/nornyx_reference_adapters/`: framework-free kernel, CrewAI + LangGraph adapters, deterministic harness; not packaged |
 | AN-006 | ADR-0038 | `examples/agentic_network_support/` (Governed Customer Support Network), `nornyx/eval_import.py` + `eval-import promptfoo`, `scripts/agentic_network_ci.py`, `docs/agentic-network/` set, README section |
 
 ## Boundary preserved
@@ -73,7 +73,7 @@ suite passed. Findings:
 
 ### AN5-AUD-001 — kernel recorded external crossings without approval
 - Severity: LOW. File:
-  `integrations/nornyx_agentic_adapters/governance_kernel.py`
+  `integrations/nornyx_reference_adapters/governance_kernel.py`
   (`record_zone_crossing`).
 - Failure scenario: an adapter records an external-classified crossing
   without an approval reference; the violation is only caught later at

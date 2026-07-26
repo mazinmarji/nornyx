@@ -25,7 +25,7 @@
 ## Context
 
 AN-005 (ADR-0037) shipped CrewAI and LangGraph reference adapters under
-`integrations/nornyx_agentic_adapters/`. They are **excluded from the wheel** —
+`integrations/nornyx_reference_adapters/`. They are **excluded from the wheel** —
 correct, to keep heavy frameworks out of stable core — but they reach directly
 into Nornyx internals (`nornyx.agentic_artifacts`, `nornyx.checker`,
 `nornyx.governance`, `nornyx.parser`, `nornyx.agentic_evidence`). Two problems
@@ -40,7 +40,7 @@ of an external adopter's requirement against `origin/main`
 this ADR's decision:
 
 1. The **per-action authorization logic already exists and is already
-   framework-neutral** — `integrations/nornyx_agentic_adapters/governance_kernel.py`
+   framework-neutral** — `integrations/nornyx_reference_adapters/governance_kernel.py`
    (`GovernanceKernel`) imports Nornyx modules only (no CrewAI/LangGraph),
    loads + lock-verifies a contract, resolves identities, and decides
    capability/delegation/handoff/approval/zone/data-share with a deterministic

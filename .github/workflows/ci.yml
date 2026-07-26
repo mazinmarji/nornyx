@@ -243,6 +243,131 @@ jobs:
           print("WHEEL_CREWAI_SMOKE_OK crewai_in_sys_modules=%s" % ("crewai" in sys.modules))
           PY
 
+  crewai-governance-benchmark:
+    # examples/crewai_governance_benchmark is an external-facing A/B benchmark
+    # whose tests skip when crewai or the nornyx-agentic-adapters distribution is
+    # absent — which is exactly the case in the default `test` matrix. Without
+    # this job the benchmark suite would silently contribute zero assertions to
+    # CI. This job installs the candidate core wheel and the candidate adapter
+    # with the CrewAI extra, runs the benchmark offline, and fails closed if the
+    # benchmark exits non-zero, if no benchmark test runs, or if any of them skip.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install pytest and the candidate adapter with the CrewAI extra
+        run: |
+          python -m pip install pytest
+          python -m pip install -e "./adapters/nornyx-agentic-adapters[crewai]"
+      - name: Verify the exact toolchain the benchmark claims
+        run: |
+          python -c "import crewai; assert crewai.__version__ == '1.15.4', crewai.__version__; print('crewai', crewai.__version__)"
+          python -c "import importlib.metadata as m; print('nornyx', m.version('nornyx')); print('adapters', m.version('nornyx-agentic-adapters'))"
+      - name: Run the benchmark offline
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          python examples/crewai_governance_benchmark/benchmark.py \
+            --out "$RUNNER_TEMP/crewai-governance-benchmark"
+      - name: Assert the run's own output contract
+        run: |
+          python - "$RUNNER_TEMP/crewai-governance-benchmark" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          out = pathlib.Path(sys.argv[1])
+          payload = json.loads((out / "benchmark.json").read_text(encoding="utf-8"))
+          report = json.loads((out / "nornyx_evidence_report.json").read_text(encoding="utf-8"))
+
+          failed = [c for c in payload["contract_checks"] if not c["passed"]]
+          evidence = payload["metrics"]["evidence"]
+          problems = []
+          if failed:
+              problems += [f"contract check failed: {c['check']}: {c['detail']}" for c in failed]
+          if payload["verdict"]["verdict"] != "GO":
+              problems.append(f"verdict is {payload['verdict']['verdict']}, not GO")
+          if evidence["validation_status"] != "pass":
+              problems.append(f"full-stream validation is {evidence['validation_status']!r}")
+          if evidence["diagnostics"] or report["diagnostics"]:
+              problems.append(f"evidence diagnostics: {report['diagnostics']}")
+          if report["status"] != "pass":
+              problems.append(f"evidence report status is {report['status']!r}")
+
+          print(json.dumps({
+              "verdict": payload["verdict"]["verdict"],
+              "contract_checks": len(payload["contract_checks"]),
+              "failed_checks": len(failed),
+              "evidence_status": evidence["validation_status"],
+              "evidence_diagnostics": len(report["diagnostics"]),
+              "candidate_digest": payload["candidate_digest"],
+          }, indent=2))
+          for problem in problems:
+              print("PROBLEM:", problem)
+          sys.exit(1 if problems else 0)
+          PY
+      - name: Benchmark tests with no skips permitted
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          python -m pytest tests/test_crewai_governance_benchmark.py \
+            -v -rs --junitxml=benchmark-results.xml
+
+          python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("benchmark-results.xml").getroot()
+          suites = root.findall(".//testsuite")
+          tests = sum(int(s.get("tests", 0)) for s in suites)
+          skipped = sum(int(s.get("skipped", 0)) for s in suites)
+          failures = sum(int(s.get("failures", 0)) for s in suites)
+          errors = sum(int(s.get("errors", 0)) for s in suites)
+
+          print({
+              "tests": tests,
+              "skipped": skipped,
+              "failures": failures,
+              "errors": errors,
+          })
+
+          sys.exit(1 if not tests or skipped or failures or errors else 0)
+          PY
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crewai-governance-benchmark
+          path: |
+            ${{ runner.temp }}/crewai-governance-benchmark
+            benchmark-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
   quality:
     runs-on: ubuntu-latest
     steps:

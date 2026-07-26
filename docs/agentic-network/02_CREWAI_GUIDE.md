@@ -1,7 +1,7 @@
 # CrewAI Integration Guide
 
 The CrewAI reference adapter lives in
-`integrations/nornyx_agentic_adapters/crewai_adapter.py` and is deliberately
+`integrations/nornyx_reference_adapters/crewai_adapter.py` and is deliberately
 **not** part of the `nornyx` wheel. It imports `crewai` lazily and only if
 you installed it yourself; every enforcement path also works with duck-typed
 agents exposing a `role` attribute, so the demonstration runs offline.
@@ -21,8 +21,8 @@ Unbound or ambiguous keys fail closed with `AN_ADAPTER_IDENTITY_UNKNOWN`.
 ## Usage
 
 ```python
-from nornyx_agentic_adapters.governance_kernel import GovernanceKernel
-from nornyx_agentic_adapters.crewai_adapter import CrewAIGovernanceAdapter
+from nornyx_reference_adapters.governance_kernel import GovernanceKernel
+from nornyx_reference_adapters.crewai_adapter import CrewAIGovernanceAdapter
 
 kernel = GovernanceKernel.from_local_controls(
     "examples/agentic_network_support/support_network.nyx",

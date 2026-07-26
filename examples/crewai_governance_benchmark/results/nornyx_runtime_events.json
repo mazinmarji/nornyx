@@ -1,0 +1,963 @@
+{
+  "events": [
+    {
+      "actor_ref": "identity.intake_agent",
+      "capability_ref": "read_customer_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S01:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S01:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.intake_agent",
+      "capability_ref": "read_customer_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S01:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S01:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.intake_agent",
+      "capability_ref": "read_customer_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S01:1-0003",
+      "event_type": "tool_invoked",
+      "mission_id": "GOAL-REMEDIATION-001:S01:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S02:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S02:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S02:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S02:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S02:1-0003",
+      "event_type": "approval_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S02:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "approver": {
+        "actor_type": "human",
+        "role": "network_governance_owner"
+      },
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S02:1-0004",
+      "event_type": "approval_granted",
+      "mission_id": "GOAL-REMEDIATION-001:S02:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 4,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S02:1-0005",
+      "event_type": "trust_zone_crossed",
+      "mission_id": "GOAL-REMEDIATION-001:S02:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 5,
+      "source_zone_ref": "zone.remediation_internal",
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "target_zone_ref": "zone.customer_channel",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S02:1-0006",
+      "event_type": "tool_invoked",
+      "mission_id": "GOAL-REMEDIATION-001:S02:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 6,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.intake_agent",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S03:1-0001",
+      "event_type": "policy_violation",
+      "mission_id": "GOAL-REMEDIATION-001:S03:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.intake_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S04:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S04:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.intake_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S04:1-0002",
+      "event_type": "capability_denied",
+      "mission_id": "GOAL-REMEDIATION-001:S04:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "deny",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S06:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S06:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S06:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S06:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S06:1-0003",
+      "event_type": "approval_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S06:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S07:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S07:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S07:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S07:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S07:1-0003",
+      "event_type": "approval_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S07:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "approver": {
+        "actor_type": "model",
+        "role": "network_governance_owner"
+      },
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S07:1-0004",
+      "event_type": "approval_rejected",
+      "mission_id": "GOAL-REMEDIATION-001:S07:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 4,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S08:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S08:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S08:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S08:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S08:1-0003",
+      "event_type": "policy_violation",
+      "mission_id": "GOAL-REMEDIATION-001:S08:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "source_zone_ref": "zone.remediation_internal",
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "target_zone_ref": "zone.customer_channel",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S09:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S09:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "notify_customer_external",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S09:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S09:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S09:1-0003",
+      "event_type": "approval_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S09:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "approval_ref": "agentic_network_authority",
+      "approver": {
+        "actor_type": "human",
+        "role": "network_governance_owner"
+      },
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S09:1-0004",
+      "event_type": "approval_rejected",
+      "mission_id": "GOAL-REMEDIATION-001:S09:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 4,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "share_case_context",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S10:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S10:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "share_case_context",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S10:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S10:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S10:1-0003",
+      "event_type": "policy_violation",
+      "mission_id": "GOAL-REMEDIATION-001:S10:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "target_ref": "identity.intake_agent",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "read_customer_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S11:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S11:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "read_customer_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S11:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S11:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S11:1-0003",
+      "event_type": "policy_violation",
+      "mission_id": "GOAL-REMEDIATION-001:S11:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "source_zone_ref": "zone.customer_channel",
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "target_zone_ref": "zone.remediation_internal",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S14:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S14:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S14:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S14:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S14:2-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S14:2",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S14:2-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S14:2",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S14:3-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S14:3",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "issue_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S14:3-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S14:3",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S16:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S16:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "delegation_ref": "delegation.refund_proposal",
+      "event_id": "GOAL-REMEDIATION-001:S16:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S16:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.remediation_agent",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "delegation_ref": "delegation.refund_proposal",
+      "event_id": "GOAL-REMEDIATION-001:S16:1-0003",
+      "event_type": "tool_invoked",
+      "mission_id": "GOAL-REMEDIATION-001:S16:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.intake_agent",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S17:1-0001",
+      "event_type": "policy_violation",
+      "mission_id": "GOAL-REMEDIATION-001:S17:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S18:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S18:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S18:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S18:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S18:2-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S18:2",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S18:2-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S18:2",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S18:3-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S18:3",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.case_analyst",
+      "capability_ref": "propose_refund",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S18:3-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S18:3",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.compliance_officer",
+      "capability_ref": "close_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S19:1-0001",
+      "event_type": "capability_requested",
+      "mission_id": "GOAL-REMEDIATION-001:S19:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 1,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.compliance_officer",
+      "capability_ref": "close_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S19:1-0002",
+      "event_type": "capability_allowed",
+      "mission_id": "GOAL-REMEDIATION-001:S19:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "policy_decision": "allow",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 2,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    },
+    {
+      "actor_ref": "identity.compliance_officer",
+      "capability_ref": "close_case",
+      "contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+      "event_id": "GOAL-REMEDIATION-001:S19:1-0003",
+      "event_type": "tool_invoked",
+      "mission_id": "GOAL-REMEDIATION-001:S19:1",
+      "network_id": "network.governed_remediation",
+      "network_lock_digest": "sha256:e43e1fbf2f126a6ee71ced3cb615bda1031e7fc8ca572bf358dca7cba37537b8",
+      "producer": {
+        "id": "examples.crewai_governance_benchmark",
+        "type": "framework_adapter",
+        "version": "1.0"
+      },
+      "sequence": 3,
+      "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11",
+      "timestamp": "2026-07-17T00:00:00Z"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "producer": {
+    "id": "examples.crewai_governance_benchmark",
+    "type": "framework_adapter",
+    "version": "1.0"
+  },
+  "schema": "nornyx.agentic_runtime_events.v1",
+  "schema_version": "1.0"
+}

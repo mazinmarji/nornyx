@@ -46,7 +46,7 @@ CREWAI_PIN = "crewai==1.15.4"
 
 # The child runs in the clean venv. It puts ONLY integrations/ on sys.path (not
 # the repo root), so `import nornyx` must resolve to the installed wheel while
-# `import nornyx_agentic_adapters` resolves to the unpackaged reference adapter.
+# `import nornyx_reference_adapters` resolves to the unpackaged reference adapter.
 CHILD = r'''
 import os, sys, json, socket, subprocess, importlib.metadata as md
 from pathlib import Path
@@ -86,11 +86,11 @@ from nornyx.agentic_artifacts import build_agentic_network_lock, write_agentic_n
 from nornyx.agentic_evidence import validate_runtime_events
 from nornyx.governance import GovernanceRegistry, compose_governance
 from nornyx.parser import load_nyx
-import nornyx_agentic_adapters
-from nornyx_agentic_adapters.governance_kernel import GovernanceKernel, DeterministicClock
-from nornyx_agentic_adapters.crewai_adapter import CrewAIGovernanceAdapter
+import nornyx_reference_adapters
+from nornyx_reference_adapters.governance_kernel import GovernanceKernel, DeterministicClock
+from nornyx_reference_adapters.crewai_adapter import CrewAIGovernanceAdapter
 
-adapter_source = str(Path(nornyx_agentic_adapters.__file__).resolve())
+adapter_source = str(Path(nornyx_reference_adapters.__file__).resolve())
 
 class DeterministicLLM(BaseLLM):
     def __init__(self, tool_name, final_answer):

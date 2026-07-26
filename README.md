@@ -239,6 +239,7 @@ Nornyx is an **executable specification layer**, not a runtime. It does **not** 
 ## Learn more
 
 - [Agentic-network governance overview](docs/agentic-network/00_OVERVIEW.md) · [end-to-end tutorial](docs/agentic-network/01_TUTORIAL.md)
+- [CrewAI governance A/B benchmark](examples/crewai_governance_benchmark/README.md) — one workflow run with and without governance, with a side-effect ledger proving what was prevented ([reviewer quickstart](examples/crewai_governance_benchmark/REVIEWER_QUICKSTART.md))
 - [Positioning](docs/48_NORNYX_POSITIONING.md)
 - [5-minute adoption](docs/49_NORNYX_5_MINUTE_ADOPTION.md)
 - [Governed Package Profile](docs/governed-package-profile.md)

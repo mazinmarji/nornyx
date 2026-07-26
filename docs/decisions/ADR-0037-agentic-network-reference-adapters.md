@@ -5,6 +5,13 @@
 - Date: 2026-07-19
 - Decision owner: human repository owner
 
+> **Later amendment (2026-07-26).** This ADR originally named the package
+> `integrations/nornyx_agentic_adapters/`. That import name collided with the
+> supported `nornyx-agentic-adapters` distribution introduced by ADR-0039, so
+> the reference tree was renamed to `integrations/nornyx_reference_adapters/`
+> and the paths below were updated to match. Nothing else in this decision
+> changed; see `adapters/nornyx-agentic-adapters/docs/MIGRATION.md`.
+
 ## Context
 
 One Nornyx agentic-network contract must be shown governing at least two
@@ -25,7 +32,7 @@ Layer 3 — External framework runtime or the bundled deterministic harness
 
 Structure:
 
-- `integrations/nornyx_agentic_adapters/governance_kernel.py` — shared,
+- `integrations/nornyx_reference_adapters/governance_kernel.py` — shared,
   framework-free enforcement kernel: loads local generated controls, verifies
   the network lock digest against the contract, maps runtime identities to
   declared identities, checks capability ownership, validates delegation and
@@ -34,12 +41,12 @@ Structure:
   standardized `nornyx.agentic_runtime_events.v1` events bound to the exact
   contract digest and lock digest. Fails closed on stale controls, stale
   locks, or a missing hook.
-- `integrations/nornyx_agentic_adapters/crewai_adapter.py` — maps CrewAI
+- `integrations/nornyx_reference_adapters/crewai_adapter.py` — maps CrewAI
   agents/tasks onto the kernel; imports `crewai` lazily and only if installed.
-- `integrations/nornyx_agentic_adapters/langgraph_adapter.py` — wraps
+- `integrations/nornyx_reference_adapters/langgraph_adapter.py` — wraps
   LangGraph node callables with kernel enforcement; imports `langgraph`
   lazily and only if installed.
-- `integrations/nornyx_agentic_adapters/local_harness.py` — deterministic
+- `integrations/nornyx_reference_adapters/local_harness.py` — deterministic
   fake-model, inert-tool harness used by default demonstrations and tests.
 
 Adapters never authenticate, discover services, store secrets, contact

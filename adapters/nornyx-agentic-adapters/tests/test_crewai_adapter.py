@@ -95,9 +95,51 @@ def _authorizer(document: dict[str, Any]) -> Authorizer:
     return Authorizer(document, composition, lock)
 
 
+def _delegated_document() -> dict[str, Any]:
+    """The example contract plus an active delegation of a capability.
+
+    ``identity.reviewer.local`` does NOT hold ``propose_research_finding``
+    directly; here it receives it by bounded delegation, which is the only way
+    the ALLOW decision's basis carries ``kind="delegation"``.
+    """
+    document = _document()
+    document["capabilities"][1]["delegable"] = True
+    document["capabilities"][1]["max_delegation_depth"] = 2
+    document["agentic_network"]["delegations"] = [
+        {
+            "id": "delegation.research",
+            "delegator_ref": "identity.researcher.local",
+            "delegate_ref": "identity.reviewer.local",
+            "capability_ref": "propose_research_finding",
+            "purpose": "Bounded review-cycle finding proposals",
+            "actions": ["propose_finding"],
+            "scope_refs": ["GovernedNetworkContext"],
+            "status": "active",
+            "valid_from": "2026-01-01T00:00:00Z",
+            "expires_at": "2026-08-01T00:00:00Z",
+            "max_depth": 2,
+            "current_depth": 0,
+            "onward_delegation": "allowed_with_policy",
+            "source_zone_ref": "zone.local_governed",
+            "target_zone_ref": "zone.local_governed",
+            "required_gate_refs": [],
+            "required_policy_refs": [],
+            "required_approval_refs": [],
+            "required_evidence_refs": [],
+            "revocation_refs": [],
+        }
+    ]
+    return document
+
+
 @pytest.fixture()
 def authorizer() -> Authorizer:
     return _authorizer(_document())
+
+
+@pytest.fixture()
+def delegating_authorizer() -> Authorizer:
+    return _authorizer(_delegated_document())
 
 
 def _context() -> EvaluationContext:
@@ -295,6 +337,153 @@ def test_governed_tool_deny_never_runs_action_and_raises_adapter_denied(
         "capability_requested",
         "capability_denied",
     ]
+
+
+def test_delegated_capability_observation_carries_the_authorizing_delegation(
+    delegating_authorizer: Authorizer,
+) -> None:
+    """A capability held only by delegation must produce a validating stream.
+
+    The ALLOW is correct and ``capability_allowed`` already carries the
+    delegation. Without the same reference on ``tool_invoked``, the validator's
+    possession check fails closed and reports a capability the actor does not
+    hold — so delegation and validatable evidence were mutually exclusive.
+    """
+    recorder = _recorder(delegating_authorizer)
+    calls: list[Any] = []
+
+    def action() -> str:
+        calls.append(1)
+        return "proposed finding"
+
+    binding = SurfaceBinding(
+        surface="tool:proposer",
+        identity_ref="identity.reviewer.local",
+        capability_ref="propose_research_finding",
+    )
+    tool = make_governed_tool(
+        name="proposer",
+        description="Propose a research finding.",
+        binding=binding,
+        authorizer=delegating_authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+    )
+
+    assert tool.run() == "proposed finding"
+    assert calls == [1]  # exactly once
+
+    events = recorder.stream()["events"]
+    assert [event["event_type"] for event in events] == [
+        "capability_requested",
+        "capability_allowed",
+        "tool_invoked",
+    ]
+    allowed = events[1]
+    invoked = events[2]
+    assert allowed["delegation_ref"] == "delegation.research"
+    assert invoked["delegation_ref"] == "delegation.research"
+
+    report = recorder.validate()
+    assert report["status"] == "pass", report["diagnostics"]
+    assert report["diagnostics"] == []
+
+
+def test_directly_held_capability_observation_omits_delegation_ref(
+    authorizer: Authorizer,
+) -> None:
+    """A capability held by membership records no delegation — the field is absent."""
+    recorder = _recorder(authorizer)
+    binding = SurfaceBinding(
+        surface="tool:governed_reader",
+        identity_ref="identity.researcher.local",
+        capability_ref="read_governed_context",
+    )
+    tool = make_governed_tool(
+        name="governed_reader",
+        description="Read governed context.",
+        binding=binding,
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=lambda: "ok",
+    )
+    assert tool.run() == "ok"
+    invoked = recorder.stream()["events"][-1]
+    assert invoked["event_type"] == "tool_invoked"
+    assert "delegation_ref" not in invoked
+    assert recorder.validate()["status"] == "pass"
+
+
+def test_delegation_ref_is_not_taken_from_tool_arguments(
+    delegating_authorizer: Authorizer,
+) -> None:
+    """Caller-supplied arguments must never determine the recorded delegation."""
+
+    class Injected(BaseModel):
+        delegation_ref: str = "delegation.forged"
+
+    recorder = _recorder(delegating_authorizer)
+    tool = make_governed_tool(
+        name="proposer",
+        description="Propose a research finding.",
+        binding=SurfaceBinding(
+            surface="tool:proposer",
+            identity_ref="identity.reviewer.local",
+            capability_ref="propose_research_finding",
+        ),
+        authorizer=delegating_authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=lambda **kwargs: "proposed finding",
+        args_schema=Injected,
+    )
+
+    assert tool._run(delegation_ref="delegation.forged") == "proposed finding"
+    invoked = recorder.stream()["events"][-1]
+    assert invoked["delegation_ref"] == "delegation.research"
+
+
+def test_expired_delegation_denies_and_records_no_tool_invoked() -> None:
+    """A delegation outside its validity window grants nothing, and observes nothing.
+
+    The decision hook only ever reads an authorizing delegation off an ALLOW, so
+    a lapsed delegation cannot produce a ``tool_invoked`` observation at all.
+    """
+    document = _delegated_document()
+    document["agentic_network"]["delegations"][0]["expires_at"] = "2026-07-17T09:00:00Z"
+    authorizer = _authorizer(document)
+    recorder = _recorder(authorizer)
+    calls: list[Any] = []
+
+    tool = make_governed_tool(
+        name="proposer",
+        description="Propose a research finding.",
+        binding=SurfaceBinding(
+            surface="tool:proposer",
+            identity_ref="identity.reviewer.local",
+            capability_ref="propose_research_finding",
+        ),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=lambda: calls.append(1),
+    )
+    with pytest.raises(AdapterDenied) as excinfo:
+        tool.run()
+    assert calls == []
+    assert excinfo.value.decision.code.value == "CAPABILITY_DENIED"
+    events = recorder.stream()["events"]
+    assert [e["event_type"] for e in events] == [
+        "capability_requested",
+        "capability_denied",
+    ]
+    assert all("delegation_ref" not in e for e in events)
 
 
 def test_make_governed_tool_fails_closed_on_blank_binding_field(authorizer: Authorizer) -> None:

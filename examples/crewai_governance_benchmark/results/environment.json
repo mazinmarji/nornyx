@@ -1,0 +1,17 @@
+{
+  "adapters_install_kind": "editable or source checkout",
+  "adapters_install_source": "repository (adapters/nornyx-agentic-adapters)",
+  "adapters_package_published_on_pypi": false,
+  "adapters_version": "0.1.0",
+  "as_of": "2026-07-17T00:00:00Z",
+  "contract_path": "examples/crewai_governance_benchmark/contract/remediation_network.nyx",
+  "crewai_version": "1.15.4",
+  "lock_path": "examples/crewai_governance_benchmark/contract/nornyx.agentic_network.lock",
+  "mission_id": "GOAL-REMEDIATION-001",
+  "nornyx_agentic_spi_version": "1.0",
+  "nornyx_install_kind": "editable or source checkout",
+  "nornyx_version": "1.8.0",
+  "platform": "Windows-11-AMD64",
+  "python_implementation": "CPython",
+  "python_version": "3.13.14"
+}

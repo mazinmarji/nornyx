@@ -43,17 +43,17 @@ from nornyx.governance import (  # noqa: E402
 )
 from nornyx.parser import load_nyx  # noqa: E402
 
-from nornyx_agentic_adapters.governance_kernel import (  # noqa: E402
+from nornyx_reference_adapters.governance_kernel import (  # noqa: E402
     DeterministicClock,
     GovernanceKernel,
     GovernanceViolation,
 )
-from nornyx_agentic_adapters.crewai_adapter import CrewAIGovernanceAdapter  # noqa: E402
-from nornyx_agentic_adapters.langgraph_adapter import (  # noqa: E402
+from nornyx_reference_adapters.crewai_adapter import CrewAIGovernanceAdapter  # noqa: E402
+from nornyx_reference_adapters.langgraph_adapter import (  # noqa: E402
     LangGraphGovernanceAdapter,
     langgraph_available,
 )
-from nornyx_agentic_adapters.local_harness import (  # noqa: E402
+from nornyx_reference_adapters.local_harness import (  # noqa: E402
     DuckAgent,
     FakeModel,
     InertTool,

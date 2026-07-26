@@ -1,0 +1,45 @@
+{
+  "artifacts": [
+    {
+      "path": "a2a_declaration.json",
+      "sha256": "2283f524adba3a6d915fae78d15ec5ca0402ce4442cfc3bbc5f27ddcccffbf30"
+    },
+    {
+      "path": "capability_matrix.json",
+      "sha256": "745230d344465f84f4dce89223c9d6f7c7ee31561ad89aafe87d6e02171d6c28"
+    },
+    {
+      "path": "delegation_policy_bundle.json",
+      "sha256": "201ad81b6363d168b4e4473082a0d6f4faae928a6c088b00f5cb4d868c5a748b"
+    },
+    {
+      "path": "handoff_manifest.json",
+      "sha256": "dba121401e8d3e944574d888c4af7b4b031d57f28450b658db8b36f65ce3c9b7"
+    },
+    {
+      "path": "identity_manifest.json",
+      "sha256": "a54deb9e2ee565b859f30d7192d02f78625dcbe3d1b4d29752ca4dfcc8001119"
+    },
+    {
+      "path": "mcp_capability_declaration.json",
+      "sha256": "a5a371cd0c9246ef3373f508a1cb42691e97cbced8e64ed763fa4f814d99a6a3"
+    },
+    {
+      "path": "network_manifest.json",
+      "sha256": "8a052ddaa327a490a2ce5de83fdb55362855583645cffb4776cbd7436daf9eb1"
+    },
+    {
+      "path": "runtime_evidence_contract.json",
+      "sha256": "444a522adf3ab1337420aea44868aa246c7630eb40de6a3539aec2953fccc83f"
+    },
+    {
+      "path": "trust_zone_map.json",
+      "sha256": "12f319b2cbe1abfd61771e145ddee2dc9efdd15968de8ce3a114150dd7a1ec87"
+    }
+  ],
+  "generation_format_version": "1.0",
+  "network_id": "network.governed_remediation",
+  "schema": "nornyx.agentic_generation_manifest.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

@@ -1,0 +1,68 @@
+{
+  "block_schemas": [
+    {
+      "block": "agent_identities",
+      "schema_id": "https://nornyx.dev/schemas/agent_identities_v1.schema.json"
+    },
+    {
+      "block": "agentic_network",
+      "schema_id": "https://nornyx.dev/schemas/agentic_network_v1.schema.json"
+    },
+    {
+      "block": "capabilities",
+      "schema_id": "https://nornyx.dev/schemas/agentic_capabilities_v1.schema.json"
+    },
+    {
+      "block": "governance_evidence",
+      "schema_id": "https://nornyx.dev/schemas/governance_evidence_v1.schema.json"
+    }
+  ],
+  "counts": {
+    "agent_identities": 4,
+    "capabilities": 9,
+    "delegations": 1,
+    "handoffs": 1,
+    "memberships": 4,
+    "network_gates": 4,
+    "protocol_targets": 1,
+    "relations": 4,
+    "revocations": 0,
+    "trust_zones": 2
+  },
+  "modules": [
+    {
+      "content_hash": "sha256:bd2642620c670ef4320b76b3f4263c50f787279f1a613d4ab7f962bb08186d7b",
+      "id": "nornyx.builtin.module.agentic_network_governance",
+      "name": "agentic_network_governance",
+      "version": "0.2.0"
+    },
+    {
+      "content_hash": "sha256:460d9ca1ad53f634a2f7a344d7a8f3809546c49c78ee564e6b5bc466b8bb9ef8",
+      "id": "nornyx.builtin.module.evidence_integrity",
+      "name": "evidence_integrity",
+      "version": "1.0.0"
+    },
+    {
+      "content_hash": "sha256:8bc640928cba203cbdd2dba2d4f0eb3e4fabb5377f4c9d6821bd7624b7d34e46",
+      "id": "nornyx.builtin.module.human_approval",
+      "name": "human_approval",
+      "version": "1.0.0"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "profile": {
+    "content_hash": "sha256:94ab4650c2a24e8829e0df9accf8ca539a8e3e1f4dc477f9835eebfdbe62f944",
+    "id": "nornyx.builtin.agentic_network",
+    "name": "agentic_network",
+    "version": "0.1.0"
+  },
+  "schema": "nornyx.agentic_network_manifest.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "structural_checks": [
+    "agentic_network_delegation.v1",
+    "agentic_network_foundation.v1",
+    "evidence_integrity.v1",
+    "human_approval.v1"
+  ],
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}

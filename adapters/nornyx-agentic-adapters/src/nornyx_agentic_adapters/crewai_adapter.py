@@ -37,6 +37,7 @@ from nornyx.agentic import (
     SPI_VERSION,
     Authorizer,
     CapabilityRequest,
+    Decision,
     EvaluationContext,
     EvidenceRecorder,
 )
@@ -228,6 +229,17 @@ class _GovernedTool(BaseTool):  # type: ignore[misc, valid-type]
         request = CapabilityRequest(
             identity_ref=binding.identity_ref, capability_ref=binding.capability_ref
         )
+        # The authorizing delegation, when the identity holds this capability
+        # only by delegation. Read from the decision's own public basis — never
+        # inferred from the tool's arguments, which are caller-controlled.
+        authorizing: list[str] = []
+
+        def capture(decision: Decision) -> None:
+            if decision.allowed:
+                authorizing.extend(
+                    item.ref for item in decision.basis if item.kind == "delegation"
+                )
+
         result = enforce(
             authorizer,
             request,
@@ -235,12 +247,17 @@ class _GovernedTool(BaseTool):  # type: ignore[misc, valid-type]
             recorder=recorder,
             mission_id=mission_id,
             action=lambda: action(*args, **kwargs),
+            on_decision=capture,
         )
         recorder.record_observation(
             "tool_invoked",
             mission_id=mission_id,
             actor_ref=binding.identity_ref,
             capability_ref=binding.capability_ref,
+            # Omitted entirely when the capability was held directly: the
+            # recorder drops None fields, so a directly-held capability's
+            # observation is byte-identical to what it was before.
+            delegation_ref=authorizing[0] if authorizing else None,
         )
         return result
 
@@ -265,6 +282,14 @@ def make_governed_tool(
     ``tool_invoked`` post-action observation is recorded — never before
     ``action`` actually returns. ``binding`` is validated (fails closed on any
     blank required field) before the tool is constructed.
+
+    When the ALLOW decision's public basis names a delegation — that is, when
+    the identity holds the capability only by delegation — that delegation is
+    carried into the ``tool_invoked`` observation as ``delegation_ref``, so the
+    observation states the same possession ground the ``capability_allowed``
+    decision event does and the stream validates. It is read from the decision,
+    never from the tool's arguments, and is absent when the capability is held
+    directly.
 
     ``args_schema`` is an optional CrewAI-compatible pydantic ``BaseModel``
     subclass describing the tool's structured inputs. When supplied it is

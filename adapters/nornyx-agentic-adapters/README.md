@@ -20,7 +20,8 @@ M2-C, a separate, subsequent release).
 | Public contract (`AdapterMetadata`, `CoverageInventory`, `SurfaceBinding`, `enforce`) | Available |
 | CrewAI adapter (`nornyx_agentic_adapters.crewai_adapter`) | Available — tool invocation only, see Coverage below |
 | LangGraph adapter (`nornyx_agentic_adapters.langgraph`) | Pending |
-| Legacy `integrations/` compatibility shim | Pending (existing reference kernel unaffected by this package) |
+| Legacy `integrations/` import-name collision | Resolved — the reference kernel is now `nornyx_reference_adapters`, so this distribution owns `nornyx_agentic_adapters` unambiguously ([MIGRATION.md](docs/MIGRATION.md)) |
+| Legacy `integrations/` behavioural compatibility shim | Pending (ADR-0039 M2-D; the existing reference kernel's own logic is unaffected by this package) |
 
 ## Install
 
