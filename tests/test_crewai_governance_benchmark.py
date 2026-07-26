@@ -471,6 +471,41 @@ def test_results_are_bound_to_the_exact_candidate_tree(artifacts):
     assert candidate_digest() == expected
 
 
+def test_cross_machine_digests_do_not_depend_on_line_endings(artifacts):
+    """A Windows and a Linux checkout of the same commit must agree.
+
+    Both folds hash normalized content, not raw bytes: whether a file lands on
+    disk with LF or CRLF is decided by `core.autocrlf` and by which platform
+    wrote it, not by anything about the candidate.
+    """
+    from crewai_governance_benchmark.manifest import fold_digests, sha256_content, sha256_file
+
+    out = artifacts["out"]
+    sample = out / "nornyx_runtime_events.json"
+    lf = sample.read_bytes().replace(b"\r\n", b"\n")
+    crlf = lf.replace(b"\n", b"\r\n")
+    assert lf != crlf, "sample has no newlines to vary"
+
+    lf_path, crlf_path = out / "_lf.json", out / "_crlf.json"
+    try:
+        lf_path.write_bytes(lf)
+        crlf_path.write_bytes(crlf)
+        assert sha256_content(lf_path) == sha256_content(crlf_path)
+        assert sha256_file(lf_path) != sha256_file(crlf_path)
+        # The fold reads content_digest, so the two are indistinguishable to it.
+        assert fold_digests(
+            [{"path": "x", "content_digest": sha256_content(lf_path)}]
+        ) == fold_digests([{"path": "x", "content_digest": sha256_content(crlf_path)}])
+    finally:
+        lf_path.unlink(missing_ok=True)
+        crlf_path.unlink(missing_ok=True)
+
+    # Manifest paths are POSIX so a committed manifest resolves on any platform.
+    for entry in artifacts["manifest"]["inputs"] + artifacts["manifest"]["outputs"]:
+        assert "\\" not in entry["path"], entry
+        assert entry["content_digest"].startswith("sha256:")
+
+
 def test_unstable_values_are_excluded_from_the_deterministic_comparison(artifacts):
     """Timing- and environment-bearing artifacts must not be claimed reproducible."""
     manifest = artifacts["manifest"]

@@ -235,8 +235,13 @@ PY
 `candidate_digest` folds every governance input and benchmark source file into
 one value: if it differs, you are not running the same candidate, and no other
 comparison means much. `deterministic_outputs_digest` covers only the
-byte-stable outputs — the evidence stream, its validation report, and the two
+reproducible outputs — the evidence stream, its validation report, and the two
 per-scenario result files.
+
+Both folds hash normalized content and POSIX paths, so a Windows checkout and a
+Linux checkout of the same commit produce the same values. (The per-file
+`digest` field is byte-exact and is for the tamper check in §5 above; it is
+line-ending sensitive and is not the value to compare across machines.)
 
 `benchmark.json`, `benchmark.md`, `dashboard.html`, and `environment.json` embed
 installed versions, the host platform, and local wall-clock timings, so their

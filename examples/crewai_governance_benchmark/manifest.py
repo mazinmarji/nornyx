@@ -20,6 +20,13 @@ between machines. Each output entry is therefore marked ``deterministic``, and
 stream, its validation report, and the two per-scenario result files, none of
 which contain a wall-clock value or an environment string. Comparing that digest
 across two runs is a real integrity check; comparing every output digest is not.
+
+Both folds use each file's ``content_digest`` (line endings normalized) rather
+than its raw-byte ``digest``, and POSIX-separated paths. Otherwise a Windows and
+a Linux checkout of the *same commit* would produce different values, which is
+precisely what these digests exist to rule out. The per-file ``digest`` remains
+byte-exact, because detecting a locally edited artifact is a different question
+from identifying a candidate.
 """
 
 from __future__ import annotations
@@ -49,6 +56,7 @@ SOURCE_FILES = (
 
 
 def sha256_file(path: Path) -> str:
+    """The digest of a file's exact bytes, for detecting local tampering."""
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(65536), b""):
@@ -56,20 +64,38 @@ def sha256_file(path: Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
+def sha256_content(path: Path) -> str:
+    """The digest of a text file's *content*, independent of line-ending policy.
+
+    Every file this manifest hashes is text. Whether it lands on disk with LF or
+    CRLF is decided by the checkout (``core.autocrlf``) and by which platform
+    wrote it — not by anything about the candidate. Folding raw bytes would make
+    the cross-machine digests differ between a Windows and a Linux checkout of
+    the *same commit*, which would defeat the one job those digests have.
+    """
+    raw = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return f"sha256:{hashlib.sha256(raw).hexdigest()}"
+
+
 def _entry(path: Path, role: str, root: Path) -> dict[str, Any]:
     try:
-        name = str(path.relative_to(root))
+        # POSIX separators always: a committed manifest is read on other
+        # platforms, and "contract\\x.json" would not match there.
+        name = path.relative_to(root).as_posix()
     except ValueError:
         name = path.name
     return {
         "path": name,
         "role": role,
         "bytes": path.stat().st_size,
+        # Exact bytes as they sit on this machine — for local tamper detection.
         "digest": sha256_file(path),
+        # Line-ending-independent — the value the cross-machine folds use.
+        "content_digest": sha256_content(path),
     }
 
 
-# Outputs whose bytes are reproducible on any machine: none of them embeds a
+# Outputs whose content is reproducible on any machine: none of them embeds a
 # wall-clock timing, an absolute path, a platform string, or an installed
 # version. Everything else is a machine-local rendering of the same run.
 DETERMINISTIC_OUTPUTS = frozenset(
@@ -83,12 +109,16 @@ DETERMINISTIC_OUTPUTS = frozenset(
 
 
 def fold_digests(entries: list[dict[str, Any]]) -> str:
-    """One digest over ``(path, digest)`` pairs, independent of iteration order."""
+    """One digest over ``(path, content_digest)`` pairs, order-independent.
+
+    Folds the line-ending-independent content digest, never the raw-byte one, so
+    the result is identical on a Windows and a Linux checkout of the same commit.
+    """
     digest = hashlib.sha256()
     for entry in sorted(entries, key=lambda item: item["path"]):
         digest.update(entry["path"].encode("utf-8"))
         digest.update(b"\0")
-        digest.update(entry["digest"].encode("utf-8"))
+        digest.update(entry["content_digest"].encode("utf-8"))
         digest.update(b"\n")
     return f"sha256:{digest.hexdigest()}"
 

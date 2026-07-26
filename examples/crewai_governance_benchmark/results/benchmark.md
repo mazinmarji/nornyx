@@ -21,7 +21,7 @@ One customer-support and financial-remediation workflow, run twice: once as an o
 | `as_of` | `2026-07-17T00:00:00Z` |
 | adapters published on PyPI | **False** |
 | adapters install source | repository (adapters/nornyx-agentic-adapters) |
-| candidate digest | `sha256:3da9e0d27fe985a4563fc97745bc7214dd6c929c8e6427a747ec4e10c4ec1c1c` |
+| candidate digest | `sha256:5337514853bcf128d5156bc2b8f2cb41598233c62666fc7ff49323194d7da299` |
 
 `nornyx` is published on PyPI. **`nornyx-agentic-adapters` is not**: it is installed from this repository. Nothing in this benchmark implies otherwise.
 
@@ -353,11 +353,11 @@ This table is the adapter's own `COVERAGE_INVENTORY`, printed verbatim. Anything
 
 | Measurement | Value | Unit |
 |---|---|---|
-| `authorizer_load_seconds` | 2.4055 | s |
-| `evidence_validation_seconds` | 0.0634 | s |
-| `governed_variant_seconds` | 5.3312 | s |
-| `mean_evaluate_milliseconds` | 0.0146 | ms |
-| `plain_variant_seconds` | 1.6858 | s |
+| `authorizer_load_seconds` | 2.1415 | s |
+| `evidence_validation_seconds` | 0.0676 | s |
+| `governed_variant_seconds` | 5.5111 | s |
+| `mean_evaluate_milliseconds` | 0.0161 | ms |
+| `plain_variant_seconds` | 0.9670 | s |
 
 The two variant totals are not a like-for-like per-call comparison: the governed total includes loading and lock-verifying the contract once, running the drift probe, and constructing an evidence stream. `authorizer_load_seconds` is that one-time control-plane cost and `mean_evaluate_milliseconds` is the per-decision cost, which is what a per-call overhead question is actually asking about.
 

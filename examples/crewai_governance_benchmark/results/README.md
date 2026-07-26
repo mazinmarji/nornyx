@@ -67,8 +67,12 @@ PY
 - `candidate_digest` folds every governance input and benchmark source file into
   one value, so it identifies the exact candidate this result came from. If it
   differs from yours, you are not running the same code and contract.
-- `deterministic_outputs_digest` folds only the byte-stable outputs: the evidence
+- `deterministic_outputs_digest` folds only the reproducible outputs: the evidence
   stream, its validation report, and the two per-scenario result files.
+
+Both fold each file's `content_digest` (line endings normalized) and POSIX paths,
+so a Windows and a Linux checkout of the same commit agree. The per-file `digest`
+is byte-exact and is for the tamper check below, not for cross-machine comparison.
 
 To check that the committed bytes here have not been edited since the run:
 

@@ -46,7 +46,7 @@
     ]
   },
   "benchmark": "nornyx.crewai_governance_ab.v1",
-  "candidate_digest": "sha256:3da9e0d27fe985a4563fc97745bc7214dd6c929c8e6427a747ec4e10c4ec1c1c",
+  "candidate_digest": "sha256:5337514853bcf128d5156bc2b8f2cb41598233c62666fc7ff49323194d7da299",
   "contract_checks": [
     {
       "check": "allowed_path_output_equivalence",
@@ -799,12 +799,12 @@
       "governed_total": 5
     },
     "timing_local_microbenchmark_only": {
-      "authorizer_load_seconds": 2.405528199975379,
+      "authorizer_load_seconds": 2.1415331000462174,
       "disclaimer": "Wall-clock seconds for this local, offline, single-process run. Not a production latency measurement and not a throughput claim.",
-      "evidence_validation_seconds": 0.06340450001880527,
-      "governed_variant_seconds": 5.331212899996899,
-      "mean_evaluate_milliseconds": 0.014570400002412498,
-      "plain_variant_seconds": 1.6858026999980211
+      "evidence_validation_seconds": 0.06755640008486807,
+      "governed_variant_seconds": 5.511106500052847,
+      "mean_evaluate_milliseconds": 0.016098699998110533,
+      "plain_variant_seconds": 0.9670142000541091
     },
     "totals": {
       "application_control": 1,
