@@ -1,8 +1,8 @@
 {
   "benchmark_sources": [
     {
-      "bytes": 15425,
-      "digest": "sha256:c66d57da66a0784279292b50990883511497e5a409152d36325a46572e91283f",
+      "bytes": 16335,
+      "digest": "sha256:264ca9cc5fe3501ba3f1c9b5d283bc1d637983ce5f696f21f7f749731fda23e7",
       "path": "benchmark.py",
       "role": "benchmark_source"
     },
@@ -13,14 +13,14 @@
       "role": "benchmark_source"
     },
     {
-      "bytes": 8172,
-      "digest": "sha256:1658b50ccf58a1388768fea9b1f96e72c2aa9d3967ab4f5f6e248afe77d44abd",
+      "bytes": 11673,
+      "digest": "sha256:0ab4fb6208e587a5aa5bee251199c29c4a9403f8affa4e25e7fec5e901bdae76",
       "path": "config.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 1934,
-      "digest": "sha256:fe9e987e2b7468b4a21cbe56166a805916c702f7255b9b347ef8704436cea03d",
+      "bytes": 1967,
+      "digest": "sha256:d404d81f9052a6214d78704fb02e86e0b48857ea90abebad549fc3b7ea3e5ced",
       "path": "deterministic_llm.py",
       "role": "benchmark_source"
     },
@@ -31,44 +31,44 @@
       "role": "benchmark_source"
     },
     {
-      "bytes": 3017,
-      "digest": "sha256:a74d0dfa048639f1af44ca5692820b910504faf1d4dfd870eaf181516b88d9e3",
+      "bytes": 3045,
+      "digest": "sha256:941e3b1cb347279df28a2bc4f381f56c57594590ff0e790b6bc348fb434ccdb9",
       "path": "manifest.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 9877,
-      "digest": "sha256:1df1f9b600ea6c69b5b139a733238c6484f58bc64e165a53ae74a4dffb3290f3",
+      "bytes": 9905,
+      "digest": "sha256:eeaa49316d64c1011f1d2bdcc6b6ad2c503d75ddcc6492c8c8b80ab0a906342f",
       "path": "metrics.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 35321,
-      "digest": "sha256:1df936871d788d7ba1c60ce15251108b54e2e9b504d7092774442618f7504248",
+      "bytes": 35349,
+      "digest": "sha256:b56f1fa5216ec648fe259b254c2052d261d4c549959edbb355e55a7b136e115d",
       "path": "report.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 3087,
-      "digest": "sha256:c9afe36bf94ec91edf7e8f6967162f0382c9eea0f274c1c4af9125c699e753c8",
+      "bytes": 3148,
+      "digest": "sha256:8968951f6c2c3e67815004dd823e7da53ce45d3c6f359ff5d1256b025404c3c9",
       "path": "runtime.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 23152,
-      "digest": "sha256:4bebf30cc1c6bb1b132e035466f99e068dd42b29209b4006662c09e52563d34c",
+      "bytes": 23213,
+      "digest": "sha256:ba679425a72df09a62356e7ba44a19bdb1212f6b10099dcf5c74da2cd08a0cc5",
       "path": "scenarios.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 20551,
-      "digest": "sha256:996732743adc28b8e7c8e0d520c5d12cf18152bc0da701001b1046459777e4ab",
+      "bytes": 21067,
+      "digest": "sha256:c6987b84a49cf361fcdd85c718bdf5fdfef946d4eeed54c42d3a27d451d32d6e",
       "path": "variant_governed.py",
       "role": "benchmark_source"
     },
     {
-      "bytes": 3331,
-      "digest": "sha256:c3c1008af208e820548fcc019d1e1494978ff98410e38fefd3f63ec5f9338e8d",
+      "bytes": 3448,
+      "digest": "sha256:ce4c1fe853d926f0210a97aa264beb2d4c920083c3d4c888e45ccd98eee981ae",
       "path": "variant_plain.py",
       "role": "benchmark_source"
     }
@@ -183,14 +183,14 @@
   ],
   "outputs": [
     {
-      "bytes": 66762,
-      "digest": "sha256:1eff725247618ef88a20814ffcbe8ca95b208aba08c23f9e9e08e0bf12329059",
+      "bytes": 66761,
+      "digest": "sha256:10855540f1f475a2aab8cf194e4da1ca29b8a370dc9798a122222c2e8044f8f6",
       "path": "benchmark.json",
       "role": "benchmark_output"
     },
     {
       "bytes": 25239,
-      "digest": "sha256:fbe8c9b6bcdf49099ea43698e7a9b997ba698e42ca086b843d16a32ad40fb33c",
+      "digest": "sha256:709aaa12e1f766c06382bec68b9028f362f817b8a3c04c52f6a754d0730fd2f9",
       "path": "benchmark.md",
       "role": "benchmark_output"
     },

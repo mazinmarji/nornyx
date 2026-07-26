@@ -12,7 +12,7 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-from config import BENCHMARK_DIR, CONTRACT, GENERATED_ARTIFACTS, LOCK
+from crewai_governance_benchmark.config import BENCHMARK_DIR, CONTRACT, GENERATED_ARTIFACTS, LOCK
 
 # The benchmark's own source. Hashing these means a reviewer can tell whether the
 # numbers were produced by the code they are reading.

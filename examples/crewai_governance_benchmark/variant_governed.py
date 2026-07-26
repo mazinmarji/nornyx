@@ -45,8 +45,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-import config  # noqa: F401  (telemetry kill-switch side effect)
-from config import (
+from crewai_governance_benchmark import config  # noqa: F401  (telemetry kill-switch side effect)
+from crewai_governance_benchmark.config import (
     APPROVAL_EVIDENCE,
     APPROVAL_REF,
     AS_OF,
@@ -58,10 +58,10 @@ from config import (
     PRODUCER_ID,
     PRODUCER_TYPE,
 )
-from ledger import BusinessTool, Ledger
-from runtime import FALLBACK_ANSWER, kickoff_single_task, plain_tool
-from scenarios import BYPASS, LOAD, SCENARIOS, Scenario, work_callable
-from variant_plain import EXPECTED_OUTPUT
+from crewai_governance_benchmark.ledger import BusinessTool, Ledger
+from crewai_governance_benchmark.runtime import FALLBACK_ANSWER, kickoff_single_task, plain_tool
+from crewai_governance_benchmark.scenarios import BYPASS, LOAD, SCENARIOS, Scenario, work_callable
+from crewai_governance_benchmark.variant_plain import EXPECTED_OUTPUT
 
 from nornyx.agentic import (  # noqa: E402
     ApprovalAssertion,
@@ -75,15 +75,20 @@ from nornyx.agentic import (  # noqa: E402
     ZoneCrossingRequest,
     load_authorizer,
 )
-from nornyx_agentic_adapters import AdapterDenied, SurfaceBinding, enforce  # noqa: E402
-from nornyx_agentic_adapters.crewai_adapter import (  # noqa: E402
-    COVERAGE_INVENTORY,
-    FRAMEWORK,
-    METADATA,
-    make_governed_tool,
-)
-
 from crewai.tools import BaseTool  # noqa: E402
+
+# Resolved explicitly rather than by a plain import: the repo's legacy
+# integrations/ tree uses the same package name, and several of this repo's own
+# tests put it on sys.path first. See config.load_supported_adapter.
+_adapters, _crewai_adapter = config.load_supported_adapter()
+
+AdapterDenied = _adapters.AdapterDenied
+SurfaceBinding = _adapters.SurfaceBinding
+enforce = _adapters.enforce
+COVERAGE_INVENTORY = _crewai_adapter.COVERAGE_INVENTORY
+FRAMEWORK = _crewai_adapter.FRAMEWORK
+METADATA = _crewai_adapter.METADATA
+make_governed_tool = _crewai_adapter.make_governed_tool
 
 # A well-formed revision that the contract does not govern (revision mismatch).
 FOREIGN_REVISION = "git:" + "0" * 40

@@ -28,8 +28,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import business
-from config import (
+from crewai_governance_benchmark import business
+from crewai_governance_benchmark.config import (
     ROLE_ANALYST,
     ROLE_COMPLIANCE,
     ROLE_INTAKE,

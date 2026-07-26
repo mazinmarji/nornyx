@@ -14,10 +14,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import config  # noqa: F401  (telemetry kill-switch side effect)
-from ledger import BusinessTool, Ledger
-from runtime import FALLBACK_ANSWER, kickoff_single_task, plain_tool
-from scenarios import LOAD, SCENARIOS, Scenario, work_callable
+from crewai_governance_benchmark import config  # noqa: F401  (telemetry kill-switch side effect)
+from crewai_governance_benchmark.ledger import BusinessTool, Ledger
+from crewai_governance_benchmark.runtime import FALLBACK_ANSWER, kickoff_single_task, plain_tool
+from crewai_governance_benchmark.scenarios import LOAD, SCENARIOS, Scenario, work_callable
 
 EXPECTED_OUTPUT = "The result of the requested remediation step."
 

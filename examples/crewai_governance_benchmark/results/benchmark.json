@@ -805,12 +805,12 @@
       "governed_total": 5
     },
     "timing_local_microbenchmark_only": {
-      "authorizer_load_seconds": 13.69738105900069,
+      "authorizer_load_seconds": 19.1143426109993,
       "disclaimer": "Wall-clock seconds for this local, offline, single-process run. Not a production latency measurement and not a throughput claim.",
-      "evidence_validation_seconds": 0.3476801830001932,
-      "governed_variant_seconds": 29.214071164000416,
-      "mean_evaluate_milliseconds": 0.006872961001135991,
-      "plain_variant_seconds": 0.5624974920010573
+      "evidence_validation_seconds": 0.5386158070014062,
+      "governed_variant_seconds": 39.284766601998854,
+      "mean_evaluate_milliseconds": 0.008106479999696603,
+      "plain_variant_seconds": 0.6875276940008916
     },
     "totals": {
       "application_control": 1,

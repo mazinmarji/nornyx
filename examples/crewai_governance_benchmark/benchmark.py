@@ -16,12 +16,30 @@ import time
 from pathlib import Path
 from typing import Any
 
-import config
-from config import capture_environment, no_external_io
-from manifest import build_manifest
-from metrics import build_metrics
-from report import heat_rows, render_dashboard, render_json, render_markdown, terminal_summary
-from scenarios import BY_ID, SCENARIOS
+# Run-as-a-script bootstrap. Every module in this benchmark is imported under the
+# ``crewai_governance_benchmark`` package name so its generic module names
+# (config, scenarios, runtime, report…) never become importable top-level modules
+# for the rest of a test session — those names collide with
+# examples/crewai_nornyx_comparison. Executing this file directly puts *this*
+# directory on sys.path rather than its parent, so add the parent here.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from crewai_governance_benchmark import config  # noqa: E402
+from crewai_governance_benchmark.config import (  # noqa: E402
+    capture_environment,
+    no_external_io,
+)
+from crewai_governance_benchmark.manifest import build_manifest  # noqa: E402
+from crewai_governance_benchmark.metrics import build_metrics  # noqa: E402
+from crewai_governance_benchmark.report import (  # noqa: E402
+    heat_rows,
+    render_dashboard,
+    render_json,
+    render_markdown,
+    terminal_summary,
+)
+from crewai_governance_benchmark.scenarios import BY_ID, SCENARIOS  # noqa: E402
 
 # Evidence diagnostics attributable to defects in the audited packages rather
 # than to this benchmark. They are disclosed in FINDINGS.md, reported in full,
@@ -204,8 +222,8 @@ def _verdict(checks: list[dict], metrics: dict) -> dict[str, Any]:
 
 
 def run(out_dir: Path, only: tuple[str, ...] | None = None) -> int:
-    import variant_governed
-    import variant_plain
+    from crewai_governance_benchmark import variant_governed
+    from crewai_governance_benchmark import variant_plain
 
     out_dir.mkdir(parents=True, exist_ok=True)
     timing: dict[str, float] = {}

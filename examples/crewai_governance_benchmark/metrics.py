@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from scenarios import (
+from crewai_governance_benchmark.scenarios import (
     APPLICATION,
     BINDING,
     BYPASS,

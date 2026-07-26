@@ -168,6 +168,70 @@ any new API.
 
 ---
 
+## F3 — The legacy `integrations/` tree shadows the supported adapter package
+
+**Severity:** the supported and legacy adapters cannot coexist in one Python process.
+**Component:** `integrations/nornyx_agentic_adapters/` × `adapters/nornyx-agentic-adapters`
+**Found by:** running this benchmark's tests in a full-suite run rather than alone.
+
+### What happens
+
+Both trees claim the import name `nornyx_agentic_adapters`:
+
+| Path | What it is |
+|---|---|
+| `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/` | the supported, installed distribution (ADR-0039 M2-A/M2-B) |
+| `integrations/nornyx_agentic_adapters/` | the legacy, unpackaged reference kernel (ADR-0037) |
+
+Any process that puts `integrations/` on `sys.path` gets the legacy tree for that
+name — for everything that follows, not just its own imports. Several of this
+repository's own test modules do exactly that (`tests/test_agentic_integrations.py`,
+`tests/test_agentic_crewai_native.py`, `tests/test_agentic_support_example.py`,
+`tests/test_authoring_assistant_roadmap.py`), and they sort alphabetically ahead
+of anything using the supported package.
+
+### Reproduction
+
+```python
+import sys, importlib
+sys.path.insert(0, "integrations")
+import nornyx_agentic_adapters as pkg
+print(pkg.__file__)                       # -> integrations/nornyx_agentic_adapters/__init__.py
+from nornyx_agentic_adapters import AdapterDenied
+# ImportError: cannot import name 'AdapterDenied' from 'nornyx_agentic_adapters'
+```
+
+`AdapterDenied`, `SurfaceBinding`, `enforce`, and `crewai_adapter` exist only in
+the installed distribution; the legacy tree exposes `governance_kernel`,
+`crewai_adapter` (a different one), `langgraph_adapter`, and `local_harness`.
+
+### Why it matters
+
+The `nornyx-agentic-adapters` README already lists "Legacy `integrations/`
+compatibility shim — Pending". This is the concrete failure that pending item
+has to resolve: today a consumer that installs the supported package and also
+has this repository's `integrations/` directory reachable will silently get the
+wrong module, and the failure surfaces as a confusing `ImportError` on a public
+name rather than as a clear conflict.
+
+### How this benchmark works around it
+
+`config.load_supported_adapter()` resolves the name explicitly: if the legacy
+tree currently owns it, the benchmark temporarily lifts `integrations/` off
+`sys.path`, imports the installed distribution, and then **restores `sys.path`
+and every `nornyx_agentic_adapters` entry in `sys.modules` exactly as it found
+them**, so the repo's legacy-dependent tests are unaffected. This is a consumer
+workaround, not a fix — `test_supported_adapter_wins_over_the_legacy_same_named_tree`
+pins the behavior.
+
+### Suggested direction (not applied here)
+
+Rename the legacy tree's package (for example to `nornyx_reference_adapters`),
+or move it under a distinct namespace, so the supported distribution owns the
+name unambiguously.
+
+---
+
 ## Non-defect observations
 
 These are not bugs, but they shaped the benchmark and are worth recording.

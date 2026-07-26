@@ -28,7 +28,7 @@ Exits non-zero unless every clause of the benchmark contract holds.
 Not an LLM-quality benchmark — the model is scripted and identical in both arms.
 Not a production-performance benchmark — the timing figures are a local
 microbenchmark and say so. Not a marketing demo — the negative control, the
-fairness control, the unsupported surfaces, and two real defects in the audited
+fairness control, the unsupported surfaces, and three real defects in the audited
 packages are all part of the deliverable.
 
 ## Which Nornyx path this uses
@@ -42,7 +42,9 @@ The **supported** one, as of the audited revision:
 | Framework | `crewai==1.15.4` (the single version the adapter supports, enforced at import) |
 
 It does **not** use the legacy, unpackaged reference kernel under
-`integrations/nornyx_agentic_adapters/`. The older
+`integrations/nornyx_agentic_adapters/` — which claims the *same import name* as
+the installed distribution, so the benchmark resolves that name explicitly (see
+[`FINDINGS.md` F3](FINDINGS.md)). The older
 [`examples/crewai_nornyx_comparison`](../crewai_nornyx_comparison) example targets
 Nornyx 1.7.0 and that legacy kernel; it is preserved unchanged and still has its
 own tests. This benchmark is its successor on the supported stack, not a
@@ -118,7 +120,9 @@ minimal reproductions in [`FINDINGS.md`](FINDINGS.md):
 
 - a correctly refused **non-human approval** emits an event the validator rejects;
 - a **delegated capability**'s `tool_invoked` event omits the delegation
-  reference the validator needs.
+  reference the validator needs;
+- the legacy `integrations/` tree **shadows the supported adapter package**, so
+  the two cannot coexist in one Python process.
 
 Neither affects an enforcement result. Both block a clean evidence claim, which
 is why the benchmark's own verdict is `CONDITIONAL_GO` rather than `GO`. Nothing

@@ -12,7 +12,7 @@ import html
 import json
 from typing import Any
 
-from scenarios import APPLICATION, BYPASS, SCENARIOS
+from crewai_governance_benchmark.scenarios import APPLICATION, BYPASS, SCENARIOS
 
 # --------------------------------------------------------------------- claims
 # The two panels are deliberately paired: nothing may be added to "changed"

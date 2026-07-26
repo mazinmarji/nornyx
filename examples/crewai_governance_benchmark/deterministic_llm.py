@@ -12,7 +12,7 @@ so model behavior is held constant across the A/B.
 
 from __future__ import annotations
 
-import config  # noqa: F401  (import for the telemetry kill-switch side effect)
+from crewai_governance_benchmark import config  # noqa: F401  (import for the telemetry kill-switch side effect)
 
 from crewai import BaseLLM  # noqa: E402
 

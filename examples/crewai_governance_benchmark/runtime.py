@@ -12,12 +12,12 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-import config  # noqa: F401  (telemetry kill-switch side effect)
+from crewai_governance_benchmark import config  # noqa: F401  (telemetry kill-switch side effect)
 
 from crewai import Agent, Crew, Process, Task  # noqa: E402
 from crewai.tools import BaseTool  # noqa: E402
 
-from deterministic_llm import DeterministicLLM  # noqa: E402
+from crewai_governance_benchmark.deterministic_llm import DeterministicLLM  # noqa: E402
 
 # The fallback answer the scripted model produces when its tool call did not
 # yield a usable result (a governed denial, or an application-rule refusal).

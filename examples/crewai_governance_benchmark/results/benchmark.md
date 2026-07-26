@@ -359,11 +359,11 @@ See `FINDINGS.md` for minimal reproductions, root causes, and the exact source l
 
 | Measurement | Value | Unit |
 |---|---|---|
-| `authorizer_load_seconds` | 13.6974 | s |
-| `evidence_validation_seconds` | 0.3477 | s |
-| `governed_variant_seconds` | 29.2141 | s |
-| `mean_evaluate_milliseconds` | 0.0069 | ms |
-| `plain_variant_seconds` | 0.5625 | s |
+| `authorizer_load_seconds` | 19.1143 | s |
+| `evidence_validation_seconds` | 0.5386 | s |
+| `governed_variant_seconds` | 39.2848 | s |
+| `mean_evaluate_milliseconds` | 0.0081 | ms |
+| `plain_variant_seconds` | 0.6875 | s |
 
 The two variant totals are not a like-for-like per-call comparison: the governed total includes loading and lock-verifying the contract once, running the drift probe, and constructing an evidence stream. `authorizer_load_seconds` is that one-time control-plane cost and `mean_evaluate_milliseconds` is the per-decision cost, which is what a per-call overhead question is actually asking about.
 

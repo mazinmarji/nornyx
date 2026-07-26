@@ -17,19 +17,33 @@ from pathlib import Path
 
 import pytest
 
-BENCHMARK_DIR = Path(__file__).resolve().parents[1] / "examples" / "crewai_governance_benchmark"
+EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
+BENCHMARK_DIR = EXAMPLES_DIR / "crewai_governance_benchmark"
 
 pytest.importorskip("crewai", reason="crewai is not installed")
-pytest.importorskip("nornyx_agentic_adapters", reason="nornyx-agentic-adapters is not installed")
 
-if str(BENCHMARK_DIR) not in sys.path:
-    sys.path.insert(0, str(BENCHMARK_DIR))
+# Checked as an installed *distribution*, not by importability: the repo's legacy
+# integrations/ tree exposes the same import name, so a bare importorskip would
+# pass even with the supported package absent.
+try:
+    md.version("nornyx-agentic-adapters")
+except md.PackageNotFoundError:  # pragma: no cover - exercised only when absent
+    pytest.skip(
+        "nornyx-agentic-adapters is not installed", allow_module_level=True
+    )
+
+# Import the benchmark as a package. Putting BENCHMARK_DIR itself on sys.path
+# would publish generic module names (config, scenarios, runtime, report…) that
+# collide with examples/crewai_nornyx_comparison, so whichever suite imported
+# first would win — which is exactly the failure this arrangement prevents.
+if str(EXAMPLES_DIR) not in sys.path:
+    sys.path.insert(0, str(EXAMPLES_DIR))
 
 
 @pytest.fixture(scope="session")
 def artifacts(tmp_path_factory) -> dict:
     """Run the full benchmark once and return its parsed artifacts."""
-    import benchmark
+    from crewai_governance_benchmark import benchmark
 
     out = tmp_path_factory.mktemp("benchmark_out")
     exit_code = benchmark.main(["--out", str(out)])
@@ -54,7 +68,7 @@ def test_benchmark_contract_holds_and_exits_zero(artifacts):
 
 
 def test_every_scenario_ran(artifacts):
-    from scenarios import SCENARIOS
+    from crewai_governance_benchmark.scenarios import SCENARIOS
 
     reported = {row["id"] for row in artifacts["json"]["scenarios"]}
     assert reported == {s.id for s in SCENARIOS}
@@ -63,8 +77,8 @@ def test_every_scenario_ran(artifacts):
 # ------------------------------------------------- equivalence of the two arms
 def test_both_variants_share_the_same_business_callables():
     """The governed variant must not get its own copy of the business logic."""
-    import business
-    import scenarios
+    from crewai_governance_benchmark import business
+    from crewai_governance_benchmark import scenarios
 
     for scenario in scenarios.SCENARIOS:
         shared = getattr(business, scenario.work, None)
@@ -81,8 +95,8 @@ def test_both_variants_share_the_same_business_callables():
 
 def test_both_variants_use_the_same_scenario_row():
     """Neither variant may specialise a scenario's role, tool, task, or case."""
-    import variant_governed
-    import variant_plain
+    from crewai_governance_benchmark import variant_governed
+    from crewai_governance_benchmark import variant_plain
 
     plain_src = Path(variant_plain.__file__).read_text(encoding="utf-8")
     governed_src = Path(variant_governed.__file__).read_text(encoding="utf-8")
@@ -141,7 +155,7 @@ def test_decision_is_recorded_before_execution(artifacts):
 
 def test_ledger_ordering_is_pairwise_not_merely_global():
     """A reused authorization must not pass the ordering check."""
-    from ledger import Ledger
+    from crewai_governance_benchmark.ledger import Ledger
 
     good = Ledger()
     good.decision("X", "ALLOWED", "allow")
@@ -193,10 +207,11 @@ def test_identity_mapping_is_explicit_and_fail_closed(artifacts):
 
 def test_role_description_text_cannot_grant_authority():
     """An agent's own prose must not influence what it is allowed to do."""
-    import config
-    import variant_governed
+    from crewai_governance_benchmark import config
+    from crewai_governance_benchmark import variant_governed
     from nornyx.agentic import CapabilityRequest, EvaluationContext, IdentityResolutionError
-    from nornyx_agentic_adapters.crewai_adapter import FRAMEWORK
+
+    FRAMEWORK = variant_governed.FRAMEWORK
 
     authorizer = variant_governed.load()
     ctx = EvaluationContext(config.AS_OF, authorizer.subject_revision)
@@ -219,12 +234,13 @@ def test_role_description_text_cannot_grant_authority():
 
 def test_structured_tool_input_cannot_replace_governance_state():
     """args_schema describes tool inputs only; governance state is out of band."""
-    import config
-    import variant_governed
+    from crewai_governance_benchmark import config
+    from crewai_governance_benchmark import variant_governed
     from nornyx.agentic import EvaluationContext, EvidenceRecorder
-    from nornyx_agentic_adapters import SurfaceBinding
-    from nornyx_agentic_adapters.crewai_adapter import make_governed_tool
     from pydantic import BaseModel
+
+    SurfaceBinding = variant_governed.SurfaceBinding
+    make_governed_tool = variant_governed.make_governed_tool
 
     class Injected(BaseModel):
         identity_ref: str = "identity.remediation_agent"
@@ -244,9 +260,7 @@ def test_structured_tool_input_cannot_replace_governance_state():
         action=lambda **kw: "should never run",
         args_schema=Injected,
     )
-    from nornyx_agentic_adapters import AdapterDenied
-
-    with pytest.raises(AdapterDenied) as excinfo:
+    with pytest.raises(variant_governed.AdapterDenied) as excinfo:
         tool._run(identity_ref="identity.remediation_agent", capability_ref="issue_refund")
     # The binding decided the request; the supplied arguments changed nothing.
     assert excinfo.value.decision.code.value == "CAPABILITY_DENIED"
@@ -332,7 +346,7 @@ def test_every_event_binds_the_exact_contract_and_lock_digest(artifacts):
 
 
 def test_only_known_upstream_defects_remain_in_evidence(artifacts):
-    import benchmark
+    from crewai_governance_benchmark import benchmark
 
     codes = {d["code"] for d in artifacts["json"]["metrics"]["evidence"]["diagnostics"]}
     assert codes <= benchmark.KNOWN_UPSTREAM_DEFECT_CODES, (
@@ -390,7 +404,7 @@ def test_json_markdown_html_and_manifest_agree(artifacts):
 
 
 def test_manifest_hashes_match_the_files_on_disk(artifacts):
-    from manifest import sha256_file
+    from crewai_governance_benchmark.manifest import sha256_file
 
     out = artifacts["out"]
     for entry in artifacts["manifest"]["outputs"]:
@@ -439,11 +453,61 @@ def test_runs_from_installed_distributions(artifacts):
     assert env["nornyx_agentic_spi_version"] == "1.0"
 
 
+def test_supported_adapter_wins_over_the_legacy_same_named_tree():
+    """The benchmark must resolve the installed adapter, not the repo's legacy tree.
+
+    `integrations/nornyx_agentic_adapters/` uses the same import name as the
+    installed distribution, and several of this repo's own test modules put that
+    directory on sys.path. This simulates that pollution and asserts both that
+    the benchmark still gets the supported package and that it restores global
+    state so the legacy-dependent tests are unaffected.
+    """
+    import importlib
+
+    from crewai_governance_benchmark import config
+
+    integrations = str(config.INTEGRATIONS_DIR)
+    saved_path = list(sys.path)
+    saved_modules = {
+        name: mod
+        for name, mod in sys.modules.items()
+        if name == "nornyx_agentic_adapters" or name.startswith("nornyx_agentic_adapters.")
+    }
+    try:
+        # Reproduce the pollution: legacy tree first on the path, legacy module bound.
+        for name in list(saved_modules):
+            del sys.modules[name]
+        sys.path.insert(0, integrations)
+        legacy = importlib.import_module("nornyx_agentic_adapters")
+        assert config._under_integrations(legacy.__file__), "shadow was not established"
+        assert config.supported_adapter_is_shadowed() is True
+
+        package, crewai_submodule = config.load_supported_adapter()
+
+        assert not config._under_integrations(package.__file__)
+        assert package.__version__ == md.version("nornyx-agentic-adapters")
+        assert hasattr(package, "AdapterDenied")
+        assert crewai_submodule.METADATA.framework_name == "crewai"
+
+        # Global state is left exactly as the polluting test arranged it.
+        assert sys.path[0] == integrations
+        assert config._under_integrations(sys.modules["nornyx_agentic_adapters"].__file__)
+    finally:
+        for name in [
+            n
+            for n in sys.modules
+            if n == "nornyx_agentic_adapters" or n.startswith("nornyx_agentic_adapters.")
+        ]:
+            del sys.modules[name]
+        sys.path[:] = saved_path
+        sys.modules.update(saved_modules)
+
+
 def test_no_network_is_used_during_the_run():
     """The offline guard blocks anything leaving the box."""
     import socket
 
-    import config
+    from crewai_governance_benchmark import config
 
     with config.no_external_io():
         with pytest.raises(AssertionError):
@@ -453,7 +517,7 @@ def test_no_network_is_used_during_the_run():
 
 
 def test_evaluation_instant_is_pinned_not_wall_clock(artifacts):
-    import config
+    from crewai_governance_benchmark import config
 
     assert artifacts["json"]["environment"]["as_of"] == config.AS_OF
     for event in artifacts["events"]["events"]:
@@ -462,6 +526,6 @@ def test_evaluation_instant_is_pinned_not_wall_clock(artifacts):
 
 def test_individual_scenarios_can_be_rerun(tmp_path):
     """`--scenario` must work for reviewers checking one row."""
-    import benchmark
+    from crewai_governance_benchmark import benchmark
 
     assert benchmark.main(["--out", str(tmp_path), "--scenario", "S03"]) == 0

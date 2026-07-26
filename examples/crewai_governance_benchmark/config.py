@@ -47,12 +47,16 @@ CONTRACT = CONTRACT_DIR / "remediation_network.nyx"
 LOCK = CONTRACT_DIR / "nornyx.agentic_network.lock"
 GENERATED_ARTIFACTS = CONTRACT_DIR / "control_artifacts"
 
-# Make this benchmark's own modules importable whether the entrypoint is
-# ``benchmark.py`` (run as a script) or an importing test. The repo root is
-# deliberately NOT added: ``nornyx`` and ``nornyx_agentic_adapters`` must resolve
-# from installed distributions, never from an accidental source-tree import.
-if str(BENCHMARK_DIR) not in sys.path:
-    sys.path.insert(0, str(BENCHMARK_DIR))
+# NOTE: this module deliberately does NOT put ``BENCHMARK_DIR`` on ``sys.path``.
+# Doing so would publish generic module names (``config``, ``scenarios``,
+# ``runtime``, ``report``…) as importable top-level modules for the rest of the
+# process. In a full-suite run that collides with the identically named modules
+# in ``examples/crewai_nornyx_comparison``, and whichever test imports first
+# wins. Every module here is imported as ``crewai_governance_benchmark.<name>``
+# instead; ``benchmark.py`` bootstraps ``examples/`` onto ``sys.path`` when it is
+# run as a script. The repo root is never added: ``nornyx`` and
+# ``nornyx_agentic_adapters`` must resolve from installed distributions, never
+# from an accidental source-tree import.
 
 # Contain any incidental CrewAI storage (memory/knowledge) writes in a temp dir
 # — never inside the source tree.
@@ -159,6 +163,91 @@ def _distribution_version(dist: str) -> str | None:
         return md.version(dist)
     except Exception:  # pragma: no cover - distribution not installed
         return None
+
+
+# ------------------------------------------------- supported-adapter resolution
+# The repository's legacy reference adapters live at
+# ``integrations/nornyx_agentic_adapters/`` and use the **same import name** as
+# the supported, installed ``nornyx-agentic-adapters`` distribution. Any process
+# that puts ``integrations/`` on ``sys.path`` — several of this repo's own tests
+# do — shadows the installed package for everything that follows. This benchmark
+# claims to exercise the supported adapter, so it resolves that name explicitly
+# rather than inheriting whichever tree happened to be imported first.
+INTEGRATIONS_DIR = REPO_ROOT / "integrations"
+
+
+def _under_integrations(path_like: object) -> bool:
+    if not path_like:
+        return False
+    try:
+        resolved = Path(str(path_like)).resolve()
+    except (OSError, ValueError):  # pragma: no cover - unresolvable entry
+        return False
+    return resolved == INTEGRATIONS_DIR or INTEGRATIONS_DIR in resolved.parents
+
+
+def _adapter_names() -> list[str]:
+    return [
+        name
+        for name in sys.modules
+        if name == "nornyx_agentic_adapters" or name.startswith("nornyx_agentic_adapters.")
+    ]
+
+
+def supported_adapter_is_shadowed() -> bool:
+    """True when the name currently resolves to the repo's legacy tree."""
+    module = sys.modules.get("nornyx_agentic_adapters")
+    if module is not None:
+        return _under_integrations(getattr(module, "__file__", None))
+    import importlib.util
+
+    try:
+        spec = importlib.util.find_spec("nornyx_agentic_adapters")
+    except (ImportError, ValueError):  # pragma: no cover - defensive
+        return False
+    return spec is not None and _under_integrations(spec.origin)
+
+
+@contextmanager
+def _legacy_shadow_lifted():
+    """Temporarily hide the legacy tree, then restore global state exactly.
+
+    Nothing is left mutated: ``sys.path`` and every ``nornyx_agentic_adapters``
+    entry in ``sys.modules`` are restored on exit, so the repo's own tests that
+    depend on the legacy adapters are unaffected by this benchmark having run.
+    """
+    saved_path = list(sys.path)
+    saved_modules = {name: sys.modules[name] for name in _adapter_names()}
+    try:
+        sys.path[:] = [entry for entry in sys.path if not _under_integrations(entry)]
+        for name in saved_modules:
+            del sys.modules[name]
+        yield
+    finally:
+        sys.path[:] = saved_path
+        for name in _adapter_names():
+            del sys.modules[name]
+        sys.modules.update(saved_modules)
+
+
+def load_supported_adapter():
+    """Return ``(package, crewai_submodule)`` from the *installed* distribution.
+
+    Returns the real modules regardless of whether the legacy same-named tree is
+    on ``sys.path``, and leaves no global side effect behind either way.
+    """
+    import importlib
+
+    def _import():
+        return (
+            importlib.import_module("nornyx_agentic_adapters"),
+            importlib.import_module("nornyx_agentic_adapters.crewai_adapter"),
+        )
+
+    if not supported_adapter_is_shadowed():
+        return _import()
+    with _legacy_shadow_lifted():
+        return _import()
 
 
 def capture_environment() -> dict[str, object]:
