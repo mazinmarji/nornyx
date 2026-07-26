@@ -1,0 +1,98 @@
+{
+  "capability_policies": [
+    {
+      "capability": "analyze_case",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "low"
+    },
+    {
+      "capability": "close_case",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "low"
+    },
+    {
+      "capability": "issue_refund",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "high"
+    },
+    {
+      "capability": "modify_account",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "high"
+    },
+    {
+      "capability": "notify_customer_external",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "medium"
+    },
+    {
+      "capability": "propose_refund",
+      "delegable": true,
+      "max_delegation_depth": 1,
+      "risk": "medium"
+    },
+    {
+      "capability": "read_customer_case",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "low"
+    },
+    {
+      "capability": "request_human_approval",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "low"
+    },
+    {
+      "capability": "share_case_context",
+      "delegable": false,
+      "max_delegation_depth": null,
+      "risk": "medium"
+    }
+  ],
+  "delegations": [
+    {
+      "actions": [
+        "propose_refund"
+      ],
+      "capability_ref": "propose_refund",
+      "current_depth": 0,
+      "delegate_ref": "identity.remediation_agent",
+      "delegator_ref": "identity.case_analyst",
+      "digest": "sha256:4da8eeaeb7ad9cba0b50b1dd35c15b6287d544e7e9ce4e9cadb56e8f23c691b8",
+      "expires_at": "2026-12-01T00:00:00Z",
+      "id": "delegation.refund_proposal",
+      "max_depth": 1,
+      "onward_delegation": "denied",
+      "purpose": "Delegate bounded refund proposals to the remediation specialist.",
+      "required_approval_refs": [],
+      "required_evidence_refs": [
+        "agentic_network_contract_review"
+      ],
+      "required_gate_refs": [
+        "gate.refund_review"
+      ],
+      "required_policy_refs": [
+        "RemediationGovernance"
+      ],
+      "revocation_refs": [],
+      "scope_refs": [
+        "RemediationContext"
+      ],
+      "source_zone_ref": "zone.remediation_internal",
+      "status": "active",
+      "target_zone_ref": "zone.remediation_internal",
+      "valid_from": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "network_id": "network.governed_remediation",
+  "revocations": [],
+  "schema": "nornyx.agentic_delegation_policy_bundle.v1",
+  "source_contract_digest": "sha256:79b44dfdcec4b41b60d2f8ef54529b073af3c36c1ba6d1cb262297c527585278",
+  "subject_revision": "git:5eed1e55c0ffee1abadcafe0ddba11ed15ea5e11"
+}
