@@ -112,6 +112,12 @@ wrapped surfaces only**:
 Every Tier 2 claim about this package should carry the qualifier
 "cooperative, declared surfaces only."
 
+`EvidenceRecorder` (core, `nornyx.agentic`) is internally lock-protected and
+validates recorded scalars/field values by exact builtin type before they can
+influence recorder state or evidence output — see ADR-0041 and
+`docs/COMPATIBILITY.md`. This is a fail-closed input-validation hardening, not
+a change to what this adapter records.
+
 ## Versioning
 
 `nornyx-agentic-adapters` has its own independent SemVer, separate from the

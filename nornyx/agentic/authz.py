@@ -26,7 +26,10 @@ Boundaries (ADR-0039 / ADR-0040 Tier 2, cooperative):
 
 from __future__ import annotations
 
+import math
 import re
+import threading
+from collections.abc import Mapping as _AbcMapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -112,6 +115,92 @@ def _thaw(value: Any) -> Any:
     if isinstance(value, frozenset):
         return {_thaw(item) for item in value}
     return value
+
+
+# --------------------------------------------------------- restricted exact-type copier
+# Evidence-recorder callers (adapters, and any caller constructing Decision /
+# DecisionEventIntent objects directly) are untrusted. ADR-0041: field values and
+# keys admitted into recorded evidence must be restricted to builtin scalar and
+# container types checked by EXACT type identity, never ``isinstance`` — a
+# subclass of ``str``/``dict``/``list``/... can override ``__hash__``, ``__eq__``,
+# ``__format__``, ``__str__``, ``__repr__``, ``__iter__``, ``keys``,
+# ``__deepcopy__``, ``__reduce__``, or ``__getstate__`` to run caller-controlled
+# code the moment the recorder touches the object. Rejecting by exact type,
+# before any such method is invoked, keeps the recorder's locked section free of
+# caller-controlled callbacks. Type-rejection error messages here never
+# interpolate or expose the rejected value (no ``str()``/``repr()``/``format()``
+# on caller input); they report only the generic allowed-type contract, not a
+# structural field path (no path is threaded through the recursive calls).
+#
+# The permitted set is exactly: None; exact bool; exact int; exact, finite
+# float; exact str; exact dict with exact str keys; exact list; exact tuple
+# (normalized to list — the runtime-events schema has no separate "tuple"
+# concept, so both sequence literals collapse to the one JSON-array shape).
+# set/frozenset are REJECTED, not normalized: silently picking an iteration
+# order for an unordered collection would be a silent behavior decision this
+# recorder does not make on the caller's behalf.
+_DETACH_PLAIN_MAX_DEPTH = 8
+
+
+def _require_exact_str(value: Any, field: str) -> str:
+    """Fail closed unless ``value`` is exactly ``str`` (never a subclass).
+
+    Uses only ``type(value) is str`` — an identity check on the object header —
+    so no method on ``value`` is ever invoked, even for a hostile subclass.
+    """
+    if type(value) is not str:
+        raise TypeError(f"{field} must be exactly built-in str; subclasses and other types are rejected.")
+    return value
+
+
+def _detach_plain(value: Any, *, _depth: int = 0) -> Any:
+    """Restricted, exact-type-only recursive copy of a plain evidence value.
+
+    Accepts only: ``None``; exact ``bool``; exact ``int``; exact, finite
+    ``float`` (``NaN``/``Infinity`` are rejected — the runtime-events schema is
+    JSON, which has no representation for them); exact ``str``; exact ``dict``
+    with exact ``str`` keys; exact ``list``; exact ``tuple`` (normalized to
+    ``list`` in the returned copy). ``set``/``frozenset`` are rejected, not
+    normalized. Everything else — including subclasses of any accepted type —
+    is rejected fail-closed with a ``TypeError`` naming the allowed-type
+    contract, never the rejected value and never a structural field path (no
+    path is threaded through the recursive calls). Self-referential containers
+    fail closed with ``ValueError`` once ``_DETACH_PLAIN_MAX_DEPTH`` is exceeded, rather
+    than recursing unboundedly.
+
+    This function serves two roles: (1) validating and detaching untrusted
+    caller-supplied field values at record time (where rejection is a real,
+    reachable outcome), and (2) producing an independent deep copy of
+    already-recorded — and therefore already guaranteed-plain — recorder-owned
+    data at read time (:meth:`EvidenceRecorder.stream`), where every branch
+    below either matches or the data could never have been recorded in the
+    first place.
+    """
+    if _depth > _DETACH_PLAIN_MAX_DEPTH:
+        raise ValueError(f"evidence value exceeds the maximum nesting depth ({_DETACH_PLAIN_MAX_DEPTH}).")
+    if value is None:
+        return None
+    kind = type(value)
+    if kind is bool or kind is str or kind is int:
+        return value
+    if kind is float:
+        if not math.isfinite(value):
+            raise ValueError("evidence float values must be finite (NaN/Infinity are rejected).")
+        return value
+    if kind is dict:
+        detached: dict[str, Any] = {}
+        for key, item in dict.items(value):
+            if type(key) is not str:
+                raise TypeError("evidence mapping keys must be exactly built-in str.")
+            detached[key] = _detach_plain(item, _depth=_depth + 1)
+        return detached
+    if kind is list or kind is tuple:
+        return [_detach_plain(item, _depth=_depth + 1) for item in value]
+    raise TypeError(
+        "unsupported evidence value type; only None and exact built-in "
+        "bool/int/finite-float/str/dict(exact-str-keys)/list/tuple are "
+        "allowed (set/frozenset are rejected, not normalized)."
+    )
 
 
 # --------------------------------------------------------------------------- enums
@@ -819,9 +908,23 @@ class EvidenceRecorder:
     It provides construction and consistency binding ONLY: it does not
     authenticate the adapter, attest the occurrence, or make an event true.
     Permitting the ``external_runtime`` producer label confers no Tier-3 assurance.
+
+    Caller-controlled scalars (``mission_id``, ``event_type``, ``producer_id``,
+    ``producer_version``, ``producer_type``) are required to be exactly built-in
+    ``str`` — never a subclass — and are validated before the internal lock is
+    acquired and before any dict-key or string-interpolation use, so a hostile
+    ``str`` subclass's ``__hash__``/``__eq__``/``__format__``/``__str__``/
+    ``__repr__`` never executes. ``EvidenceRecorder`` is safe for concurrent use
+    by multiple threads sharing one instance: mutation of the internal event list
+    and per-mission sequence counters is confined to a single lock, taken only
+    after all caller-controlled values have been validated and detached into
+    plain builtin types (see :func:`_detach_plain`).
     """
 
     def __init__(self, authorizer: Authorizer, context: EvaluationContext, *, producer_id: str, producer_version: str = "1.0", producer_type: str = "framework_adapter") -> None:
+        _require_exact_str(producer_id, "producer_id")
+        _require_exact_str(producer_version, "producer_version")
+        _require_exact_str(producer_type, "producer_type")
         if producer_type not in _PRODUCER_TYPES:
             raise ValueError(f"invalid producer_type {producer_type!r}; permitted: {sorted(_PRODUCER_TYPES)}")
         if context.observed_subject_revision != authorizer.subject_revision:
@@ -831,10 +934,15 @@ class EvidenceRecorder:
         self._producer = {"type": producer_type, "id": producer_id, "version": producer_version}
         self._events: list[dict[str, Any]] = []
         self._sequences: dict[str, int] = {}
+        self._lock = threading.Lock()
 
-    def _stamp(self, event_type: str, mission_id: str, fields: Mapping[str, Any]) -> None:
-        seq = self._sequences.get(mission_id, 0) + 1
-        self._sequences[mission_id] = seq
+    def _build_event_unlocked(self, event_type: str, mission_id: str, seq: int, fields: Mapping[str, Any]) -> dict[str, Any]:
+        """Assemble one event dict. Does not itself acquire or require the lock —
+        callers hold ``self._lock`` for the surrounding critical section — and
+        must have already validated/detached ``event_type``, ``mission_id``, and
+        ``fields``. Raising here (e.g. via a test double) must never leave
+        ``self._events``/``self._sequences`` partially updated: callers commit
+        those only after every build in a batch has already succeeded."""
         event: dict[str, Any] = {
             "event_id": f"{mission_id}-{seq:04d}",
             "event_type": event_type,
@@ -847,33 +955,153 @@ class EvidenceRecorder:
             "subject_revision": self._authorizer.subject_revision,  # == verified observed revision
             "producer": dict(self._producer),
         }
-        event.update({k: v for k, v in fields.items() if v is not None})
-        self._events.append(event)
+        event.update(fields)
+        return event
+
+    def _stamp(self, event_type: str, mission_id: str, fields: Mapping[str, Any]) -> None:
+        """Detach fields, then perform one atomic build/append/counter update.
+
+        Called only from :meth:`record_observation`. Private subclasses may
+        override this to observe (or intercept) every post-action observation;
+        :meth:`record_decision` deliberately does NOT call ``_stamp`` (see its
+        docstring), so such an override never sees decision-intent commits.
+        The event is fully built *before* ``self._sequences``/``self._events``
+        are touched, so a build failure (e.g. a hostile/broken
+        ``_build_event_unlocked`` override) leaves both untouched rather than
+        advancing the sequence counter for an event that was never appended.
+        """
+        detached = {key: _detach_plain(value) for key, value in fields.items() if value is not None}
+        with self._lock:
+            seq = self._sequences.get(mission_id, 0) + 1
+            event = self._build_event_unlocked(event_type, mission_id, seq, detached)
+            self._sequences[mission_id] = seq
+            self._events.append(event)
 
     def record_decision(self, decision: Decision, *, mission_id: str) -> None:
-        """Record the decision's intents. Intents only — never observations."""
+        """Record the decision's intents. Intents only — never observations.
+
+        Does NOT call :meth:`_stamp`. A decision's intents must commit as one
+        transactional batch — either all of a decision's events are appended
+        under a single lock acquisition, in mission-sequence order, with no
+        other thread's events interleaved between them, or none are (validation
+        failures raise before any mutation). Routing through the single-event
+        ``_stamp`` would only guarantee each intent's atomicity individually, not
+        the whole decision's; it would also let a private subclass that
+        overrides ``_stamp`` to observe post-action observations silently
+        intercept decision-intent commits too, which is a materially different
+        (and unintended) capability. All validation and detachment happens
+        before the lock is acquired.
+
+        Inside the lock, every event in the batch is built first (via
+        :meth:`_build_event_unlocked`) into a local list; ``self._sequences``
+        and ``self._events`` are updated only after every build in the batch
+        has succeeded. If any build raises partway through a multi-intent
+        batch — not just a validation/detachment failure, which already raises
+        before the lock is even acquired — neither ``self._sequences`` nor
+        ``self._events`` is left partially updated.
+        """
+        _require_exact_str(mission_id, "mission_id")
+        prepared: list[tuple[str, dict[str, Any]]] = []
         for intent in decision.event_intents:
-            if intent.event_type not in PHASE_INTENT:
-                raise ValueError(f"{intent.event_type!r} is not a decision-event intent")
-            self._stamp(intent.event_type, mission_id, intent.fields)
+            event_type = intent.event_type
+            _require_exact_str(event_type, "intent.event_type")
+            if event_type not in PHASE_INTENT:
+                raise ValueError(f"{event_type!r} is not a decision-event intent")
+            fields = intent.fields
+            if not isinstance(fields, _AbcMapping):
+                raise TypeError("intent.fields must be a mapping.")
+            detached: dict[str, Any] = {}
+            for key, value in fields.items():
+                if type(key) is not str:
+                    raise TypeError("intent field keys must be exactly built-in str.")
+                if value is not None:
+                    detached[key] = _detach_plain(value)
+            prepared.append((event_type, detached))
+        # Nothing above mutated recorder state: a malformed intent anywhere in
+        # the batch raises before any event is appended or any counter moves.
+        if not prepared:
+            return
+        with self._lock:
+            base_seq = self._sequences.get(mission_id, 0)
+            built = [
+                self._build_event_unlocked(event_type, mission_id, base_seq + offset, fields)
+                for offset, (event_type, fields) in enumerate(prepared, start=1)
+            ]
+            # Every build in the batch succeeded: commit the whole batch as one
+            # atomic update. If any build above had raised, execution would
+            # never reach here, and neither `_sequences` nor `_events` would
+            # have been touched.
+            self._sequences[mission_id] = base_seq + len(prepared)
+            self._events.extend(built)
 
     def record_observation(self, event_type: str, *, mission_id: str, **fields: Any) -> None:
-        """Record a post-action observation. Only the adapter, after the action."""
+        """Record a post-action observation. Only the adapter, after the action.
+
+        Validates ``event_type`` and ``mission_id`` here, before delegating the
+        actual recording to :meth:`_stamp` (which a private subclass may
+        override to observe every call on this path).
+        """
+        _require_exact_str(event_type, "event_type")
+        _require_exact_str(mission_id, "mission_id")
         if event_type not in PHASE_OBSERVATION:
             raise ValueError(f"{event_type!r} is not a post-action observation")
         self._stamp(event_type, mission_id, fields)
 
+    def _snapshot_unlocked(self) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """Build a fully independent, deeply detached ``(producer, events)``
+        snapshot. Does not itself acquire the lock — :meth:`stream` holds
+        ``self._lock`` for this call's entire duration, so a concurrent
+        ``record_decision``/``record_observation`` cannot commit while a
+        snapshot is in progress. Split out from :meth:`stream` purely so tests
+        can pause/observe a snapshot in progress while the lock is held;
+        behavior is unchanged from having this inline in :meth:`stream`.
+
+        Every nested value — ``producer`` (top-level and per-event),
+        ``approver``, ``evidence_artifact``, ``share_categories``,
+        ``depends_on``, and any other adapter-supplied field — is copied, not
+        shared: mutating any part of a returned snapshot can never change what
+        a later call to :meth:`stream` or :meth:`validate` returns, and can
+        never corrupt this recorder's internal state.
+
+        Each event's *fields* are detached individually — ``{k: _detach_plain(v)
+        for k, v in event.items()}`` — rather than passing the whole event dict
+        through :func:`_detach_plain` as one unit. An event is the recorder's
+        own envelope, not itself a caller-supplied nested value: detaching it
+        as one unit would silently consume one extra level of the depth budget
+        for every field, so a field value accepted at record time (right at
+        ``_DETACH_PLAIN_MAX_DEPTH``) could spuriously fail on read. Detaching
+        per field reproduces exactly the depth budget each field's value was
+        already validated against when it was recorded, so this can never raise.
+        """
+        producer_snapshot = _detach_plain(self._producer)
+        events_snapshot = [{key: _detach_plain(value) for key, value in event.items()} for event in self._events]
+        return producer_snapshot, events_snapshot
+
     def stream(self) -> dict[str, Any]:
+        """Return an independent, deeply detached snapshot of the recorded stream.
+
+        Acquires the lock, builds the snapshot via :meth:`_snapshot_unlocked`,
+        and releases the lock before returning.
+        """
+        with self._lock:
+            producer_snapshot, events_snapshot = self._snapshot_unlocked()
         return {
             "schema": RUNTIME_EVENTS_SCHEMA_ID,
             "schema_version": RUNTIME_EVENTS_SCHEMA_VERSION,
             "network_id": self._authorizer.network_id,
-            "producer": dict(self._producer),
-            "events": [dict(event) for event in self._events],
+            "producer": producer_snapshot,
+            "events": events_snapshot,
         }
 
     def validate(self, *, events_root: Path | None = None) -> dict[str, Any]:
-        """Validate the assembled stream against a detached thaw of the snapshot."""
+        """Validate the assembled stream against a detached thaw of the snapshot.
+
+        Delegates the payload construction to :meth:`stream`, which acquires
+        the lock, builds the deeply detached payload, and releases the lock
+        before returning — so ``validate_runtime_events`` below always runs
+        against an already-detached, already-lock-free snapshot, never while
+        holding ``self._lock``.
+        """
         from ..agentic_evidence import validate_runtime_events
 
         return validate_runtime_events(
