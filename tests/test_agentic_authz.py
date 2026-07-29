@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import threading
+from collections.abc import Mapping as _AbcMapping
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -660,6 +663,1099 @@ def test_recorder_accepts_all_schema_producer_types(authz: Authorizer):
 def test_recorder_rejects_unknown_producer_type(authz: Authorizer):
     with pytest.raises(ValueError):
         EvidenceRecorder(authz, ctx(), producer_id="p", producer_type="bogus")
+
+
+# ------------------------------------- ADR-0041: caller-controlled scalar validation
+class _CallbackTripwire(str):
+    """A ``str`` subclass whose dunders raise if the recorder ever invokes them.
+
+    Proves exact-type validation rejects the subclass before any of these
+    caller-controlled methods executes.
+    """
+
+    def __hash__(self):  # pragma: no cover - must never run
+        raise AssertionError("__hash__ must not be invoked on a rejected value")
+
+    def __eq__(self, other):  # pragma: no cover - must never run
+        raise AssertionError("__eq__ must not be invoked on a rejected value")
+
+    def __format__(self, spec):  # pragma: no cover - must never run
+        raise AssertionError("__format__ must not be invoked on a rejected value")
+
+    def __str__(self):  # pragma: no cover - must never run
+        raise AssertionError("__str__ must not be invoked on a rejected value")
+
+    def __repr__(self):  # pragma: no cover - must never run
+        raise AssertionError("__repr__ must not be invoked on a rejected value")
+
+
+def test_str_subclass_mission_id_rejected_before_dunders_run(authz: Authorizer):
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    hostile = _CallbackTripwire("GOAL-001")
+    with pytest.raises(TypeError):
+        rec.record_decision(d, mission_id=hostile)
+    with pytest.raises(TypeError):
+        rec.record_observation("tool_invoked", mission_id=hostile, actor_ref="identity.researcher.local")
+    assert rec.stream()["events"] == []
+
+
+@pytest.mark.parametrize("field", ["producer_id", "producer_version", "producer_type"])
+def test_str_subclass_producer_field_rejected_before_dunders_run(authz: Authorizer, field: str):
+    kwargs = {"producer_id": "p", "producer_version": "1.0", "producer_type": "framework_adapter"}
+    kwargs[field] = _CallbackTripwire(kwargs[field])
+    with pytest.raises(TypeError):
+        EvidenceRecorder(authz, ctx(), **kwargs)
+
+
+def test_str_subclass_event_type_rejected_before_dunders_run(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(TypeError):
+        rec.record_observation(_CallbackTripwire("tool_invoked"), mission_id="GOAL-001")
+    assert rec.stream()["events"] == []
+
+
+class _KeyTripwire:
+    """A non-``str`` object whose ``__repr__``/``__hash__`` raise if ever invoked."""
+
+    def __repr__(self):  # pragma: no cover - must never run
+        raise AssertionError("__repr__ must not be invoked on a rejected field key")
+
+    def __hash__(self):  # pragma: no cover - must never run
+        raise AssertionError("__hash__ must not be invoked on a rejected field key")
+
+
+class _HostileFieldMapping(_AbcMapping):
+    """A ``Mapping`` holding a non-hashable-by-design key without ever hashing it.
+
+    A real ``dict`` literal would hash its key at construction time, which
+    would defeat the point of this fixture; this stores pairs in a plain list.
+    """
+
+    def __init__(self, pairs):
+        self._pairs = list(pairs)
+
+    def __getitem__(self, key):  # pragma: no cover - not exercised by these tests
+        for k, v in self._pairs:
+            if k is key:
+                return v
+        raise KeyError(key)
+
+    def __iter__(self):
+        return (k for k, _ in self._pairs)
+
+    def __len__(self):
+        return len(self._pairs)
+
+    def items(self):
+        return list(self._pairs)
+
+
+def test_non_string_intent_field_key_rejected_without_repr(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    hostile_key = _KeyTripwire()
+    fields = _HostileFieldMapping([(hostile_key, "value"), ("actor_ref", "identity.researcher.local")])
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(DecisionEventIntent("capability_requested", fields),),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(TypeError):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    assert rec.stream()["events"] == []
+
+
+def test_rejected_intent_field_key_causes_no_partial_mutation(authz: Authorizer):
+    """A malformed intent anywhere in a decision's batch must not partially commit."""
+    from nornyx.agentic import DecisionEventIntent
+
+    hostile_key = _KeyTripwire()
+    good_fields = {"actor_ref": "identity.researcher.local", "capability_ref": "read_governed_context"}
+    bad_fields = _HostileFieldMapping([(hostile_key, "value")])
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(
+            DecisionEventIntent("capability_requested", good_fields),
+            DecisionEventIntent("capability_allowed", bad_fields),
+        ),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(TypeError):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    assert rec.stream()["events"] == []
+    # The mission's sequence counter must not have advanced either: a fresh
+    # observation on the same mission must start at sequence 1, not 2.
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    assert rec.stream()["events"][0]["sequence"] == 1
+
+
+class _ListSubclass(list):
+    """A ``list`` subclass; the restricted copier accepts only exact ``list``."""
+
+
+class _DictSubclass(dict):
+    """A ``dict`` subclass; the restricted copier accepts only exact ``dict``."""
+
+
+class _Unsupported:
+    """A plain object of a type the restricted copier does not recognize at all."""
+
+
+def test_detach_plain_rejects_container_subclasses(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(TypeError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_ListSubclass(["a"]))
+    assert rec.stream()["events"] == []
+
+
+def test_detach_plain_rejects_dict_subclass(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(TypeError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_DictSubclass(a="b"))
+    assert rec.stream()["events"] == []
+
+
+@pytest.mark.parametrize(
+    "bad_value",
+    [
+        pytest.param(_Unsupported(), id="custom-object"),
+        pytest.param({"a", "b"}, id="set"),
+        pytest.param(frozenset({"a"}), id="frozenset"),
+        pytest.param(float("nan"), id="nan"),
+        pytest.param(float("inf"), id="infinity"),
+        pytest.param(float("-inf"), id="negative-infinity"),
+    ],
+)
+def test_unsupported_or_non_finite_field_value_rejected_before_mutation(authz: Authorizer, bad_value):
+    """set/frozenset are rejected outright, never normalized (ADR-0041 correction)."""
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises((TypeError, ValueError)):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=bad_value)
+    assert rec.stream()["events"] == []
+    # Event-build failure must leave sequence state untouched: the next
+    # successful observation on the same mission still starts at sequence 1.
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    assert rec.stream()["events"][0]["sequence"] == 1
+
+
+def test_self_referential_field_value_fails_closed(authz: Authorizer):
+    cyclic: dict = {}
+    cyclic["self"] = cyclic
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(ValueError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=cyclic)
+    assert rec.stream()["events"] == []
+
+
+def _nested_dict(depth: int) -> Any:
+    value: Any = "leaf"
+    for _ in range(depth):
+        value = {"n": value}
+    return value
+
+
+def test_detach_plain_depth_limit_boundary_is_exactly_eight(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    # Exactly at the approved limit (8): accepted.
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_nested_dict(8))
+    assert len(rec.stream()["events"]) == 1
+    # One level deeper: rejected, and the failed attempt leaves no trace.
+    with pytest.raises(ValueError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_nested_dict(9))
+    events = rec.stream()["events"]
+    assert len(events) == 1
+    assert events[0]["sequence"] == 1
+
+
+def test_tuple_field_value_normalized_to_list(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local",
+        depends_on=("GOAL-001-0001", "GOAL-001-0002"),
+    )
+    value = rec.stream()["events"][0]["depends_on"]
+    assert value == ["GOAL-001-0001", "GOAL-001-0002"]
+    assert type(value) is list
+
+
+@pytest.mark.parametrize(
+    "field, original, mutate",
+    [
+        pytest.param("depends_on", ["GOAL-001-0001"], lambda v: v.append("INJECTED"), id="depends_on"),
+        pytest.param("share_categories", ["telemetry"], lambda v: v.append("INJECTED"), id="share_categories"),
+        pytest.param(
+            "approver",
+            {"role": "network_governance_owner", "actor_type": "human"},
+            lambda v: v.__setitem__("role", "INJECTED"),
+            id="approver",
+        ),
+        pytest.param(
+            "evidence_artifact",
+            {"path": "a.txt", "sha256": "0" * 64},
+            lambda v: v.__setitem__("path", "INJECTED"),
+            id="evidence_artifact",
+        ),
+    ],
+)
+def test_mutating_returned_stream_nested_field_does_not_corrupt_recorder_state(authz: Authorizer, field, original, mutate):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", **{field: original})
+    first = rec.stream()
+    mutate(first["events"][0][field])
+    second = rec.stream()
+    assert second["events"][0][field] == original
+
+
+def test_mutating_returned_stream_producer_metadata_does_not_corrupt_recorder_state(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_version="1.0", producer_type="synthetic_harness")
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    first = rec.stream()
+    first["producer"]["id"] = "INJECTED"
+    first["events"][0]["producer"]["id"] = "INJECTED"
+    second = rec.stream()
+    assert second["producer"] == {"type": "synthetic_harness", "id": "tests", "version": "1.0"}
+    assert second["events"][0]["producer"] == {"type": "synthetic_harness", "id": "tests", "version": "1.0"}
+
+
+def test_caller_owned_container_mutated_after_recording_does_not_affect_stream(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    categories = ["telemetry"]
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", share_categories=categories)
+    categories.append("INJECTED")  # mutate the caller's own original object after the call returns
+    assert rec.stream()["events"][0]["share_categories"] == ["telemetry"]
+
+
+class _StampSpy(EvidenceRecorder):
+    """Counts calls reaching the private ``_stamp`` hook, to prove routing."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stamp_calls = 0
+
+    def _stamp(self, event_type, mission_id, fields):
+        self.stamp_calls += 1
+        super()._stamp(event_type, mission_id, fields)
+
+
+def test_record_observation_routes_through_overridden_stamp(authz: Authorizer):
+    rec = _StampSpy(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    assert rec.stamp_calls == 1
+    assert len(rec.stream()["events"]) == 1
+
+
+def test_record_decision_does_not_route_through_stamp(authz: Authorizer):
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    assert len(d.event_intents) > 0
+    rec = _StampSpy(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")
+    assert rec.stamp_calls == 0
+    assert len(rec.stream()["events"]) == len(d.event_intents)
+
+
+def test_empty_decision_is_a_no_op(authz: Authorizer):
+    empty = Decision(DecisionEffect.ALLOW, DecisionCode.ALLOWED, event_intents=())
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(empty, mission_id="GOAL-001")
+    assert rec.stream()["events"] == []
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    assert rec.stream()["events"][0]["sequence"] == 1
+
+
+def test_single_intent_decision_detachment_failure_leaves_no_events(authz: Authorizer):
+    """A decision with exactly one, malformed intent: an event-build failure
+    (field detachment) must leave events and sequence state unchanged."""
+    from nornyx.agentic import DecisionEventIntent
+
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(DecisionEventIntent("capability_requested", {"actor_ref": float("nan")}),),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(ValueError):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    assert rec.stream()["events"] == []
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    assert rec.stream()["events"][0]["sequence"] == 1
+
+
+def test_golden_single_threaded_stream_is_exact(authz: Authorizer):
+    """Pins the exact, byte-identical shape of a canonical decision + observation."""
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_version="1.0", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001",
+        actor_ref="identity.researcher.local", capability_ref="read_governed_context",
+    )
+    stream = rec.stream()
+    expected_producer = {"type": "synthetic_harness", "id": "tests", "version": "1.0"}
+
+    assert stream["schema"] == "nornyx.agentic_runtime_events.v1"
+    assert stream["schema_version"] == "1.0"
+    assert stream["network_id"] == authz.network_id
+    assert stream["producer"] == expected_producer
+    assert [e["event_type"] for e in stream["events"]] == ["capability_requested", "capability_allowed", "tool_invoked"]
+    assert [e["sequence"] for e in stream["events"]] == [1, 2, 3]
+    assert [e["event_id"] for e in stream["events"]] == ["GOAL-001-0001", "GOAL-001-0002", "GOAL-001-0003"]
+    for event in stream["events"]:
+        assert event["mission_id"] == "GOAL-001"
+        assert event["producer"] == expected_producer
+        assert event["network_id"] == authz.network_id
+        assert event["contract_digest"] == authz.contract_digest
+        assert event["network_lock_digest"] == authz.network_lock_digest
+        assert event["subject_revision"] == authz.subject_revision
+        assert event["timestamp"] == context.decision_at
+    assert stream["events"][0]["actor_ref"] == "identity.researcher.local"
+    assert stream["events"][0]["capability_ref"] == "read_governed_context"
+    assert stream["events"][1]["policy_decision"] == "allow"
+    assert stream["events"][2]["capability_ref"] == "read_governed_context"
+    # Re-fetching produces a deep-equal, independently-copied stream.
+    assert rec.stream() == stream
+    assert rec.stream() is not stream
+    assert rec.stream()["events"] is not stream["events"]
+
+
+def test_concurrent_record_observation_produces_unique_sequences(authz: Authorizer):
+    """Supplementary stress coverage only — NOT the decisive proof of
+    serialization (see test_concurrent_observations_serialize_through_the_recorder_lock
+    for that). An aggressive GIL switch interval widens the window for a
+    scheduling-dependent bug to surface; the previous interval is restored on
+    teardown regardless of outcome."""
+    import sys
+    import threading
+
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    errors: list[BaseException] = []
+
+    def worker() -> None:
+        try:
+            for _ in range(50):
+                rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+        except BaseException as exc:  # noqa: BLE001 - surfaced via `errors` below
+            errors.append(exc)
+
+    previous_interval = sys.getswitchinterval()
+    try:
+        sys.setswitchinterval(1e-9)
+        threads = [threading.Thread(target=worker) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        sys.setswitchinterval(previous_interval)
+
+    assert not errors
+    events = rec.stream()["events"]
+    assert len(events) == 400
+    assert sorted(e["sequence"] for e in events) == list(range(1, 401))
+    assert sorted(e["event_id"] for e in events) == [f"GOAL-001-{i:04d}" for i in range(1, 401)]
+
+
+def test_concurrent_multi_intent_decisions_commit_as_contiguous_batches(authz: Authorizer):
+    """Supplementary scheduler-stress coverage only — NOT the decisive proof
+    of batch indivisibility. This relies on thread scheduling to surface an
+    interleaving bug; it can pass by luck even against a broken
+    implementation. See test_concurrent_multi_intent_decisions_batch_is_indivisible
+    for the deterministic, mutation-checked proof (Event/Barrier-synchronized,
+    forces a pause inside the locked batch-build step and proves a second
+    decision cannot build or commit until released).
+
+    Every decision has 2 intents; under concurrency, each pair must land as
+    an adjacent, contiguous, non-interleaved (requested, allowed) batch."""
+    import threading
+
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    assert len(d.event_intents) == 2
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    errors: list[BaseException] = []
+
+    def worker() -> None:
+        try:
+            for _ in range(25):
+                rec.record_decision(d, mission_id="GOAL-001")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors
+    events = rec.stream()["events"]
+    assert len(events) == 8 * 25 * 2
+    by_sequence = sorted(events, key=lambda e: e["sequence"])
+    assert [e["sequence"] for e in by_sequence] == list(range(1, len(events) + 1))
+    for i in range(0, len(by_sequence), 2):
+        first, second = by_sequence[i], by_sequence[i + 1]
+        assert first["event_type"] == "capability_requested"
+        assert second["event_type"] == "capability_allowed"
+        assert second["sequence"] == first["sequence"] + 1
+
+
+def test_stream_snapshot_consistent_during_concurrent_writes(authz: Authorizer):
+    """Supplementary scheduler-stress coverage only — NOT the decisive proof
+    of snapshot consistency. This relies on the reader thread happening to
+    race the writer; it can pass by luck even against a broken
+    implementation. See test_concurrent_stream_snapshots_are_deterministic_and_consistent
+    (Event-choreographed writer/reader steps, requires multiple genuinely
+    partial snapshot sizes) and test_stream_snapshot_holds_lock_for_its_duration
+    (lock-ownership probe, proves a concurrent writer cannot commit while a
+    snapshot is in progress) for the deterministic, mutation-checked proofs.
+    """
+    import threading
+
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    errors: list[BaseException] = []
+    stop = threading.Event()
+
+    def writer() -> None:
+        try:
+            for _ in range(200):
+                rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+        finally:
+            stop.set()
+
+    def reader() -> None:
+        try:
+            while not stop.is_set():
+                events = rec.stream()["events"]
+                sequences = [e["sequence"] for e in events]
+                # A snapshot taken mid-write must be internally consistent:
+                # exactly 1..len(events), ascending, no gaps, no duplicates —
+                # never a torn/partial view of the underlying state.
+                assert sequences == list(range(1, len(events) + 1))
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    writer_thread = threading.Thread(target=writer)
+    reader_thread = threading.Thread(target=reader)
+    writer_thread.start()
+    reader_thread.start()
+    writer_thread.join()
+    reader_thread.join()
+
+    assert not errors
+    assert len(rec.stream()["events"]) == 200
+
+
+def test_validate_does_not_hold_lock_during_validation(authz: Authorizer, monkeypatch):
+    """validate() must build the detached snapshot under the lock, release the
+    lock, and only then call validate_runtime_events — never while holding it."""
+    import threading
+
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")
+
+    entered = threading.Event()
+    release = threading.Event()
+
+    def slow_validate(*_args, **_kwargs):
+        entered.set()
+        release.wait(timeout=5)
+        return {"status": "pass", "diagnostics": [], "event_count": 0}
+
+    monkeypatch.setattr("nornyx.agentic_evidence.validate_runtime_events", slow_validate)
+
+    result: dict = {}
+
+    def call_validate() -> None:
+        result["report"] = rec.validate()
+
+    validator_thread = threading.Thread(target=call_validate)
+    validator_thread.start()
+    assert entered.wait(timeout=5)
+
+    recorded = threading.Event()
+
+    def record_concurrently() -> None:
+        rec.record_observation("tool_invoked", mission_id="GOAL-002", actor_ref="identity.researcher.local")
+        recorded.set()
+
+    recorder_thread = threading.Thread(target=record_concurrently)
+    recorder_thread.start()
+    # If validate() were still holding the lock while validate_runtime_events
+    # ran, this would time out instead of completing.
+    assert recorded.wait(timeout=5)
+    release.set()
+    validator_thread.join()
+    recorder_thread.join()
+    assert result["report"]["status"] == "pass"
+
+
+# ------------------------------- ADR-0041: AN_EVT_REPLAY / mission / DAG pinning
+def test_repeated_identical_observation_triggers_an_evt_replay_at_expected_position(authz: Authorizer):
+    """Regression pin: content-hash-based replay detection (agentic_evidence.py,
+    untouched by ADR-0041) must behave identically through the corrected recorder."""
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001",
+        actor_ref="identity.researcher.local", capability_ref="read_governed_context",
+    )
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001",
+        actor_ref="identity.researcher.local", capability_ref="read_governed_context",
+    )
+    report = rec.validate()
+    assert report["status"] == "fail"
+    replay = [d for d in report["diagnostics"] if d["code"] == "AN_EVT_REPLAY"]
+    assert len(replay) == 1
+    assert replay[0]["path"] == "events[1]"
+
+
+def test_identical_content_across_separate_missions_does_not_trigger_replay(authz: Authorizer):
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    for mission in ("GOAL-001", "GOAL-002"):
+        rec.record_decision(d, mission_id=mission)  # prior capability_allowed, required by AN_EVT_TOOL_WITHOUT_ALLOWANCE
+        rec.record_observation(
+            "tool_invoked", mission_id=mission,
+            actor_ref="identity.researcher.local", capability_ref="read_governed_context",
+        )
+    report = rec.validate()
+    assert report["status"] == "pass", report["diagnostics"]
+
+
+def test_distinct_dag_nodes_in_one_mission_do_not_trigger_replay(authz: Authorizer):
+    """Two otherwise-identical events in one mission, distinguished only by
+    depends_on, must not be flagged as replays of each other."""
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")  # prior capability_allowed, required by AN_EVT_TOOL_WITHOUT_ALLOWANCE
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001",
+        actor_ref="identity.researcher.local", capability_ref="read_governed_context", depends_on=[],
+    )
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001",
+        actor_ref="identity.researcher.local", capability_ref="read_governed_context",
+        depends_on=["GOAL-001-0001"],
+    )
+    report = rec.validate()
+    assert report["status"] == "pass", report["diagnostics"]
+
+
+@pytest.mark.parametrize(
+    "attempt",
+    [
+        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id=_CallbackTripwire("m"), actor_ref="a"), id="hostile-mission-id"),
+        pytest.param(lambda rec: rec.record_observation(_CallbackTripwire("tool_invoked"), mission_id="m", actor_ref="a"), id="hostile-event-type"),
+        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload={1, 2}), id="set-value"),
+        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=_ListSubclass(["a"])), id="list-subclass"),
+        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=_DictSubclass(a="b")), id="dict-subclass"),
+        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=float("nan")), id="nan"),
+        pytest.param(lambda rec: rec.record_observation("bogus_event_type", mission_id="m"), id="unknown-event-type"),
+    ],
+)
+def test_every_rejected_recording_attempt_leaves_recorder_state_unchanged(authz: Authorizer, attempt):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises((TypeError, ValueError)):
+        attempt(rec)
+    assert rec.stream()["events"] == []
+    rec.record_observation("tool_invoked", mission_id="m", actor_ref="identity.researcher.local")
+    assert rec.stream()["events"][0]["sequence"] == 1
+
+
+def test_invalid_second_event_type_rolls_back_entire_decision(authz: Authorizer):
+    """A Decision whose SECOND intent's event_type is not in PHASE_INTENT must
+    raise before any mutation, inspecting the recorder's private state
+    (``_events``/``_sequences``) directly rather than through ``stream()``."""
+    from nornyx.agentic import DecisionEventIntent
+
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(
+            DecisionEventIntent("capability_requested", {"actor_ref": "identity.researcher.local"}),
+            DecisionEventIntent("tool_invoked", {"actor_ref": "identity.researcher.local"}),  # a PHASE_OBSERVATION type, not PHASE_INTENT
+        ),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    events_before = list(rec._events)
+    sequences_before = dict(rec._sequences)
+    with pytest.raises(ValueError):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    # Neither the first (valid) nor the second (invalid) intent was committed.
+    assert rec._events == events_before
+    assert rec._sequences == sequences_before
+
+
+def test_multi_intent_event_build_failure_rolls_back_entire_batch(authz: Authorizer, monkeypatch):
+    """Monkeypatch _build_event_unlocked so the first call in a batch succeeds
+    and the second raises: the whole batch must roll back, not just the
+    failed intent, and _events/_sequences must be byte-identical to their
+    pre-call state — not just empty, but unchanged from whatever they held
+    before this call (including any prior recordings)."""
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    assert len(d.event_intents) >= 2
+
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    # Seed prior state so "unchanged" is a meaningful assertion, not just "empty".
+    rec.record_observation("tool_invoked", mission_id="EARLIER", actor_ref="identity.researcher.local")
+
+    original_build = EvidenceRecorder._build_event_unlocked
+    calls = {"n": 0}
+
+    def flaky_build(self, event_type, mission_id, seq, fields):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return original_build(self, event_type, mission_id, seq, fields)
+        raise RuntimeError("deterministic build failure")
+
+    monkeypatch.setattr(EvidenceRecorder, "_build_event_unlocked", flaky_build)
+
+    events_before = list(rec._events)
+    sequences_before = dict(rec._sequences)
+    with pytest.raises(RuntimeError):
+        rec.record_decision(d, mission_id="GOAL-001")
+    assert calls["n"] == 2  # the first build ran (and would have succeeded) before the second raised
+    assert rec._events == events_before
+    assert rec._sequences == sequences_before
+    # No partial batch is visible through the public API either.
+    assert rec.stream()["events"] == events_before
+
+
+def test_validate_payload_is_detached_from_recorder_state(authz: Authorizer, monkeypatch):
+    """Monkeypatch validate_runtime_events to mutate every category of nested
+    value in the payload it receives (top-level producer, per-event producer,
+    a nested mapping, a nested list). After validate() returns, the recorder's
+    own state must be completely unaffected."""
+    context = ctx()
+    d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
+    rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(d, mission_id="GOAL-001")
+    rec.record_observation(
+        "tool_invoked", mission_id="GOAL-001",
+        actor_ref="identity.researcher.local", capability_ref="read_governed_context",
+        approver={"role": "network_governance_owner", "actor_type": "human"},
+        depends_on=["GOAL-001-0001"],
+    )
+
+    def mutating_validator(_document, _composition, _lock_payload, payload, *, events_root=None):
+        payload["producer"]["id"] = "INJECTED"  # top-level producer
+        for event in payload["events"]:
+            event["producer"]["id"] = "INJECTED"  # per-event producer
+            if "approver" in event:
+                event["approver"]["role"] = "INJECTED"  # nested mapping
+            if "depends_on" in event:
+                event["depends_on"].append("INJECTED")  # nested list
+        return {"status": "pass", "diagnostics": [], "event_count": len(payload["events"])}
+
+    monkeypatch.setattr("nornyx.agentic_evidence.validate_runtime_events", mutating_validator)
+
+    before = rec.stream()
+    report = rec.validate()
+    after = rec.stream()
+
+    assert report["status"] == "pass"
+    assert after == before
+
+
+# ============================= ADR-0041: deterministic concurrency proofs =============================
+class _ProbeLock:
+    """Wraps a real ``threading.Lock``, exposing deterministic hooks so tests
+    can prove a second thread is genuinely blocked on lock acquisition —
+    rather than merely "hasn't run yet" — without sleeping or hoping the
+    scheduler cooperates. ``second_attempt_started`` fires the instant a
+    second caller enters ``acquire()``, even though that call then blocks
+    inside the real lock; ``acquired`` only increments once a caller actually
+    holds it."""
+
+    def __init__(self) -> None:
+        self._real = threading.Lock()
+        self._mutex = threading.Lock()
+        self.attempts = 0
+        self.acquired = 0
+        self.second_attempt_started = threading.Event()
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        with self._mutex:
+            self.attempts += 1
+            if self.attempts == 2:
+                self.second_attempt_started.set()
+        ok = self._real.acquire(blocking, timeout)
+        if ok:
+            with self._mutex:
+                self.acquired += 1
+        return ok
+
+    def release(self) -> None:
+        self._real.release()
+
+    def __enter__(self) -> "_ProbeLock":
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        self.release()
+        return False
+
+
+def test_concurrent_observations_serialize_through_the_recorder_lock(authz: Authorizer, monkeypatch):
+    """Deterministic proof (Barrier + Event + a probe lock — no sleep, no
+    reliance on the GIL switch interval) that two overlapping
+    record_observation calls serialize through self._lock: one worker is
+    forced to remain inside the locked build step while the other
+    demonstrably attempts entry and cannot commit until the first releases."""
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    probe = _ProbeLock()
+    rec._lock = probe
+
+    entered_build = threading.Event()
+    release_first = threading.Event()
+    first_call_claimed = threading.Event()
+    original_build = EvidenceRecorder._build_event_unlocked
+
+    def instrumented_build(self, event_type, mission_id, seq, fields):
+        if not first_call_claimed.is_set():
+            first_call_claimed.set()
+            entered_build.set()
+            assert release_first.wait(timeout=5), "deadlock guard: release_first never signaled"
+        return original_build(self, event_type, mission_id, seq, fields)
+
+    monkeypatch.setattr(EvidenceRecorder, "_build_event_unlocked", instrumented_build)
+
+    start_barrier = threading.Barrier(2)
+    errors: list[BaseException] = []
+
+    def worker() -> None:
+        try:
+            start_barrier.wait(timeout=5)
+            rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+        except BaseException as exc:  # noqa: BLE001 - surfaced via `errors`
+            errors.append(exc)
+
+    thread_a = threading.Thread(target=worker)
+    thread_b = threading.Thread(target=worker)
+    thread_a.start()
+    thread_b.start()
+
+    # Both workers synchronized at the barrier and are now racing to record.
+    assert entered_build.wait(timeout=5), "deadlock guard: no worker ever entered the locked build step"
+    # Whichever worker got there first is now paused *inside* the locked
+    # build: it holds the lock, but has not yet appended anything.
+    assert probe.acquired == 1
+    assert rec._events == []
+
+    # The other worker has demonstrably attempted entry (a second, distinct
+    # acquire() call started) but is genuinely blocked on the real lock.
+    assert probe.second_attempt_started.wait(timeout=5), "deadlock guard: second worker never attempted the lock"
+    assert probe.acquired == 1  # still only one holder; the second cannot commit yet
+    assert rec._events == []
+
+    release_first.set()
+    thread_a.join(timeout=5)
+    thread_b.join(timeout=5)
+    assert not thread_a.is_alive() and not thread_b.is_alive()
+    assert not errors
+
+    assert probe.attempts == 2
+    assert probe.acquired == 2
+    events = rec.stream()["events"]
+    assert len(events) == 2
+    assert sorted(e["sequence"] for e in events) == [1, 2]
+    assert len({e["event_id"] for e in events}) == 2
+
+
+def test_concurrent_multi_intent_decisions_batch_is_indivisible(authz: Authorizer, monkeypatch):
+    """Deterministic proof that a whole decision batch commits indivisibly:
+    decision A is paused after its first event is built but before commit;
+    decision B demonstrably attempts entry and cannot build or commit while
+    A is paused; after release, both complete with disjoint, contiguous
+    sequence ranges and no interleaving."""
+    from nornyx.agentic import DecisionEventIntent
+
+    def make_decision(tag: str) -> Decision:
+        return Decision(
+            DecisionEffect.ALLOW,
+            DecisionCode.ALLOWED,
+            event_intents=(
+                DecisionEventIntent("capability_requested", {"actor_ref": "identity.researcher.local", "capability_ref": "read_governed_context", "batch": tag}),
+                DecisionEventIntent("capability_allowed", {"actor_ref": "identity.researcher.local", "capability_ref": "read_governed_context", "policy_decision": "allow", "batch": tag}),
+            ),
+        )
+
+    decision_a = make_decision("A")
+    decision_b = make_decision("B")
+
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    probe = _ProbeLock()
+    rec._lock = probe
+
+    entered_pause = threading.Event()
+    release_pause = threading.Event()
+    original_build = EvidenceRecorder._build_event_unlocked
+    calls = {"n": 0}
+
+    def instrumented_build(self, event_type, mission_id, seq, fields):
+        calls["n"] += 1
+        if calls["n"] == 2:  # A's first event has already been built; pause before its second
+            entered_pause.set()
+            assert release_pause.wait(timeout=5), "deadlock guard: release_pause never signaled"
+        return original_build(self, event_type, mission_id, seq, fields)
+
+    monkeypatch.setattr(EvidenceRecorder, "_build_event_unlocked", instrumented_build)
+
+    errors: list[BaseException] = []
+
+    def run_a() -> None:
+        try:
+            rec.record_decision(decision_a, mission_id="GOAL-001")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    def run_b() -> None:
+        try:
+            rec.record_decision(decision_b, mission_id="GOAL-001")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread_a = threading.Thread(target=run_a)
+    thread_a.start()
+    assert entered_pause.wait(timeout=5), "deadlock guard: A never reached the pause point"
+    # A built one event but has not committed: it still holds the lock.
+    assert probe.acquired == 1
+    assert rec._events == []
+    assert rec._sequences == {}
+
+    thread_b = threading.Thread(target=run_b)
+    thread_b.start()
+    assert probe.second_attempt_started.wait(timeout=5), "deadlock guard: B never attempted to acquire the lock"
+    # B has demonstrably attempted entry but cannot build or commit while A is paused.
+    assert probe.acquired == 1
+    assert rec._events == []
+    assert rec._sequences == {}
+
+    release_pause.set()
+    thread_a.join(timeout=5)
+    thread_b.join(timeout=5)
+    assert not thread_a.is_alive() and not thread_b.is_alive()
+    assert not errors
+
+    events = rec.stream()["events"]
+    assert len(events) == 4
+    by_seq = sorted(events, key=lambda e: e["sequence"])
+    assert [e["sequence"] for e in by_seq] == [1, 2, 3, 4]
+    assert {by_seq[0]["batch"], by_seq[1]["batch"]} == {"A"}
+    assert {by_seq[2]["batch"], by_seq[3]["batch"]} == {"B"}
+    assert len({e["event_id"] for e in events}) == 4
+
+
+def test_concurrent_stream_snapshots_are_deterministic_and_consistent(authz: Authorizer):
+    """Writer/reader coordination entirely via threading.Event — the writer
+    commits in controlled steps, the reader is explicitly released to
+    snapshot after each step, and the writer waits for that snapshot to be
+    captured before proceeding. No sleep, no hoping the reader is scheduled."""
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    steps = 3
+    commit_done = [threading.Event() for _ in range(steps)]
+    snapshot_done = [threading.Event() for _ in range(steps)]
+    snapshots: list[list[dict]] = [None] * steps  # type: ignore[list-item]
+    errors: list[BaseException] = []
+
+    def writer() -> None:
+        try:
+            for i in range(steps):
+                rec.record_observation(
+                    "tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local",
+                    depends_on=[f"tag-{i}"],
+                )
+                commit_done[i].set()
+                assert snapshot_done[i].wait(timeout=5), f"deadlock guard: snapshot {i} never captured"
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    def reader() -> None:
+        try:
+            for i in range(steps):
+                assert commit_done[i].wait(timeout=5), f"deadlock guard: commit {i} never happened"
+                snapshots[i] = rec.stream()["events"]
+                snapshot_done[i].set()
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    writer_thread = threading.Thread(target=writer)
+    reader_thread = threading.Thread(target=reader)
+    writer_thread.start()
+    reader_thread.start()
+    writer_thread.join(timeout=10)
+    reader_thread.join(timeout=10)
+    assert not writer_thread.is_alive() and not reader_thread.is_alive()
+    assert not errors
+
+    sizes = [len(s) for s in snapshots]
+    assert sizes == [1, 2, 3]  # multiple genuinely partial sizes (1, 2), not zero
+    for snap in snapshots:
+        assert [e["sequence"] for e in snap] == list(range(1, len(snap) + 1))  # contiguous
+        assert len({e["event_id"] for e in snap}) == len(snap)  # unique IDs
+
+    # Deeply detached: mutating a nested value in an earlier, smaller
+    # snapshot must not affect the recorder's own state or a later snapshot.
+    snapshots[0][0]["depends_on"].append("MUTATED")
+    final_events = rec.stream()["events"]
+    assert final_events[0]["depends_on"] == ["tag-0"]
+
+
+def test_stream_snapshot_holds_lock_for_its_duration(authz: Authorizer, monkeypatch):
+    """Lock-ownership probe: pause _snapshot_unlocked from inside stream()
+    while the recorder lock is held, then prove a concurrent writer
+    demonstrably attempts the recording operation but cannot commit until
+    the snapshot is released."""
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+
+    probe = _ProbeLock()
+    rec._lock = probe
+
+    entered_snapshot = threading.Event()
+    release_snapshot = threading.Event()
+    original_snapshot = EvidenceRecorder._snapshot_unlocked
+
+    def paused_snapshot(self):
+        entered_snapshot.set()
+        assert release_snapshot.wait(timeout=5), "deadlock guard: release_snapshot never signaled"
+        return original_snapshot(self)
+
+    monkeypatch.setattr(EvidenceRecorder, "_snapshot_unlocked", paused_snapshot)
+
+    result: dict = {}
+
+    def call_stream() -> None:
+        result["stream"] = rec.stream()
+
+    reader_thread = threading.Thread(target=call_stream)
+    reader_thread.start()
+    assert entered_snapshot.wait(timeout=5), "deadlock guard: reader never entered the snapshot"
+    assert probe.acquired == 1  # the reader holds the lock while paused inside the snapshot
+
+    errors: list[BaseException] = []
+
+    def writer() -> None:
+        try:
+            rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    writer_thread = threading.Thread(target=writer)
+    writer_thread.start()
+    assert probe.second_attempt_started.wait(timeout=5), "deadlock guard: writer never attempted the lock"
+    # The writer has demonstrably attempted the operation but cannot commit
+    # while the reader's snapshot is still in progress and holding the lock.
+    assert probe.acquired == 1
+    assert len(rec._events) == 1  # only the seeded event; the writer has not committed yet
+
+    release_snapshot.set()
+    reader_thread.join(timeout=5)
+    writer_thread.join(timeout=5)
+    assert not reader_thread.is_alive() and not writer_thread.is_alive()
+    assert not errors
+    assert len(rec._events) == 2
+    assert len(result["stream"]["events"]) == 1  # snapshot captured before the writer's commit
+
+
+# ===================================== ADR-0041: F-05 coverage additions =====================================
+def test_hostile_str_subclass_as_field_value_rejected_without_callbacks(authz: Authorizer):
+    """A hostile str subclass used as an event FIELD VALUE (not a scalar
+    argument like mission_id) must be rejected without invoking any of its
+    overridden dunders."""
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    hostile_value = _CallbackTripwire("read_governed_context")
+    with pytest.raises(TypeError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", capability_ref=hostile_value)
+    assert rec.stream()["events"] == []
+
+
+class _CallbackTripwireContainer:
+    """A non-plain object whose container/pickle-related dunders raise if
+    ever invoked. Used to prove the restricted copier rejects unsupported
+    types by exact-type check alone, before touching any of these."""
+
+    def __iter__(self):  # pragma: no cover - must never run
+        raise AssertionError("__iter__ must not be invoked on a rejected value")
+
+    def keys(self):  # pragma: no cover - must never run
+        raise AssertionError("keys must not be invoked on a rejected value")
+
+    def __reduce__(self):  # pragma: no cover - must never run
+        raise AssertionError("__reduce__ must not be invoked on a rejected value")
+
+    def __reduce_ex__(self, protocol):  # pragma: no cover - must never run
+        raise AssertionError("__reduce_ex__ must not be invoked on a rejected value")
+
+    def __getstate__(self):  # pragma: no cover - must never run
+        raise AssertionError("__getstate__ must not be invoked on a rejected value")
+
+    def __deepcopy__(self, memo):  # pragma: no cover - must never run
+        raise AssertionError("__deepcopy__ must not be invoked on a rejected value")
+
+
+def test_hostile_container_tripwire_dunders_never_invoked_on_rejected_value(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    hostile = _CallbackTripwireContainer()
+    with pytest.raises(TypeError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=hostile)
+    assert rec.stream()["events"] == []
+
+
+def _nested_list(depth: int) -> Any:
+    value: Any = "leaf"
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+def test_detach_plain_list_nesting_depth_limit_boundary_is_exactly_eight(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_nested_list(8))
+    assert len(rec.stream()["events"]) == 1
+    with pytest.raises(ValueError):
+        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_nested_list(9))
+    events = rec.stream()["events"]
+    assert len(events) == 1
+    assert events[0]["sequence"] == 1
+
+
+def test_non_mapping_intent_fields_rejected_before_recorder_mutation(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    fake = Decision(
+        DecisionEffect.ALLOW, DecisionCode.ALLOWED,
+        event_intents=(DecisionEventIntent("capability_requested", ["not", "a", "mapping"]),),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    events_before = list(rec._events)
+    sequences_before = dict(rec._sequences)
+    with pytest.raises(TypeError):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    assert rec._events == events_before
+    assert rec._sequences == sequences_before
+
+
+def test_stream_output_omits_sequences(authz: Authorizer):
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
+    stream = rec.stream()
+    assert set(stream.keys()) == {"schema", "schema_version", "network_id", "producer", "events"}
+    assert "sequences" not in stream
+    assert "_sequences" not in stream
 
 
 # ===================== residual-boundary corrections (A–E) =====================

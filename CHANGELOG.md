@@ -7,6 +7,33 @@ distribution version is independent of the Nornyx **language/schema** version
 ## [Unreleased]
 
 ### Fixed
+- **`EvidenceRecorder` hardened against caller-controlled callback execution
+  and concurrent-use data races** (ADR-0041). `mission_id`, `event_type`, and
+  `producer_id`/`producer_version`/`producer_type` are now validated by exact
+  builtin type (`type(value) is str`; subclasses rejected) before any lock
+  acquisition or dictionary-key use, so a hostile `str` subclass's
+  `__hash__`/`__eq__`/`__format__`/`__str__`/`__repr__` can never execute.
+  `record_decision`'s intent field keys and all recorded field values are now
+  restricted, by exact type, to `None`/`bool`/`int`/finite-`float`/`str`/
+  `dict` (exact `str` keys)/`list`/`tuple` (normalized to `list`) via a new
+  recursive copier (depth limit 8) that rejects subclasses, `set`/`frozenset`
+  (never normalized), non-finite floats, and fails closed on unbounded
+  self-referential nesting. `EvidenceRecorder` is now internally
+  lock-protected, safe for concurrent use by multiple threads sharing one
+  instance, including decisions committing as non-interleaved batches.
+  `stream()`/`validate()` now return a deeply independent snapshot — mutating
+  a nested value (e.g. a returned `approver` dict) in a previously-returned
+  stream can no longer corrupt the recorder's internal state or affect a
+  later `stream()`/`validate()` call. Rejected input never partially mutates
+  recorder state. `record_decision`'s locked commit loop no longer advances
+  the mission's sequence counter before the corresponding event has actually
+  been built and appended: if a build step in a multi-intent batch fails
+  after an earlier one in the same batch would have succeeded, neither
+  `_events` nor `_sequences` is left partially updated — the whole batch
+  commits only after every event in it has been built. Existing
+  single-threaded callers see byte-identical evidence output; no adapter,
+  test, or example in this repository has ever passed a value this stricter
+  validation rejects.
 - **A correctly refused non-human approval can now appear in a valid evidence
   stream** (benchmark finding F1). `validate_runtime_events` applied its
   human-approver and composed-role rules to `approval_granted` *and*

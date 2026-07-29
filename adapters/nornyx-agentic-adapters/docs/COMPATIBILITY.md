@@ -45,3 +45,26 @@ Following the same rule ADR-0039 applies to the core SPI:
 - **Breaking**: narrowing a supported range; removing or renaming a public
   type/field; changing the meaning of an existing `SurfaceStatus` value;
   changing `enforce()`'s evaluate → record → execute ordering guarantee.
+
+## `EvidenceRecorder` integrity (ADR-0041)
+
+`EvidenceRecorder.record_decision`/`record_observation` now validate
+`mission_id`, `event_type`, and `producer_id`/`producer_version`/
+`producer_type` by exact type (`type(value) is str`; subclasses are rejected)
+and restrict recorded field values to exactly: `None`, `bool`, `int`, finite
+`float`, `str`, `dict` (exact `str` keys), `list`, and `tuple` (normalized to
+`list` — JSON has no tuple concept). `set`/`frozenset` are rejected outright,
+never normalized. This changes no SPI symbol, signature, schema, or major
+compatibility boundary. It is planned as a core patch because no
+in-repository caller relies on the previous leniency and the change hardens
+recording to accept only exact plain JSON-shaped builtins. External callers
+relying on builtin subclasses, non-`str` mapping keys, sets, non-finite
+numbers, or other previously accepted values may now receive a fail-closed
+`TypeError` or `ValueError`. Every value this adapter's `enforce()` and
+`crewai_adapter` have ever passed to the recorder was already a genuine
+`str`/`None`/plain `dict` of strings, so this adapter's own evidence output is
+unaffected. (Previously stored a non-JSON-compatible `set` value without
+rejecting it at recording time.) `EvidenceRecorder` is also now internally
+lock-protected and safe to share across threads. See
+`docs/decisions/ADR-0041-evidence-recorder-integrity-and-serialization.md`
+in the core repository for the full rationale.
