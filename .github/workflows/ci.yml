@@ -109,8 +109,10 @@ jobs:
         shell: bash
         run: |
           wheel="$(find dist -maxdepth 1 -type f -name 'nornyx_agentic_adapters-*.whl' -print -quit)"
+          core_wheel="$(find ../../dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
           test -n "$wheel"
-          python scripts/test_wheel_install.py "$wheel"
+          test -n "$core_wheel"
+          python scripts/test_wheel_install.py "$wheel" --core-wheel "$core_wheel"
 
   adapter-crewai-native:
     # ADR-0039 M2-B: exercises adapters/nornyx-agentic-adapters' CrewAI
@@ -242,6 +244,51 @@ jobs:
 
           print("WHEEL_CREWAI_SMOKE_OK crewai_in_sys_modules=%s" % ("crewai" in sys.modules))
           PY
+
+  adapter-langgraph-native:
+    # ADR-0039 M2-C / ADR-0042: exercise the supported adapter against the
+    # exact public LangGraph 1.2.2 runtime metadata and a candidate core wheel.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build and install candidate core
+        run: |
+          python -m pip install build
+          python -m build
+          core_wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$core_wheel"
+          python -m pip install "$core_wheel"
+      - name: Install adapter with exact LangGraph extra
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m pip install -e ".[langgraph,dev]"
+      - name: Native LangGraph adapter tests (no skips permitted)
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python -c "import importlib.metadata as m; assert m.version('langgraph') == '1.2.2'"
+          python -m pytest tests/test_langgraph_adapter.py tests/test_langgraph_adapter_missing_dependency.py \
+            -v -rs --junitxml=langgraph-native-results.xml
+          python -c "import xml.etree.ElementTree as ET, sys; suites = ET.parse('langgraph-native-results.xml').getroot().findall('.//testsuite'); skipped = sum(int(s.get('skipped', 0)) for s in suites); tests = sum(int(s.get('tests', 0)) for s in suites); print('langgraph-native tests', tests, 'skipped', skipped); sys.exit(1 if (skipped or not tests) else 0)"
+      - name: Build and smoke the installed adapter wheel
+        working-directory: adapters/nornyx-agentic-adapters
+        shell: bash
+        run: |
+          python -m build --wheel
+          adapter_wheel="$(find dist -maxdepth 1 -type f -name 'nornyx_agentic_adapters-*.whl' -print -quit)"
+          core_wheel="$(find ../../dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$adapter_wheel"
+          test -n "$core_wheel"
+          python scripts/test_wheel_install.py "$adapter_wheel" --core-wheel "$core_wheel" --with-langgraph
 
   crewai-governance-benchmark:
     # examples/crewai_governance_benchmark is an external-facing A/B benchmark

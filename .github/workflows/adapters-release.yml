@@ -6,7 +6,7 @@ name: adapters-release
 # check: the release tag must match `adapters-vX.Y.Z` exactly, and that X.Y.Z
 # must equal the adapter package's own pyproject.toml version at the exact
 # commit the tag targets — a tag/version mismatch (e.g. tagging
-# adapters-v0.1.1 while the package still declares 0.1.0) fails closed rather
+# adapters-v0.2.1 while the package still declares 0.2.0) fails closed rather
 # than publishing. Manual dispatch runs the test job without deploying to
 # PyPI and cannot satisfy the binding check (there is no release tag to
 # evaluate). This workflow never creates, moves, or repairs tags.
@@ -48,8 +48,14 @@ jobs:
       - name: Install and test the adapter package
         working-directory: adapters/nornyx-agentic-adapters
         run: |
-          python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev,crewai,langgraph]"
           python -m pytest -q
+          python -m build
+          adapter_wheel="$(find dist -maxdepth 1 -type f -name 'nornyx_agentic_adapters-*.whl' -print -quit)"
+          core_wheel="$(find ../../dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$adapter_wheel"
+          test -n "$core_wheel"
+          python scripts/test_wheel_install.py "$adapter_wheel" --core-wheel "$core_wheel" --with-langgraph
 
   check-adapter-tag:
     # Only a 'release' event has a tag_name to evaluate; workflow_dispatch has

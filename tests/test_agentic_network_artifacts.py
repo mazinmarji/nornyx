@@ -45,7 +45,7 @@ COMPOSITION = compose_governance(REGISTRY, profile_identity="agentic_network")
 # Golden binding for the bundled example contract at the AN-003 baseline.
 # A change here is a deliberate, reviewed migration, never a test refresh.
 GOLDEN_EXAMPLE_LOCK_DIGEST = (
-    "sha256:7fb7987edb2e12226b3a21e3ddf89ffbf38ba46ffcd8bb18e80e7909b12109ca"
+    "sha256:0ddcafe9060163f8b24558ba8a5198f80188ab535e93f23bef3340027cbd7aeb"
 )
 
 

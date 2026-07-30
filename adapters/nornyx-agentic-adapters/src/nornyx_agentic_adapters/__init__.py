@@ -4,7 +4,7 @@
 This base package imports no agent framework. Framework-specific behavior
 (CrewAI, LangGraph) lives in separate, optional submodules gated by their own
 extras (``pip install nornyx-agentic-adapters[crewai]`` /
-``...[langgraph]``) — not yet present in this foundation release.
+``...[langgraph]``); importing this base package still imports neither framework.
 
 Cooperative Tier 2 (ADR-0040): enforcement here covers only the surfaces a
 framework submodule explicitly declares and wraps in its coverage inventory.
@@ -29,7 +29,7 @@ from .enforcement import enforce
 from .errors import AdapterConfigurationError, AdapterDenied
 from .metadata import AdapterMetadata
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 check_spi_version(_agentic.SPI_VERSION)
 

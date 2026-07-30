@@ -2,7 +2,8 @@
 
 | `nornyx-agentic-adapters` | `nornyx` (SPI) | SPI version | CrewAI | LangGraph | Python |
 | --- | --- | --- | --- | --- | --- |
-| 0.1.x | `>=1.8,<2` | 1.0 | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
+| 0.1.x | `>=1.8,<2` | 1.0 | `==1.15.4` | Not implemented | 3.10–3.13 |
+| 0.2.x | `>=1.10,<2` | 1.1 | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
 
 ## Reading this table
 
@@ -18,22 +19,24 @@
   repository's test suite is declared supported. A wider range is not claimed
   until new test evidence justifies it — widening a pin without new tests
   would be a compatibility regression risk, not a convenience.
-- **CrewAI (M2-B) is implemented; LangGraph (M2-C) is not yet** (see the
-  README's Status table). The CrewAI column above is live: `[crewai]`
+- **CrewAI (M2-B) and LangGraph (M2-C) are implemented** (see the README's
+  Status table). The CrewAI column above is live: `[crewai]`
   installs `nornyx_agentic_adapters.crewai_adapter`, which wraps **synchronous**
   tool invocation only (see the README's Coverage note) — agent invocation,
   task invocation, delegation, handoff, and **asynchronous tool invocation
   (`arun`/`_arun`)** are declared `unsupported`, not silently omitted. Async is
   not governed: the adapter does not override `_arun`, so CrewAI's async path
-  raises `NotImplementedError` and the wrapped action never runs. The LangGraph
-  column describes what the *future* `[langgraph]` extra will support once M2-C
-  lands, recorded here now so the compatibility contract is fixed before
-  implementation.
-- **The CrewAI pin is enforced at import time, not just declared.** Importing
-  the CrewAI submodule fails closed on any unsupported configuration: a missing
+  raises `NotImplementedError` and the wrapped action never runs. `[langgraph]`
+  provides synchronous StateGraph node wrapping with native retry, loop,
+  parallel, interrupt, and checkpoint-resume coverage. Async and remote
+  LangGraph execution remain unsupported.
+- **Framework pins are enforced at import time, not just declared.** Importing
+  either framework submodule fails closed on an unsupported installed version.
+  For CrewAI, a missing
   CrewAI distribution raises `MissingOptionalDependencyError`; an installed but
   non-`1.15.4` version — or missing/malformed version metadata — raises
   `AdapterConfigurationError`; only `crewai==1.15.4` imports and operates.
+  LangGraph follows the same rule and requires exactly `langgraph==1.2.2`.
 
 ## Minor-compatible vs. breaking changes
 
@@ -63,10 +66,9 @@ the source object is never retained. `set`/`frozenset`, non-finite numbers,
 non-string keys, unsupported objects, excessive nesting, self-reference, and
 canonical-key collisions fail closed before recorder mutation.
 
-This preserves schema-compatible public core inputs while changing no SPI
-symbol, signature, schema, adapter package version, or adapter compatibility
-range. Every value this adapter's `enforce()` and `crewai_adapter` pass to the
-recorder is already an exact builtin, so adapter evidence output is unchanged.
+This preserves existing recorder call signatures. SPI 1.1 adds explicit
+occurrence and validated-resume APIs without changing the major compatibility
+boundary. Every value the adapters pass to the recorder is an exact builtin.
 `EvidenceRecorder` is also internally lock-protected and safe to share across
 threads. See
 `docs/decisions/ADR-0041-evidence-recorder-integrity-and-serialization.md`

@@ -40,7 +40,8 @@ DEFAULT_LOCK_NAME = "nornyx.agentic_network.lock"
 GENERATION_MANIFEST_NAME = "agentic_generation_manifest.json"
 
 RUNTIME_EVENTS_SCHEMA_ID = "nornyx.agentic_runtime_events.v1"
-RUNTIME_EVENTS_SCHEMA_VERSION = "1.0"
+RUNTIME_EVENTS_SCHEMA_VERSION = "1.1"
+_SUPPORTED_RUNTIME_EVENTS_SCHEMA_VERSIONS = frozenset({"1.0", "1.1"})
 RUNTIME_EVENT_TYPES: tuple[str, ...] = (
     "agent_invoked",
     "capability_requested",
@@ -339,9 +340,11 @@ def _composition_summary(composition: CompositionResult) -> dict[str, Any]:
     }
 
 
-def build_agentic_network_artifacts(
+def _build_agentic_network_artifacts(
     document: Mapping[str, Any],
     composition: CompositionResult,
+    *,
+    runtime_events_schema_version: str,
 ) -> dict[str, dict[str, Any]]:
     """Build every deterministic artifact payload (excluding the manifest)."""
 
@@ -475,7 +478,7 @@ def build_agentic_network_artifacts(
         "schema": "nornyx.agentic_runtime_evidence_contract.v1",
         **binding,
         "events_schema": RUNTIME_EVENTS_SCHEMA_ID,
-        "events_schema_version": RUNTIME_EVENTS_SCHEMA_VERSION,
+        "events_schema_version": runtime_events_schema_version,
         "allowed_event_types": sorted(RUNTIME_EVENT_TYPES),
         "required_event_binding": {
             "contract_digest": True,
@@ -573,13 +576,45 @@ def build_agentic_network_artifacts(
     return artifacts
 
 
+def build_agentic_network_artifacts(
+    document: Mapping[str, Any],
+    composition: CompositionResult,
+) -> dict[str, dict[str, Any]]:
+    """Build artifacts using the current runtime-events schema version."""
+
+    return _build_agentic_network_artifacts(
+        document,
+        composition,
+        runtime_events_schema_version=RUNTIME_EVENTS_SCHEMA_VERSION,
+    )
+
+
 def render_agentic_network_artifacts(
     document: Mapping[str, Any],
     composition: CompositionResult,
 ) -> dict[str, bytes]:
     """Render every artifact (including the generation manifest) to bytes."""
 
-    artifacts = build_agentic_network_artifacts(document, composition)
+    return _render_agentic_network_artifacts(
+        document,
+        composition,
+        runtime_events_schema_version=RUNTIME_EVENTS_SCHEMA_VERSION,
+    )
+
+
+def _render_agentic_network_artifacts(
+    document: Mapping[str, Any],
+    composition: CompositionResult,
+    *,
+    runtime_events_schema_version: str,
+) -> dict[str, bytes]:
+    """Render artifacts for one supported runtime-events schema version."""
+
+    artifacts = _build_agentic_network_artifacts(
+        document,
+        composition,
+        runtime_events_schema_version=runtime_events_schema_version,
+    )
     rendered = {name: _rendered_bytes(payload) for name, payload in artifacts.items()}
     network = _network(document)
     manifest = {
@@ -640,6 +675,30 @@ def build_agentic_network_lock(
     document: Mapping[str, Any],
     composition: CompositionResult,
 ) -> dict[str, Any]:
+    return _build_agentic_network_lock(
+        document,
+        composition,
+        runtime_events_schema_version=RUNTIME_EVENTS_SCHEMA_VERSION,
+    )
+
+
+def _build_agentic_network_lock(
+    document: Mapping[str, Any],
+    composition: CompositionResult,
+    *,
+    runtime_events_schema_version: str,
+) -> dict[str, Any]:
+    """Build a lock for a supported runtime-events schema version.
+
+    This private versioned path lets lock verification reconstruct historical
+    1.0 artifact hashes without changing the public lock-construction call.
+    """
+
+    if runtime_events_schema_version not in _SUPPORTED_RUNTIME_EVENTS_SCHEMA_VERSIONS:
+        raise ValueError(
+            "unsupported runtime-events schema version "
+            f"{runtime_events_schema_version!r}"
+        )
     network = _network(document)
     network_id = network.get("id")
     subject_revision = network.get("subject_revision")
@@ -652,7 +711,11 @@ def build_agentic_network_lock(
             "subject revision.",
             path="agentic_network.subject_revision",
         )
-    rendered = render_agentic_network_artifacts(document, composition)
+    rendered = _render_agentic_network_artifacts(
+        document,
+        composition,
+        runtime_events_schema_version=runtime_events_schema_version,
+    )
     summary = _composition_summary(composition)
     payload = {
         "schema": LOCK_SCHEMA_ID,
@@ -664,7 +727,7 @@ def build_agentic_network_lock(
         **summary,
         "runtime_events_schema": {
             "id": RUNTIME_EVENTS_SCHEMA_ID,
-            "version": RUNTIME_EVENTS_SCHEMA_VERSION,
+            "version": runtime_events_schema_version,
         },
         "protocol_declarations": sorted(
             (
@@ -831,7 +894,23 @@ def verify_agentic_network_lock(
     """Compare a stored lock against the current contract state, fail closed."""
 
     diagnostics: list[GovernanceDiagnostic] = []
-    expected = build_agentic_network_lock(document, composition)
+    declared_runtime_schema = lock_payload.get("runtime_events_schema")
+    declared_version = (
+        declared_runtime_schema.get("version")
+        if isinstance(declared_runtime_schema, Mapping)
+        and declared_runtime_schema.get("id") == RUNTIME_EVENTS_SCHEMA_ID
+        else None
+    )
+    expected_version = (
+        declared_version
+        if declared_version in _SUPPORTED_RUNTIME_EVENTS_SCHEMA_VERSIONS
+        else RUNTIME_EVENTS_SCHEMA_VERSION
+    )
+    expected = _build_agentic_network_lock(
+        document,
+        composition,
+        runtime_events_schema_version=expected_version,
+    )
 
     field_codes = {
         "network_id": "AN_LOCK_NETWORK_MISMATCH",

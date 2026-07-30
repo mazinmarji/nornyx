@@ -75,12 +75,22 @@ print(json.dumps({
 }))
 """
 
+_LANGGRAPH_PROBE = """
+import nornyx_agentic_adapters.langgraph as adapter
+assert adapter.METADATA.framework_version_range == "==1.2.2"
+assert adapter.METADATA.nornyx_version_range == ">=1.10,<2"
+assert adapter.COVERAGE_INVENTORY.wrapped()[0].surface == "sync_node_invocation"
+print("LANGGRAPH_OK")
+"""
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Install and smoke-test one local nornyx-agentic-adapters wheel."
     )
     parser.add_argument("wheel", type=Path)
+    parser.add_argument("--core-wheel", type=Path)
+    parser.add_argument("--with-langgraph", action="store_true")
     args = parser.parse_args(argv)
     wheel = args.wheel.resolve(strict=True)
     if wheel.suffix != ".whl":
@@ -92,7 +102,31 @@ def main(argv: list[str] | None = None) -> int:
         venv_root = root / "venv"
         venv.EnvBuilder(with_pip=True).create(venv_root)
         python = _venv_python(venv_root)
-        _run([str(python), "-m", "pip", "install", "--disable-pip-version-check", "nornyx>=1.8,<2"], cwd=root)
+        if args.core_wheel is not None:
+            core_wheel = args.core_wheel.resolve(strict=True)
+            _run(
+                [
+                    str(python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--disable-pip-version-check",
+                    str(core_wheel),
+                ],
+                cwd=root,
+            )
+        else:
+            _run(
+                [
+                    str(python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--disable-pip-version-check",
+                    "nornyx>=1.10,<2",
+                ],
+                cwd=root,
+            )
         _run(
             [str(python), "-m", "pip", "install", "--no-deps", "--disable-pip-version-check", str(wheel)],
             cwd=root,
@@ -103,6 +137,21 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError(f"installed wheel reports version {payload['version']!r}, expected {expected_version!r}")
         if payload["crewai_in_sys_modules"] or payload["langgraph_in_sys_modules"]:
             raise RuntimeError(f"framework leaked into sys.modules: {payload!r}")
+        if args.with_langgraph:
+            _run(
+                [
+                    str(python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--disable-pip-version-check",
+                    "langgraph==1.2.2",
+                ],
+                cwd=root,
+            )
+            probe = _run([str(python), "-c", _LANGGRAPH_PROBE], cwd=root)
+            if "LANGGRAPH_OK" not in probe.stdout:
+                raise RuntimeError("installed LangGraph adapter probe did not complete")
 
     print(json.dumps(payload, sort_keys=True))
     return 0

@@ -23,7 +23,7 @@ def test_package_version_matches_pyproject() -> None:
     assert naa.__version__ == _pyproject_version()
 
 
-def test_changelog_mentions_the_current_version_as_unreleased() -> None:
+def test_changelog_mentions_the_current_release_version() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "[Unreleased]" in changelog
-    assert "not yet released" in changelog.casefold()
+    assert f"[{_pyproject_version()}]" in changelog

@@ -25,7 +25,7 @@ Nornyx does **not** replace Codex, Claude Code, Cursor, Copilot, CI/CD, or human
 ```bash
 pip install nornyx          # from PyPI
 # or pin from source:
-pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.9.0"
+pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.10.0"
 ```
 
 Requires Python 3.10–3.13. Runtime dependencies: **PyYAML**, **jsonschema**, and **referencing**.
@@ -216,12 +216,16 @@ python examples/agentic_network_support/run_demo.py --out demo_out
 nornyx agentic-network evidence-validate examples/agentic_network_support/support_network.nyx --events demo_out/langgraph_events.json --lock demo_out/nornyx.agentic_network.lock --as-of 2026-07-17T00:00:00Z --strict
 ```
 
-The same contract governs the CrewAI and LangGraph reference adapters
-(`integrations/`, not packaged); AI identities can never approve; sensitive
-categories are never shareable; and the demo runs offline with fake data.
-Nornyx validates declarations and supplied local evidence — it is not an
-agent runtime, MCP runtime, or A2A runtime, and it does not attest runtime
-truth. Start with
+The same contract governs the legacy offline reference adapters and the
+separately distributed `nornyx-agentic-adapters` package. Runtime-events 1.1
+can explicitly distinguish logical operations, repeated occurrences, retries,
+parallel branches, and resumed attempts while retaining exact 1.0 evidence and
+lock compatibility. The supported LangGraph 1.2.2 adapter uses this model for
+synchronous StateGraph nodes; CrewAI synchronous tool coverage remains
+available in the same adapter package. AI identities can never approve and
+sensitive categories are never shareable. Nornyx validates declarations and
+supplied local evidence — it is not an agent runtime, MCP runtime, or A2A
+runtime, and it does not attest runtime truth. Start with
 [docs/agentic-network/00_OVERVIEW.md](docs/agentic-network/00_OVERVIEW.md).
 
 ## Why Nornyx

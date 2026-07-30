@@ -209,7 +209,7 @@ def _agent(role: str, llm: DeterministicLLM) -> Agent:
 def test_metadata_declares_framework_and_pinned_version() -> None:
     assert METADATA.framework_name == FRAMEWORK == "crewai"
     assert METADATA.framework_version_range == "==1.15.4"
-    assert METADATA.nornyx_version_range == ">=1.8,<2"
+    assert METADATA.nornyx_version_range == ">=1.10,<2"
 
 
 def test_coverage_inventory_declares_only_tool_invocation_wrapped() -> None:

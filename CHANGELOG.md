@@ -6,6 +6,28 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-07-30
+
+### Added
+
+- ADR-0042 introduces framework-neutral operation, occurrence, and attempt
+  semantics under runtime-events schema version 1.1. Explicit streams correctly
+  represent retries, loops, parallel branches, interrupted work, resumed work,
+  and exact replay while the exact 1.0 schema remains supported.
+- `RuntimeOccurrence`, occurrence-aware recorder methods,
+  `EvidenceRecorder.for_occurrences`, `max_recorded_attempt`, and validated
+  cumulative `EvidenceRecorder.resume` extend the agentic SPI without changing
+  existing recorder calls.
+
+### Changed
+
+- `SPI_VERSION` advances from 1.0 to 1.1 while retaining major compatibility.
+- New network locks default to runtime-events 1.1. Historical 1.0 locks are
+  reconstructed and verified against their declared schema version rather than
+  being marked stale by the new default.
+- Explicit replay fingerprints ignore transport restamping but include
+  operation/occurrence/attempt identity, and transition state is attempt-scoped.
+
 ## [1.9.0] - 2026-07-30
 
 ### Added

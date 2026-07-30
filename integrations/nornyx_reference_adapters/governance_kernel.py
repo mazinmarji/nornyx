@@ -242,13 +242,20 @@ class GovernanceKernel:
         return event
 
     def events_payload(self) -> dict[str, Any]:
-        return {
+        runtime_schema = self.lock_payload.get("runtime_events_schema", {})
+        schema_version = runtime_schema.get(
+            "version", RUNTIME_EVENTS_SCHEMA_VERSION
+        )
+        payload = {
             "schema": RUNTIME_EVENTS_SCHEMA_ID,
-            "schema_version": RUNTIME_EVENTS_SCHEMA_VERSION,
+            "schema_version": schema_version,
             "network_id": self.network_id,
             "producer": dict(self._producer),
             "events": [dict(event) for event in self._events],
         }
+        if schema_version == "1.1":
+            payload["occurrence_mode"] = "legacy"
+        return payload
 
     def write_events(self, path: str | Path) -> Path:
         import json

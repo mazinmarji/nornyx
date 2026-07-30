@@ -1545,7 +1545,8 @@ def test_golden_single_threaded_stream_is_exact(authz: Authorizer):
     expected_producer = {"type": "synthetic_harness", "id": "tests", "version": "1.0"}
 
     assert stream["schema"] == "nornyx.agentic_runtime_events.v1"
-    assert stream["schema_version"] == "1.0"
+    assert stream["schema_version"] == "1.1"
+    assert stream["occurrence_mode"] == "legacy"
     assert stream["network_id"] == authz.network_id
     assert stream["producer"] == expected_producer
     assert [e["event_type"] for e in stream["events"]] == ["capability_requested", "capability_allowed", "tool_invoked"]
@@ -1570,7 +1571,7 @@ def test_golden_single_threaded_stream_is_exact(authz: Authorizer):
         ensure_ascii=True,
     ).encode("utf-8")
     assert hashlib.sha256(canonical_json).hexdigest() == (
-        "50aaac991b2388725881dce99049892c002c56b6f38d4633c3b1584d7d54445e"
+        "151afa047ddfc160e67348cbc242e59624013ad802c22c6c30fec8fef0ada874"
     )
     # Re-fetching produces a deep-equal, independently-copied stream.
     assert rec.stream() == stream
@@ -1649,9 +1650,9 @@ def test_published_1_8_compatible_schema_valid_builtin_subclass_corpus(
 def test_evidence_recorder_public_contract_constants_and_signatures_are_unchanged():
     from nornyx.agentic import DecisionEventIntent
 
-    assert A.SPI_VERSION == "1.0"
+    assert A.SPI_VERSION == "1.1"
     assert A.RUNTIME_EVENTS_SCHEMA_ID == "nornyx.agentic_runtime_events.v1"
-    assert A.RUNTIME_EVENTS_SCHEMA_VERSION == "1.0"
+    assert A.RUNTIME_EVENTS_SCHEMA_VERSION == "1.1"
     assert str(inspect.signature(EvidenceRecorder)) == (
         "(authorizer: 'Authorizer', context: 'EvaluationContext', *, "
         "producer_id: 'str', producer_version: 'str' = '1.0', "
@@ -2400,7 +2401,14 @@ def test_stream_output_omits_sequences(authz: Authorizer):
     rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
     rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local")
     stream = rec.stream()
-    assert set(stream.keys()) == {"schema", "schema_version", "network_id", "producer", "events"}
+    assert set(stream.keys()) == {
+        "schema",
+        "schema_version",
+        "occurrence_mode",
+        "network_id",
+        "producer",
+        "events",
+    }
     assert "sequences" not in stream
     assert "_sequences" not in stream
 

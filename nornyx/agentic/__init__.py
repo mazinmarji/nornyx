@@ -66,6 +66,7 @@ from .authz import (
     HandoffRequest,
     IdentityResolutionCode,
     IdentityResolutionError,
+    RuntimeOccurrence,
     ZoneCrossingRequest,
     load_authorizer,
 )
@@ -116,5 +117,6 @@ __all__ = [
     "DecisionCode",
     "AuthorizerLoadError",
     "IdentityResolutionError",
+    "RuntimeOccurrence",
     "EvidenceRecorder",
 ]
