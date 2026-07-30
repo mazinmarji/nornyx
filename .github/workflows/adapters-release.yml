@@ -68,6 +68,7 @@ jobs:
           if [[ "$tag" =~ ^adapters-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             tag_version="${BASH_REMATCH[1]}"
             pkg_version="$(grep -m1 -E '^version[[:space:]]*=' adapters/nornyx-agentic-adapters/pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
+            pkg_version="${pkg_version%$'\r'}"
             if [[ "$tag_version" == "$pkg_version" ]]; then
               echo "eligible=true" >> "$GITHUB_OUTPUT"
             else

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import gc
+import hashlib
+import inspect
+import json
+import math
 import threading
+import weakref
 from collections.abc import Mapping as _AbcMapping
 from pathlib import Path
 from typing import Any
@@ -669,8 +675,8 @@ def test_recorder_rejects_unknown_producer_type(authz: Authorizer):
 class _CallbackTripwire(str):
     """A ``str`` subclass whose dunders raise if the recorder ever invokes them.
 
-    Proves exact-type validation rejects the subclass before any of these
-    caller-controlled methods executes.
+    The recorder must accept and canonicalize this value through ``str.__str__``
+    without dispatching to any override below.
     """
 
     def __hash__(self):  # pragma: no cover - must never run
@@ -678,6 +684,9 @@ class _CallbackTripwire(str):
 
     def __eq__(self, other):  # pragma: no cover - must never run
         raise AssertionError("__eq__ must not be invoked on a rejected value")
+
+    def __ne__(self, other):  # pragma: no cover - must never run
+        raise AssertionError("__ne__ must not be invoked on a rejected value")
 
     def __format__(self, spec):  # pragma: no cover - must never run
         raise AssertionError("__format__ must not be invoked on a rejected value")
@@ -689,41 +698,193 @@ class _CallbackTripwire(str):
         raise AssertionError("__repr__ must not be invoked on a rejected value")
 
 
-def test_str_subclass_mission_id_rejected_before_dunders_run(authz: Authorizer):
+def test_str_subclass_mission_id_canonicalizes_on_both_public_paths(authz: Authorizer):
     context = ctx()
     d = authz.evaluate(CapabilityRequest("identity.researcher.local", "read_governed_context"), context=context)
     rec = EvidenceRecorder(authz, context, producer_id="tests", producer_type="synthetic_harness")
     hostile = _CallbackTripwire("GOAL-001")
-    with pytest.raises(TypeError):
-        rec.record_decision(d, mission_id=hostile)
-    with pytest.raises(TypeError):
-        rec.record_observation("tool_invoked", mission_id=hostile, actor_ref="identity.researcher.local")
-    assert rec.stream()["events"] == []
+    rec.record_decision(d, mission_id=hostile)
+    rec.record_observation("tool_invoked", mission_id=hostile, actor_ref="identity.researcher.local")
+
+    assert list(rec._sequences) == ["GOAL-001"]
+    assert type(next(iter(rec._sequences))) is str
+    for event in rec.stream()["events"]:
+        assert event["mission_id"] == "GOAL-001"
+        assert type(event["mission_id"]) is str
 
 
-@pytest.mark.parametrize("field", ["producer_id", "producer_version", "producer_type"])
-def test_str_subclass_producer_field_rejected_before_dunders_run(authz: Authorizer, field: str):
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param("café-雪-U0001f680", id="unicode"),
+        pytest.param("surrogate-\ud800-edge", id="lone-surrogate"),
+    ],
+)
+def test_str_subclass_unicode_and_surrogate_code_points_are_preserved(
+    authz: Authorizer, source: str
+):
+    rec = EvidenceRecorder(
+        authz,
+        ctx(),
+        producer_id=_CallbackTripwire(source),
+        producer_type="synthetic_harness",
+    )
+    rec.record_observation(
+        "tool_invoked",
+        mission_id=_CallbackTripwire(source),
+        actor_ref=_CallbackTripwire(source),
+    )
+    stream = rec.stream()
+    event = stream["events"][0]
+    assert stream["producer"]["id"] == source
+    assert event["mission_id"] == source
+    assert event["actor_ref"] == source
+    assert type(stream["producer"]["id"]) is str
+    assert type(event["mission_id"]) is str
+    assert type(event["actor_ref"]) is str
+
+
+@pytest.mark.parametrize(
+    "field, stored_key",
+    [("producer_id", "id"), ("producer_version", "version"), ("producer_type", "type")],
+)
+def test_str_subclass_producer_fields_canonicalize_without_callbacks(
+    authz: Authorizer, field: str, stored_key: str
+):
     kwargs = {"producer_id": "p", "producer_version": "1.0", "producer_type": "framework_adapter"}
     kwargs[field] = _CallbackTripwire(kwargs[field])
-    with pytest.raises(TypeError):
-        EvidenceRecorder(authz, ctx(), **kwargs)
+    rec = EvidenceRecorder(authz, ctx(), **kwargs)
+    assert type(rec._producer[stored_key]) is str
+    assert rec._producer[stored_key] == str.__str__(kwargs[field])
 
 
-def test_str_subclass_event_type_rejected_before_dunders_run(authz: Authorizer):
+def test_recorder_canonicalizes_evaluation_context_without_callbacks(
+    authz: Authorizer,
+):
+    original_context = EvaluationContext(
+        decision_at=_CallbackTripwire(AS_OF),
+        observed_subject_revision=_CallbackTripwire(REVISION),
+    )
+
+    recorder = EvidenceRecorder(
+        authz,
+        original_context,
+        producer_id="tests",
+        producer_type="synthetic_harness",
+    )
+    recorder.record_observation(
+        "tool_invoked",
+        mission_id="mission-ctx",
+        status="ready",
+    )
+
+    assert recorder._context is not original_context
+    assert type(recorder._context.decision_at) is str
+    assert type(recorder._context.observed_subject_revision) is str
+    assert recorder._context.decision_at == AS_OF
+    assert recorder._context.observed_subject_revision == REVISION
+    assert type(recorder._events[0]["timestamp"]) is str
+    stream = recorder.stream()
+    assert type(stream["events"][0]["timestamp"]) is str
+    assert stream["events"][0]["timestamp"] == AS_OF
+
+
+def test_recorder_rejects_canonical_context_revision_mismatch_without_state(
+    authz: Authorizer,
+):
+    recorder = object.__new__(EvidenceRecorder)
+    bad_context = EvaluationContext(
+        decision_at=_CallbackTripwire(AS_OF),
+        observed_subject_revision=_CallbackTripwire("git:" + ("f" * 40)),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="observed_subject_revision does not match the contract subject_revision",
+    ):
+        EvidenceRecorder.__init__(
+            recorder,
+            authz,
+            bad_context,
+            producer_id="tests",
+            producer_type="synthetic_harness",
+        )
+
+    assert recorder.__dict__ == {}
+
+
+def test_canonical_context_preserves_exact_plain_event_content(authz: Authorizer):
+    plain = EvidenceRecorder(
+        authz,
+        ctx(),
+        producer_id="tests",
+        producer_type="synthetic_harness",
+    )
+    subclassed = EvidenceRecorder(
+        authz,
+        EvaluationContext(
+            decision_at=_CallbackTripwire(AS_OF),
+            observed_subject_revision=_CallbackTripwire(REVISION),
+        ),
+        producer_id="tests",
+        producer_type="synthetic_harness",
+    )
+
+    for recorder in (plain, subclassed):
+        recorder.record_observation(
+            "tool_invoked",
+            mission_id="mission-ctx",
+            status="ready",
+            count=0,
+        )
+
+    assert subclassed.stream() == plain.stream()
+
+
+def test_str_subclass_event_types_canonicalize_on_observation_and_intent_paths(
+    authz: Authorizer,
+):
+    from nornyx.agentic import DecisionEventIntent
+
     rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
-    with pytest.raises(TypeError):
-        rec.record_observation(_CallbackTripwire("tool_invoked"), mission_id="GOAL-001")
-    assert rec.stream()["events"] == []
+    rec.record_observation(
+        _CallbackTripwire("agent_invoked"),
+        mission_id="GOAL-001",
+        actor_ref="identity.researcher.local",
+    )
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(
+            DecisionEventIntent(
+                _CallbackTripwire("capability_requested"),
+                {
+                    "actor_ref": "identity.researcher.local",
+                    "capability_ref": "read_governed_context",
+                },
+            ),
+        ),
+    )
+    rec.record_decision(fake, mission_id="GOAL-002")
+    events = rec.stream()["events"]
+    assert [event["event_type"] for event in events] == [
+        "agent_invoked",
+        "capability_requested",
+    ]
+    assert all(type(event["event_type"]) is str for event in events)
 
 
 class _KeyTripwire:
-    """A non-``str`` object whose ``__repr__``/``__hash__`` raise if ever invoked."""
+    """A non-``str`` object whose rendering/comparison hooks must not run."""
 
     def __repr__(self):  # pragma: no cover - must never run
         raise AssertionError("__repr__ must not be invoked on a rejected field key")
 
     def __hash__(self):  # pragma: no cover - must never run
         raise AssertionError("__hash__ must not be invoked on a rejected field key")
+
+    def __eq__(self, other):  # pragma: no cover - must never run
+        raise AssertionError("__eq__ must not be invoked on a rejected field key")
 
 
 class _HostileFieldMapping(_AbcMapping):
@@ -793,30 +954,412 @@ def test_rejected_intent_field_key_causes_no_partial_mutation(authz: Authorizer)
     assert rec.stream()["events"][0]["sequence"] == 1
 
 
-class _ListSubclass(list):
-    """A ``list`` subclass; the restricted copier accepts only exact ``list``."""
+class _HostileInt(int):
+    def __int__(self):  # pragma: no cover - must never run
+        raise AssertionError("__int__ must not be invoked")
+
+    def __index__(self):  # pragma: no cover - must never run
+        raise AssertionError("__index__ must not be invoked")
+
+    def __float__(self):  # pragma: no cover - must never run
+        raise AssertionError("__float__ must not be invoked")
+
+    def __repr__(self):  # pragma: no cover - must never run
+        raise AssertionError("__repr__ must not be invoked")
 
 
-class _DictSubclass(dict):
-    """A ``dict`` subclass; the restricted copier accepts only exact ``dict``."""
+class _HostileFloat(float):
+    def __float__(self):  # pragma: no cover - must never run
+        raise AssertionError("__float__ must not be invoked")
+
+    def __int__(self):  # pragma: no cover - must never run
+        raise AssertionError("__int__ must not be invoked")
+
+    def __repr__(self):  # pragma: no cover - must never run
+        raise AssertionError("__repr__ must not be invoked")
+
+
+class _HostileList(list):
+    def __iter__(self):  # pragma: no cover - must never run
+        raise AssertionError("list subclass __iter__ must not be invoked")
+
+    def __getitem__(self, key):  # pragma: no cover - must never run
+        raise AssertionError("list subclass __getitem__ must not be invoked")
+
+    def __reduce__(self):  # pragma: no cover - must never run
+        raise AssertionError("list subclass __reduce__ must not be invoked")
+
+    def __reduce_ex__(self, protocol):  # pragma: no cover - must never run
+        raise AssertionError("list subclass __reduce_ex__ must not be invoked")
+
+    def __getstate__(self):  # pragma: no cover - must never run
+        raise AssertionError("list subclass __getstate__ must not be invoked")
+
+    def __deepcopy__(self, memo):  # pragma: no cover - must never run
+        raise AssertionError("list subclass __deepcopy__ must not be invoked")
+
+
+class _HostileTuple(tuple):
+    def __iter__(self):  # pragma: no cover - must never run
+        raise AssertionError("tuple subclass __iter__ must not be invoked")
+
+    def __getitem__(self, key):  # pragma: no cover - must never run
+        raise AssertionError("tuple subclass __getitem__ must not be invoked")
+
+    def __reduce__(self):  # pragma: no cover - must never run
+        raise AssertionError("tuple subclass __reduce__ must not be invoked")
+
+    def __reduce_ex__(self, protocol):  # pragma: no cover - must never run
+        raise AssertionError("tuple subclass __reduce_ex__ must not be invoked")
+
+    def __getstate__(self):  # pragma: no cover - must never run
+        raise AssertionError("tuple subclass __getstate__ must not be invoked")
+
+    def __deepcopy__(self, memo):  # pragma: no cover - must never run
+        raise AssertionError("tuple subclass __deepcopy__ must not be invoked")
+
+
+class _HostileDict(dict):
+    def items(self):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass items must not be invoked")
+
+    def keys(self):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass keys must not be invoked")
+
+    def __iter__(self):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass __iter__ must not be invoked")
+
+    def __getitem__(self, key):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass __getitem__ must not be invoked")
+
+    def __reduce__(self):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass __reduce__ must not be invoked")
+
+    def __reduce_ex__(self, protocol):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass __reduce_ex__ must not be invoked")
+
+    def __getstate__(self):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass __getstate__ must not be invoked")
+
+    def __deepcopy__(self, memo):  # pragma: no cover - must never run
+        raise AssertionError("dict subclass __deepcopy__ must not be invoked")
 
 
 class _Unsupported:
     """A plain object of a type the restricted copier does not recognize at all."""
 
 
-def test_detach_plain_rejects_container_subclasses(authz: Authorizer):
+def test_scalar_subclasses_canonicalize_to_exact_values_without_callbacks(authz: Authorizer):
     rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
-    with pytest.raises(TypeError):
-        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_ListSubclass(["a"]))
-    assert rec.stream()["events"] == []
+    rec.record_observation(
+        "tool_invoked",
+        mission_id="GOAL-001",
+        actor_ref="identity.researcher.local",
+        payload=[
+            _HostileInt(2**100),
+            _HostileInt(-987654321),
+            _HostileFloat(12.5),
+            _HostileFloat(-0.0),
+        ],
+    )
+    values = rec.stream()["events"][0]["payload"]
+    assert values == [2**100, -987654321, 12.5, -0.0]
+    assert [type(value) for value in values] == [int, int, float, float]
+    assert math.copysign(1.0, values[-1]) == -1.0
 
 
-def test_detach_plain_rejects_dict_subclass(authz: Authorizer):
+def test_builtin_container_subclasses_canonicalize_recursively_without_callbacks(
+    authz: Authorizer,
+):
+    source = _HostileDict(
+        payload=_HostileList(
+            [
+                _HostileTuple((_CallbackTripwire("text"), _HostileInt(7))),
+                _HostileDict(nested=_HostileFloat(1.5)),
+            ]
+        )
+    )
     rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
-    with pytest.raises(TypeError):
-        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", payload=_DictSubclass(a="b"))
+    rec.record_observation(
+        "tool_invoked",
+        mission_id="GOAL-001",
+        actor_ref="identity.researcher.local",
+        payload=source,
+    )
+    value = rec.stream()["events"][0]["payload"]
+    assert type(value) is dict
+    assert type(next(iter(value))) is str
+    assert type(value["payload"]) is list
+    assert type(value["payload"][0]) is list
+    assert type(value["payload"][0][0]) is str
+    assert type(value["payload"][0][1]) is int
+    assert type(value["payload"][1]) is dict
+    assert type(value["payload"][1]["nested"]) is float
+
+
+def test_dict_subclass_intent_fields_bypass_overridden_items(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    fields = _HostileDict(
+        actor_ref="identity.researcher.local",
+        capability_ref="read_governed_context",
+    )
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(DecisionEventIntent("capability_requested", fields),),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(fake, mission_id="GOAL-001")
+    event = rec.stream()["events"][0]
+    assert event["actor_ref"] == "identity.researcher.local"
+    assert event["capability_ref"] == "read_governed_context"
+
+
+def test_string_subclass_mapping_keys_canonicalize_to_exact_strings(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    fields = _HostileFieldMapping(
+        [
+            (_CallbackTripwire("actor_ref"), _CallbackTripwire("identity.researcher.local")),
+            (_CallbackTripwire("capability_ref"), _CallbackTripwire("read_governed_context")),
+        ]
+    )
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(DecisionEventIntent("capability_requested", fields),),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    rec.record_decision(fake, mission_id="GOAL-001")
+    event = rec.stream()["events"][0]
+    assert event["actor_ref"] == "identity.researcher.local"
+    assert event["capability_ref"] == "read_governed_context"
+    assert all(type(key) is str for key in event)
+    assert type(event["actor_ref"]) is str
+    assert type(event["capability_ref"]) is str
+
+
+def test_canonical_string_key_collision_fails_before_mutation(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    fields = _HostileFieldMapping(
+        [
+            (_CallbackTripwire("actor_ref"), "first"),
+            (_CallbackTripwire("actor_ref"), "second"),
+        ]
+    )
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(DecisionEventIntent("capability_requested", fields),),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(ValueError, match="collide after string canonicalization"):
+        rec.record_decision(fake, mission_id="GOAL-001")
     assert rec.stream()["events"] == []
+    rec.record_observation(
+        "tool_invoked",
+        mission_id="GOAL-001",
+        actor_ref="identity.researcher.local",
+    )
+    assert rec.stream()["events"][0]["sequence"] == 1
+
+
+class _AuditedMapping(_AbcMapping):
+    """One-shot general Mapping used to observe the intentional callback boundary."""
+
+    def __init__(self, recorder: EvidenceRecorder, pairs):
+        self.recorder = recorder
+        self.pairs = list(pairs)
+        self.items_calls = 0
+        self.lock_was_available = False
+
+    def items(self):
+        self.items_calls += 1
+        assert self.items_calls == 1, "general Mapping must be materialized once"
+        self.lock_was_available = self.recorder._lock.acquire(blocking=False)
+        assert self.lock_was_available, "Mapping callback must run outside recorder lock"
+        self.recorder._lock.release()
+        return iter(self.pairs)
+
+    def __getitem__(self, key):  # pragma: no cover - items() is the boundary
+        raise AssertionError("__getitem__ must not be used after items()")
+
+    def __iter__(self):  # pragma: no cover - items() is the boundary
+        raise AssertionError("__iter__ must not be used after items()")
+
+    def __len__(self):  # pragma: no cover - items() is the boundary
+        raise AssertionError("__len__ must not be used after items()")
+
+
+def test_general_mapping_materializes_once_outside_lock_and_is_not_retained(
+    authz: Authorizer,
+):
+    from nornyx.agentic import DecisionEventIntent
+
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    fields = _AuditedMapping(
+        rec,
+        [
+            ("actor_ref", "identity.researcher.local"),
+            ("capability_ref", "read_governed_context"),
+        ],
+    )
+    source_ref = weakref.ref(fields)
+    intent = DecisionEventIntent("capability_requested", fields)
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(intent,),
+    )
+    rec.record_decision(fake, mission_id="GOAL-001")
+    assert fields.items_calls == 1
+    assert fields.lock_was_available
+    event = rec.stream()["events"][0]
+    assert event["actor_ref"] == "identity.researcher.local"
+    del fake, intent, fields
+    gc.collect()
+    assert source_ref() is None
+
+
+class _ExplodingMapping(_AbcMapping):
+    def items(self):
+        raise RuntimeError("mapping callback failed")
+
+    def __getitem__(self, key):  # pragma: no cover - items() fails first
+        raise AssertionError
+
+    def __iter__(self):  # pragma: no cover - items() fails first
+        raise AssertionError
+
+    def __len__(self):  # pragma: no cover - items() fails first
+        raise AssertionError
+
+
+def test_general_mapping_exception_leaves_current_call_state_unchanged(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(
+            DecisionEventIntent(
+                "capability_requested",
+                {
+                    "actor_ref": "identity.researcher.local",
+                    "capability_ref": "read_governed_context",
+                },
+            ),
+            DecisionEventIntent("capability_allowed", _ExplodingMapping()),
+        ),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(RuntimeError, match="mapping callback failed"):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    assert rec._events == []
+    assert rec._sequences == {}
+
+
+def test_second_intent_canonicalization_failure_rolls_back_entire_batch(authz: Authorizer):
+    from nornyx.agentic import DecisionEventIntent
+
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(
+            DecisionEventIntent(
+                "capability_requested",
+                {
+                    "actor_ref": "identity.researcher.local",
+                    "capability_ref": "read_governed_context",
+                },
+            ),
+            DecisionEventIntent("capability_allowed", {"payload": _HostileFloat(float("nan"))}),
+        ),
+    )
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    with pytest.raises(ValueError, match="must be finite"):
+        rec.record_decision(fake, mission_id="GOAL-001")
+    assert rec._events == []
+    assert rec._sequences == {}
+
+
+class _KwargKey(str):
+    def __new__(cls, value: str):
+        instance = super().__new__(cls, value)
+        instance.hash_calls = 0
+        instance.eq_calls = 0
+        return instance
+
+    def __hash__(self):
+        self.hash_calls += 1
+        return str.__hash__(self)
+
+    def __eq__(self, other):
+        self.eq_calls += 1
+        return str.__eq__(self, other)
+
+    def __str__(self):  # pragma: no cover - recorder must use str.__str__
+        raise AssertionError("keyword key __str__ must not be invoked")
+
+    def __repr__(self):  # pragma: no cover - must not be rendered
+        raise AssertionError("keyword key __repr__ must not be invoked")
+
+    def __format__(self, spec):  # pragma: no cover - must not be formatted
+        raise AssertionError("keyword key __format__ must not be invoked")
+
+
+class _KwargSource:
+    """Tracks callbacks that Python performs while expanding ``**fields``."""
+
+    def __init__(self, key: _KwargKey, value: str):
+        self.key = key
+        self.value = value
+        self.keys_calls = 0
+        self.getitem_calls = 0
+
+    def keys(self):
+        self.keys_calls += 1
+        return [self.key]
+
+    def __getitem__(self, key):
+        self.getitem_calls += 1
+        assert key is self.key
+        return self.value
+
+    def counters(self) -> tuple[int, int, int, int]:
+        return (
+            self.keys_calls,
+            self.getitem_calls,
+            self.key.hash_calls,
+            self.key.eq_calls,
+        )
+
+
+def test_observation_kwargs_callbacks_happen_before_recorder_entry(
+    authz: Authorizer, monkeypatch
+):
+    import nornyx.agentic.authz as authz_impl
+
+    rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
+    source = _KwargSource(_KwargKey("actor_ref"), "identity.researcher.local")
+    observed_at_materialization: list[tuple[int, int, int, int]] = []
+    original = authz_impl._materialize_fields
+
+    def observe_entry(fields):
+        observed_at_materialization.append(source.counters())
+        return original(fields)
+
+    monkeypatch.setattr(authz_impl, "_materialize_fields", observe_entry)
+    rec.record_observation("tool_invoked", mission_id="GOAL-001", **source)
+
+    assert observed_at_materialization == [source.counters()]
+    assert source.keys_calls == 1
+    assert source.getitem_calls == 1
+    event = rec.stream()["events"][0]
+    assert event["actor_ref"] == "identity.researcher.local"
+    assert type(next(key for key in event if key == "actor_ref")) is str
 
 
 @pytest.mark.parametrize(
@@ -828,6 +1371,9 @@ def test_detach_plain_rejects_dict_subclass(authz: Authorizer):
         pytest.param(float("nan"), id="nan"),
         pytest.param(float("inf"), id="infinity"),
         pytest.param(float("-inf"), id="negative-infinity"),
+        pytest.param(_HostileFloat(float("nan")), id="float-subclass-nan"),
+        pytest.param(_HostileFloat(float("inf")), id="float-subclass-infinity"),
+        pytest.param(_HostileFloat(float("-inf")), id="float-subclass-negative-infinity"),
     ],
 )
 def test_unsupported_or_non_finite_field_value_rejected_before_mutation(authz: Authorizer, bad_value):
@@ -1017,10 +1563,109 @@ def test_golden_single_threaded_stream_is_exact(authz: Authorizer):
     assert stream["events"][0]["capability_ref"] == "read_governed_context"
     assert stream["events"][1]["policy_decision"] == "allow"
     assert stream["events"][2]["capability_ref"] == "read_governed_context"
+    canonical_json = json.dumps(
+        stream,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    assert hashlib.sha256(canonical_json).hexdigest() == (
+        "50aaac991b2388725881dce99049892c002c56b6f38d4633c3b1584d7d54445e"
+    )
     # Re-fetching produces a deep-equal, independently-copied stream.
     assert rec.stream() == stream
     assert rec.stream() is not stream
     assert rec.stream()["events"] is not stream["events"]
+
+
+def test_published_1_8_compatible_schema_valid_builtin_subclass_corpus(
+    authz: Authorizer,
+):
+    """Hermetic category-A corpus: supported by annotations and runtime schema."""
+    from nornyx.agentic import DecisionEventIntent
+
+    requested_fields = _HostileFieldMapping(
+        [
+            (_CallbackTripwire("actor_ref"), _CallbackTripwire("identity.researcher.local")),
+            (_CallbackTripwire("capability_ref"), _CallbackTripwire("read_governed_context")),
+        ]
+    )
+    allowed_fields = _HostileDict(
+        actor_ref=_CallbackTripwire("identity.researcher.local"),
+        capability_ref=_CallbackTripwire("read_governed_context"),
+        policy_decision=_CallbackTripwire("allow"),
+    )
+    fake = Decision(
+        DecisionEffect.ALLOW,
+        DecisionCode.ALLOWED,
+        event_intents=(
+            DecisionEventIntent(_CallbackTripwire("capability_requested"), requested_fields),
+            DecisionEventIntent(_CallbackTripwire("capability_allowed"), allowed_fields),
+        ),
+    )
+    rec = EvidenceRecorder(
+        authz,
+        ctx(),
+        producer_id=_CallbackTripwire("tests"),
+        producer_version=_CallbackTripwire("1.0"),
+        producer_type=_CallbackTripwire("synthetic_harness"),
+    )
+    mission_id = _CallbackTripwire("GOAL-001")
+    rec.record_decision(fake, mission_id=mission_id)
+    rec.record_observation(
+        _CallbackTripwire("tool_invoked"),
+        mission_id=mission_id,
+        actor_ref=_CallbackTripwire("identity.researcher.local"),
+        capability_ref=_CallbackTripwire("read_governed_context"),
+        approver=_HostileDict(
+            role=_CallbackTripwire("network_governance_owner"),
+            actor_type=_CallbackTripwire("human"),
+        ),
+        share_categories=_HostileList([_CallbackTripwire("telemetry")]),
+        depends_on=_HostileTuple(()),
+    )
+
+    stream = rec.stream()
+    report = rec.validate()
+    assert report["status"] == "pass", report["diagnostics"]
+
+    def assert_exact_plain(value: Any) -> None:
+        if value is None or type(value) in (bool, str, int, float):
+            return
+        if type(value) is list:
+            for item in value:
+                assert_exact_plain(item)
+            return
+        assert type(value) is dict
+        for key, item in value.items():
+            assert type(key) is str
+            assert_exact_plain(item)
+
+    assert_exact_plain(stream)
+    assert list(rec._sequences) == ["GOAL-001"]
+    assert type(next(iter(rec._sequences))) is str
+
+
+def test_evidence_recorder_public_contract_constants_and_signatures_are_unchanged():
+    from nornyx.agentic import DecisionEventIntent
+
+    assert A.SPI_VERSION == "1.0"
+    assert A.RUNTIME_EVENTS_SCHEMA_ID == "nornyx.agentic_runtime_events.v1"
+    assert A.RUNTIME_EVENTS_SCHEMA_VERSION == "1.0"
+    assert str(inspect.signature(EvidenceRecorder)) == (
+        "(authorizer: 'Authorizer', context: 'EvaluationContext', *, "
+        "producer_id: 'str', producer_version: 'str' = '1.0', "
+        "producer_type: 'str' = 'framework_adapter') -> 'None'"
+    )
+    assert str(inspect.signature(EvidenceRecorder.record_observation)) == (
+        "(self, event_type: 'str', *, mission_id: 'str', **fields: 'Any') -> 'None'"
+    )
+    assert str(inspect.signature(EvidenceRecorder.record_decision)) == (
+        "(self, decision: 'Decision', *, mission_id: 'str') -> 'None'"
+    )
+    assert str(inspect.signature(DecisionEventIntent)) == (
+        "(event_type: 'str', fields: 'Mapping[str, Any]') -> None"
+    )
 
 
 def test_concurrent_record_observation_produces_unique_sequences(authz: Authorizer):
@@ -1255,11 +1900,8 @@ def test_distinct_dag_nodes_in_one_mission_do_not_trigger_replay(authz: Authoriz
 @pytest.mark.parametrize(
     "attempt",
     [
-        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id=_CallbackTripwire("m"), actor_ref="a"), id="hostile-mission-id"),
-        pytest.param(lambda rec: rec.record_observation(_CallbackTripwire("tool_invoked"), mission_id="m", actor_ref="a"), id="hostile-event-type"),
         pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload={1, 2}), id="set-value"),
-        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=_ListSubclass(["a"])), id="list-subclass"),
-        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=_DictSubclass(a="b")), id="dict-subclass"),
+        pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=_Unsupported()), id="custom-object"),
         pytest.param(lambda rec: rec.record_observation("tool_invoked", mission_id="m", payload=float("nan")), id="nan"),
         pytest.param(lambda rec: rec.record_observation("bogus_event_type", mission_id="m"), id="unknown-event-type"),
     ],
@@ -1672,15 +2314,20 @@ def test_stream_snapshot_holds_lock_for_its_duration(authz: Authorizer, monkeypa
 
 
 # ===================================== ADR-0041: F-05 coverage additions =====================================
-def test_hostile_str_subclass_as_field_value_rejected_without_callbacks(authz: Authorizer):
-    """A hostile str subclass used as an event FIELD VALUE (not a scalar
-    argument like mission_id) must be rejected without invoking any of its
-    overridden dunders."""
+def test_hostile_str_subclass_as_field_value_canonicalizes_without_callbacks(
+    authz: Authorizer,
+):
     rec = EvidenceRecorder(authz, ctx(), producer_id="tests", producer_type="synthetic_harness")
     hostile_value = _CallbackTripwire("read_governed_context")
-    with pytest.raises(TypeError):
-        rec.record_observation("tool_invoked", mission_id="GOAL-001", actor_ref="identity.researcher.local", capability_ref=hostile_value)
-    assert rec.stream()["events"] == []
+    rec.record_observation(
+        "tool_invoked",
+        mission_id="GOAL-001",
+        actor_ref="identity.researcher.local",
+        capability_ref=hostile_value,
+    )
+    value = rec.stream()["events"][0]["capability_ref"]
+    assert value == "read_governed_context"
+    assert type(value) is str
 
 
 class _CallbackTripwireContainer:

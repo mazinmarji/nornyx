@@ -14,15 +14,32 @@ def test_manifest_current_validation_is_fresh() -> None:
     manifest = load_manifest()
     validation = manifest["current_validation"]
 
-    assert manifest["version"] == __version__
+    assert manifest["version"] == __version__ == "1.9.0"
     assert manifest["language_version"] == "1.0.0"
-    assert manifest["updated_for"] == "1.7.0-agentic-network-release"
-    assert validation["goal"] == "1.7.0-release"
-    assert validation["date"] == "2026-07-20"
-    assert "merged" in validation["test_result"]
+    assert manifest["updated_for"] == f"{__version__}-release-candidate"
+    assert validation["goal"] == f"{__version__}-release-candidate"
+    assert validation["date"] == "2026-07-30"
+    assert validation["test_command"] == "python -m pytest -q"
+    assert validation["package_publication"] == "1.8.0"
     assert validation["release_check"]["blocked"] == 0
     assert validation["stable_language_check"]["blocked"] == 0
-    assert "AN-006" in validation["pmo_audit"]
+
+    test_result = validation["test_result"]
+    for marker in (
+        "1566 passed",
+        "48 skipped",
+        "CPython 3.10-3.13",
+        "core build",
+        "installed-wheel",
+        "adapter",
+    ):
+        assert marker in test_result
+
+    current_validation = json.dumps(validation, sort_keys=True)
+    assert "1.7.0-release" not in current_validation
+    assert "1.7.0-agentic-network-release" not in current_validation
+    assert validation["package_publication"] != "1.7.0"
+    assert "Pending final" not in current_validation
 
 
 def test_manifest_has_no_build_provenance() -> None:

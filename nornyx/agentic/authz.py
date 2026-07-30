@@ -117,56 +117,50 @@ def _thaw(value: Any) -> Any:
     return value
 
 
-# --------------------------------------------------------- restricted exact-type copier
+# ---------------------------------------------------- restricted builtin canonicalizer
 # Evidence-recorder callers (adapters, and any caller constructing Decision /
-# DecisionEventIntent objects directly) are untrusted. ADR-0041: field values and
-# keys admitted into recorded evidence must be restricted to builtin scalar and
-# container types checked by EXACT type identity, never ``isinstance`` — a
-# subclass of ``str``/``dict``/``list``/... can override ``__hash__``, ``__eq__``,
-# ``__format__``, ``__str__``, ``__repr__``, ``__iter__``, ``keys``,
-# ``__deepcopy__``, ``__reduce__``, or ``__getstate__`` to run caller-controlled
-# code the moment the recorder touches the object. Rejecting by exact type,
-# before any such method is invoked, keeps the recorder's locked section free of
-# caller-controlled callbacks. Type-rejection error messages here never
-# interpolate or expose the rejected value (no ``str()``/``repr()``/``format()``
-# on caller input); they report only the generic allowed-type contract, not a
-# structural field path (no path is threaded through the recursive calls).
+# DecisionEventIntent objects directly) are untrusted. ADR-0041: field values
+# and keys admitted into recorded evidence must become exact plain builtins
+# before lock acquisition or state use. Supported builtin subclasses are read
+# only through explicitly invoked base-type operations such as
+# ``str.__str__(value)`` and ``list.__iter__(value)``. These bypass subclass
+# overrides while preserving the underlying builtin value. Type-rejection
+# errors never interpolate or expose caller input.
 #
-# The permitted set is exactly: None; exact bool; exact int; exact, finite
-# float; exact str; exact dict with exact str keys; exact list; exact tuple
-# (normalized to list — the runtime-events schema has no separate "tuple"
-# concept, so both sequence literals collapse to the one JSON-array shape).
-# set/frozenset are REJECTED, not normalized: silently picking an iteration
-# order for an unordered collection would be a silent behavior decision this
-# recorder does not make on the caller's behalf.
+# The permitted set is: None; bool; int; finite float; str; dict with str keys;
+# list; and tuple (normalized to list because the runtime-events schema has no
+# separate tuple concept). Exact values and subclasses are accepted, but
+# subclasses are never retained. set/frozenset remain rejected rather than
+# receiving an arbitrary ordering.
 _DETACH_PLAIN_MAX_DEPTH = 8
 
 
-def _require_exact_str(value: Any, field: str) -> str:
-    """Fail closed unless ``value`` is exactly ``str`` (never a subclass).
+def _canonical_str(value: Any, field: str) -> str:
+    """Return an exact builtin ``str`` without invoking subclass overrides.
 
-    Uses only ``type(value) is str`` — an identity check on the object header —
-    so no method on ``value`` is ever invoked, even for a hostile subclass.
+    ``field`` is an internal static label. Rejection messages never render the
+    caller value. The unbound base implementation bypasses overridden string,
+    representation, formatting, hash, and equality methods.
     """
-    if type(value) is not str:
-        raise TypeError(f"{field} must be exactly built-in str; subclasses and other types are rejected.")
-    return value
+    if type(value) is str:
+        return value
+    if isinstance(value, str):
+        canonical = str.__str__(value)
+        if type(canonical) is str:
+            return canonical
+        raise TypeError(f"{field} could not be canonicalized to built-in str.")
+    raise TypeError(f"{field} must be built-in str or a str subclass.")
 
 
 def _detach_plain(value: Any, *, _depth: int = 0) -> Any:
-    """Restricted, exact-type-only recursive copy of a plain evidence value.
+    """Canonicalize a supported evidence value to exact plain builtins.
 
-    Accepts only: ``None``; exact ``bool``; exact ``int``; exact, finite
-    ``float`` (``NaN``/``Infinity`` are rejected — the runtime-events schema is
-    JSON, which has no representation for them); exact ``str``; exact ``dict``
-    with exact ``str`` keys; exact ``list``; exact ``tuple`` (normalized to
-    ``list`` in the returned copy). ``set``/``frozenset`` are rejected, not
-    normalized. Everything else — including subclasses of any accepted type —
-    is rejected fail-closed with a ``TypeError`` naming the allowed-type
-    contract, never the rejected value and never a structural field path (no
-    path is threaded through the recursive calls). Self-referential containers
-    fail closed with ``ValueError`` once ``_DETACH_PLAIN_MAX_DEPTH`` is exceeded, rather
-    than recursing unboundedly.
+    Supported builtin subclasses are consumed only through unbound base-type
+    operations. Tuple values normalize to exact lists. Mapping keys must be
+    strings; string subclasses become exact strings, and canonical-key
+    collisions fail closed instead of silently overwriting one source entry.
+    Unsupported objects, unordered collections, non-finite floats, excessive
+    nesting, and self-reference remain rejected without rendering caller data.
 
     This function serves two roles: (1) validating and detaching untrusted
     caller-supplied field values at record time (where rejection is a real,
@@ -187,20 +181,78 @@ def _detach_plain(value: Any, *, _depth: int = 0) -> Any:
         if not math.isfinite(value):
             raise ValueError("evidence float values must be finite (NaN/Infinity are rejected).")
         return value
-    if kind is dict:
+    if isinstance(value, str):
+        canonical = str.__str__(value)
+        if type(canonical) is not str:
+            raise TypeError("evidence str subclass did not canonicalize to exact built-in str.")
+        return canonical
+    # Exact bool was handled above. ``bool`` cannot be subclassed, so it can
+    # never reach this integer-subclass branch.
+    if isinstance(value, int):
+        canonical = int.__int__(value)
+        if type(canonical) is not int:
+            raise TypeError("evidence int subclass did not canonicalize to exact built-in int.")
+        return canonical
+    if isinstance(value, float):
+        canonical = float.__float__(value)
+        if type(canonical) is not float:
+            raise TypeError("evidence float subclass did not canonicalize to exact built-in float.")
+        if not math.isfinite(canonical):
+            raise ValueError("evidence float values must be finite (NaN/Infinity are rejected).")
+        return canonical
+    if isinstance(value, dict):
         detached: dict[str, Any] = {}
         for key, item in dict.items(value):
-            if type(key) is not str:
-                raise TypeError("evidence mapping keys must be exactly built-in str.")
-            detached[key] = _detach_plain(item, _depth=_depth + 1)
+            canonical_key = _canonical_str(key, "evidence mapping key")
+            if canonical_key in detached:
+                raise ValueError("evidence mapping keys collide after string canonicalization.")
+            detached[canonical_key] = _detach_plain(item, _depth=_depth + 1)
         return detached
-    if kind is list or kind is tuple:
-        return [_detach_plain(item, _depth=_depth + 1) for item in value]
+    if isinstance(value, list):
+        return [
+            _detach_plain(item, _depth=_depth + 1)
+            for item in list.__iter__(value)
+        ]
+    if isinstance(value, tuple):
+        return [
+            _detach_plain(item, _depth=_depth + 1)
+            for item in tuple.__iter__(value)
+        ]
     raise TypeError(
-        "unsupported evidence value type; only None and exact built-in "
-        "bool/int/finite-float/str/dict(exact-str-keys)/list/tuple are "
-        "allowed (set/frozenset are rejected, not normalized)."
+        "unsupported evidence value type; only None and built-in "
+        "bool/int/finite-float/str/dict(str-keys)/list/tuple, including "
+        "their subclasses, are allowed (set/frozenset are rejected)."
     )
+
+
+def _materialize_fields(fields: Mapping[str, Any]) -> dict[str, Any]:
+    """Materialize one detached field snapshot before recorder mutation.
+
+    A builtin ``dict`` or subclass is consumed through ``dict.items`` so its
+    overrides never run. Any other ``Mapping`` is an explicit callback
+    boundary: a general Mapping is executable Python behavior and cannot be
+    consumed without invoking its protocol. That interface is invoked only
+    here, outside the recorder lock and before current-call mutation. The
+    source Mapping is traversed once, never retained or revisited, and every
+    yielded key/value is canonicalized before it can enter recorder state.
+    """
+    if isinstance(fields, dict):
+        items = dict.items(fields)
+    elif isinstance(fields, _AbcMapping):
+        items = fields.items()
+    else:
+        raise TypeError("intent.fields must be a mapping.")
+
+    detached: dict[str, Any] = {}
+    seen: set[str] = set()
+    for key, value in items:
+        canonical_key = _canonical_str(key, "evidence field key")
+        if canonical_key in seen:
+            raise ValueError("evidence field keys collide after string canonicalization.")
+        seen.add(canonical_key)
+        if value is not None:
+            detached[canonical_key] = _detach_plain(value)
+    return detached
 
 
 # --------------------------------------------------------------------------- enums
@@ -909,28 +961,33 @@ class EvidenceRecorder:
     authenticate the adapter, attest the occurrence, or make an event true.
     Permitting the ``external_runtime`` producer label confers no Tier-3 assurance.
 
-    Caller-controlled scalars (``mission_id``, ``event_type``, ``producer_id``,
-    ``producer_version``, ``producer_type``) are required to be exactly built-in
-    ``str`` — never a subclass — and are validated before the internal lock is
-    acquired and before any dict-key or string-interpolation use, so a hostile
-    ``str`` subclass's ``__hash__``/``__eq__``/``__format__``/``__str__``/
-    ``__repr__`` never executes. ``EvidenceRecorder`` is safe for concurrent use
-    by multiple threads sharing one instance: mutation of the internal event list
-    and per-mission sequence counters is confined to a single lock, taken only
-    after all caller-controlled values have been validated and detached into
-    plain builtin types (see :func:`_detach_plain`).
+    Caller-controlled string scalars accept ``str`` and its subclasses, but
+    subclasses are immediately converted to exact strings through the unbound
+    base implementation. Canonicalization occurs before lock acquisition and
+    before any membership, dict-key, formatting, or error-rendering use, so a
+    hostile subclass override never runs inside the recorder. Mutation of the
+    event list and per-mission sequence counters is confined to one lock, taken
+    only after all caller-controlled values have become exact plain builtins.
     """
 
     def __init__(self, authorizer: Authorizer, context: EvaluationContext, *, producer_id: str, producer_version: str = "1.0", producer_type: str = "framework_adapter") -> None:
-        _require_exact_str(producer_id, "producer_id")
-        _require_exact_str(producer_version, "producer_version")
-        _require_exact_str(producer_type, "producer_type")
+        producer_id = _canonical_str(producer_id, "producer_id")
+        producer_version = _canonical_str(producer_version, "producer_version")
+        producer_type = _canonical_str(producer_type, "producer_type")
+        decision_at = _canonical_str(context.decision_at, "context.decision_at")
+        observed_subject_revision = _canonical_str(
+            context.observed_subject_revision,
+            "context.observed_subject_revision",
+        )
         if producer_type not in _PRODUCER_TYPES:
             raise ValueError(f"invalid producer_type {producer_type!r}; permitted: {sorted(_PRODUCER_TYPES)}")
-        if context.observed_subject_revision != authorizer.subject_revision:
+        if observed_subject_revision != authorizer.subject_revision:
             raise ValueError("observed_subject_revision does not match the contract subject_revision; the recorder refuses to bind a mismatched runtime revision.")
         self._authorizer = authorizer
-        self._context = context
+        self._context = EvaluationContext(
+            decision_at=decision_at,
+            observed_subject_revision=observed_subject_revision,
+        )
         self._producer = {"type": producer_type, "id": producer_id, "version": producer_version}
         self._events: list[dict[str, Any]] = []
         self._sequences: dict[str, int] = {}
@@ -970,7 +1027,7 @@ class EvidenceRecorder:
         ``_build_event_unlocked`` override) leaves both untouched rather than
         advancing the sequence counter for an event that was never appended.
         """
-        detached = {key: _detach_plain(value) for key, value in fields.items() if value is not None}
+        detached = _materialize_fields(fields)
         with self._lock:
             seq = self._sequences.get(mission_id, 0) + 1
             event = self._build_event_unlocked(event_type, mission_id, seq, detached)
@@ -1000,22 +1057,13 @@ class EvidenceRecorder:
         before the lock is even acquired — neither ``self._sequences`` nor
         ``self._events`` is left partially updated.
         """
-        _require_exact_str(mission_id, "mission_id")
+        mission_id = _canonical_str(mission_id, "mission_id")
         prepared: list[tuple[str, dict[str, Any]]] = []
         for intent in decision.event_intents:
-            event_type = intent.event_type
-            _require_exact_str(event_type, "intent.event_type")
+            event_type = _canonical_str(intent.event_type, "intent.event_type")
             if event_type not in PHASE_INTENT:
                 raise ValueError(f"{event_type!r} is not a decision-event intent")
-            fields = intent.fields
-            if not isinstance(fields, _AbcMapping):
-                raise TypeError("intent.fields must be a mapping.")
-            detached: dict[str, Any] = {}
-            for key, value in fields.items():
-                if type(key) is not str:
-                    raise TypeError("intent field keys must be exactly built-in str.")
-                if value is not None:
-                    detached[key] = _detach_plain(value)
+            detached = _materialize_fields(intent.fields)
             prepared.append((event_type, detached))
         # Nothing above mutated recorder state: a malformed intent anywhere in
         # the batch raises before any event is appended or any counter moves.
@@ -1037,12 +1085,15 @@ class EvidenceRecorder:
     def record_observation(self, event_type: str, *, mission_id: str, **fields: Any) -> None:
         """Record a post-action observation. Only the adapter, after the action.
 
-        Validates ``event_type`` and ``mission_id`` here, before delegating the
-        actual recording to :meth:`_stamp` (which a private subclass may
-        override to observe every call on this path).
+        Python may hash or validate keys supplied through ``**fields`` before
+        this method is entered; those language-level callbacks are outside the
+        recorder's control. Once inside, strings and fields are canonicalized
+        without builtin-subclass callbacks and before recorder mutation. The
+        actual recording delegates to :meth:`_stamp`, which a private subclass
+        may override to observe every call on this path.
         """
-        _require_exact_str(event_type, "event_type")
-        _require_exact_str(mission_id, "mission_id")
+        event_type = _canonical_str(event_type, "event_type")
+        mission_id = _canonical_str(mission_id, "mission_id")
         if event_type not in PHASE_OBSERVATION:
             raise ValueError(f"{event_type!r} is not a post-action observation")
         self._stamp(event_type, mission_id, fields)

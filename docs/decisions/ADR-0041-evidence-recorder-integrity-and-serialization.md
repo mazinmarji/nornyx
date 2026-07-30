@@ -1,6 +1,6 @@
 # ADR-0041 — EvidenceRecorder Integrity and Serialization
 
-- Status: Proposed (design + implementation; execution is a separate,
+- Status: Accepted (design + implementation; execution is a separate,
   owner-authorized milestone)
 - Date: 2026-07-26
 - Decision owner: human repository owner
@@ -17,9 +17,11 @@ into a schema-valid `nornyx.agentic_runtime_events.v1` stream. Two classes of
 caller-controlled input reach it directly:
 
 1. **Adapter-supplied scalars and field values** — `mission_id`, `event_type`,
-   `producer_id`, `producer_version`, `producer_type`, and the `**fields`
-   passed to `record_observation`. Adapters are third-party, framework-specific
-   code (ADR-0037); their inputs are untrusted by construction.
+   `producer_id`, `producer_version`, `producer_type`,
+   `EvaluationContext.decision_at`,
+   `EvaluationContext.observed_subject_revision`, and the `**fields` passed to
+   `record_observation`. Adapters are third-party, framework-specific code
+   (ADR-0037); their inputs are untrusted by construction.
 2. **Directly-constructed `Decision`/`DecisionEventIntent` objects** — nothing
    in the public API prevents a caller from building these dataclasses by hand
    and passing them to `record_decision`, bypassing the `Authorizer` entirely.
@@ -43,36 +45,62 @@ concurrent tool invocations.
 
 `EvidenceRecorder` becomes internally locked and validates every
 caller-controlled scalar and field value **before** it can influence recorder
-state, using exact-type checks that never invoke a caller-defined method.
+state. Supported builtin subclasses are immediately canonicalized to exact
+plain builtins through explicitly invoked base-type operations that do not
+dispatch to subclass overrides. Only canonical exact values enter recorder
+state.
 
-### 1. Exact-type scalar validation
+### 1. Callback-safe scalar canonicalization
 
-`mission_id`, `event_type`, `producer_id`, `producer_version`, and
-`producer_type` must satisfy `type(value) is str` — not `isinstance`, which
-would admit subclasses. The check is a plain object-header comparison; it
-never calls `__hash__`, `__eq__`, `__format__`, `__str__`, `__repr__`, or any
-other method on the rejected value. Violations raise `TypeError` (wrong type)
-or `ValueError` (right type, disallowed value — e.g. an unrecognized
-`producer_type`). Type-rejection errors do not interpolate or expose the
-rejected value. Value-domain errors may include an already validated exact
-builtin string (e.g. the unrecognized `producer_type` itself) — safe because
-by that point the value's exact type has already been confirmed, so `!r` on
-it invokes only `str`'s own, non-overridable `__repr__`.
+`mission_id`, `event_type`, `producer_id`, `producer_version`, `producer_type`,
+`EvaluationContext.decision_at`, and
+`EvaluationContext.observed_subject_revision` accept exact `str` values and
+`str` subclasses, matching their published annotations. Exact strings pass
+through unchanged. A subclass is
+converted with the explicitly invoked base operation `str.__str__(value)`,
+and the result must have `type(result) is str`. The recorder does not call
+`str(value)`, `value.__str__()`, `repr`, `format`, `hash`, or equality on the
+source value. Non-string input raises a static `TypeError` that does not render
+the caller value. Value-domain errors may include the already-canonical exact
+string (for example, an unrecognized `producer_type`), which cannot dispatch
+to a caller override.
 
 - `producer_id`/`producer_version`/`producer_type` are validated in
   `EvidenceRecorder.__init__`, before the producer mapping is stored.
+- Both `EvaluationContext` strings are canonicalized during recorder
+  construction before revision comparison or storage. The recorder constructs
+  and retains a fresh `EvaluationContext` containing exact builtin strings; it
+  does not retain the caller-provided context object. Hostile equality and
+  inequality overrides therefore cannot execute during revision binding, and
+  internal and emitted timestamps contain exact builtin strings.
 - `mission_id` and `event_type` are validated in `record_decision` and
   `record_observation`, before the internal lock is acquired and before
   `mission_id` is ever used as a dictionary key.
 
-### 2. Intent field keys
+### 2. Intent fields and Mapping callback boundary
 
 `record_decision` materializes each intent's field mapping outside the lock,
-requires every key to satisfy `type(key) is str`, and detaches every non-`None`
-value through the restricted copier (below) — all before any recorder mutation
-for that decision. A malformed mapping, or any single malformed key, anywhere
-in a decision's intents aborts the whole call: nothing already validated is
-partially committed.
+canonicalizes each string or string-subclass key to exact `str`, and detaches
+every non-`None` value through the restricted canonicalizer (below) — all
+before any recorder mutation for that decision. Two distinct source keys that
+canonicalize to the same exact string fail closed rather than silently
+overwriting one another. A malformed mapping, or any single malformed key,
+anywhere in a decision's intents aborts the whole call: nothing already
+validated is partially committed.
+
+For an exact `dict` or `dict` subclass, the recorder invokes
+`dict.items(value)` and never a caller override. `DecisionEventIntent.fields`
+is publicly annotated `Mapping[str, Any]`, so another `Mapping`
+implementation remains an intentional callback boundary: consuming it cannot
+be callback-free. Its mapping interface is invoked once outside the lock to
+produce a detached snapshot. The source mapping is never retained or
+revisited, every yielded key/value is canonicalized before mutation, and an
+exception from the mapping leaves recorder state unchanged.
+
+Python itself may hash or validate keys while expanding `**fields` before
+`record_observation` is entered. Those language-level callbacks precede the
+recorder boundary and cannot be prevented by `EvidenceRecorder`; once inside
+the method, canonicalization follows the callback-safe rules above.
 
 ### 3. `_stamp` compatibility (record_observation vs. record_decision)
 
@@ -89,27 +117,30 @@ partially committed.
   decision-intent commits. `_stamp` remains private; this ADR does not make it
   part of the public surface.
 
-### 4. Restricted exact-type copier (`_detach_plain`)
+### 4. Restricted builtin canonicalizer (`_detach_plain`)
 
-Field values are copied through a recursive, exact-type-only copier before
-they can enter recorder state. The permitted set is exactly: `None`; exact
-`bool`; exact `int`; exact, finite `float` (`NaN`/`Infinity` are rejected —
-the runtime-events schema is JSON, which cannot represent them); exact `str`;
-exact `dict` with exact `str` keys; exact `list`; exact `tuple`, **normalized
-to `list`** in the copy (JSON has no separate tuple concept, so both sequence
-literals collapse to the one array shape the schema actually validates).
+Field values are copied through a recursive builtin canonicalizer before they
+can enter recorder state. The permitted set is: `None`; `bool`; `int`; finite
+`float` (`NaN`/`Infinity` are rejected — the runtime-events schema is JSON,
+which cannot represent them); `str`; `dict` with string keys; `list`; and
+`tuple`, **normalized to exact `list`** in the copy (JSON has no separate tuple
+concept, so both sequence literals collapse to the one array shape the schema
+actually validates). Exact values pass through or are rebuilt with exact
+containers. Supported subclasses are read only through unbound base
+operations: `str.__str__`, `int.__int__`, `float.__float__`, `dict.items`,
+`list.__iter__`, and `tuple.__iter__`. Each scalar result is defensively
+required to have the exact expected builtin type; every container is rebuilt,
+recursively, as an exact `dict` or `list`.
+
 `set`/`frozenset` are **rejected outright, never normalized** — silently
 choosing an iteration order for an unordered collection would be a silent
 behavior decision this recorder does not make on the caller's behalf.
-Everything else — including subclasses of any accepted type, which could
-override `__iter__`, `keys`, `__deepcopy__`, `__reduce__`, `__reduce_ex__`,
-`__getstate__`, or `__hash__`/`__eq__` (as a dict key) — is rejected with a
-`TypeError` naming the allowed-type contract, never the rejected value. This
-error does **not** include a structural field path (e.g. `payload.items[2]`)
-— the implementation does not thread one through the recursive calls; only
-the generic allowed-type contract is reported. Recursion is bounded by a depth
-limit of 8; a self-referential container fails closed with `ValueError` once
-the limit is exceeded, rather than recursing without bound.
+Arbitrary unsupported objects are rejected with a `TypeError` naming the
+allowed-type contract, never the rejected value. The recorder never invokes
+builtin-subclass overrides such as `items`, `keys`, `__iter__`, `__getitem__`,
+`__reduce__`, `__reduce_ex__`, `__getstate__`, or `__deepcopy__`. Recursion is
+bounded by a depth limit of 8; a self-referential container fails closed with
+`ValueError` once the limit is exceeded, rather than recursing without bound.
 
 ### 5. Locking
 
@@ -143,35 +174,48 @@ top-level or per-event — can never change what a later call to `stream()` or
   duplication, a decision's intents commit as an indivisible batch, and a
   `stream()` snapshot taken mid-write is always internally consistent (never
   a torn view).
-- A hostile or buggy adapter cannot use a crafted `str` subclass, a
-  non-`str` mapping key, or an unsupported field-value type to execute
-  code inside the recorder, corrupt recorder state, or partially commit a
-  malformed decision.
+- A hostile or buggy adapter cannot use a crafted supported builtin subclass,
+  a non-string mapping key, or an unsupported field-value type to execute a
+  subclass override during recorder canonicalization, corrupt recorder state,
+  or partially commit a malformed decision. A general non-`dict` Mapping is
+  the documented callback boundary and is consumed only outside the lock and
+  before mutation.
 - A caller holding a returned `stream()` payload — or the original container
   it passed in as a field value — cannot corrupt recorder state or a later
   read by mutating either one after the fact; each is an independent copy.
-- Well-formed single-threaded callers observe byte-identical event output:
-  the validation and detachment steps are no-ops in content for inputs that
-  were already builtin `str` scalars and plain `dict`/`str`/`int`/`float`/
-  `bool`/`None` field values — the only inputs any existing adapter, test, or
-  example in this repository ever supplies. (A caller passing a `tuple` field
-  value would now see it returned as a `list`; no such caller exists today.)
+- Well-formed exact-plain callers observe byte-identical event output.
+  Annotation-compatible builtin-subclass callers also retain their underlying
+  schema-valid values, but the emitted and stored types are exact builtins;
+  tuple and tuple-subclass field values emit as lists, matching the runtime
+  schema's array representation.
 - This ADR does not change `SPI_VERSION`, the runtime-events schema (still
   v1/1.0), `AN_EVT_REPLAY` semantics, or any adapter-observable public
-  surface beyond stricter (fail-closed) input validation on
-  `EvidenceRecorder`.
+  signature or export.
 
 ## Non-goals
 
 - No change to occurrence semantics, the runtime-event schema, or
   `nornyx.agentic`'s public exports beyond what `EvidenceRecorder` already
   exposed.
-- No M2-C (LangGraph) work.
+- No ADR-0041 Part B or M2-C (LangGraph) work.
 - No package-version changes.
+
+## Revision note (compatibility remediation before release)
+
+The independent release-candidate audit found that the first exact-type
+implementation rejected subclasses that satisfied the published builtin-type
+annotations and had previously produced schema-valid evidence. Before the
+1.9.0 release, that rejection was corrected to the callback-safe base-operation
+canonicalization specified above. The remediation restores those supported
+inputs without retaining caller objects, executing their overrides, changing
+event content for exact-plain callers, or weakening the lock, transaction,
+depth, serialization, and fail-closed guarantees. No compatibility mode,
+deprecation cycle, public signature/export change, SPI bump, or schema change
+is required.
 
 ## Revision note (independent-audit correction pass)
 
-An initial implementation pass of this ADR shipped with four defects, found
+An initial implementation pass of this ADR was staged with four defects, found
 and fixed before independent audit:
 
 1. The restricted copier normalized `set`/`frozenset` to `frozenset` instead

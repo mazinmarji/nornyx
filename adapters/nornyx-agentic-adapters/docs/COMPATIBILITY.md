@@ -50,21 +50,24 @@ Following the same rule ADR-0039 applies to the core SPI:
 
 `EvidenceRecorder.record_decision`/`record_observation` now validate
 `mission_id`, `event_type`, and `producer_id`/`producer_version`/
-`producer_type` by exact type (`type(value) is str`; subclasses are rejected)
-and restrict recorded field values to exactly: `None`, `bool`, `int`, finite
-`float`, `str`, `dict` (exact `str` keys), `list`, and `tuple` (normalized to
-`list` — JSON has no tuple concept). `set`/`frozenset` are rejected outright,
-never normalized. This changes no SPI symbol, signature, schema, or major
-compatibility boundary. It is planned as a core patch because no
-in-repository caller relies on the previous leniency and the change hardens
-recording to accept only exact plain JSON-shaped builtins. External callers
-relying on builtin subclasses, non-`str` mapping keys, sets, non-finite
-numbers, or other previously accepted values may now receive a fail-closed
-`TypeError` or `ValueError`. Every value this adapter's `enforce()` and
-`crewai_adapter` have ever passed to the recorder was already a genuine
-`str`/`None`/plain `dict` of strings, so this adapter's own evidence output is
-unaffected. (Previously stored a non-JSON-compatible `set` value without
-rejecting it at recording time.) `EvidenceRecorder` is also now internally
-lock-protected and safe to share across threads. See
+`producer_type` against their published builtin annotations. Exact supported
+builtins remain unchanged; subclasses of supported `str`, `int`, `float`,
+`dict`, `list`, and `tuple` types are accepted and immediately canonicalized
+through explicitly invoked base-type operations. Only exact plain builtins
+enter recorder state, tuple values normalize to exact lists, and
+string-subclass mapping keys normalize to exact strings without executing
+subclass overrides. An arbitrary non-`dict` `Mapping` used as
+`DecisionEventIntent.fields` is the explicit callback boundary: its protocol
+is invoked once outside the recorder lock to create a detached snapshot, and
+the source object is never retained. `set`/`frozenset`, non-finite numbers,
+non-string keys, unsupported objects, excessive nesting, self-reference, and
+canonical-key collisions fail closed before recorder mutation.
+
+This preserves schema-compatible public core inputs while changing no SPI
+symbol, signature, schema, adapter package version, or adapter compatibility
+range. Every value this adapter's `enforce()` and `crewai_adapter` pass to the
+recorder is already an exact builtin, so adapter evidence output is unchanged.
+`EvidenceRecorder` is also internally lock-protected and safe to share across
+threads. See
 `docs/decisions/ADR-0041-evidence-recorder-integrity-and-serialization.md`
 in the core repository for the full rationale.

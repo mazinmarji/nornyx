@@ -6,34 +6,50 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-30
+
+### Added
+- `nornyx check --as-of <ISO-8601>` pins the governance evaluation instant
+  used for temporal-validity and lock/evidence checks. The value must be a
+  timezone-aware ISO-8601 timestamp; malformed or timezone-naive input fails
+  closed with diagnostic code `AS_OF_INVALID` and exit code `2` rather than
+  silently falling back to the live clock. Omitting `--as-of` preserves the
+  existing default behavior.
+
+### Changed
+- `EvidenceRecorder` now hardens caller-controlled canonicalization and
+  concurrent state handling without narrowing its published builtin-type
+  annotations (ADR-0041, now Accepted). Exact supported builtins remain
+  unchanged; supported `str`, `int`, `float`, `dict`, `list`, and `tuple`
+  subclasses are accepted and immediately converted through explicitly
+  invoked base-type operations. Only exact plain builtins enter recorder
+  state, tuple values become lists, string-subclass mapping keys become exact
+  strings, and subclass overrides are not invoked during recorder
+  canonicalization. An arbitrary non-`dict` `Mapping` used for
+  `DecisionEventIntent.fields` remains the documented callback boundary: its
+  mapping protocol is invoked once outside the lock to produce a detached
+  snapshot, which is never retained or revisited. Canonical-key collisions,
+  `set`/`frozenset`, non-finite floats, non-string keys, unsupported objects,
+  excessive nesting, and self-reference fail closed before mutation.
+  `stream()` and `validate()` return deeply detached snapshots;
+  `EvidenceRecorder` is internally lock-protected; and multi-intent decisions
+  commit transactionally as one batch. Exact plain builtin callers retain
+  identical event content. No public signature, export, SPI version, or
+  runtime-event schema changes.
+- **The AN-005 reference adapters moved from `integrations/nornyx_agentic_adapters/`
+  to `integrations/nornyx_reference_adapters/`** (benchmark finding F3). They
+  claimed the same import name as the installed `nornyx-agentic-adapters`
+  distribution, so any process that put `integrations/` on `sys.path` — including
+  several of this repository's own test modules — silently rebound that name to
+  the unpackaged legacy tree, and the failure surfaced as an `ImportError` on a
+  public name. `nornyx_agentic_adapters` now unambiguously means the installed
+  distribution. This breaks no published package: the `integrations/` tree is
+  excluded from the `nornyx` wheel by construction and has never been published,
+  so it was reachable only by a caller that added that directory to `sys.path`
+  itself. See `adapters/nornyx-agentic-adapters/docs/MIGRATION.md` for the
+  old → new import mapping.
+
 ### Fixed
-- **`EvidenceRecorder` hardened against caller-controlled callback execution
-  and concurrent-use data races** (ADR-0041). `mission_id`, `event_type`, and
-  `producer_id`/`producer_version`/`producer_type` are now validated by exact
-  builtin type (`type(value) is str`; subclasses rejected) before any lock
-  acquisition or dictionary-key use, so a hostile `str` subclass's
-  `__hash__`/`__eq__`/`__format__`/`__str__`/`__repr__` can never execute.
-  `record_decision`'s intent field keys and all recorded field values are now
-  restricted, by exact type, to `None`/`bool`/`int`/finite-`float`/`str`/
-  `dict` (exact `str` keys)/`list`/`tuple` (normalized to `list`) via a new
-  recursive copier (depth limit 8) that rejects subclasses, `set`/`frozenset`
-  (never normalized), non-finite floats, and fails closed on unbounded
-  self-referential nesting. `EvidenceRecorder` is now internally
-  lock-protected, safe for concurrent use by multiple threads sharing one
-  instance, including decisions committing as non-interleaved batches.
-  `stream()`/`validate()` now return a deeply independent snapshot — mutating
-  a nested value (e.g. a returned `approver` dict) in a previously-returned
-  stream can no longer corrupt the recorder's internal state or affect a
-  later `stream()`/`validate()` call. Rejected input never partially mutates
-  recorder state. `record_decision`'s locked commit loop no longer advances
-  the mission's sequence counter before the corresponding event has actually
-  been built and appended: if a build step in a multi-intent batch fails
-  after an earlier one in the same batch would have succeeded, neither
-  `_events` nor `_sequences` is left partially updated — the whole batch
-  commits only after every event in it has been built. Existing
-  single-threaded callers see byte-identical evidence output; no adapter,
-  test, or example in this repository has ever passed a value this stricter
-  validation rejects.
 - **A correctly refused non-human approval can now appear in a valid evidence
   stream** (benchmark finding F1). `validate_runtime_events` applied its
   human-approver and composed-role rules to `approval_granted` *and*
@@ -47,19 +63,24 @@ distribution version is independent of the Nornyx **language/schema** version
   the claimant is still recorded truthfully, and a forged non-human or
   unauthorized-role `approval_granted` still fails validation.
 
-### Changed
-- **The AN-005 reference adapters moved from `integrations/nornyx_agentic_adapters/`
-  to `integrations/nornyx_reference_adapters/`** (benchmark finding F3). They
-  claimed the same import name as the installed `nornyx-agentic-adapters`
-  distribution, so any process that put `integrations/` on `sys.path` — including
-  several of this repository's own test modules — silently rebound that name to
-  the unpackaged legacy tree, and the failure surfaced as an `ImportError` on a
-  public name. `nornyx_agentic_adapters` now unambiguously means the installed
-  distribution. This breaks no published package: the `integrations/` tree is
-  excluded from the `nornyx` wheel by construction and has never been published,
-  so it was reachable only by a caller that added that directory to `sys.path`
-  itself. See `adapters/nornyx-agentic-adapters/docs/MIGRATION.md` for the
-  old → new import mapping.
+### Packaging
+- The `dev` extra's Ruff dependency is bounded to `ruff>=0.16.0,<0.17`, a
+  single tested minor series, so a fresh install cannot resolve a newer Ruff
+  whose changed default rule set would fail CI non-reproducibly.
+- `[tool.ruff.lint]` pins an explicit `select` rule set (`E4`, `E7`, `E9`,
+  `F`) instead of depending on Ruff's evolving built-in defaults, making
+  `ruff check .` reproducible across Ruff releases within that pin.
+
+### Distribution boundaries
+- `nornyx-agentic-adapters` is a separate distribution and is **not**
+  published by the Nornyx 1.9.0 core release.
+- The CrewAI governance benchmark (`examples/crewai_governance_benchmark/`)
+  is repository evidence and is **not** included in the core wheel.
+- The runtime-event schema remains `v1` / `1.0`.
+- `SPI_VERSION` remains `1.0`.
+- The language/schema version remains `1.0`.
+- `AN_EVT_REPLAY` and occurrence semantics are unchanged.
+- ADR-0041 Part B and M2-C (LangGraph) are not included in this release.
 
 ## [1.8.0] - 2026-07-23
 

@@ -1,9 +1,9 @@
 {
   "project": "Nornyx",
   "category": "AI Engineering Control-Plane Language",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "language_version": "1.0.0",
-  "status": "Package 1.7.0 on main; AN-001 through AN-006 agentic-network program merged and released",
+  "status": "Package 1.9.0; AN-001 through AN-006 agentic-network program merged and released",
   "source_of_truth": [
     "README.md",
     "docs/01_LANGUAGE_SPEC_v0_1.md",
@@ -36,7 +36,7 @@
     "No credential storage",
     "No autonomous self-modification"
   ],
-  "updated_for": "1.7.0-agentic-network-release",
+  "updated_for": "1.9.0-release-candidate",
   "added": [
     "templates/nornyx-agentic-repo-harness",
     "docs/goals",
@@ -45,10 +45,10 @@
     "scripts/agent/run-nornyx-validation-gates.sh"
   ],
   "current_validation": {
-    "goal": "1.7.0-release",
-    "date": "2026-07-20",
+    "goal": "1.9.0-release-candidate",
+    "date": "2026-07-30",
     "test_command": "python -m pytest -q",
-    "test_result": "AN-001 through AN-006 merged; full CI green on main across Python 3.10-3.13, Windows, and native CrewAI/LangGraph",
+    "test_result": "1566 passed, 48 skipped; focused EvidenceRecorder compatibility validation passed on CPython 3.10-3.13; core build and installed-wheel checks passed; adapter foundation, native CrewAI, build, and installed-wheel compatibility passed",
     "release_check": {
       "command": "python -m nornyx.cli release-check --approved",
       "blocked": 0,
@@ -60,7 +60,7 @@
       "warning": 0
     },
     "pmo_audit": "AN-001 through AN-006 merged; historical goal blocks preserved",
-    "package_publication": "1.7.0",
+    "package_publication": "1.8.0",
     "deployment": "not_deployed",
     "goal_100": "locked"
   }
