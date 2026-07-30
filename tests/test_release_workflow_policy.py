@@ -71,6 +71,9 @@ def _eligible_for_tag(script: str, tag_name: str, *, cwd: Path) -> str:
         output_path = Path(tmp) / "github_output.txt"
         output_path.write_text("", encoding="utf-8")
         env = dict(os.environ)
+        if os.name == "nt":
+            bash_bin = str(Path(_BASH).resolve().parent)
+            env["PATH"] = bash_bin + os.pathsep + env.get("PATH", "")
         env["GITHUB_OUTPUT"] = str(output_path)
 
         result = subprocess.run(

@@ -7,15 +7,27 @@ automatically (see [`.github/workflows/release.yml`](.github/workflows/release.y
 
 ## Cut a release
 
-1. **Bump the version** in three places (keep them in sync — see
-   [`docs/VERSIONING.md`](docs/VERSIONING.md); `tests/test_documentation_consistency.py` fails the
-   build if they diverge):
-   - `pyproject.toml` → `version = "X.Y.Z"`
+1. **Bump the version** in seven equality-enforced locations (keep them in sync — see
+   [`docs/VERSIONING.md`](docs/VERSIONING.md)). They are enforced collectively:
+   `tests/test_documentation_consistency.py` covers the first five locations,
+   `tests/test_governance_compatibility_corpus.py` covers the compatibility fixture,
+   `tests/test_governance_extension_spec.py` covers the starter-golden fixture, and
+   `tests/test_manifest_metadata.py` provides additional package/manifest redundancy:
+   - `pyproject.toml` → `project.version = "X.Y.Z"`
    - `nornyx/__init__.py` → `__version__ = "X.Y.Z"`
-   - `manifest.json` → `"version": "X.Y.Z"`
-   - and update the package-version row in `docs/VERSIONING.md`.
+   - `manifest.json` → top-level `"version": "X.Y.Z"`
+   - `docs/VERSIONING.md` → the active package-version declaration
+   - `README.md` → the active `nornyx@vX.Y.Z` source-install pin
+   - `tests/fixtures/governance_compatibility/manifest.json` →
+     `baseline.package_version = "X.Y.Z"`
+   - `tests/fixtures/governance_extension/starter_golden/manifest.json` → top-level
+     `nornyx_version = "X.Y.Z"`
 
 2. **Add a `CHANGELOG.md` entry** under a new `## [X.Y.Z] - YYYY-MM-DD` heading.
+   The changelog is updated for every release, but it is not one of the seven
+   equality-enforced fields; retain historical changelog versions. Nested per-profile
+   fixture versions are historical generation metadata. Historical and evidence-bound
+   versions must not be bulk-rewritten.
 
 3. **Sanity-check locally** (optional but cheap):
    ```bash

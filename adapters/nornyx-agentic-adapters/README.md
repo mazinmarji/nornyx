@@ -112,11 +112,15 @@ wrapped surfaces only**:
 Every Tier 2 claim about this package should carry the qualifier
 "cooperative, declared surfaces only."
 
-`EvidenceRecorder` (core, `nornyx.agentic`) is internally lock-protected and
-validates recorded scalars/field values by exact builtin type before they can
-influence recorder state or evidence output — see ADR-0041 and
-`docs/COMPATIBILITY.md`. This is a fail-closed input-validation hardening, not
-a change to what this adapter records.
+`EvidenceRecorder` (core, `nornyx.agentic`) is internally lock-protected.
+Supported builtin subclasses remain accepted for public compatibility and are
+immediately canonicalized to exact plain builtins without invoking subclass
+overrides; only those detached exact values can influence recorder state or
+evidence output. Arbitrary non-`dict` `Mapping` fields remain an explicit
+callback boundary outside the recorder lock — see ADR-0041 and
+`docs/COMPATIBILITY.md`. These adapters already pass exact builtins, so their
+evidence output is unchanged. The adapter version and core compatibility range
+also remain unchanged.
 
 ## Versioning
 

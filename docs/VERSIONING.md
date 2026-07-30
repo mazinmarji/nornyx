@@ -12,7 +12,7 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
 
 | Axis | Current | Bumped when… | Source of truth |
 | --- | --- | --- | --- |
-| **Package (distribution)** | `1.8.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
+| **Package (distribution)** | `1.9.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
 | **Language / schema** | `1.0` | the `.nyx` contract language or its schema targets change in a way authors must know about | `manifest.json` `language_version`, `nornyx.cli schema --version` |
 | **`agentic_network_governance` module** | `0.2.0` | the composed agentic-network governance module changes its catalog surface (bound by a `migration:` marker) | `nornyx/profiles_data/module_agentic_network_governance.yaml` `version` |
 | **Agentic schema targets** | `v1` | a new major schema id is minted (breaking) | `$id` tokens: `agentic_network_v1`, `agentic_capabilities_v1`, `agentic_network_lock_v1`, `agentic_runtime_events_v1` |
@@ -22,9 +22,28 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
 
 ## Rules
 
-1. **Package version bump touches exactly three files** — `pyproject.toml`, `nornyx/__init__.py`,
-   and `manifest.json`. `tests/test_documentation_consistency.py` fails the build if they diverge.
-   The release flow in [`../RELEASING.md`](../RELEASING.md) lists all three.
+1. **An active package-version synchronization touches exactly seven equality-enforced
+   locations**:
+   - `pyproject.toml` — `project.version`
+   - `nornyx/__init__.py` — `__version__`
+   - `manifest.json` — top-level `version`
+   - `docs/VERSIONING.md` — the active package-version declaration
+   - `README.md` — the active `nornyx@vX.Y.Z` source-install pin
+   - `tests/fixtures/governance_compatibility/manifest.json` —
+     `baseline.package_version`
+   - `tests/fixtures/governance_extension/starter_golden/manifest.json` — top-level
+     `nornyx_version`
+
+   These locations are enforced collectively by multiple test modules:
+   `tests/test_documentation_consistency.py` covers the first five;
+   `tests/test_governance_compatibility_corpus.py` covers the compatibility fixture;
+   `tests/test_governance_extension_spec.py` covers the starter-golden fixture; and
+   `tests/test_manifest_metadata.py` provides additional package/manifest redundancy.
+   The release flow in [`../RELEASING.md`](../RELEASING.md) lists all seven.
+   `CHANGELOG.md` is updated for every release, but it is not one of these seven
+   equality-enforced fields; historical changelog versions are retained. Nested
+   per-profile fixture versions are historical generation metadata. Historical and
+   evidence-bound versions must not be bulk-rewritten.
 2. **Semantic Versioning for the package.** Backward-compatible functionality (new commands,
    schemas, artifact formats that do not break existing contracts) is a **minor** bump; bug fixes
    are a **patch**. AN-002…AN-006 were additive, so the next release after 1.6.2 is **1.7.0**
