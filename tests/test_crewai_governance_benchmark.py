@@ -584,7 +584,7 @@ def test_runs_from_installed_distributions(artifacts):
     assert env["nornyx_version"] == md.version("nornyx")
     assert env["adapters_version"] == md.version("nornyx-agentic-adapters")
     assert env["crewai_version"] == md.version("crewai")
-    assert env["nornyx_agentic_spi_version"] == "1.0"
+    assert env["nornyx_agentic_spi_version"] == "1.1"
     # Where the code came from is recorded as a kind, never as a local path.
     assert env["nornyx_install_kind"]
     assert env["adapters_install_kind"]
