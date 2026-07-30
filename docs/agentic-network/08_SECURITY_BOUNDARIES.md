@@ -26,7 +26,8 @@
 | Unicode/casing identifier collision | `AN_NORMALIZATION_COLLISION` (NFKC casefold) |
 | Path traversal, symlink escape, device or remote path | existing loader path hardening reused by every AN input/output |
 | Mutable revision, hash/schema/lock/evidence substitution | content-addressed revisions, lock field-by-field verification, per-event digest binding |
-| Replay, ordering manipulation, dependency omission | closed ordering model: unique contiguous sequences, dependency precedence, content-replay rejection |
+| Replay, ordering manipulation, dependency omission | closed ordering model: unique contiguous mission sequences, dependency precedence, and explicit-mode semantic replay fingerprints independent of transport restamping |
+| Retry/loop state confusion | explicit operation/occurrence/attempt identity; authorization and transitions are attempt-scoped; success closes an occurrence |
 | Expired/revoked identity or delegation, capability or scope escalation, onward-delegation bypass | AN-002 static checks + AN-004 timestamp-effective re-checks |
 | Handoff used as delegation | `AN_HANDOFF_AUTHORITY_ESCALATION`: targets must already hold or validly receive every required capability |
 | Approval-role spoofing, AI-generated approval | composed-module role authority, producer/actor-type checks, adapter policy-violation events |
@@ -37,6 +38,8 @@
 
 - Evidence is supplied, not observed: omission and fabrication are outside
   Nornyx's proof surface.
+- A cooperative producer can falsely claim a new occurrence; occurrence
+  validation proves structural consistency, not independent execution truth.
 - Adapter enforcement is cooperative; bypassing the adapter bypasses the
   hook.
 - Structural signature references are not cryptographic verification; no

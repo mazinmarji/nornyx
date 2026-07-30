@@ -60,11 +60,12 @@ from ..governance.agentic_network import (
 )
 from ..parser import load_nyx
 
-SPI_VERSION = "1.0"
+SPI_VERSION = "1.1"
 
 # Canonical subject-revision syntax (ADR-0039): git 40/64 lowercase hex, or
 # sha256 64 lowercase hex. No branch names, abbreviated SHAs, or aliases.
 _REVISION_RE = re.compile(r"^(?:git:[0-9a-f]{40}|git:[0-9a-f]{64}|sha256:[0-9a-f]{64})$")
+_RUNTIME_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
 
 # Runtime-event producer types permitted by nornyx.agentic_runtime_events.v1.
 _PRODUCER_TYPES = frozenset({"framework_adapter", "synthetic_harness", "external_runtime"})
@@ -322,6 +323,34 @@ class IdentityResolutionError(RuntimeError):
 class EvaluationContext:
     decision_at: str  # evaluation instant governing ALL temporal semantics
     observed_subject_revision: str  # MANDATORY; must equal the contract subject_revision
+
+
+@dataclass(frozen=True)
+class RuntimeOccurrence:
+    """Framework-neutral identity for one logical execution attempt.
+
+    ``operation_id`` is stable across loop visits, ``occurrence_id`` identifies
+    one scheduled visit/branch execution, and ``attempt`` is its contiguous,
+    one-based retry number. These values are producer assertions under the
+    cooperative Tier-2 evidence boundary; the core validates their structure
+    and stream transitions but does not attest their runtime truth.
+    """
+
+    operation_id: str
+    occurrence_id: str
+    attempt: int
+
+    def __post_init__(self) -> None:
+        operation_id = _canonical_str(self.operation_id, "operation_id")
+        occurrence_id = _canonical_str(self.occurrence_id, "occurrence_id")
+        if not _RUNTIME_ID_RE.fullmatch(operation_id):
+            raise ValueError("operation_id is not a valid runtime identifier")
+        if not _RUNTIME_ID_RE.fullmatch(occurrence_id):
+            raise ValueError("occurrence_id is not a valid runtime identifier")
+        if type(self.attempt) is not int or not 1 <= self.attempt <= 1_000_000:
+            raise ValueError("attempt must be an integer from 1 through 1000000")
+        object.__setattr__(self, "operation_id", operation_id)
+        object.__setattr__(self, "occurrence_id", occurrence_id)
 
 
 @dataclass(frozen=True)
@@ -991,7 +1020,142 @@ class EvidenceRecorder:
         self._producer = {"type": producer_type, "id": producer_id, "version": producer_version}
         self._events: list[dict[str, Any]] = []
         self._sequences: dict[str, int] = {}
+        locked_schema = self._authorizer._lock_payload.get("runtime_events_schema")
+        self._schema_version = (
+            str(locked_schema.get("version"))
+            if isinstance(locked_schema, Mapping)
+            else RUNTIME_EVENTS_SCHEMA_VERSION
+        )
+        if self._schema_version not in {"1.0", "1.1"}:
+            raise ValueError(
+                "the authorizer lock declares an unsupported runtime-events "
+                f"schema version {self._schema_version!r}"
+            )
+        self._occurrence_mode: str | None = (
+            None if self._schema_version == "1.0" else "legacy"
+        )
         self._lock = threading.Lock()
+
+    @classmethod
+    def for_occurrences(
+        cls,
+        authorizer: Authorizer,
+        context: EvaluationContext,
+        *,
+        producer_id: str,
+        producer_version: str = "1.0",
+        producer_type: str = "framework_adapter",
+    ) -> EvidenceRecorder:
+        """Create a recorder that requires explicit occurrence metadata."""
+
+        recorder = cls(
+            authorizer,
+            context,
+            producer_id=producer_id,
+            producer_version=producer_version,
+            producer_type=producer_type,
+        )
+        if recorder._schema_version != "1.1":
+            raise ValueError(
+                "explicit occurrence recording requires a lock bound to "
+                "runtime-events schema version 1.1"
+            )
+        recorder._occurrence_mode = "explicit"
+        return recorder
+
+    @classmethod
+    def resume(
+        cls,
+        authorizer: Authorizer,
+        context: EvaluationContext,
+        prior_stream: Mapping[str, Any],
+        *,
+        producer_id: str,
+        producer_version: str = "1.0",
+        producer_type: str = "framework_adapter",
+    ) -> EvidenceRecorder:
+        """Resume one validated stream and continue returning cumulative evidence.
+
+        The prior stream must be valid against the exact authorizer contract and
+        lock, use the same producer identity, and not contain timestamps later
+        than the new context's ``decision_at``. The prefix is deeply detached
+        before becoming recorder-owned state.
+        """
+
+        from ..agentic_evidence import validate_runtime_events
+
+        if not isinstance(prior_stream, Mapping):
+            raise TypeError("prior_stream must be a mapping")
+        recorder = cls(
+            authorizer,
+            context,
+            producer_id=producer_id,
+            producer_version=producer_version,
+            producer_type=producer_type,
+        )
+        detached = _detach_plain(prior_stream)
+        if detached.get("producer") != recorder._producer:
+            raise ValueError("prior_stream producer does not match the resumed recorder")
+        if detached.get("schema_version") != recorder._schema_version:
+            raise ValueError(
+                "prior_stream schema version does not match the authorizer lock"
+            )
+        prior_mode = detached.get("occurrence_mode")
+        if recorder._schema_version == "1.0":
+            if prior_mode is not None:
+                raise ValueError("runtime-events 1.0 streams cannot declare occurrence_mode")
+            recorder._occurrence_mode = None
+        elif prior_mode in {"legacy", "explicit"}:
+            recorder._occurrence_mode = prior_mode
+        else:
+            raise ValueError("runtime-events 1.1 streams require a valid occurrence_mode")
+
+        report = validate_runtime_events(
+            _thaw(authorizer._document),
+            authorizer._composition,
+            _thaw(authorizer._lock_payload),
+            detached,
+        )
+        if report["status"] != "pass":
+            codes = sorted(
+                {
+                    item.get("code", "AN_EVT_INVALID")
+                    for item in report.get("diagnostics", [])
+                    if isinstance(item, Mapping)
+                }
+            )
+            raise ValueError(
+                "prior_stream is not valid against the supplied authorizer: "
+                + ", ".join(codes)
+            )
+
+        resumed_at = _parse_time(recorder._context.decision_at)
+        prior_events = detached.get("events")
+        if not isinstance(prior_events, list):
+            raise ValueError("prior_stream events must be a list")
+        for event in prior_events:
+            if not isinstance(event, Mapping):
+                raise ValueError("prior_stream events must be objects")
+            event_time = _parse_time(event.get("timestamp"))
+            if resumed_at is None or event_time is None or event_time > resumed_at:
+                raise ValueError(
+                    "resumed context.decision_at must not precede prior event timestamps"
+                )
+
+        with recorder._lock:
+            recorder._events = [
+                {key: _detach_plain(value) for key, value in event.items()}
+                for event in prior_events
+            ]
+            recorder._sequences = {}
+            for event in recorder._events:
+                mission = event.get("mission_id")
+                sequence = event.get("sequence")
+                if isinstance(mission, str) and isinstance(sequence, int):
+                    recorder._sequences[mission] = max(
+                        recorder._sequences.get(mission, 0), sequence
+                    )
+        return recorder
 
     def _build_event_unlocked(self, event_type: str, mission_id: str, seq: int, fields: Mapping[str, Any]) -> dict[str, Any]:
         """Assemble one event dict. Does not itself acquire or require the lock —
@@ -1082,6 +1246,60 @@ class EvidenceRecorder:
             self._sequences[mission_id] = base_seq + len(prepared)
             self._events.extend(built)
 
+    @staticmethod
+    def _occurrence_fields(occurrence: RuntimeOccurrence) -> dict[str, Any]:
+        if not isinstance(occurrence, RuntimeOccurrence):
+            raise TypeError("occurrence must be a RuntimeOccurrence")
+        return {
+            "occurrence": {
+                "operation_id": occurrence.operation_id,
+                "occurrence_id": occurrence.occurrence_id,
+                "attempt": occurrence.attempt,
+            }
+        }
+
+    def _require_explicit_occurrences(self) -> None:
+        if self._schema_version != "1.1" or self._occurrence_mode != "explicit":
+            raise ValueError(
+                "occurrence-aware recording requires EvidenceRecorder.for_occurrences() "
+                "or an explicit stream resumed with EvidenceRecorder.resume()"
+            )
+
+    def record_occurrence_decision(
+        self,
+        decision: Decision,
+        *,
+        mission_id: str,
+        occurrence: RuntimeOccurrence,
+    ) -> None:
+        """Atomically record decision intents for one explicit attempt."""
+
+        self._require_explicit_occurrences()
+        mission_id = _canonical_str(mission_id, "mission_id")
+        occurrence_fields = self._occurrence_fields(occurrence)
+        prepared: list[tuple[str, dict[str, Any]]] = []
+        for intent in decision.event_intents:
+            event_type = _canonical_str(intent.event_type, "intent.event_type")
+            if event_type not in PHASE_INTENT:
+                raise ValueError(f"{event_type!r} is not a decision-event intent")
+            detached = _materialize_fields(intent.fields)
+            if "occurrence" in detached:
+                raise ValueError("decision intent fields cannot override occurrence")
+            detached.update(_detach_plain(occurrence_fields))
+            prepared.append((event_type, detached))
+        if not prepared:
+            return
+        with self._lock:
+            base_seq = self._sequences.get(mission_id, 0)
+            built = [
+                self._build_event_unlocked(
+                    event_type, mission_id, base_seq + offset, fields
+                )
+                for offset, (event_type, fields) in enumerate(prepared, start=1)
+            ]
+            self._sequences[mission_id] = base_seq + len(prepared)
+            self._events.extend(built)
+
     def record_observation(self, event_type: str, *, mission_id: str, **fields: Any) -> None:
         """Record a post-action observation. Only the adapter, after the action.
 
@@ -1097,6 +1315,64 @@ class EvidenceRecorder:
         if event_type not in PHASE_OBSERVATION:
             raise ValueError(f"{event_type!r} is not a post-action observation")
         self._stamp(event_type, mission_id, fields)
+
+    def record_occurrence_observation(
+        self,
+        event_type: str,
+        *,
+        mission_id: str,
+        occurrence: RuntimeOccurrence,
+        **fields: Any,
+    ) -> None:
+        """Record a post-action observation for one explicit attempt."""
+
+        self._require_explicit_occurrences()
+        event_type = _canonical_str(event_type, "event_type")
+        mission_id = _canonical_str(mission_id, "mission_id")
+        if event_type not in PHASE_OBSERVATION:
+            raise ValueError(f"{event_type!r} is not a post-action observation")
+        detached = _materialize_fields(fields)
+        if "occurrence" in detached:
+            raise ValueError("observation fields cannot override occurrence")
+        detached.update(self._occurrence_fields(occurrence))
+        with self._lock:
+            seq = self._sequences.get(mission_id, 0) + 1
+            event = self._build_event_unlocked(
+                event_type, mission_id, seq, detached
+            )
+            self._sequences[mission_id] = seq
+            self._events.append(event)
+
+    def max_recorded_attempt(
+        self,
+        *,
+        mission_id: str,
+        operation_id: str,
+        occurrence_id: str,
+    ) -> int:
+        """Return the highest explicit attempt already recorded, or zero."""
+
+        self._require_explicit_occurrences()
+        mission_id = _canonical_str(mission_id, "mission_id")
+        operation_id = _canonical_str(operation_id, "operation_id")
+        occurrence_id = _canonical_str(occurrence_id, "occurrence_id")
+        if not _RUNTIME_ID_RE.fullmatch(operation_id):
+            raise ValueError("operation_id is not a valid runtime identifier")
+        if not _RUNTIME_ID_RE.fullmatch(occurrence_id):
+            raise ValueError("occurrence_id is not a valid runtime identifier")
+        highest = 0
+        with self._lock:
+            for event in self._events:
+                occurrence = event.get("occurrence")
+                if (
+                    event.get("mission_id") == mission_id
+                    and isinstance(occurrence, Mapping)
+                    and occurrence.get("operation_id") == operation_id
+                    and occurrence.get("occurrence_id") == occurrence_id
+                    and isinstance(occurrence.get("attempt"), int)
+                ):
+                    highest = max(highest, occurrence["attempt"])
+        return highest
 
     def _snapshot_unlocked(self) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """Build a fully independent, deeply detached ``(producer, events)``
@@ -1136,13 +1412,16 @@ class EvidenceRecorder:
         """
         with self._lock:
             producer_snapshot, events_snapshot = self._snapshot_unlocked()
-        return {
+        stream = {
             "schema": RUNTIME_EVENTS_SCHEMA_ID,
-            "schema_version": RUNTIME_EVENTS_SCHEMA_VERSION,
+            "schema_version": self._schema_version,
             "network_id": self._authorizer.network_id,
             "producer": producer_snapshot,
             "events": events_snapshot,
         }
+        if self._occurrence_mode is not None:
+            stream["occurrence_mode"] = self._occurrence_mode
+        return stream
 
     def validate(self, *, events_root: Path | None = None) -> dict[str, Any]:
         """Validate the assembled stream against a detached thaw of the snapshot.

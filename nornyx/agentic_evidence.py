@@ -64,6 +64,25 @@ _REQUIRED_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
     "identity_revoked": ("target_ref",),
 }
 _EXPECTED_DECISION = {"capability_allowed": "allow", "capability_denied": "deny"}
+_SUCCESS_TERMINALS = frozenset(
+    {
+        "agent_invoked",
+        "tool_invoked",
+        "handoff_completed",
+        "trust_zone_crossed",
+        "data_shared",
+        "identity_revoked",
+    }
+)
+_FAILURE_TERMINALS = frozenset(
+    {
+        "capability_denied",
+        "delegation_rejected",
+        "approval_rejected",
+        "policy_violation",
+        "runtime_failed",
+    }
+)
 
 LIMITATIONS = (
     "Validated evidence proves conformance of supplied records only.",
@@ -180,6 +199,36 @@ def validate_runtime_events(
     expected_revision = network.get("subject_revision")
     expected_contract = contract_digest(document)
     expected_lock = agentic_network_lock_digest(lock_payload)
+    locked_runtime_schema = lock_payload.get("runtime_events_schema")
+    locked_schema_id = (
+        locked_runtime_schema.get("id")
+        if isinstance(locked_runtime_schema, Mapping)
+        else None
+    )
+    locked_schema_version = (
+        locked_runtime_schema.get("version")
+        if isinstance(locked_runtime_schema, Mapping)
+        else None
+    )
+    observed_schema_id = events_payload.get("schema")
+    observed_schema_version = events_payload.get("schema_version")
+    occurrence_mode = events_payload.get("occurrence_mode")
+    explicit_occurrences = (
+        observed_schema_version == "1.1" and occurrence_mode == "explicit"
+    )
+
+    if (
+        observed_schema_id != locked_schema_id
+        or observed_schema_version != locked_schema_version
+    ):
+        diagnostics.append(
+            _diagnostic(
+                "AN_EVT_SCHEMA_LOCK_MISMATCH",
+                "Evidence schema id and version must match the validated "
+                "agentic-network lock.",
+                path="events_file.schema_version",
+            )
+        )
 
     for item in verify_agentic_network_lock(lock_payload, document, composition):
         diagnostics.append(
@@ -339,12 +388,18 @@ def validate_runtime_events(
                 )
             else:
                 seen_ids[event_id] = index
+        replay_transport_fields = {"event_id", "sequence"}
+        if explicit_occurrences:
+            # Explicit operation/occurrence/attempt identity supplies the
+            # semantic execution slot. A producer cannot evade exact replay
+            # detection merely by restamping a duplicate with a new timestamp.
+            replay_transport_fields.add("timestamp")
         content_key = hashlib.sha256(
             json.dumps(
                 {
                     key: value
                     for key, value in event.items()
-                    if key not in {"event_id", "sequence"}
+                    if key not in replay_transport_fields
                 },
                 sort_keys=True,
                 separators=(",", ":"),
@@ -748,11 +803,17 @@ def validate_runtime_events(
                 )
             )
         last_time: datetime | None = None
-        allowed_capabilities: set[tuple[Any, Any]] = set()
-        requested_delegations: set[Any] = set()
-        requested_approvals: set[Any] = set()
-        initiated_handoffs: set[Any] = set()
-        decisions: dict[tuple[Any, Any], str] = {}
+        allowed_capabilities: set[tuple[Any, ...]] = set()
+        requested_delegations: set[tuple[Any, ...]] = set()
+        requested_approvals: set[tuple[Any, ...]] = set()
+        initiated_handoffs: set[tuple[Any, ...]] = set()
+        decisions: dict[tuple[Any, ...], str] = {}
+        operation_by_occurrence: dict[str, str] = {}
+        attempts_by_occurrence: dict[str, set[int]] = {}
+        last_attempt_by_occurrence: dict[str, int] = {}
+        successful_attempts: dict[str, set[int]] = {}
+        outcomes: dict[tuple[str, int], str] = {}
+        reported_after_success: set[tuple[str, int]] = set()
         ids_in_mission = {
             event.get("event_id")
             for _, event in ordered
@@ -806,75 +867,200 @@ def validate_runtime_events(
             event_type = event.get("event_type")
             actor = event.get("actor_ref")
             capability = event.get("capability_ref")
+            state_scope: tuple[Any, ...] = ("legacy",)
+            occurrence_id: str | None = None
+            attempt: int | None = None
+            if explicit_occurrences:
+                occurrence = event.get("occurrence")
+                if isinstance(occurrence, Mapping):
+                    operation_id = occurrence.get("operation_id")
+                    occurrence_value = occurrence.get("occurrence_id")
+                    attempt_value = occurrence.get("attempt")
+                    if (
+                        isinstance(operation_id, str)
+                        and isinstance(occurrence_value, str)
+                        and type(attempt_value) is int
+                    ):
+                        occurrence_id = occurrence_value
+                        attempt = attempt_value
+                        state_scope = (
+                            "explicit",
+                            operation_id,
+                            occurrence_id,
+                            attempt,
+                        )
+                        previous_operation = operation_by_occurrence.get(
+                            occurrence_id
+                        )
+                        if (
+                            previous_operation is not None
+                            and previous_operation != operation_id
+                        ):
+                            diagnostics.append(
+                                _diagnostic(
+                                    "AN_EVT_OCCURRENCE_OPERATION_MISMATCH",
+                                    "An occurrence id cannot move between logical "
+                                    "operations in one mission.",
+                                    path=f"{path}.occurrence.operation_id",
+                                )
+                            )
+                        else:
+                            operation_by_occurrence[occurrence_id] = operation_id
+                        attempts_by_occurrence.setdefault(
+                            occurrence_id, set()
+                        ).add(attempt)
+                        previous_attempt = last_attempt_by_occurrence.get(
+                            occurrence_id
+                        )
+                        if previous_attempt is not None and attempt < previous_attempt:
+                            diagnostics.append(
+                                _diagnostic(
+                                    "AN_EVT_ATTEMPT_ORDER_INVALID",
+                                    "Attempts for one occurrence must not decrease "
+                                    "along mission sequence order.",
+                                    path=f"{path}.occurrence.attempt",
+                                )
+                            )
+                        last_attempt_by_occurrence[occurrence_id] = max(
+                            attempt, previous_attempt or 0
+                        )
+                        if any(
+                            successful < attempt
+                            for successful in successful_attempts.get(
+                                occurrence_id, set()
+                            )
+                        ) and (occurrence_id, attempt) not in reported_after_success:
+                            diagnostics.append(
+                                _diagnostic(
+                                    "AN_EVT_ATTEMPT_AFTER_SUCCESS",
+                                    "A successfully completed occurrence cannot be "
+                                    "retried; repeated work requires a new occurrence id.",
+                                    path=f"{path}.occurrence.attempt",
+                                )
+                            )
+                            reported_after_success.add((occurrence_id, attempt))
             if event_type == "capability_allowed":
-                allowed_capabilities.add((actor, capability))
-                previous = decisions.get((actor, capability))
+                allowance_key = (*state_scope, actor, capability)
+                allowed_capabilities.add(allowance_key)
+                previous = decisions.get(allowance_key)
                 if previous == "deny":
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_DECISION_CONTRADICTION",
-                            "The same mission both denies and allows the "
-                            "capability for this actor.",
+                            "The same execution scope both denies and allows "
+                            "the capability for this actor.",
                             path=f"{path}.event_type",
                         )
                     )
-                decisions[(actor, capability)] = "allow"
+                decisions[allowance_key] = "allow"
             elif event_type == "capability_denied":
-                previous = decisions.get((actor, capability))
+                decision_key = (*state_scope, actor, capability)
+                previous = decisions.get(decision_key)
                 if previous == "allow":
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_DECISION_CONTRADICTION",
-                            "The same mission both allows and denies the "
-                            "capability for this actor.",
+                            "The same execution scope both allows and denies "
+                            "the capability for this actor.",
                             path=f"{path}.event_type",
                         )
                     )
-                decisions[(actor, capability)] = "deny"
+                decisions[decision_key] = "deny"
             elif event_type == "tool_invoked":
-                if (actor, capability) not in allowed_capabilities:
+                if (*state_scope, actor, capability) not in allowed_capabilities:
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_TOOL_WITHOUT_ALLOWANCE",
                             "Tool invocation requires a prior capability "
-                            "allowance in the mission.",
+                            "allowance in the same execution scope.",
                             path=f"{path}.event_type",
                         )
                     )
             elif event_type == "delegation_requested":
-                requested_delegations.add(event.get("delegation_ref"))
+                requested_delegations.add(
+                    (*state_scope, event.get("delegation_ref"))
+                )
             elif event_type in {"delegation_accepted", "delegation_rejected"}:
-                if event.get("delegation_ref") not in requested_delegations:
+                if (
+                    *state_scope,
+                    event.get("delegation_ref"),
+                ) not in requested_delegations:
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_ACCEPTANCE_WITHOUT_REQUEST",
                             "Delegation outcomes require a prior delegation "
-                            "request in the mission.",
+                            "request in the same execution scope.",
                             path=f"{path}.event_type",
                         )
                     )
             elif event_type == "handoff_initiated":
-                initiated_handoffs.add(event.get("handoff_ref"))
+                initiated_handoffs.add((*state_scope, event.get("handoff_ref")))
             elif event_type == "handoff_completed":
-                if event.get("handoff_ref") not in initiated_handoffs:
+                if (*state_scope, event.get("handoff_ref")) not in initiated_handoffs:
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_COMPLETION_WITHOUT_INITIATION",
                             "Handoff completion requires a prior initiation in "
-                            "the mission.",
+                            "the same execution scope.",
                             path=f"{path}.event_type",
                         )
                     )
             elif event_type == "approval_requested":
-                requested_approvals.add(event.get("approval_ref"))
+                requested_approvals.add((*state_scope, event.get("approval_ref")))
             elif event_type in {"approval_granted", "approval_rejected"}:
-                if event.get("approval_ref") not in requested_approvals:
+                if (*state_scope, event.get("approval_ref")) not in requested_approvals:
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_GRANT_WITHOUT_REQUEST",
                             "Approval outcomes require a prior approval request "
-                            "in the mission.",
+                            "in the same execution scope.",
                             path=f"{path}.event_type",
+                        )
+                    )
+
+            if occurrence_id is not None and attempt is not None:
+                outcome_key = (occurrence_id, attempt)
+                if event_type in _SUCCESS_TERMINALS:
+                    previous_outcome = outcomes.get(outcome_key)
+                    if previous_outcome is not None:
+                        diagnostics.append(
+                            _diagnostic(
+                                "AN_EVT_ATTEMPT_OUTCOME_CONTRADICTION",
+                                "One occurrence attempt cannot record multiple or "
+                                "contradictory terminal outcomes.",
+                                path=f"{path}.event_type",
+                            )
+                        )
+                    else:
+                        outcomes[outcome_key] = "success"
+                        successful_attempts.setdefault(
+                            occurrence_id, set()
+                        ).add(attempt)
+                elif event_type in _FAILURE_TERMINALS:
+                    previous_outcome = outcomes.get(outcome_key)
+                    if previous_outcome == "success":
+                        diagnostics.append(
+                            _diagnostic(
+                                "AN_EVT_ATTEMPT_OUTCOME_CONTRADICTION",
+                                "One occurrence attempt cannot both succeed and fail.",
+                                path=f"{path}.event_type",
+                            )
+                        )
+                    elif previous_outcome is None:
+                        outcomes[outcome_key] = "failure"
+
+        if explicit_occurrences:
+            for occurrence_id, attempts in sorted(attempts_by_occurrence.items()):
+                ordered_attempts = sorted(attempts)
+                if ordered_attempts != list(
+                    range(1, ordered_attempts[-1] + 1)
+                ):
+                    diagnostics.append(
+                        _diagnostic(
+                            "AN_EVT_ATTEMPT_GAP",
+                            f"Occurrence {occurrence_id!r} attempts must be "
+                            "contiguous from 1.",
+                            path=f"missions.{mission}.occurrences.{occurrence_id}",
                         )
                     )
 
@@ -897,7 +1083,11 @@ def validate_runtime_events(
         "contract_digest": expected_contract,
         "network_lock_digest": expected_lock,
         "events_schema": RUNTIME_EVENTS_SCHEMA_ID,
-        "events_schema_version": RUNTIME_EVENTS_SCHEMA_VERSION,
+        "events_schema_version": (
+            observed_schema_version
+            if isinstance(observed_schema_version, str)
+            else RUNTIME_EVENTS_SCHEMA_VERSION
+        ),
         "event_count": len(events),
         "mission_count": len(by_mission),
         "counts_by_type": dict(sorted(counts.items())),

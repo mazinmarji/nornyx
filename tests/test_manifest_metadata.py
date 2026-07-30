@@ -14,20 +14,20 @@ def test_manifest_current_validation_is_fresh() -> None:
     manifest = load_manifest()
     validation = manifest["current_validation"]
 
-    assert manifest["version"] == __version__ == "1.9.0"
+    assert manifest["version"] == __version__ == "1.10.0"
     assert manifest["language_version"] == "1.0.0"
     assert manifest["updated_for"] == f"{__version__}-release-candidate"
     assert validation["goal"] == f"{__version__}-release-candidate"
     assert validation["date"] == "2026-07-30"
     assert validation["test_command"] == "python -m pytest -q"
-    assert validation["package_publication"] == "1.8.0"
+    assert validation["package_publication"] == "1.9.0"
     assert validation["release_check"]["blocked"] == 0
     assert validation["stable_language_check"]["blocked"] == 0
 
     test_result = validation["test_result"]
     for marker in (
-        "1566 passed",
-        "48 skipped",
+        "1531 passed",
+        "50 skipped",
         "CPython 3.10-3.13",
         "core build",
         "installed-wheel",

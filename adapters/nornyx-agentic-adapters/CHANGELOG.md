@@ -6,6 +6,25 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-30
+
+### Added
+
+- ADR-0039 M2-C: `nornyx_agentic_adapters.langgraph` supports synchronous
+  StateGraph node invocation against exact `langgraph==1.2.2`. Public
+  `Runtime.execution_info` maps node surfaces, task ids, and native attempts to
+  runtime-events 1.1 operation/occurrence/attempt identity. Native retry,
+  loops, parallel branches, interrupt, checkpoint resume, denial, failure, and
+  installed-wheel behavior have dedicated tests.
+- LangGraph interrupt control flow is propagated as an incomplete occurrence
+  attempt rather than recorded as `runtime_failed`; resume offsets the reset
+  framework attempt counter from the validated cumulative evidence prefix.
+
+### Changed
+
+- The adapter candidate advances to 0.2.0, requires `nornyx>=1.10,<2` / SPI
+  1.1, and retains exact CrewAI 1.15.4 and LangGraph 1.2.2 pins.
+
 ### Fixed
 
 - **A delegated capability's `tool_invoked` observation now carries the
@@ -71,5 +90,5 @@ package versions independently of the `nornyx` core package — see
   Depends on `nornyx>=1.8,<2` and checks the installed
   `nornyx.agentic.SPI_VERSION` at import time. Ships no LangGraph
   implementation yet — see `docs/MIGRATION.md` for the planned sequence.
-  Not yet released to PyPI; version remains a 0.1.0 candidate pending its own
-  release gate (a separate, subsequently authorized milestone).
+  This foundation was initially prepared as a 0.1.0 candidate and is included
+  in the first published adapter release, 0.2.0.

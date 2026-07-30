@@ -12,6 +12,9 @@
 | `AN_EVT_SEQUENCE_GAP` | The events file omits part of a mission stream. | Supply the complete stream; partial evidence fails closed. |
 | `AN_EVT_CAPABILITY_NOT_HELD` | An `allowed`/`tool_invoked` event names a capability the actor neither holds nor receives via the event's `delegation_ref` at that timestamp. | Fix the runtime mapping, or include the delegation reference the allowance used. |
 | `AN_EVT_LOCK_STALE` | The supplied lock no longer matches the contract used for validation. | Validate against the exact contract revision the evidence was produced for. |
+| `AN_EVT_SCHEMA_LOCK_MISMATCH` | The evidence schema id/version differs from the runtime-events schema declared by the lock. | Use the matching historical lock/stream, or generate a new 1.1 lock and start a new legacy or explicit stream. |
+| `AN_EVT_ATTEMPT_GAP` | Explicit attempts for one occurrence do not start at 1 and remain contiguous. | Preserve the cumulative validated prefix and use `max_recorded_attempt`/`EvidenceRecorder.resume` before appending. |
+| `AN_EVT_ATTEMPT_AFTER_SUCCESS` | A producer retried an occurrence that already recorded success. | Use a new occurrence id for intentional repeated work. |
 | `AN_ADAPTER_IDENTITY_UNKNOWN` | The framework agent key maps to zero or multiple identities. | Declare exactly one `framework_bindings` entry per framework/key. |
 | `AN_ADAPTER_LOCK_STALE` | Adapter refused to start on stale controls. | Regenerate and re-lock, then restart the adapter. |
 | `EVAL_IMPORT_ERROR` | The external results file does not match the accepted Promptfoo shape. | Export with `promptfoo eval --output results.json`; do not hand-edit stats. |

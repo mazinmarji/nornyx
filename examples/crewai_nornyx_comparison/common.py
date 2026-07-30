@@ -172,7 +172,10 @@ def capture_environment() -> dict[str, object]:
         "python_version": platform.python_version(),
         "platform": _PLATFORM,  # cached at import; never a subprocess under the guard
         "executable": sys.executable,
-        "nornyx_version": _version("nornyx"),
+        # Prefer the imported package so source-checkout demonstrations report
+        # the code actually executing, even when an older wheel is installed in
+        # the surrounding environment.
+        "nornyx_version": nornyx.__version__,
         "nornyx_file": str(Path(nornyx.__file__).resolve()),
         "crewai_version": crewai_version,
         "langgraph_version": _version("langgraph"),

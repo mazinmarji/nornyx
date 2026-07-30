@@ -19,8 +19,8 @@ runtimes execute work; Nornyx governs declarations and supplied evidence.
 flowchart TD
     A[".nyx governance contract"] --> B["static semantic validation<br/>(nornyx check)"]
     B --> C["deterministic governance artifacts + network lock<br/>(nornyx agentic-network generate / lock)"]
-    C --> D["CrewAI reference adapter"]
-    C --> E["LangGraph reference adapter"]
+    C --> D["CrewAI supported/reference adapters"]
+    C --> E["LangGraph supported/reference adapters"]
     D --> F["standardized runtime evidence<br/>(nornyx.agentic_runtime_events.v1)"]
     E --> F
     F --> G["local conformance validation<br/>(nornyx agentic-network evidence-validate)"]
@@ -33,8 +33,8 @@ flowchart TD
 | --- | --- | --- |
 | Static network governance (AN-001/AN-002) | `nornyx check` | Declared identities, capabilities, zones, gates, delegations, handoffs, and relations are internally consistent, bounded, and fail closed. |
 | Deterministic artifacts + lock (AN-003) | `nornyx agentic-network generate / lock / lock-check` | Generated declarations are byte-stable and content-addressed; drift between contract, composition, and controls is detected. |
-| Runtime-event evidence (AN-004) | `nornyx agentic-network evidence-validate` | Supplied local event evidence conforms to the exact contract, lock, and revision. |
-| Reference adapters (AN-005) | `integrations/` (not packaged) | One contract governs CrewAI and LangGraph at the adapter boundary with standardized evidence emission. |
+| Runtime-event evidence (AN-004) | `nornyx agentic-network evidence-validate` | Supplied local event evidence conforms to the exact contract, lock, revision, and—when explicit—operation/occurrence/attempt state. |
+| Framework adapters (AN-005 / M2-B / M2-C) | `integrations/` examples plus separate `nornyx-agentic-adapters` package | One contract governs supported CrewAI sync tools and LangGraph sync nodes with standardized evidence emission. |
 | Product proof (AN-006) | `examples/agentic_network_support/` | The full chain runs offline, deterministically, with measured allowed/blocked outcomes. |
 
 ## Honest limits

@@ -111,7 +111,7 @@ def test_core_vXYZ_tag_is_core_eligible_and_adapter_ineligible() -> None:
 
 
 def test_matching_adapters_tag_is_adapter_eligible_and_core_ineligible() -> None:
-    # Uses the real current package version (0.1.0) from the checked-out
+    # Uses the real current package version (0.2.0) from the checked-out
     # pyproject.toml, not a hardcoded assumption.
     pkg_version = re.search(
         r'(?m)^version\s*=\s*"([^"]+)"',
@@ -122,14 +122,14 @@ def test_matching_adapters_tag_is_adapter_eligible_and_core_ineligible() -> None
 
 
 def test_adapters_tag_version_mismatch_is_rejected() -> None:
-    # The package currently declares 0.1.0; a tag naming a different version
+    # The package currently declares 0.2.0; a tag naming a different version
     # must fail closed rather than publish a mismatched release.
     pkg_version = re.search(
         r'(?m)^version\s*=\s*"([^"]+)"',
         (ROOT / "adapters" / "nornyx-agentic-adapters" / "pyproject.toml").read_text(encoding="utf-8"),
     ).group(1)
-    assert pkg_version == "0.1.0", "test assumption drifted from the actual package version"
-    assert _adapter_eligible("adapters-v0.1.1") is False
+    assert pkg_version == "0.2.0", "test assumption drifted from the actual package version"
+    assert _adapter_eligible("adapters-v0.2.1") is False
 
 
 def test_unrelated_release_tag_is_rejected_by_both_gates() -> None:

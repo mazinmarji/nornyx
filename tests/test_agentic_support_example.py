@@ -37,7 +37,7 @@ REGISTRY = GovernanceRegistry.builtins()
 COMPOSITION = compose_governance(REGISTRY, profile_identity="agentic_network")
 
 GOLDEN_SUPPORT_LOCK_DIGEST = (
-    "sha256:e4725b0a138ebfd1f58c43ed22ce184d6cdaff08e7a358a29cfeea8852cbb3ba"
+    "sha256:fe71adc9e8641330f5c08e7871feab33842db31efd292aca2186e4baefce7a30"
 )
 GOLDEN_SUPPORT_CONTRACT_DIGEST = (
     "sha256:3cdf632c08684efa2382a047b474b8f56ea4a83c5ed2f86c05918c29d0ac8eda"

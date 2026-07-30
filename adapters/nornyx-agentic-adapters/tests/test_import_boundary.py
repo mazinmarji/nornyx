@@ -16,7 +16,7 @@ def test_base_import_works_with_no_framework_installed() -> None:
     code = (
         "import sys\n"
         "import nornyx_agentic_adapters as naa\n"
-        "assert naa.__version__ == '0.1.0'\n"
+        "assert naa.__version__ == '0.2.0'\n"
         "assert 'crewai' not in sys.modules\n"
         "assert 'langgraph' not in sys.modules\n"
         "print('OK')\n"

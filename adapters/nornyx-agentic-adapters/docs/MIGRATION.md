@@ -64,10 +64,13 @@ A subsequent, separately-audited milestone (ADR-0039 M2-D,
 
 ## Using this package today
 
-CrewAI is now supported (`nornyx_agentic_adapters.crewai_adapter`, M2-B, tool
-invocation only — see README Coverage). LangGraph is not yet (M2-C).
+CrewAI is supported (`nornyx_agentic_adapters.crewai_adapter`, M2-B, tool
+invocation only — see README Coverage). LangGraph synchronous StateGraph nodes
+are supported by `nornyx_agentic_adapters.langgraph` (M2-C).
 Consumers of the existing `integrations/nornyx_reference_adapters/` reference
 code for CrewAI may migrate to this package's `crewai_adapter` module now — and,
 because of the rename above, the two can now coexist in one Python process.
-LangGraph consumers should continue using the existing reference code
-unchanged until M2-C ships, followed by M2-D's shim migration.
+LangGraph consumers should migrate guarded node construction to
+`make_governed_node` and an occurrence-aware core recorder. The legacy
+reference code remains unchanged until M2-D's separately reviewed shim
+migration.

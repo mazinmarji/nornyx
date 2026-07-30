@@ -122,9 +122,9 @@ class Context:
         return payload
 
     def stream(self, events: list[dict[str, Any]]) -> dict[str, Any]:
-        return {
+        stream = {
             "schema": "nornyx.agentic_runtime_events.v1",
-            "schema_version": "1.0",
+            "schema_version": self.lock["runtime_events_schema"]["version"],
             "network_id": "network.research",
             "producer": {
                 "type": "synthetic_harness",
@@ -133,6 +133,9 @@ class Context:
             },
             "events": events,
         }
+        if stream["schema_version"] == "1.1":
+            stream["occurrence_mode"] = "legacy"
+        return stream
 
     def validate(
         self,

@@ -2,27 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nornyx.dev/schemas/agentic_runtime_events_v1.schema.json",
   "title": "Nornyx Agentic Runtime Events v1",
-  "description": "Closed envelope for supplied local runtime-event evidence. Events are records offered for validation against an exact contract, lock, and revision. Accepting an event proves conformance of the supplied record only; hash validity proves content binding, not event truth. This schema defines no transport, endpoint, credential, or execution behavior.",
-  "type": "object",
-  "required": ["schema", "schema_version", "network_id", "producer", "events"],
-  "properties": {
-    "schema": {"const": "nornyx.agentic_runtime_events.v1"},
-    "schema_version": {"const": "1.0"},
-    "network_id": {"$ref": "#/$defs/id"},
-    "producer": {"$ref": "#/$defs/producer"},
-    "events": {
-      "type": "array",
-      "maxItems": 10000,
-      "items": {"$ref": "#/$defs/event"}
-    }
-  },
-  "additionalProperties": false,
+  "description": "Closed envelope for supplied local runtime-event evidence. Schema version 1.1 adds opt-in, framework-neutral operation, occurrence, and attempt identity while preserving the exact 1.0 shape. Accepting an event proves conformance of the supplied record only; hash validity proves content binding, not event truth.",
+  "oneOf": [
+    {"$ref": "#/$defs/envelopeV10"},
+    {"$ref": "#/$defs/envelopeV11Legacy"},
+    {"$ref": "#/$defs/envelopeV11Explicit"}
+  ],
   "$defs": {
     "id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "occurrenceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
     },
     "sha256Digest": {
       "type": "string",
@@ -46,13 +43,7 @@
       "type": "object",
       "required": ["type", "id", "version"],
       "properties": {
-        "type": {
-          "enum": [
-            "framework_adapter",
-            "synthetic_harness",
-            "external_runtime"
-          ]
-        },
+        "type": {"enum": ["framework_adapter", "synthetic_harness", "external_runtime"]},
         "id": {"$ref": "#/$defs/id"},
         "version": {"$ref": "#/$defs/id"}
       },
@@ -64,15 +55,7 @@
       "properties": {
         "role": {"$ref": "#/$defs/id"},
         "actor_type": {
-          "enum": [
-            "human",
-            "ai_tool",
-            "execution_surface",
-            "autonomous_agent",
-            "model",
-            "connector",
-            "generated_output"
-          ]
+          "enum": ["human", "ai_tool", "execution_surface", "autonomous_agent", "model", "connector", "generated_output"]
         }
       },
       "additionalProperties": false
@@ -96,43 +79,33 @@
       },
       "additionalProperties": false
     },
+    "occurrence": {
+      "type": "object",
+      "required": ["operation_id", "occurrence_id", "attempt"],
+      "properties": {
+        "operation_id": {"$ref": "#/$defs/occurrenceId"},
+        "occurrence_id": {"$ref": "#/$defs/occurrenceId"},
+        "attempt": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      },
+      "additionalProperties": false
+    },
     "event": {
       "type": "object",
       "required": [
-        "event_id",
-        "event_type",
-        "mission_id",
-        "sequence",
-        "actor_ref",
-        "timestamp",
-        "network_id",
-        "contract_digest",
-        "network_lock_digest",
-        "subject_revision",
-        "producer"
+        "event_id", "event_type", "mission_id", "sequence", "actor_ref",
+        "timestamp", "network_id", "contract_digest", "network_lock_digest",
+        "subject_revision", "producer"
       ],
       "properties": {
         "event_id": {"$ref": "#/$defs/id"},
         "event_type": {
           "enum": [
-            "agent_invoked",
-            "capability_requested",
-            "capability_allowed",
-            "capability_denied",
-            "delegation_requested",
-            "delegation_accepted",
-            "delegation_rejected",
-            "handoff_initiated",
-            "handoff_completed",
-            "trust_zone_crossed",
-            "data_shared",
-            "approval_requested",
-            "approval_granted",
-            "approval_rejected",
-            "tool_invoked",
-            "policy_violation",
-            "identity_revoked",
-            "runtime_failed"
+            "agent_invoked", "capability_requested", "capability_allowed",
+            "capability_denied", "delegation_requested", "delegation_accepted",
+            "delegation_rejected", "handoff_initiated", "handoff_completed",
+            "trust_zone_crossed", "data_shared", "approval_requested",
+            "approval_granted", "approval_rejected", "tool_invoked",
+            "policy_violation", "identity_revoked", "runtime_failed"
           ]
         },
         "mission_id": {"$ref": "#/$defs/id"},
@@ -168,7 +141,54 @@
           "maxItems": 64,
           "items": {"$ref": "#/$defs/id"},
           "uniqueItems": true
-        }
+        },
+        "occurrence": {"$ref": "#/$defs/occurrence"}
+      }
+    },
+    "eventLegacy": {
+      "allOf": [{"$ref": "#/$defs/event"}, {"not": {"required": ["occurrence"]}}],
+      "unevaluatedProperties": false
+    },
+    "eventExplicit": {
+      "allOf": [{"$ref": "#/$defs/event"}],
+      "required": ["occurrence"],
+      "unevaluatedProperties": false
+    },
+    "envelopeV10": {
+      "type": "object",
+      "required": ["schema", "schema_version", "network_id", "producer", "events"],
+      "properties": {
+        "schema": {"const": "nornyx.agentic_runtime_events.v1"},
+        "schema_version": {"const": "1.0"},
+        "network_id": {"$ref": "#/$defs/id"},
+        "producer": {"$ref": "#/$defs/producer"},
+        "events": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/eventLegacy"}}
+      },
+      "additionalProperties": false
+    },
+    "envelopeV11Legacy": {
+      "type": "object",
+      "required": ["schema", "schema_version", "occurrence_mode", "network_id", "producer", "events"],
+      "properties": {
+        "schema": {"const": "nornyx.agentic_runtime_events.v1"},
+        "schema_version": {"const": "1.1"},
+        "occurrence_mode": {"const": "legacy"},
+        "network_id": {"$ref": "#/$defs/id"},
+        "producer": {"$ref": "#/$defs/producer"},
+        "events": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/eventLegacy"}}
+      },
+      "additionalProperties": false
+    },
+    "envelopeV11Explicit": {
+      "type": "object",
+      "required": ["schema", "schema_version", "occurrence_mode", "network_id", "producer", "events"],
+      "properties": {
+        "schema": {"const": "nornyx.agentic_runtime_events.v1"},
+        "schema_version": {"const": "1.1"},
+        "occurrence_mode": {"const": "explicit"},
+        "network_id": {"$ref": "#/$defs/id"},
+        "producer": {"$ref": "#/$defs/producer"},
+        "events": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/eventExplicit"}}
       },
       "additionalProperties": false
     }

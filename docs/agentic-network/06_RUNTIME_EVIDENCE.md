@@ -52,3 +52,44 @@ of what was supplied against the exact contract revision, nothing more. Hash
 validity (including per-event `evidence_artifact` SHA-256 binding) proves
 content binding, not event truth. These limitations are embedded in every
 report.
+
+## Runtime-events 1.1 occurrence modes
+
+The schema id remains `nornyx.agentic_runtime_events.v1`. The lock selects an
+exact schema version:
+
+- **1.0** is the published Nornyx 1.9.0 shape and behavior.
+- **1.1 legacy** adds `occurrence_mode: legacy` to the envelope while retaining
+  the old event shape and mission-scoped transition/replay behavior. Existing
+  `EvidenceRecorder` calls use this mode with a newly generated 1.1 lock.
+- **1.1 explicit** adds `occurrence_mode: explicit` and requires every event to
+  carry `occurrence.operation_id`, `occurrence.occurrence_id`, and a contiguous
+  one-based `occurrence.attempt`.
+
+The event schema version must match the validated network lock. Historical 1.0
+locks remain verifiable; a legacy stream is never silently upgraded.
+
+In explicit mode, a mission represents the complete governed run. An operation
+is the stable governed surface, an occurrence is one scheduled execution or
+loop/parallel visit, and an attempt is one retry within that occurrence.
+Authorization allowances and transition state are attempt-scoped. A successful
+occurrence cannot be retried; intentional repeated work uses a new occurrence.
+
+Replay fingerprints ignore only transport restamping (`event_id`, `sequence`,
+and `timestamp`) and include the explicit occurrence identity plus every other
+substantive field. Identical semantic evidence inside one attempt is replay;
+identical work in a new occurrence or retry attempt is not.
+
+## Recording and continuation
+
+Use `EvidenceRecorder.for_occurrences(...)` with a 1.1 lock, then pass a frozen
+`RuntimeOccurrence` to `record_occurrence_decision(...)` and
+`record_occurrence_observation(...)`. Existing constructor and recording calls
+remain available and retain legacy behavior.
+
+`EvidenceRecorder.resume(...)` validates and deeply copies a complete prior
+stream, restores mission sequence and occurrence-attempt state, and continues
+to return cumulative evidence. The producer, contract, lock, schema/mode, and
+subject revision must match, and the resumed evaluation time cannot precede
+any recorded event. Differential chunks and multi-producer merging are not
+supported.

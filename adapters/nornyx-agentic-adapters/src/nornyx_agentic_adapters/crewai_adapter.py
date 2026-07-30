@@ -108,11 +108,11 @@ FRAMEWORK = "crewai"
 
 METADATA = AdapterMetadata(
     adapter_name="nornyx-agentic-adapters-crewai",
-    adapter_version="0.1.0",
+    adapter_version="0.2.0",
     spi_version=SPI_VERSION,
     framework_name=FRAMEWORK,
     framework_version_range=f"=={_REQUIRED_CREWAI_VERSION}",
-    nornyx_version_range=">=1.8,<2",
+    nornyx_version_range=">=1.10,<2",
 )
 
 COVERAGE_INVENTORY = CoverageInventory(
