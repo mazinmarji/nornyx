@@ -37,6 +37,7 @@ FROZEN_SURFACE = {
     # authorization engine
     "load_authorizer",
     "Authorizer",
+    "AuthorizerState",
     "EvaluationContext",
     "AuthorizationRequest",
     "CapabilityRequest",
@@ -72,7 +73,7 @@ def test_every_exported_name_resolves():
 
 
 def test_spi_version_pinned():
-    assert agentic.SPI_VERSION == "1.1"
+    assert agentic.SPI_VERSION == "1.2"
     assert agentic.authz.SPI_VERSION == agentic.SPI_VERSION
 
 

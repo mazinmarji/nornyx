@@ -6,8 +6,8 @@ The supported M2-C adapter is distributed separately from core Nornyx:
 pip install "nornyx-agentic-adapters[langgraph]"
 ```
 
-The initial compatibility boundary is exact: Nornyx core `>=1.10,<2`, agentic
-SPI 1.1, and LangGraph `==1.2.2`.
+The compatibility boundary is Nornyx core `>=1.10,<2`, agentic SPI major 1
+(including SPI 1.2), and LangGraph `==1.2.2`.
 
 ## Identity and occurrence mapping
 

@@ -61,3 +61,4 @@ flowchart TD
 9. [Troubleshooting](09_TROUBLESHOOTING.md)
 10. [Before/after and positioning](10_BEFORE_AFTER_AND_POSITIONING.md)
 11. [Reference CI](11_REFERENCE_CI.md)
+12. [Authorization SPI](12_AUTHORIZATION_SPI.md)

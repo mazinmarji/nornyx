@@ -3,7 +3,7 @@
 | `nornyx-agentic-adapters` | `nornyx` (SPI) | SPI version | CrewAI | LangGraph | Python |
 | --- | --- | --- | --- | --- | --- |
 | 0.1.x | `>=1.8,<2` | 1.0 | `==1.15.4` | Not implemented | 3.10–3.13 |
-| 0.2.x | `>=1.10,<2` | 1.1 | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
+| 0.2.x | `>=1.10,<2` | 1.x (tested with 1.1 and 1.2) | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
 
 ## Reading this table
 
@@ -73,3 +73,13 @@ boundary. Every value the adapters pass to the recorder is an exact builtin.
 threads. See
 `docs/decisions/ADR-0041-evidence-recorder-integrity-and-serialization.md`
 in the core repository for the full rationale.
+
+## Authorizer state (SPI 1.2)
+
+SPI 1.2 adds `Authorizer.state` and `AuthorizerState`. This is an additive
+read-only capability within the supported SPI major: compatibility shims and
+evidence validators can consume detached views of the already loaded contract,
+effective governance composition, and verified lock without private attributes
+or a second filesystem read. It changes no request, decision, recorder,
+runtime-events schema, occurrence, or replay behavior. Adapter 0.2.x continues
+to accept SPI major 1.

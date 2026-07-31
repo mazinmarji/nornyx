@@ -1650,7 +1650,7 @@ def test_published_1_8_compatible_schema_valid_builtin_subclass_corpus(
 def test_evidence_recorder_public_contract_constants_and_signatures_are_unchanged():
     from nornyx.agentic import DecisionEventIntent
 
-    assert A.SPI_VERSION == "1.1"
+    assert A.SPI_VERSION == "1.2"
     assert A.RUNTIME_EVENTS_SCHEMA_ID == "nornyx.agentic_runtime_events.v1"
     assert A.RUNTIME_EVENTS_SCHEMA_VERSION == "1.1"
     assert str(inspect.signature(EvidenceRecorder)) == (

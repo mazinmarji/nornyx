@@ -16,6 +16,7 @@ from langgraph.runtime import ExecutionInfo, Runtime
 from langgraph.types import Command, RetryPolicy, interrupt
 
 from nornyx.agentic import (
+    SPI_VERSION,
     Authorizer,
     EvaluationContext,
     EvidenceRecorder,
@@ -24,6 +25,7 @@ from nornyx.agentic import (
     compose_document_governance,
 )
 from nornyx_agentic_adapters import AdapterConfigurationError, AdapterDenied, SurfaceBinding
+from nornyx_agentic_adapters._compat import SUPPORTED_SPI_MAJOR, check_spi_version
 from nornyx_agentic_adapters.langgraph import (
     COVERAGE_INVENTORY,
     FRAMEWORK,
@@ -83,7 +85,13 @@ def _compile_single(node, *, retry_policy=None, checkpointer=None):
 def test_metadata_and_coverage_are_closed() -> None:
     assert FRAMEWORK == "langgraph"
     assert METADATA.adapter_version == "0.2.0"
-    assert METADATA.spi_version == "1.1"
+    # docs/COMPATIBILITY.md declares adapter 0.2.x compatible with SPI *major* 1,
+    # not with one exact minor: every additive SPI minor is compatible under
+    # ADR-0039's minor-compatibility rule. Pinning an exact minor here would
+    # contradict that matrix and fail on a core minor the adapter does support.
+    assert METADATA.spi_version == SPI_VERSION
+    assert int(METADATA.spi_version.partition(".")[0]) == SUPPORTED_SPI_MAJOR
+    check_spi_version(METADATA.spi_version)
     assert METADATA.framework_version_range == "==1.2.2"
     assert METADATA.nornyx_version_range == ">=1.10,<2"
     assert [item.surface for item in COVERAGE_INVENTORY.wrapped()] == [

@@ -3,7 +3,8 @@
 - Status: Accepted — M1 core authorization SPI implemented; adapter distribution
   and migration phases remain pending
 - Date: 2026-07-20
-- Revised: 2026-07-22 (pilot-derived authorization-SPI correction, with the Step-3
+- Revised: 2026-07-31 (additive SPI 1.2 Authorizer construction-state access);
+  2026-07-22 (pilot-derived authorization-SPI correction, with the Step-3
   independent-audit findings F1–F8 and their binding refinements resolved;
   supersedes the original "re-export-only facade / kernel stays in adapters"
   decision)
@@ -85,7 +86,7 @@ phases, evidence recorder, and code taxonomy.
 
 ```python
 # nornyx.agentic.authz  (re-exported via nornyx.agentic)
-SPI_VERSION = "1.0"
+SPI_VERSION = "1.2"
 
 def load_authorizer(contract_path, lock_path, *, validation_as_of: str) -> "Authorizer":
     """Load, validate (as of validation_as_of), and lock-verify one local
@@ -144,8 +145,20 @@ class Authorizer(Protocol):
     contract_digest: str
     network_lock_digest: str
     subject_revision: str              # the contract's bound agentic_network.subject_revision
+    state: "AuthorizerState"           # retained validated/composed/verified construction state
     def resolve_identity(self, framework: str, agent_key: str) -> str: ...  # raises IdentityResolutionError
     def evaluate(self, request: AuthorizationRequest, *, context: EvaluationContext) -> Decision: ...
+
+@dataclass(frozen=True)
+class AuthorizerState:
+    contract_digest: str
+    network_lock_digest: str
+    @property
+    def document(self) -> dict[str, Any]: ...
+    @property
+    def composition(self) -> CompositionResult: ...
+    @property
+    def lock_payload(self) -> dict[str, Any]: ...
 ```
 
 **Lifecycle.** The loaded `Authorizer` is **immutable, synchronous,
@@ -156,6 +169,21 @@ lives in the evidence recorder). Identity is resolved separately by
 `resolve_identity(framework, agent_key)`, which raises `IdentityResolutionError`
 (carrying an `IdentityResolutionCode`) — not a `Decision`. Malformed or
 incomplete requests fail closed with `DecisionCode.REQUEST_MALFORMED`.
+
+**Validated construction state (SPI 1.2).** `Authorizer.state` exposes the
+contract document, effective governance composition, and lock payload already
+retained by that exact Authorizer construction. It never rereads the contract or
+lock, recomposes governance, or reverifies the lock. The state object and the
+Authorizer share one recursively frozen retained graph; every public
+`document`, `composition`, or `lock_payload` access returns a detached
+compatibility view, so consumer mutation cannot change authorization behavior
+or a later view. Repeated access is deterministic and survives source-file
+change or deletion. `CompositionResult` is deliberately accepted here because
+it is already a public `nornyx.governance` result type and is the input expected
+by the public artifact and evidence validators. No private authorization-engine
+model is promoted. The authoritative validated/lock-verified guarantee belongs
+to `load_authorizer`; direct `Authorizer(...)` construction remains compatible
+but does not independently perform those load stages.
 
 **Revision binding — two independent, always-exact checks.**
 - *Runtime target binding.* `context.observed_subject_revision` **must exactly
@@ -363,6 +391,11 @@ new *optional* field, or a new decision-code member. Breaking: removing or
 renaming a variant/field, making an optional field required, or changing the
 meaning of an existing code. The surface-freeze and import-boundary tests enforce
 this.
+
+SPI 1.2 is a minor-compatible addition: it adds `AuthorizerState` and the
+`Authorizer.state` property without removing, renaming, or changing any existing
+request, decision, recorder, or load behavior. Runtime-events schema versions
+remain independently selected by the verified lock.
 
 ### 5. Compatibility matrix (published in the adapter README + CI)
 

@@ -53,6 +53,7 @@ from .authz import (
     Authorizer,
     AuthorizerLoadCode,
     AuthorizerLoadError,
+    AuthorizerState,
     CapabilityRequest,
     DataShareRequest,
     Decision,
@@ -99,6 +100,7 @@ __all__ = [
     # authorization engine
     "load_authorizer",
     "Authorizer",
+    "AuthorizerState",
     "EvaluationContext",
     "AuthorizationRequest",
     "CapabilityRequest",

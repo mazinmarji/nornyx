@@ -279,6 +279,7 @@ def test_documented_files_exist() -> None:
         "docs/agentic-network/09_TROUBLESHOOTING.md",
         "docs/agentic-network/10_BEFORE_AFTER_AND_POSITIONING.md",
         "docs/agentic-network/11_REFERENCE_CI.md",
+        "docs/agentic-network/12_AUTHORIZATION_SPI.md",
     ]
     for relative in referenced:
         assert (ROOT / relative).is_file(), relative
