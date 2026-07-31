@@ -13,6 +13,7 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
 | Axis | Current | Bumped when… | Source of truth |
 | --- | --- | --- | --- |
 | **Package (distribution)** | `1.10.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
+| **Agentic integration SPI** | `1.2` | the supported in-process `nornyx.agentic` integration contract changes; additive capabilities advance the minor and breaking changes advance the major | `nornyx.agentic.SPI_VERSION` |
 | **Language / schema** | `1.0` | the `.nyx` contract language or its schema targets change in a way authors must know about | `manifest.json` `language_version`, `nornyx.cli schema --version` |
 | **`agentic_network_governance` module** | `0.2.0` | the composed agentic-network governance module changes its catalog surface (bound by a `migration:` marker) | `nornyx/profiles_data/module_agentic_network_governance.yaml` `version` |
 | **Agentic schema targets** | `v1` | a new major schema id is minted (breaking) | `$id` tokens: `agentic_network_v1`, `agentic_capabilities_v1`, `agentic_network_lock_v1`, `agentic_runtime_events_v1` |
@@ -56,6 +57,13 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
    1.1 remains under the permanent v1 schema id because its exact 1.0 branch is
    retained. New locks default to 1.1; verification reconstructs supported
    historical 1.0 locks and artifact hashes using their declared version.
+6. **Implementation and release version changes are separate review units.**
+   Additive work is recorded under `CHANGELOG.md`'s Unreleased section without
+   partially changing the seven synchronized package-version locations. The
+   release PR that cuts the distribution advances all seven together. The
+   additive SPI 1.2 construction-state capability therefore leaves the working
+   package version at 1.10.0; the recommended later release is Nornyx 1.11.0.
+   Tagging and publication remain separate authorized actions.
 
 ## Supported Python
 

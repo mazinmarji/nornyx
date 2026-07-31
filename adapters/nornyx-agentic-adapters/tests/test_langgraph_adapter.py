@@ -83,7 +83,7 @@ def _compile_single(node, *, retry_policy=None, checkpointer=None):
 def test_metadata_and_coverage_are_closed() -> None:
     assert FRAMEWORK == "langgraph"
     assert METADATA.adapter_version == "0.2.0"
-    assert METADATA.spi_version == "1.1"
+    assert METADATA.spi_version == "1.2"
     assert METADATA.framework_version_range == "==1.2.2"
     assert METADATA.nornyx_version_range == ">=1.10,<2"
     assert [item.surface for item in COVERAGE_INVENTORY.wrapped()] == [

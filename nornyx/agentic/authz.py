@@ -30,7 +30,7 @@ import math
 import re
 import threading
 from collections.abc import Mapping as _AbcMapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -47,6 +47,7 @@ from ..agentic_artifacts import (
 )
 from ..checker import check_document, has_errors
 from ..governance import (
+    CompositionResult,
     compose_document_governance,
     evaluate_document_governance,
     registry_for_contract,
@@ -60,7 +61,7 @@ from ..governance.agentic_network import (
 )
 from ..parser import load_nyx
 
-SPI_VERSION = "1.1"
+SPI_VERSION = "1.2"
 
 # Canonical subject-revision syntax (ADR-0039): git 40/64 lowercase hex, or
 # sha256 64 lowercase hex. No branch names, abbreviated SHAs, or aliases.
@@ -93,11 +94,18 @@ def _str_items(value: Any) -> tuple[str, ...]:
 
 
 def _deep_freeze(value: Any) -> Any:
-    """Recursively freeze: mapping→read-only, list/tuple→tuple, set→frozenset.
+    """Recursively freeze dataclasses and their complete retained object graph.
 
     Container copies are new, so the result shares no mutable reference with the
     input; scalars are shared but immutable.
     """
+    if is_dataclass(value) and not isinstance(value, type):
+        return type(value)(
+            **{
+                item.name: _deep_freeze(getattr(value, item.name))
+                for item in fields(value)
+            }
+        )
     if isinstance(value, Mapping):
         return MappingProxyType({key: _deep_freeze(item) for key, item in value.items()})
     if isinstance(value, (list, tuple)):
@@ -115,6 +123,29 @@ def _thaw(value: Any) -> Any:
         return [_thaw(item) for item in value]
     if isinstance(value, frozenset):
         return {_thaw(item) for item in value}
+    return value
+
+
+def _detach_composition(value: Any) -> Any:
+    """Copy a frozen governance model while preserving its public tuple fields.
+
+    Mapping content is thawed to ordinary dict/list containers.  This keeps the
+    returned :class:`CompositionResult` compatible with its public serializers
+    while ensuring mutations affect only the returned copy.
+    """
+    if is_dataclass(value) and not isinstance(value, type):
+        return type(value)(
+            **{
+                item.name: _detach_composition(getattr(value, item.name))
+                for item in fields(value)
+            }
+        )
+    if isinstance(value, Mapping):
+        return _thaw(value)
+    if isinstance(value, tuple):
+        return tuple(_detach_composition(item) for item in value)
+    if isinstance(value, frozenset):
+        return {_detach_composition(item) for item in value}
     return value
 
 
@@ -499,18 +530,90 @@ def _approval_shape_ok(a: Any) -> bool:
 
 
 # ---------------------------------------------------------------------- authorizer
+@dataclass(frozen=True, slots=True, init=False)
+class AuthorizerState:
+    """Validated, composed, and lock-verified state retained by an Authorizer.
+
+    ``document`` and ``lock_payload`` return detached ordinary-container copies.
+    ``composition`` returns a detached :class:`CompositionResult`.  Consumers
+    may therefore use or mutate any returned compatibility view without changing
+    this state or the Authorizer built from it.  The retained snapshots are
+    recursively immutable and are never reconstructed from the filesystem.
+
+    Instances originate from :func:`load_authorizer` (or direct
+    :class:`Authorizer` construction); callers do not construct this state
+    independently because only the load path establishes validation and lock
+    verification.
+    """
+
+    _document: Mapping[str, Any] = field(repr=False)
+    _composition: CompositionResult = field(repr=False)
+    _lock_payload: Mapping[str, Any] = field(repr=False)
+    contract_digest: str
+    network_lock_digest: str
+
+    @classmethod
+    def _from_authorizer_inputs(
+        cls,
+        document: Mapping[str, Any],
+        composition: CompositionResult,
+        lock_payload: Mapping[str, Any],
+    ) -> AuthorizerState:
+        instance = object.__new__(cls)
+        frozen_document = _deep_freeze(document)
+        frozen_composition = _deep_freeze(composition)
+        frozen_lock_payload = _deep_freeze(lock_payload)
+        object.__setattr__(instance, "_document", frozen_document)
+        object.__setattr__(instance, "_composition", frozen_composition)
+        object.__setattr__(instance, "_lock_payload", frozen_lock_payload)
+        object.__setattr__(
+            instance,
+            "contract_digest",
+            contract_digest(_thaw(frozen_document)),
+        )
+        object.__setattr__(
+            instance,
+            "network_lock_digest",
+            agentic_network_lock_digest(_thaw(frozen_lock_payload)),
+        )
+        return instance
+
+    @property
+    def document(self) -> dict[str, Any]:
+        """Return a detached plain-container copy of the validated contract."""
+
+        return _thaw(self._document)
+
+    @property
+    def composition(self) -> CompositionResult:
+        """Return a detached copy of the effective governance composition."""
+
+        return _detach_composition(self._composition)
+
+    @property
+    def lock_payload(self) -> dict[str, Any]:
+        """Return a detached plain-container copy of the verified network lock."""
+
+        return _thaw(self._lock_payload)
+
+
 class Authorizer:
     """One loaded, lock-verified contract. Deeply immutable and thread-safe."""
 
     def __init__(self, document: Mapping[str, Any], composition: Any, lock_payload: Mapping[str, Any]) -> None:
         object.__setattr__(self, "_frozen", False)
-        # Deep-frozen, detached snapshots of all retained contract state.
-        self._document = _deep_freeze(document)
-        self._lock_payload = _deep_freeze(lock_payload)
-        self._composition = composition
-        # Digests are computed from the frozen snapshot content.
-        self.contract_digest = contract_digest(_thaw(self._document))
-        self.network_lock_digest = agentic_network_lock_digest(_thaw(self._lock_payload))
+        # One deep-frozen construction snapshot backs both Authorizer behavior
+        # and the public state SPI. No later access reloads or recomposes it.
+        self._state = AuthorizerState._from_authorizer_inputs(
+            document,
+            composition,
+            lock_payload,
+        )
+        self._document = self._state._document
+        self._lock_payload = self._state._lock_payload
+        self._composition = self._state._composition
+        self.contract_digest = self._state.contract_digest
+        self.network_lock_digest = self._state.network_lock_digest
         network = self._document.get("agentic_network")
         self._network: Mapping[str, Any] = network if isinstance(network, Mapping) else MappingProxyType({})
         self.network_id = str(self._network.get("id"))
@@ -545,6 +648,12 @@ class Authorizer:
 
     def __delattr__(self, name: str) -> None:
         raise AttributeError("Authorizer is immutable")
+
+    @property
+    def state(self) -> AuthorizerState:
+        """Return the authoritative validated, composed, lock-verified state."""
+
+        return self._state
 
     # ---- identity resolution (separate from policy decisions) ----
     def resolve_identity(self, framework: str, agent_key: str) -> str:

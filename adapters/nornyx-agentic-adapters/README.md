@@ -3,8 +3,9 @@
 Supported framework adapters for the Nornyx [`nornyx.agentic`](https://github.com/mazinmarji/nornyx/blob/main/docs/decisions/ADR-0039-agentic-integration-sdk.md)
 authorization SPI. This package is where framework-specific interception,
 argument normalization, and executor wrapping live — the core `nornyx` package
-(`SPI_VERSION == "1.1"`, published from Nornyx 1.10.0) contains no agent
-framework and implements no framework glue.
+(`SPI_VERSION == "1.2"` in the unreleased source, intended for Nornyx 1.11.0;
+Nornyx 1.10.0 published SPI 1.1) contains no agent framework and implements no
+framework glue.
 
 ## Status
 
@@ -156,7 +157,9 @@ evidence output. Arbitrary non-`dict` `Mapping` fields remain an explicit
 callback boundary outside the recorder lock — see ADR-0041 and
 `docs/COMPATIBILITY.md`. These adapters already pass exact builtins, so their
 legacy CrewAI evidence output remains compatible. Occurrence-aware recording is
-an additive SPI 1.1 capability used by the LangGraph adapter.
+an additive SPI 1.1 capability used by the LangGraph adapter. SPI 1.2 adds the
+framework-neutral `Authorizer.state` construction snapshot; it changes no
+adapter authorization or occurrence behavior.
 
 ## Versioning
 

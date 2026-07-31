@@ -6,6 +6,23 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Added
+
+- `Authorizer.state` exposes an immutable `AuthorizerState` for the exact
+  contract document, effective governance composition, and network-lock payload
+  retained by Authorizer construction. Its public compatibility views are
+  detached at every depth, perform no second read/composition/verification, and
+  can be passed to public artifact and evidence validators without private
+  attribute access.
+
+### Changed
+
+- `SPI_VERSION` advances from 1.1 to 1.2 for the additive construction-state
+  capability. Authorization, evidence, runtime-events schema, occurrence, and
+  replay semantics are unchanged. The package version remains 1.10.0 until a
+  separately reviewed Nornyx 1.11.0 release PR synchronizes all release fields;
+  no tag or publication is part of this change.
+
 ## [1.10.0] - 2026-07-30
 
 ### Added

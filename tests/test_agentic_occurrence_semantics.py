@@ -110,12 +110,9 @@ def test_new_legacy_calls_remain_legacy(runtime) -> None:
 
 def test_historical_1_0_lock_and_recorder_remain_valid(runtime) -> None:
     authorizer, context = runtime
-    # Thaw through the public-shape helper used by the recorder rather than
-    # retaining mapping proxies in this compatibility fixture.
-    from nornyx.agentic.authz import _thaw
-
-    document = _thaw(authorizer._document)
-    composition = authorizer._composition
+    state = authorizer.state
+    document = state.document
+    composition = state.composition
     lock = _build_agentic_network_lock(
         document, composition, runtime_events_schema_version="1.0"
     )
@@ -156,12 +153,12 @@ def test_explicit_stream_rejects_missing_or_mixed_occurrence_metadata(runtime) -
     del missing["events"][0]["occurrence"]
     authorizer, _context = runtime
     from nornyx.agentic import validate_runtime_events
-    from nornyx.agentic.authz import _thaw
 
+    state = authorizer.state
     report = validate_runtime_events(
-        _thaw(authorizer._document),
-        authorizer._composition,
-        _thaw(authorizer._lock_payload),
+        state.document,
+        state.composition,
+        state.lock_payload,
         missing,
     )
     assert "AN_EVT_SCHEMA_INVALID" in {
@@ -186,9 +183,9 @@ def test_explicit_stream_rejects_missing_or_mixed_occurrence_metadata(runtime) -
         "attempt": 1,
     }
     report = validate_runtime_events(
-        _thaw(authorizer._document),
-        authorizer._composition,
-        _thaw(authorizer._lock_payload),
+        state.document,
+        state.composition,
+        state.lock_payload,
         mixed,
     )
     assert "AN_EVT_SCHEMA_INVALID" in {
