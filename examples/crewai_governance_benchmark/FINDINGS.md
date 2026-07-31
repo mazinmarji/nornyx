@@ -341,7 +341,12 @@ The benchmark works around this by minting one mission id per tool invocation
 is worth documenting in the adapter package, since the failure mode is
 non-obvious and appears only under retry.
 
-### O3 — The adapter package README shows a PyPI install that does not work
+### O3 — Historical: the adapter package was not yet published
+
+**Current status:** resolved operationally. Nornyx 1.10.0 and
+`nornyx-agentic-adapters` 0.2.0 are published on PyPI. The text below records
+the environment in which this observation was originally made; it is not a
+current availability statement.
 
 `adapters/nornyx-agentic-adapters/README.md` documents:
 
@@ -349,9 +354,10 @@ non-obvious and appears only under retry.
 pip install nornyx-agentic-adapters
 ```
 
-That distribution is not on PyPI (`pip index versions nornyx-agentic-adapters` →
-"No matching distribution found"), while `nornyx` 1.8.0 is. The benchmark
-installs the adapter from the repository and records
+At the time of the 1.8.0 / adapter 0.1.0 snapshot, that distribution was not on
+PyPI (`pip index versions nornyx-agentic-adapters` returned "No matching
+distribution found"), while `nornyx` 1.8.0 was. The historical benchmark
+installed the adapter from the repository and recorded
 `adapters_package_published_on_pypi: false` in `environment.json`.
 
 ### O4 — The packaged `__init__` docstring predates the CrewAI adapter

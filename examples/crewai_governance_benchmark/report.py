@@ -328,8 +328,8 @@ def render_markdown(
         w(f"| candidate digest | `{candidate_digest}` |")
     w("")
     w(
-        "`nornyx` is published on PyPI. **`nornyx-agentic-adapters` is not**: it is installed "
-        "from this repository. Nothing in this benchmark implies otherwise.\n"
+        "Nornyx 1.10.0 and **`nornyx-agentic-adapters` 0.2.0 are published on PyPI**. "
+        "The environment table separately records the actual installed candidate source.\n"
     )
     w(
         "The candidate digest folds every governance input and benchmark source file into one "
@@ -785,7 +785,9 @@ variants and is never counted as prevented.</p></section>
 <footer>
 Offline, deterministic, no API key and no network. The evaluation instant is pinned to
 {esc(str(env['as_of']))} because the SPI reads no wall clock.
-<b>nornyx-agentic-adapters is not published on PyPI</b>; it is installed from the repository.
+Nornyx 1.10.0 and <b>nornyx-agentic-adapters 0.2.0 are published on PyPI</b>.
+The environment record separately identifies whether this run used a built distribution
+or an editable/source candidate.
 Timing figures elsewhere in this report are a local microbenchmark, not a production
 latency claim. Any committed copy of this page is a snapshot of one run, not a
 continuously verified claim — compare the candidate digest and rerun the benchmark.

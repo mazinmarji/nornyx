@@ -256,8 +256,11 @@ def capture_environment() -> dict[str, object]:
         "nornyx_agentic_spi_version": SPI_VERSION,
         "adapters_version": _distribution_version("nornyx-agentic-adapters"),
         "adapters_install_kind": _install_kind(nornyx_agentic_adapters),
-        "adapters_package_published_on_pypi": False,
-        "adapters_install_source": "repository (adapters/nornyx-agentic-adapters)",
+        "adapters_package_published_on_pypi": True,
+        "adapters_install_source": (
+            "installed distribution (0.2.0 is published; actual location is "
+            "reported by adapters_install_kind)"
+        ),
         "crewai_version": crewai_version,
         "contract_path": _repo_relative(CONTRACT),
         "lock_path": _repo_relative(LOCK),

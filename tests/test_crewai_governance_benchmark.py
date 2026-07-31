@@ -568,11 +568,12 @@ def test_report_makes_no_absolute_claims(artifacts):
         assert word not in text, f"report contains an overclaim: {word!r}"
 
 
-def test_report_does_not_imply_the_adapter_is_on_pypi(artifacts):
+def test_report_records_published_adapter_without_conflating_install_source(artifacts):
     env = artifacts["json"]["environment"]
-    assert env["adapters_package_published_on_pypi"] is False
-    assert "not published" in artifacts["markdown"].lower() or "**False**" in artifacts["markdown"]
-    assert "not published on pypi" in artifacts["html"].lower()
+    assert env["adapters_package_published_on_pypi"] is True
+    assert "**True**" in artifacts["markdown"]
+    assert "adapters 0.2.0 are published on pypi" in artifacts["html"].lower()
+    assert env["adapters_install_kind"]
 
 
 # ------------------------------------------------------------ environment

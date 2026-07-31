@@ -51,11 +51,20 @@ class LangGraphGovernanceAdapter:
     ) -> Callable[[dict], dict]:
         """Wrap one LangGraph node callable with capability enforcement."""
 
+        if not callable(work):
+            raise GovernanceViolation(
+                "AN_ADAPTER_REQUEST_MALFORMED",
+                "LangGraph protected work must be callable.",
+            )
         identity = self.kernel.resolve_identity(node_key)
 
         def node(state: dict) -> dict:
-            self.kernel.invoke_tool(identity, capability, mission_id=mission_id)
-            return work(state)
+            return self.kernel._execute_tool_callable(
+                identity,
+                capability,
+                lambda: work(state),
+                mission_id=mission_id,
+            )
 
         return node
 

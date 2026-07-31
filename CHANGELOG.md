@@ -6,6 +6,33 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Changed
+
+- ADR-0039 M2-D converts the unpackaged
+  `integrations/nornyx_reference_adapters/GovernanceKernel` into a deprecated
+  compatibility shim over the public SPI 1.1 `Authorizer` and
+  `EvidenceRecorder`. Existing method signatures and stable legacy
+  `AN_ADAPTER_*` translations remain available; runtime-events 1.0 and 1.1
+  legacy envelopes retain lock/revision binding.
+- The legacy CrewAI task and LangGraph node guards now authorize once, execute
+  the protected callable exactly once only on ALLOW, record success after the
+  callable, and record `runtime_failed` when it raises.
+
+### Documentation
+
+- Complete the legacy-to-SPI method/error map, deprecation and minimum-retention
+  criteria, occurrence-mode compatibility, unsupported-surface inventory, and
+  published Nornyx 1.10.0 / adapter 0.2.0 baseline reconciliation.
+
+### Distribution boundaries
+
+- Runtime behavior changes only in the unpackaged repository compatibility
+  tree. No core or adapter runtime code, package version, runtime-events schema,
+  SPI version, occurrence/replay semantics, or core Authorizer policy behavior
+  changes. Because the adapter package README changes wheel metadata, the actual
+  diff is release classification C; any later adapter publication requires
+  separate authorization.
+
 ## [1.11.0] - 2026-08-01
 
 ### Added

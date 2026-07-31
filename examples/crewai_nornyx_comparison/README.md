@@ -181,10 +181,10 @@ failure.
     "approval": 2, "capability": 4, "identity": 1, "sharing": 1, "zone": 1
   },
   "false_denials_of_allowed_actions": 0,
-  "governed_events_emitted": 27,
+  "governed_events_emitted": 29,
   "evidence_validation_status": "pass",
-  "events_bound_to_contract_digest": 27,
-  "events_bound_to_network_lock_digest": 27,
+  "events_bound_to_contract_digest": 29,
+  "events_bound_to_network_lock_digest": 29,
   "initialization_failure": "AN_ADAPTER_LOCK_STALE",
   "ai_approval_rejection": "AN_ADAPTER_APPROVAL_NON_HUMAN",
   "identity_binding_enforcement": "AN_ADAPTER_IDENTITY_UNKNOWN",
@@ -206,7 +206,7 @@ Written under `--out`:
 | `comparison.md` | Human-readable comparison report. |
 | `plain_results.json` | Variant A per-scenario results + side-effect ledger. |
 | `governed_results.json` | Variant B per-scenario results + ledger + digests. |
-| `nornyx_runtime_events.json` | The governed evidence stream (27 events). |
+| `nornyx_runtime_events.json` | The governed evidence stream (29 events). |
 | `nornyx_evidence_report.json` | Nornyx's validation of that stream. |
 | `environment.json` | Exact Python / CrewAI / Nornyx / adapter runtime. |
 | `nornyx.agentic_network.lock` | The generated, verified network lock. |
@@ -230,7 +230,7 @@ Each governed action emits a typed event bound to the exact `contract_digest`
 and `network_lock_digest`. `nornyx.agentic_evidence.validate_runtime_events`
 re-checks the whole stream against the same contract, composition, and lock and
 returns `status: "pass"` only when every event is schema-valid and correctly
-bound. In this example all 27 events bind to
+bound. In this example all 29 events bind to
 `sha256:3cdf632c…ac8eda` (contract) and `sha256:e4725b0a…cbb3ba` (lock).
 
 Validation proves **content binding** — that the records match the declared,

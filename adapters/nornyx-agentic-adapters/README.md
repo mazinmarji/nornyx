@@ -8,7 +8,8 @@ SPI 1.1) contains no agent framework and implements no framework glue.
 
 ## Status
 
-**M2-A (foundation), M2-B (CrewAI), and M2-C (LangGraph) have landed.** M2-A ships the public
+**M2-A (foundation), M2-B (CrewAI), M2-C (LangGraph), and M2-D (legacy
+compatibility closure) have landed.** M2-A ships the public
 contract — adapter metadata, a coverage-inventory type, the
 declarative-binding primitive, and the `enforce()` evaluate/record/execute
 boundary — that framework-specific adapters build on. M2-B adds a supported
@@ -21,7 +22,7 @@ node governance on the runtime-events 1.1 contract defined by ADR-0042.
 | CrewAI adapter (`nornyx_agentic_adapters.crewai_adapter`) | Available — tool invocation only, see Coverage below |
 | LangGraph adapter (`nornyx_agentic_adapters.langgraph`) | Available — synchronous StateGraph nodes only, see Coverage below |
 | Legacy `integrations/` import-name collision | Resolved — the reference kernel is now `nornyx_reference_adapters`, so this distribution owns `nornyx_agentic_adapters` unambiguously ([MIGRATION.md](docs/MIGRATION.md)) |
-| Legacy `integrations/` behavioural compatibility shim | Pending (ADR-0039 M2-D; the existing reference kernel's own logic is unaffected by this package) |
+| Legacy `integrations/` behavioural compatibility shim | Complete (ADR-0039 M2-D) — deprecated facade over SPI 1.1; still unpackaged and outside this distribution |
 
 ## Install
 
@@ -212,5 +213,5 @@ For example, `nornyx_agentic_adapters.crewai_adapter` distinguishes three cases:
   enforcement using public LangGraph execution metadata only.
 
 See [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the full compatibility
-matrix and [`docs/MIGRATION.md`](docs/MIGRATION.md) for the planned migration
-path from the existing `integrations/` reference kernel.
+matrix and [`docs/MIGRATION.md`](docs/MIGRATION.md) for the completed legacy
+method/error mapping, deprecation window, and unsupported surfaces.

@@ -41,12 +41,12 @@ pip install -e ./adapters/nornyx-agentic-adapters # the supported adapter packag
 pip install "crewai==1.15.4"                     # the single supported CrewAI version
 ```
 
-**On package availability, stated plainly:** `nornyx` 1.8.0 *is* published on
-PyPI. **`nornyx-agentic-adapters` is not published** — the `pip install
-nornyx-agentic-adapters` line in that package's own README does not currently
-resolve. It must be installed from this repository, which is what the command
-above does. The benchmark records this in `environment.json` as
-`adapters_package_published_on_pypi: false`.
+**On package availability, stated plainly:** Nornyx 1.10.0 and
+`nornyx-agentic-adapters` 0.2.0 are published on PyPI. The editable commands
+above intentionally install the exact repository candidate being reviewed,
+not the registry copy. The benchmark records publication availability as true
+and separately records whether the actual run resolved to a built distribution
+or an editable/source checkout; those are different facts.
 
 The CrewAI pin is enforced at import time, not merely documented: any version
 other than `1.15.4` raises `AdapterConfigurationError`.

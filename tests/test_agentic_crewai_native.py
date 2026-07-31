@@ -467,7 +467,9 @@ def test_native_human_approval_required_and_accepted(
     )
     types = [event["event_type"] for event in kernel.events_payload()["events"]]
     assert types == [
-        "policy_violation",
+        "approval_requested",
+        "approval_requested",
+        "approval_granted",
         "approval_requested",
         "approval_granted",
         "trust_zone_crossed",

@@ -5,6 +5,26 @@
 | 0.1.x | `>=1.8,<2` | 1.0 | `==1.15.4` | Not implemented | 3.10–3.13 |
 | 0.2.x | `>=1.10,<2` | 1.x (tested with 1.1 and 1.2) | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
 
+## Deprecated repository shim
+
+ADR-0039 M2-D converts the unpackaged
+`integrations/nornyx_reference_adapters.GovernanceKernel` into a compatibility
+shim over this matrix's SPI 1.1 Authorizer and `EvidenceRecorder`. It is not
+part of the adapter distribution and does not widen the CrewAI or LangGraph
+coverage declared here. Its exact method and diagnostic mapping is in
+[`MIGRATION.md`](MIGRATION.md).
+
+The shim follows the runtime schema version bound by the supplied lock:
+runtime-events 1.0 remains the exact historical envelope, while 1.1 uses
+`occurrence_mode: legacy`. The shim never invents occurrence identities.
+Explicit 1.1 retry/loop/resume semantics require an occurrence-aware supported
+adapter. Both legacy modes retain exact lock and subject-revision binding.
+
+The shim is deprecated with a standard `DeprecationWarning`, but remains
+enabled. Its minimum retention is one published Nornyx minor release after
+M2-D; removal has no assigned version and additionally requires complete
+migration/compatibility evidence plus a separate owner-authorized decision.
+
 ## Reading this table
 
 - **`nornyx-agentic-adapters` version** follows its own independent SemVer,
