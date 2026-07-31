@@ -13,7 +13,12 @@ distribution version is independent of the Nornyx **language/schema** version
   retained by Authorizer construction. Its public compatibility views are
   detached at every depth, perform no second read/composition/verification, and
   can be passed to public artifact and evidence validators without private
-  attribute access.
+  attribute access. The state describes exactly what the Authorizer retains:
+  validation, governance composition, and lock verification are guaranteed only
+  when the Authorizer was obtained through `load_authorizer()`, since direct
+  `Authorizer(...)` construction performs none of those assurance stages.
+  The retained composition stays recursively immutable while remaining a fully
+  serializer-compatible `CompositionResult`.
 
 ### Changed
 
