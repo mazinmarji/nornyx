@@ -48,7 +48,20 @@
     "goal": "1.11.0-release-candidate",
     "date": "2026-08-01",
     "test_command": "python -m pytest -q",
-    "test_result": "1548 passed, 50 skipped in the full suite; focused release-consistency checks (documentation, governance-compatibility, governance-extension, manifest-metadata) passed; validates Authorizer.state and AuthorizerState under agentic SPI 1.2 with runtime-events schema retained at 1.1; core build and installed-wheel verification passed outside the source tree",
+    "test_environment": {
+      "python": "3.13.14",
+      "install": "pip install -e .[dev]",
+      "optional_framework_extras": false,
+      "platform": "windows-short-path"
+    },
+    "test_summary": {
+      "collected_items": 1575,
+      "module_level_import_skips": 3,
+      "passed": 1523,
+      "skipped": 55,
+      "total_outcomes": 1578
+    },
+    "test_result": "Canonical local release environment (CPython 3.13.14, pip install -e .[dev], no optional framework extras, short-path Windows clone at the release head): 1523 passed, 55 skipped, 1578 total outcomes (1575 collected items plus 3 module-level crewai importorskip skips reported outside collection); focused release-consistency checks (documentation, governance-compatibility, governance-extension, manifest-metadata) passed; validates Authorizer.state and AuthorizerState under agentic SPI 1.2 with runtime-events schema 1.1 and language/schema 1.0 unchanged; core build and installed-wheel verification passed outside the source tree. The passed/skipped split is environment-dependent: installing optional framework extras (CrewAI, LangGraph, adapters) unskips those modules and changes both the split and the total.",
     "release_check": {
       "command": "python -m nornyx.cli release-check --approved",
       "blocked": 0,
