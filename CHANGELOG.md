@@ -6,7 +6,7 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
-## [1.11.0] - 2026-07-31
+## [1.11.0] - 2026-08-01
 
 ### Added
 
@@ -29,8 +29,8 @@ distribution version is independent of the Nornyx **language/schema** version
   runtime-events, and language semantics are unchanged: the runtime-events
   schema remains 1.1 and the language/schema version remains 1.0. This
   release, Nornyx 1.11.0, synchronizes all seven equality-enforced
-  package-version locations; no tag, GitHub Release, or PyPI publication is
-  part of this change.
+  package-version locations. Tagging and PyPI publication are performed
+  separately through the approved release workflow.
 
 ## [1.10.0] - 2026-07-30
 
