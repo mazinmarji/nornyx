@@ -14,7 +14,7 @@ def test_manifest_current_validation_is_fresh() -> None:
     manifest = load_manifest()
     validation = manifest["current_validation"]
 
-    assert manifest["version"] == __version__ == "1.10.0"
+    assert manifest["version"] == __version__ == "1.11.0"
     assert manifest["language_version"] == "1.0.0"
     assert manifest["updated_for"] == f"{__version__}-release-candidate"
     assert validation["goal"] == f"{__version__}-release-candidate"

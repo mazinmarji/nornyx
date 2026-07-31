@@ -1,9 +1,9 @@
 {
   "project": "Nornyx",
   "category": "AI Engineering Control-Plane Language",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "language_version": "1.0.0",
-  "status": "Package 1.10.0; occurrence semantics and M2-C implemented and release-approved",
+  "status": "Package 1.11.0; occurrence semantics and M2-C implemented and release-approved",
   "source_of_truth": [
     "README.md",
     "docs/01_LANGUAGE_SPEC_v0_1.md",
@@ -36,7 +36,7 @@
     "No credential storage",
     "No autonomous self-modification"
   ],
-  "updated_for": "1.10.0-release-candidate",
+  "updated_for": "1.11.0-release-candidate",
   "added": [
     "templates/nornyx-agentic-repo-harness",
     "docs/goals",
@@ -45,7 +45,7 @@
     "scripts/agent/run-nornyx-validation-gates.sh"
   ],
   "current_validation": {
-    "goal": "1.10.0-release-candidate",
+    "goal": "1.11.0-release-candidate",
     "date": "2026-07-30",
     "test_command": "python -m pytest -q",
     "test_result": "1531 passed, 50 skipped; focused occurrence, EvidenceRecorder, historical runtime-events 1.0, and native LangGraph validation passed; CPython 3.10-3.13 compatibility matrix retained; core build, adapter build, and installed-wheel checks passed",
