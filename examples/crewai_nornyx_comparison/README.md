@@ -134,7 +134,7 @@ from governed_crewai import GovernedSupportNetwork     # Variant B
 # (import `common` first so the telemetry kill switches are set)
 ```
 
-Verify against the **published** Nornyx 1.7.0 core in a clean venv:
+Verify against the **published** Nornyx 1.11.0 core in a clean venv:
 
 ```bash
 python examples/crewai_nornyx_comparison/verify_published_nornyx.py
@@ -295,6 +295,11 @@ examples/crewai_nornyx_comparison/
 Hosted CI (`.github/workflows/ci.yml`, `native-frameworks` job) runs
 `tests/test_crewai_nornyx_comparison.py`, executes `compare.py`, machine-checks
 the artifacts with `ci_check_artifacts.py`, and runs
-`verify_published_nornyx.py` against the published Nornyx 1.7.0 wheel.
+`verify_published_nornyx.py` against the published Nornyx 1.11.0 wheel.
+
+That harness pins 1.11.0 because the unpackaged repository shim now consumes the
+public `nornyx.agentic` SPI, which cores older than 1.8.0 do not ship. The 1.7.0
+references elsewhere in this document describe the original A/B example as
+authored and are retained as historical framing.
 
 See also the repository's [CrewAI integration guide](../../docs/agentic-network/02_CREWAI_GUIDE.md).

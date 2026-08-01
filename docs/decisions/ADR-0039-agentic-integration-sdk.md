@@ -15,11 +15,14 @@
   - Implementation head: `8b3c8b2eee4d181b7a896097b7210644c8ff4ce0`
   - Merge commit: `c83a8a4897f1de8ab776885be52992bbf2280594`
   - Post-merge CI: run 29956041864 — success
-  - Package state: the current SPI 1.1 is published in Nornyx **1.10.0**;
-    `nornyx-agentic-adapters` **0.2.0** is also published. M2-D changes runtime
-    behavior only in the unpackaged repository compatibility tree. It changes
-    no core or adapter runtime code and no version; the adapter distribution's
-    README metadata is updated to close the stale migration status.
+  - Package state: the current SPI **1.2** is published in Nornyx **1.11.0**
+    (Nornyx 1.10.0 published SPI 1.1); `nornyx-agentic-adapters` **0.2.0** is
+    also published and keeps its `nornyx>=1.10,<2` floor. M2-D changes runtime
+    behavior only in the unpackaged repository compatibility tree, which now
+    consumes the public `Authorizer.state` and therefore requires Nornyx
+    1.11.0. It changes no core or adapter runtime code and no version; the
+    adapter distribution's README metadata is updated to close the stale
+    migration status.
 - Relates to: ADR-0032 (verifiable effective approvals), ADR-0037 (AN-005
   reference adapters, deliberately unpackaged), ADR-0040 (governance assurance
   tiers — this SPI is a **Tier 2, cooperative** boundary), and the external
@@ -385,9 +388,9 @@ M2-D makes the temporary kernel a facade, not a second engine. It imports only
 the public `nornyx.agentic` facade and maps the preserved legacy calls as
 follows:
 
-| Legacy call | SPI 1.1 authorization/evidence path |
+| Legacy call | SPI 1.2 authorization/evidence path |
 | --- | --- |
-| `from_local_controls` | `load_authorizer(validation_as_of=as_of)`; legacy load-code translation; detached public compatibility snapshots are digest-compared to the loaded authorizer |
+| `from_local_controls` | `load_authorizer(validation_as_of=as_of)` as the only read; legacy load-code translation; every compatibility projection is derived from that authorizer's public `state` (no second read, composition, verification, or authorization) |
 | `resolve_identity` | `Authorizer.resolve_identity(framework, agent_key)` |
 | `check_capability` | one `CapabilityRequest`; `EvidenceRecorder.record_decision`; returns the recorded `capability_allowed` event |
 | `invoke_tool` | one `CapabilityRequest`; the signature has no callable, so method entry is the complete legacy occurrence; `tool_invoked` is recorded after that occurrence |
@@ -546,12 +549,15 @@ The `nornyx.agentic` authorization engine does **not**:
 | Pip-only example | Pending |
 | External pilot consumption | Pending |
 | Nornyx 1.10.0 publication | Complete |
+| Nornyx 1.11.0 publication (SPI 1.2 `Authorizer.state`) | Complete |
 | `nornyx-agentic-adapters` 0.2.0 publication | Complete |
 
-The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C now ship
-in published adapter 0.2.0 against Nornyx 1.10.0 / SPI 1.1. M2-D closes the
-repository compatibility baseline without entering either distribution's
-runtime code. Its update to the adapter README is distribution metadata, so the
+The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C ship in
+published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`; the
+current published core is Nornyx 1.11.0 / SPI 1.2. M2-D closes the repository
+compatibility baseline without entering either distribution's runtime code: the
+unpackaged shim consumes the public `Authorizer.state` and so requires Nornyx
+1.11.0, which does not change the adapter distribution's own floor. Its update to the adapter README is distribution metadata, so the
 actual diff is release classification C; any adapter publication remains a
 later, separately authorized decision. The pip-only example, external pilot
 consumption, shim removal, and every later roadmap milestone remain separate;

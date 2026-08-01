@@ -41,7 +41,7 @@ pip install -e ./adapters/nornyx-agentic-adapters # the supported adapter packag
 pip install "crewai==1.15.4"                     # the single supported CrewAI version
 ```
 
-**On package availability, stated plainly:** Nornyx 1.10.0 and
+**On package availability, stated plainly:** Nornyx 1.11.0 (SPI 1.2) and
 `nornyx-agentic-adapters` 0.2.0 are published on PyPI. The editable commands
 above intentionally install the exact repository candidate being reviewed,
 not the registry copy. The benchmark records publication availability as true

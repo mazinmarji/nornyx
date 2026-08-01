@@ -9,9 +9,11 @@
 
 ADR-0039 M2-D converts the unpackaged
 `integrations/nornyx_reference_adapters.GovernanceKernel` into a compatibility
-shim over this matrix's SPI 1.1 Authorizer and `EvidenceRecorder`. It is not
-part of the adapter distribution and does not widen the CrewAI or LangGraph
-coverage declared here. Its exact method and diagnostic mapping is in
+shim over the SPI 1.2 `Authorizer` and `EvidenceRecorder`. Because it consumes
+the public `Authorizer.state` construction snapshot, the shim itself requires
+Nornyx 1.11.0 or newer — this does **not** raise the adapter distribution's own
+`nornyx>=1.10,<2` floor above, which is unchanged. It is not part of the adapter
+distribution and does not widen the CrewAI or LangGraph coverage declared here. Its exact method and diagnostic mapping is in
 [`MIGRATION.md`](MIGRATION.md).
 
 The shim follows the runtime schema version bound by the supplied lock:

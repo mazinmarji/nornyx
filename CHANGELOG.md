@@ -10,10 +10,20 @@ distribution version is independent of the Nornyx **language/schema** version
 
 - ADR-0039 M2-D converts the unpackaged
   `integrations/nornyx_reference_adapters/GovernanceKernel` into a deprecated
-  compatibility shim over the public SPI 1.1 `Authorizer` and
+  compatibility shim over the public SPI 1.2 `Authorizer` and
   `EvidenceRecorder`. Existing method signatures and stable legacy
   `AN_ADAPTER_*` translations remain available; runtime-events 1.0 and 1.1
   legacy envelopes retain lock/revision binding.
+- The shim's legacy `document`, `composition`, `lock_payload`, and `network`
+  surfaces are now non-authoritative read-only projections of the public
+  `Authorizer.state` (SPI 1.2, published in Nornyx 1.11.0). The shim performs
+  no second read, composition, verification, or authorization of its own, reads
+  no Authorizer private attribute, and retains no caller-supplied structure as a
+  second source of authority, so compatibility data cannot drift from the
+  Authorizer's exact validated state or change an authorization outcome. The
+  unpackaged shim therefore requires Nornyx 1.11.0 or newer; the published
+  `nornyx-agentic-adapters` distribution is unaffected and keeps its
+  `nornyx>=1.10,<2` floor.
 - The legacy CrewAI task and LangGraph node guards now authorize once, execute
   the protected callable exactly once only on ALLOW, record success after the
   callable, and record `runtime_failed` when it raises.
@@ -22,7 +32,7 @@ distribution version is independent of the Nornyx **language/schema** version
 
 - Complete the legacy-to-SPI method/error map, deprecation and minimum-retention
   criteria, occurrence-mode compatibility, unsupported-surface inventory, and
-  published Nornyx 1.10.0 / adapter 0.2.0 baseline reconciliation.
+  published Nornyx 1.11.0 / adapter 0.2.0 baseline reconciliation.
 
 ### Distribution boundaries
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 from copy import deepcopy
 import inspect
+import json
 from pathlib import Path
 import socket
 import subprocess
@@ -16,6 +17,7 @@ import pytest
 
 from nornyx.agentic import (
     Authorizer,
+    AuthorizerState,
     CapabilityRequest,
     DecisionCode,
     EvaluationContext,
@@ -101,7 +103,9 @@ def _event_types(kernel: GovernanceKernel) -> list[str]:
 
 
 def test_spi_and_legacy_public_signatures_are_pinned() -> None:
-    assert SPI_VERSION == "1.1"
+    # The shim consumes the public Authorizer construction-state SPI, first
+    # published in Nornyx 1.11.0 as SPI 1.2.
+    assert SPI_VERSION == "1.2"
     signatures = {
         "resolve_identity": "(self, agent_key: 'str') -> 'str'",
         "check_capability": (
@@ -662,3 +666,359 @@ def test_offline_flow_and_public_import_boundary(
     assert nornyx_imports == {"nornyx.agentic"}
     assert "crewai" not in source.lower()
     assert "langgraph" not in source.lower()
+
+
+# --------------------------------------------------------------------------
+# SPI 1.2 remediation: the shim's only source of truth is Authorizer.state.
+# --------------------------------------------------------------------------
+
+# Authorizer internals the shim must never touch. Reading any of these would
+# reintroduce a private, second interpretation of validated construction state.
+_FORBIDDEN_AUTHORIZER_PRIVATE_ATTRS = frozenset(
+    {
+        "_approvals",
+        "_capabilities",
+        "_composition",
+        "_delegations",
+        "_document",
+        "_gates",
+        "_handoffs",
+        "_identities",
+        "_lock_payload",
+        "_memberships",
+        "_network",
+        "_revocations",
+        "_state",
+        "_zones",
+    }
+)
+
+_SHIM_SOURCES = (
+    "governance_kernel.py",
+    "crewai_adapter.py",
+    "langgraph_adapter.py",
+)
+
+
+def _shim_source(name: str) -> str:
+    return (INTEGRATIONS / "nornyx_reference_adapters" / name).read_text(encoding="utf-8")
+
+
+def test_shim_never_reads_authorizer_private_state() -> None:
+    """Static guard: no shim module may read a private Authorizer attribute.
+
+    This fails loudly if a future edit reaches around ``Authorizer.state`` back
+    into Authorizer internals.
+    """
+
+    offenders: list[str] = []
+    for name in _SHIM_SOURCES:
+        tree = ast.parse(_shim_source(name))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Attribute):
+                continue
+            if node.attr not in _FORBIDDEN_AUTHORIZER_PRIVATE_ATTRS:
+                continue
+            # ``self._state`` is the shim's own bound AuthorizerState reference,
+            # not a read of Authorizer internals.
+            value = node.value
+            if (
+                node.attr == "_state"
+                and isinstance(value, ast.Name)
+                and value.id == "self"
+            ):
+                continue
+            offenders.append(f"{name}:{node.lineno} -> .{node.attr}")
+    assert offenders == [], f"shim reads private Authorizer state: {offenders}"
+
+
+def test_shim_binds_the_public_authorizer_state_object(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """The bound state is exactly the Authorizer's own public state object."""
+
+    kernel = _kernel(controls)
+    assert isinstance(kernel._state, AuthorizerState)
+    assert kernel._state is kernel._authorizer.state
+    # Public digests are the state's digests, not independently recomputed.
+    assert kernel.contract_digest == kernel._authorizer.state.contract_digest
+    assert kernel.lock_digest == kernel._authorizer.state.network_lock_digest
+
+
+def test_compatibility_projections_equal_public_state_at_construction(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """Every legacy projection equals the corresponding AuthorizerState data."""
+
+    kernel = _kernel(controls)
+    state = kernel._authorizer.state
+
+    assert kernel.document == state.document
+    assert kernel.lock_payload == state.lock_payload
+    assert kernel.network == state.document["agentic_network"]
+    assert [req.id for req in kernel.composition.approval_requirements] == [
+        req.id for req in state.composition.approval_requirements
+    ]
+    assert kernel.contract_digest == state.contract_digest
+    assert kernel.lock_digest == state.network_lock_digest
+
+
+def test_projections_are_read_only_and_detached(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """A projection cannot be reassigned, and mutating one changes nothing."""
+
+    kernel = _kernel(controls)
+    baseline_document = kernel.document
+    baseline_lock = kernel.lock_payload
+    baseline_digest = kernel.contract_digest
+    baseline_lock_digest = kernel.lock_digest
+
+    # Non-authoritative projections are read-only: they cannot be swapped for a
+    # caller-controlled second source of truth.
+    for attribute in ("document", "composition", "lock_payload", "network"):
+        with pytest.raises(AttributeError):
+            setattr(kernel, attribute, {"tampered": True})
+
+    # Each access is a fresh detached copy.
+    first = kernel.document
+    second = kernel.document
+    assert first is not second
+
+    first["agent_identities"] = []
+    first["agentic_network"]["subject_revision"] = "tampered"
+    mutated_lock = kernel.lock_payload
+    mutated_lock.clear()
+    mutated_network = kernel.network
+    mutated_network["handoffs"] = []
+
+    # The composition projection satisfies the same guarantee by the stronger
+    # branch: its requirement sequence is a tuple, so mutation is impossible.
+    mutated_composition = kernel.composition
+    assert isinstance(mutated_composition.approval_requirements, tuple)
+    with pytest.raises(AttributeError):
+        mutated_composition.approval_requirements.clear()  # type: ignore[attr-defined]
+
+    # Neither the Authorizer nor any later projection moved.
+    assert kernel.document == baseline_document
+    assert kernel.lock_payload == baseline_lock
+    assert kernel.contract_digest == baseline_digest
+    assert kernel.lock_digest == baseline_lock_digest
+    assert kernel._authorizer.state.document == baseline_document
+    assert kernel._authorizer.state.contract_digest == baseline_digest
+    assert kernel.composition.approval_requirements
+
+    # And a decision still succeeds on the untouched validated state.
+    kernel.check_capability(
+        "identity.support_coordinator",
+        "classify_support_request",
+        mission_id="M.projection-mutation",
+    )
+
+
+def test_caller_owned_inputs_cannot_reach_the_kernel_after_construction(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """Mutating the caller's own structures cannot alter any later outcome."""
+
+    original, composition = controls
+    document = deepcopy(original)
+    lock = build_agentic_network_lock(document, composition)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        kernel = GovernanceKernel(
+            document,
+            composition,
+            lock,
+            framework="crewai",
+            clock=DeterministicClock(AS_OF),
+        )
+
+    baseline_document = kernel.document
+    baseline_digest = kernel.contract_digest
+    baseline_lock_digest = kernel.lock_digest
+    baseline_requirements = [req.id for req in kernel.composition.approval_requirements]
+
+    # Hostile post-construction mutation of every caller-supplied structure.
+    document["agent_identities"] = []
+    document["agentic_network"]["handoffs"] = []
+    document["agentic_network"]["network_gates"] = []
+    document["agentic_network"]["subject_revision"] = "tampered"
+    lock.clear()
+
+    # Projections, digests and approval data are unchanged.
+    assert kernel.document == baseline_document
+    assert kernel.contract_digest == baseline_digest
+    assert kernel.lock_digest == baseline_lock_digest
+    assert [
+        req.id for req in kernel.composition.approval_requirements
+    ] == baseline_requirements
+
+    # Decisions are unchanged: an allow still allows...
+    kernel.check_capability(
+        "identity.support_coordinator",
+        "classify_support_request",
+        mission_id="M.caller-mutation",
+    )
+    # ...a denial still denies...
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.check_capability(
+            "identity.refund_agent",
+            "escalate_high_value_refund",
+            mission_id="M.caller-mutation-deny",
+        )
+    assert excinfo.value.code == "AN_ADAPTER_CAPABILITY_DENIED"
+    # ...and approval evaluation still rejects a non-human approver.
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {
+                "role": "network_governance_owner",
+                "actor_type": "model",
+                "granted": True,
+            },
+            mission_id="M.caller-mutation-approval",
+            actor_ref="identity.escalation_agent",
+        )
+    assert excinfo.value.code == "AN_ADAPTER_APPROVAL_NON_HUMAN"
+
+    # The emitted evidence still validates against the bound lock.
+    report = validate_runtime_events(
+        baseline_document,
+        kernel.composition,
+        kernel.lock_payload,
+        kernel.events_payload(),
+    )
+    assert report["status"] == "pass", report["diagnostics"]
+
+
+def test_no_split_brain_between_decisions_projections_and_digests(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """Decisions, compatibility data, and digest reporting share one state."""
+
+    original, _ = controls
+    # A materially different contract: one delegation suspended.
+    divergent = deepcopy(original)
+    divergent["agentic_network"]["delegations"][0]["status"] = "suspended"
+
+    baseline = _kernel(controls)
+    divergent_kernel = _kernel(controls, document=divergent)
+
+    # Distinct validated states produce distinct digests...
+    assert baseline.contract_digest != divergent_kernel.contract_digest
+    assert baseline.lock_digest != divergent_kernel.lock_digest
+
+    # ...each kernel's projection agrees with its own Authorizer, not the other.
+    assert divergent_kernel.document == divergent_kernel._authorizer.state.document
+    assert divergent_kernel.document != baseline.document
+    assert divergent_kernel.network["delegations"][0]["status"] == "suspended"
+    assert baseline.network["delegations"][0]["status"] != "suspended"
+
+    # ...and the decision follows the same state the projection reports.
+    with pytest.raises(GovernanceViolation) as excinfo:
+        divergent_kernel.request_delegation(
+            "delegation.refund_proposal",
+            mission_id="M.split-brain",
+        )
+    assert excinfo.value.code == "AN_ADAPTER_DELEGATION_INACTIVE"
+    baseline.request_delegation(
+        "delegation.refund_proposal",
+        mission_id="M.split-brain",
+    )
+
+
+def test_from_local_controls_loads_once_and_never_recomposes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The assured path performs exactly one load and no second composition."""
+
+    import nornyx_reference_adapters.governance_kernel as shim
+
+    # The shim must not bind any second read/composition/digest entry point.
+    for name in (
+        "load_nyx",
+        "compose_document_governance",
+        "load_agentic_network_lock",
+        "registry_for_contract",
+        "contract_digest",
+        "agentic_network_lock_digest",
+    ):
+        assert not hasattr(shim, name), (
+            f"the shim must not bind {name}; Authorizer.state is the only source"
+        )
+
+    loads = 0
+    real_load_authorizer = shim.load_authorizer
+
+    def counting_load_authorizer(*args: Any, **kwargs: Any) -> Any:
+        nonlocal loads
+        loads += 1
+        return real_load_authorizer(*args, **kwargs)
+
+    monkeypatch.setattr(shim, "load_authorizer", counting_load_authorizer)
+
+    document = load_nyx(SUPPORT_CONTRACT)
+    composition = compose_document_governance(
+        document,
+        registry=registry_for_contract(SUPPORT_CONTRACT),
+    )
+    lock_path = tmp_path / "agentic_network.lock.json"
+    lock_path.write_text(
+        json.dumps(build_agentic_network_lock(document, composition), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        kernel = GovernanceKernel.from_local_controls(
+            SUPPORT_CONTRACT,
+            lock_path,
+            framework="crewai",
+            as_of=AS_OF,
+        )
+    assert loads == 1
+    assert (
+        sum(1 for item in caught if issubclass(item.category, DeprecationWarning)) == 1
+    )
+
+    # The loaded Authorizer's own state is what the kernel exposes.
+    assert kernel._state is kernel._authorizer.state
+    assert kernel.contract_digest == kernel._authorizer.state.contract_digest
+    assert kernel.document == kernel._authorizer.state.document
+    kernel.check_capability(
+        "identity.support_coordinator",
+        "classify_support_request",
+        mission_id="M.local-controls",
+    )
+
+
+def test_core_import_stays_independent_of_crewai_and_langgraph() -> None:
+    """Importing the core SPI must not drag in any agent framework."""
+
+    code = (
+        "import sys\n"
+        "import nornyx\n"
+        "import nornyx.agentic\n"
+        "assert 'crewai' not in sys.modules\n"
+        "assert 'langgraph' not in sys.modules\n"
+        "assert 'nornyx_reference_adapters' not in sys.modules\n"
+        "print('OK')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(ROOT),
+    )
+    assert result.returncode == 0, result.stderr
+    assert "OK" in result.stdout
+
+
+def test_repository_shim_is_not_declared_in_the_core_distribution() -> None:
+    """The core wheel packages only ``nornyx*``; the shim stays unpackaged."""
+
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'include = ["nornyx*"]' in pyproject
+    assert "integrations" not in pyproject
+    assert "nornyx_reference_adapters" not in pyproject

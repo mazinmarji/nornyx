@@ -14,8 +14,11 @@ Layer 3 — External framework runtime or the bundled deterministic harness
 
 - `nornyx_reference_adapters/governance_kernel.py` — deprecated compatibility
   shim preserving the historical reference API and `AN_ADAPTER_*` diagnostics
-  while delegating decisions to the public SPI 1.1 `Authorizer` and evidence
-  construction to `EvidenceRecorder`. Construction emits `DeprecationWarning`;
+  while delegating decisions to the public SPI 1.2 `Authorizer` and evidence
+  construction to `EvidenceRecorder`. Its `document`, `composition`,
+  `lock_payload`, and `network` surfaces are non-authoritative read-only
+  projections of `Authorizer.state`, so no compatibility data can drift from the
+  Authorizer's validated state. Requires Nornyx 1.11.0 or newer. Construction emits `DeprecationWarning`;
   new integrations should use `nornyx-agentic-adapters` and `nornyx.agentic`.
 - `nornyx_reference_adapters/crewai_adapter.py` — CrewAI mapping + task guard.
 - `nornyx_reference_adapters/langgraph_adapter.py` — LangGraph node guard and

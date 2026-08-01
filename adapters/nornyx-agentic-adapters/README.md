@@ -22,7 +22,7 @@ node governance on the runtime-events 1.1 contract defined by ADR-0042.
 | CrewAI adapter (`nornyx_agentic_adapters.crewai_adapter`) | Available — tool invocation only, see Coverage below |
 | LangGraph adapter (`nornyx_agentic_adapters.langgraph`) | Available — synchronous StateGraph nodes only, see Coverage below |
 | Legacy `integrations/` import-name collision | Resolved — the reference kernel is now `nornyx_reference_adapters`, so this distribution owns `nornyx_agentic_adapters` unambiguously ([MIGRATION.md](docs/MIGRATION.md)) |
-| Legacy `integrations/` behavioural compatibility shim | Complete (ADR-0039 M2-D) — deprecated facade over SPI 1.1; still unpackaged and outside this distribution |
+| Legacy `integrations/` behavioural compatibility shim | Complete (ADR-0039 M2-D) — deprecated facade over SPI 1.2 `Authorizer.state`; requires Nornyx 1.11.0; still unpackaged and outside this distribution |
 
 ## Install
 

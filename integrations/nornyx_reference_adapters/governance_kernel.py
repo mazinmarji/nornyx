@@ -5,6 +5,21 @@ delegating every authorization decision to ``nornyx.agentic.Authorizer`` and
 all runtime-event construction to ``nornyx.agentic.EvidenceRecorder``.  It is
 not an independent policy or evidence engine.
 
+**Single source of authority.**  One ``Authorizer`` is constructed (or loaded
+through ``load_authorizer``) and its public ``Authorizer.state`` — the SPI 1.2
+``AuthorizerState`` — is the only source for every legacy compatibility
+projection this shim exposes.  The shim never reads Authorizer private
+attributes, never retains caller-supplied contract/composition/lock structures
+as a second source of truth, and never re-reads, re-composes, re-authorizes, or
+re-verifies policy after the Authorizer has been constructed.  Because of that,
+the legacy ``document`` / ``composition`` / ``lock_payload`` / ``network``
+surfaces are **non-authoritative read-only projections**: they are derived from
+``Authorizer.state`` on each access, they cannot be reassigned, and mutating a
+returned projection cannot reach the Authorizer or any later projection.
+
+This shim therefore requires Nornyx **1.11.0** (SPI **1.2**) or newer.  It is
+unpackaged: it ships in neither the core wheel nor ``nornyx-agentic-adapters``.
+
 The shim remains cooperative Tier 2: callers can bypass it, identity and
 approval claims are not authenticated, and recorded observations are caller
 assertions.  New integrations should use ``nornyx-agentic-adapters`` together
@@ -14,9 +29,11 @@ with the public ``nornyx.agentic`` SPI.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, TypeVar
 import warnings
 
@@ -26,6 +43,7 @@ from nornyx.agentic import (
     Authorizer,
     AuthorizerLoadCode,
     AuthorizerLoadError,
+    AuthorizerState,
     CapabilityRequest,
     DataShareRequest,
     Decision,
@@ -36,13 +54,7 @@ from nornyx.agentic import (
     HandoffRequest,
     IdentityResolutionError,
     ZoneCrossingRequest,
-    agentic_network_lock_digest,
-    compose_document_governance,
-    contract_digest,
-    load_agentic_network_lock,
     load_authorizer,
-    load_nyx,
-    registry_for_contract,
 )
 
 AGENTIC_APPROVAL_ID = "agentic_network_authority"
@@ -123,6 +135,42 @@ _LOAD_CODES = {
     AuthorizerLoadCode.LOCK_STALE: "AN_ADAPTER_LOCK_STALE",
 }
 
+@dataclass(frozen=True)
+class _ApprovalSpec:
+    """Immutable legacy view of one composed approval requirement.
+
+    Derived once from ``AuthorizerState.composition``.  It carries only the
+    fields the legacy diagnostic defaults need, all as immutable scalars and
+    tuples, so it can neither be mutated into drift nor act as a second
+    interpretation of approval policy.  Approval *integrity* is decided by the
+    Authorizer alone; this only supplies legacy defaults for fields a caller
+    omitted.
+    """
+
+    id: str
+    actions_requiring_approval: tuple[str, ...]
+    required_evidence: tuple[str, ...]
+    required_roles: tuple[str, ...]
+    eligible_roles: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _GateSpec:
+    """Immutable legacy view of one network gate, for action-ref lookup."""
+
+    id: str
+    source_zone_refs: frozenset[str]
+    target_zone_refs: frozenset[str]
+    required_approval_refs: frozenset[str]
+    action_classes: tuple[str, ...]
+
+
+def _spec_strings(source: Any, key: str) -> tuple[str, ...]:
+    if not isinstance(source, Mapping):
+        return ()
+    return _strings(source.get(key))
+
+
 _DECISION_CODES = {
     DecisionCode.CAPABILITY_UNKNOWN: "AN_ADAPTER_CAPABILITY_UNKNOWN",
     DecisionCode.CAPABILITY_DENIED: "AN_ADAPTER_CAPABILITY_DENIED",
@@ -146,7 +194,7 @@ _DECISION_CODES = {
 
 
 class GovernanceKernel:
-    """Deprecated legacy surface backed exclusively by SPI 1.1 primitives."""
+    """Deprecated legacy surface backed exclusively by public SPI 1.2 state."""
 
     def __init__(
         self,
@@ -160,36 +208,55 @@ class GovernanceKernel:
         clock: DeterministicClock | None = None,
     ):
         warnings.warn(_DEPRECATION_TEXT, DeprecationWarning, stacklevel=2)
-        self.document = document
-        self.composition = composition
-        self.lock_payload = lock_payload
+        # The caller keeps ownership of these objects.  ``Authorizer`` deep-freezes
+        # them into its own construction state, so nothing here is retained: the
+        # only state this shim reads afterwards is ``authorizer.state``.  Direct
+        # construction is not validated, composed, or lock-verified — that is a
+        # property of the SPI, unchanged by this shim; ``from_local_controls`` is
+        # the assured path.
+        authorizer = Authorizer(document, composition, lock_payload)
+        self._setup(
+            authorizer,
+            framework=framework,
+            producer_id=producer_id,
+            producer_version=producer_version,
+            clock=clock,
+            decision_at=None,
+        )
+
+    def _setup(
+        self,
+        authorizer: Authorizer,
+        *,
+        framework: str,
+        producer_id: str,
+        producer_version: str,
+        clock: DeterministicClock | None,
+        decision_at: str | None,
+    ) -> None:
+        """Initialize one kernel around exactly one already-built Authorizer."""
+
         self.framework = _plain_string(framework, "framework")
         self._producer_id = _plain_string(producer_id, "producer_id")
         self._producer_version = _plain_string(producer_version, "producer_version")
         self._clock = clock or DeterministicClock()
-
-        network = document.get("agentic_network")
-        self.network: Mapping[str, Any] = network if isinstance(network, Mapping) else {}
-        self._identities = {
-            str.__str__(item["id"]): item
-            for item in _items(document.get("agent_identities"))
-            if isinstance(item.get("id"), str)
-        }
-        self._handoffs = {
-            str.__str__(item["id"]): item
-            for item in _items(self.network.get("handoffs"))
-            if isinstance(item.get("id"), str)
-        }
-        self._gates = _items(self.network.get("network_gates"))
-
-        authorizer = Authorizer(document, composition, lock_payload)
-        self._bind(authorizer, decision_at=self._clock.current)
+        self._bind(
+            authorizer,
+            decision_at=self._clock.current if decision_at is None else decision_at,
+        )
 
     def _bind(self, authorizer: Authorizer, *, decision_at: str) -> None:
-        """Bind the authoritative SPI objects; never retain a second policy engine."""
+        """Bind one Authorizer and derive every projection from its public state.
+
+        This is the single source of authority.  ``Authorizer.state`` is read
+        once here; no caller-supplied structure, no reload, and no second
+        composition is retained.
+        """
 
         self._authorizer = authorizer
         self._recorder_authorizer = authorizer
+        state: AuthorizerState = authorizer.state
+        self._state = state
         self._context = EvaluationContext(
             decision_at=_plain_string(decision_at, "decision_at"),
             observed_subject_revision=authorizer.subject_revision,
@@ -200,10 +267,108 @@ class GovernanceKernel:
             producer_id=self._producer_id,
             producer_version=self._producer_version,
         )
-        self.contract_digest = authorizer.contract_digest
-        self.lock_digest = authorizer.network_lock_digest
+        self.contract_digest = state.contract_digest
+        self.lock_digest = state.network_lock_digest
         self.network_id = authorizer.network_id
         self.subject_revision = authorizer.subject_revision
+        self._index_state(state)
+
+    def _index_state(self, state: AuthorizerState) -> None:
+        """Build the immutable legacy lookup indexes from public state only.
+
+        Every retained value below is an immutable scalar, tuple, or frozenset,
+        so no index can be mutated into disagreement with the Authorizer, and no
+        index can outlive or override an Authorizer decision.
+        """
+
+        document = state.document
+        network = document.get("agentic_network")
+        network_map: Mapping[str, Any] = network if isinstance(network, Mapping) else {}
+
+        self._identity_ids = frozenset(
+            str.__str__(item["id"])
+            for item in _items(document.get("agent_identities"))
+            if isinstance(item.get("id"), str)
+        )
+        self._handoff_endpoints = MappingProxyType(
+            {
+                str.__str__(item["id"]): (
+                    str(item.get("from_identity_ref")),
+                    str(item.get("to_identity_ref")),
+                )
+                for item in _items(network_map.get("handoffs"))
+                if isinstance(item.get("id"), str)
+            }
+        )
+        self._gate_specs = tuple(
+            _GateSpec(
+                id=str(gate.get("id")),
+                source_zone_refs=frozenset(_spec_strings(gate, "source_zone_refs")),
+                target_zone_refs=frozenset(_spec_strings(gate, "target_zone_refs")),
+                required_approval_refs=frozenset(
+                    _spec_strings(gate, "required_approval_refs")
+                ),
+                action_classes=_spec_strings(gate, "action_classes"),
+            )
+            for gate in _items(network_map.get("network_gates"))
+        )
+        self._approval_specs = MappingProxyType(
+            {
+                str(requirement.id): _ApprovalSpec(
+                    id=str(requirement.id),
+                    actions_requiring_approval=tuple(
+                        str(item)
+                        for item in (
+                            getattr(requirement, "actions_requiring_approval", ()) or ()
+                        )
+                    ),
+                    required_evidence=tuple(
+                        str(item)
+                        for item in (getattr(requirement, "required_evidence", ()) or ())
+                    ),
+                    required_roles=tuple(
+                        str(item)
+                        for item in (getattr(requirement, "required_roles", ()) or ())
+                    ),
+                    eligible_roles=tuple(
+                        str(item)
+                        for item in (getattr(requirement, "eligible_roles", ()) or ())
+                    ),
+                )
+                for requirement in state.composition.approval_requirements
+            }
+        )
+
+    # ------------------------------------------- non-authoritative projections
+    @property
+    def document(self) -> dict[str, Any]:
+        """Non-authoritative projection of the Authorizer's contract document.
+
+        A fresh detached copy on every access.  Mutating it cannot reach the
+        Authorizer, this kernel, or any later projection, and it can never
+        change an authorization outcome.
+        """
+
+        return self._state.document
+
+    @property
+    def composition(self) -> Any:
+        """Non-authoritative projection of the effective governance composition."""
+
+        return self._state.composition
+
+    @property
+    def lock_payload(self) -> dict[str, Any]:
+        """Non-authoritative projection of the verified agentic-network lock."""
+
+        return self._state.lock_payload
+
+    @property
+    def network(self) -> Mapping[str, Any]:
+        """Non-authoritative projection of the contract's ``agentic_network``."""
+
+        network = self._state.document.get("agentic_network")
+        return network if isinstance(network, Mapping) else {}
 
     @classmethod
     def from_local_controls(
@@ -215,7 +380,13 @@ class GovernanceKernel:
         as_of: str,
         clock: DeterministicClock | None = None,
     ) -> "GovernanceKernel":
-        """Load through ``load_authorizer`` and preserve legacy load codes."""
+        """Load through ``load_authorizer`` and preserve legacy load codes.
+
+        ``load_authorizer`` is the only read.  Its Authorizer is validated,
+        composed, and lock-verified, and its ``state`` is the sole source of the
+        legacy compatibility projections — the shim performs no second read,
+        composition, verification, or authorization of its own.
+        """
 
         try:
             authorizer = load_authorizer(
@@ -229,49 +400,18 @@ class GovernanceKernel:
                 str(exc).partition(": ")[2] or str(exc),
             ) from exc
 
-        # The legacy object exposed these snapshots publicly.  Reload them only
-        # after the SPI load succeeds, then compare public digests so a file
-        # changed between reads fails closed rather than binding mixed state.
-        try:
-            document = load_nyx(contract_path)
-            composition = compose_document_governance(
-                document,
-                registry=registry_for_contract(contract_path),
-            )
-            lock_payload = load_agentic_network_lock(lock_path)
-        except Exception as exc:  # noqa: BLE001 - legacy deterministic boundary
-            raise GovernanceViolation(
-                "AN_ADAPTER_CONTRACT_INVALID",
-                "The public compatibility snapshots could not be loaded.",
-            ) from exc
-        if composition is None:
-            raise GovernanceViolation(
-                "AN_ADAPTER_PROFILE_MISSING",
-                "The contract does not resolve a governance profile.",
-            )
-        if (
-            contract_digest(document) != authorizer.contract_digest
-            or agentic_network_lock_digest(lock_payload)
-            != authorizer.network_lock_digest
-        ):
-            raise GovernanceViolation(
-                "AN_ADAPTER_LOCK_STALE",
-                "The contract or lock changed while the compatibility shim was loading.",
-            )
-
-        # Construction is the one warning point.  Suppress the constructor's
-        # internal frame here and re-emit at the external classmethod caller so
-        # one normal load path produces one actionable warning, not two.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            kernel = cls(
-                document,
-                composition,
-                lock_payload,
-                framework=framework,
-                clock=clock,
-            )
-        kernel._bind(authorizer, decision_at=as_of)
+        # Bypass __init__: constructing through it would build a second
+        # Authorizer from re-read inputs, which is exactly the split-brain this
+        # shim must not have.  One load, one Authorizer, one state.
+        kernel = cls.__new__(cls)
+        kernel._setup(
+            authorizer,
+            framework=framework,
+            producer_id="nornyx.reference_adapter",
+            producer_version="1.0",
+            clock=clock,
+            decision_at=as_of,
+        )
         warnings.warn(_DEPRECATION_TEXT, DeprecationWarning, stacklevel=2)
         return kernel
 
@@ -368,7 +508,7 @@ class GovernanceKernel:
 
     def _identity(self, identity_id: str) -> str:
         identity = _plain_string(identity_id, "identity_id")
-        if identity not in self._identities:
+        if identity not in self._identity_ids:
             raise GovernanceViolation(
                 "AN_ADAPTER_IDENTITY_UNKNOWN",
                 f"Identity {identity!r} is not declared in the contract.",
@@ -464,46 +604,45 @@ class GovernanceKernel:
             mission_id=mission_id,
             fallback_code="AN_ADAPTER_HANDOFF_AUTHORITY",
         )
-        handoff = self._handoffs.get(ref)
-        if handoff is None:  # defensive: an ALLOW cannot reach this branch
+        endpoints = self._handoff_endpoints.get(ref)
+        if endpoints is None:  # defensive: an ALLOW cannot reach this branch
             raise GovernanceViolation(
                 "AN_ADAPTER_HANDOFF_UNKNOWN",
                 f"Handoff {ref!r} is not declared in the contract.",
             )
+        source_ref, target_ref = endpoints
         self._record_observation(
             "handoff_initiated",
             _plain_string(mission_id, "mission_id"),
-            actor_ref=str(handoff.get("from_identity_ref")),
-            target_ref=str(handoff.get("to_identity_ref")),
+            actor_ref=source_ref,
+            target_ref=target_ref,
             handoff_ref=ref,
         )
 
     def complete_handoff(self, handoff_id: str, *, mission_id: str) -> None:
         ref = _plain_string(handoff_id, "handoff_id")
         mission = _plain_string(mission_id, "mission_id")
-        handoff = self._handoffs.get(ref)
-        if handoff is None:
+        endpoints = self._handoff_endpoints.get(ref)
+        if endpoints is None:
             raise GovernanceViolation(
                 "AN_ADAPTER_HANDOFF_UNKNOWN",
                 f"Handoff {ref!r} is not declared in the contract.",
             )
+        source_ref, target_ref = endpoints
         # Completion is the second observation in the already-authorized
         # request_handoff lifecycle; re-evaluating here would duplicate the
         # authorization and could not authorize a second surface.
         self._record_observation(
             "handoff_completed",
             mission,
-            actor_ref=str(handoff.get("from_identity_ref")),
-            target_ref=str(handoff.get("to_identity_ref")),
+            actor_ref=source_ref,
+            target_ref=target_ref,
             handoff_ref=ref,
         )
 
     # -------------------------------------------------------------- approval
-    def _approval_requirement(self, approval_ref: str) -> Any | None:
-        for requirement in self.composition.approval_requirements:
-            if requirement.id == approval_ref:
-                return requirement
-        return None
+    def _approval_requirement(self, approval_ref: str) -> _ApprovalSpec | None:
+        return self._approval_specs.get(approval_ref)
 
     @staticmethod
     def _approval_mapping(approval_record: Mapping[str, Any]) -> dict[str, Any]:
@@ -625,16 +764,14 @@ class GovernanceKernel:
     def _zone_action_ref(
         self, source_zone: str, target_zone: str, approval_ref: str
     ) -> str | None:
-        candidates = sorted(self._gates, key=lambda item: str(item.get("id")))
-        for gate in candidates:
+        for gate in sorted(self._gate_specs, key=lambda spec: spec.id):
             if (
-                source_zone in _strings(gate.get("source_zone_refs"))
-                and target_zone in _strings(gate.get("target_zone_refs"))
-                and approval_ref in _strings(gate.get("required_approval_refs"))
+                source_zone in gate.source_zone_refs
+                and target_zone in gate.target_zone_refs
+                and approval_ref in gate.required_approval_refs
+                and gate.action_classes
             ):
-                actions = _strings(gate.get("action_classes"))
-                if actions:
-                    return actions[0]
+                return gate.action_classes[0]
         return None
 
     def record_zone_crossing(

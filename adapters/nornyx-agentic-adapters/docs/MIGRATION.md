@@ -2,8 +2,9 @@
 
 ADR-0039 M2-D is implemented. The unpackaged
 `integrations/nornyx_reference_adapters/GovernanceKernel` remains available as
-a deprecated source-compatibility shim, but its decisions and evidence now come
-from the public Nornyx agentic SPI 1.1. The published
+a deprecated source-compatibility shim, but its decisions, evidence, and every
+compatibility projection now come from the public Nornyx agentic SPI 1.2 —
+specifically `Authorizer.state`, first published in Nornyx 1.11.0. The published
 `nornyx-agentic-adapters` package remains the supported replacement.
 
 ## Completed: the legacy reference tree's import name
@@ -49,9 +50,9 @@ That directory:
 
 ## Complete legacy method mapping
 
-| Legacy method | Current SPI 1.1 path | Preserved result |
+| Legacy method | Current SPI 1.2 path | Preserved result |
 | --- | --- | --- |
-| `from_local_controls(contract_path, lock_path, *, framework, as_of, clock=None)` | `load_authorizer(..., validation_as_of=as_of)`; compatibility snapshots are digest-compared to the loaded state | `GovernanceKernel` or the matching legacy load violation |
+| `from_local_controls(contract_path, lock_path, *, framework, as_of, clock=None)` | `load_authorizer(..., validation_as_of=as_of)` only; every compatibility projection is derived from that Authorizer's public `state`, with no second read, composition, or verification | `GovernanceKernel` or the matching legacy load violation |
 | `resolve_identity(agent_key)` | `Authorizer.resolve_identity(framework, agent_key)` | identity ref; unknown and ambiguous both remain `AN_ADAPTER_IDENTITY_UNKNOWN` |
 | `check_capability(identity_id, capability, *, mission_id)` | `CapabilityRequest` → one `evaluate` → `record_decision` | recorded `capability_allowed` event or stable capability/identity violation |
 | `invoke_tool(identity_id, capability, *, mission_id)` | same capability request; because this legacy signature accepts no callable, method entry is its complete protected occurrence | recorded `tool_invoked` after ALLOW |
@@ -73,7 +74,7 @@ failed callable.
 ### Approval-field compatibility
 
 The old approval mapping contains only `role`, `actor_type`, and `granted`; a
-zone crossing may contain only an `approval_ref`. SPI 1.1 requires an
+zone crossing may contain only an `approval_ref`. The current SPI requires an
 `ApprovalAssertion` with action, revision, issuance, evidence, and claimed
 approver fields. For omitted fields only, the shim takes the action/evidence and
 role from the composed approval requirement and governing gate, the revision

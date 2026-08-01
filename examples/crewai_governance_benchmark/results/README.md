@@ -5,7 +5,7 @@ without installing CrewAI or executing anything. It is a record, not a live
 claim: it is not continuously verified and can go stale the moment the candidate
 changes.
 
-This snapshot predates the published Nornyx 1.10.0 / SPI 1.1 and
+This snapshot predates the published Nornyx 1.11.0 / SPI 1.2 and
 `nornyx-agentic-adapters` 0.2.0 baseline. Its `environment.json` truthfully
 records the historical 1.8.0 / SPI 1.0 / adapter 0.1.0 run and the adapter's
 publication state at that time. Do not read those frozen values as current

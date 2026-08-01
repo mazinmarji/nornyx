@@ -174,7 +174,7 @@ eligibility criteria.
 ### What Nornyx alone can establish
 
 Current Nornyx can establish **Tier 1** for qualifying evidence packages.
-Nornyx 1.10.0 publishes the core SPI 1.1, and
+Nornyx 1.11.0 publishes the core SPI 1.2, and
 `nornyx-agentic-adapters` 0.2.0 publishes coverage inventories plus supported
 CrewAI synchronous-tool and LangGraph synchronous-node wrappers. Those
 mechanisms can satisfy part of a surface-scoped Tier 2 claim, but the claim is
