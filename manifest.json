@@ -1,9 +1,9 @@
 {
   "project": "Nornyx",
   "category": "AI Engineering Control-Plane Language",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "language_version": "1.0.0",
-  "status": "Package 1.10.0; occurrence semantics and M2-C implemented and release-approved",
+  "status": "Package 1.11.0; Authorizer state SPI 1.2 implemented and validated",
   "source_of_truth": [
     "README.md",
     "docs/01_LANGUAGE_SPEC_v0_1.md",
@@ -36,7 +36,7 @@
     "No credential storage",
     "No autonomous self-modification"
   ],
-  "updated_for": "1.10.0-release-candidate",
+  "updated_for": "1.11.0-release-candidate",
   "added": [
     "templates/nornyx-agentic-repo-harness",
     "docs/goals",
@@ -45,22 +45,35 @@
     "scripts/agent/run-nornyx-validation-gates.sh"
   ],
   "current_validation": {
-    "goal": "1.10.0-release-candidate",
-    "date": "2026-07-30",
+    "goal": "1.11.0-release-candidate",
+    "date": "2026-08-01",
     "test_command": "python -m pytest -q",
-    "test_result": "1531 passed, 50 skipped; focused occurrence, EvidenceRecorder, historical runtime-events 1.0, and native LangGraph validation passed; CPython 3.10-3.13 compatibility matrix retained; core build, adapter build, and installed-wheel checks passed",
+    "test_environment": {
+      "python": "3.13.14",
+      "install": "pip install -e .[dev]",
+      "optional_framework_extras": false,
+      "platform": "windows-short-path"
+    },
+    "test_summary": {
+      "collected_items": 1575,
+      "module_level_import_skips": 3,
+      "passed": 1523,
+      "skipped": 55,
+      "total_outcomes": 1578
+    },
+    "test_result": "Canonical local release environment (CPython 3.13.14, pip install -e .[dev], no optional framework extras, short-path Windows clone at the release head): 1523 passed, 55 skipped, 1578 total outcomes (1575 collected items plus 3 module-level crewai importorskip skips reported outside collection); focused release-consistency checks (documentation, governance-compatibility, governance-extension, manifest-metadata) passed; validates Authorizer.state and AuthorizerState under agentic SPI 1.2 with runtime-events schema 1.1 and language/schema 1.0 unchanged; core build and installed-wheel verification passed outside the source tree. The passed/skipped split is environment-dependent: installing optional framework extras (CrewAI, LangGraph, adapters) unskips those modules and changes both the split and the total.",
     "release_check": {
       "command": "python -m nornyx.cli release-check --approved",
       "blocked": 0,
-      "warning": 0
+      "warning": 1
     },
     "stable_language_check": {
       "command": "python scripts/release/check_stable_language.py --approved",
       "blocked": 0,
-      "warning": 0
+      "warning": 1
     },
-    "pmo_audit": "AN-001 through AN-006 merged; historical goal blocks preserved",
-    "package_publication": "1.9.0",
+    "pmo_audit": "AN-001 through AN-006 merged; Authorizer construction-state SPI (PR #57) merged into main; PR #56 (M2-D legacy compatibility shim) remains open and unmerged; historical goal blocks preserved",
+    "package_publication": "1.10.0",
     "deployment": "not_deployed",
     "goal_100": "locked"
   }

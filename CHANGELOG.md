@@ -6,6 +6,8 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-08-01
+
 ### Added
 
 - `Authorizer.state` exposes an immutable `AuthorizerState` for the exact
@@ -23,10 +25,12 @@ distribution version is independent of the Nornyx **language/schema** version
 ### Changed
 
 - `SPI_VERSION` advances from 1.1 to 1.2 for the additive construction-state
-  capability. Authorization, evidence, runtime-events schema, occurrence, and
-  replay semantics are unchanged. The package version remains 1.10.0 until a
-  separately reviewed Nornyx 1.11.0 release PR synchronizes all release fields;
-  no tag or publication is part of this change.
+  capability. Authorization, approval, evidence, occurrence, replay,
+  runtime-events, and language semantics are unchanged: the runtime-events
+  schema remains 1.1 and the language/schema version remains 1.0. This
+  release, Nornyx 1.11.0, synchronizes all seven equality-enforced
+  package-version locations. Tagging and PyPI publication are performed
+  separately through the approved release workflow.
 
 ## [1.10.0] - 2026-07-30
 
