@@ -3,9 +3,8 @@
 Supported framework adapters for the Nornyx [`nornyx.agentic`](https://github.com/mazinmarji/nornyx/blob/main/docs/decisions/ADR-0039-agentic-integration-sdk.md)
 authorization SPI. This package is where framework-specific interception,
 argument normalization, and executor wrapping live — the core `nornyx` package
-(`SPI_VERSION == "1.2"` in the unreleased source, intended for Nornyx 1.11.0;
-Nornyx 1.10.0 published SPI 1.1) contains no agent framework and implements no
-framework glue.
+(`SPI_VERSION == "1.2"` as published in Nornyx 1.11.0; Nornyx 1.10.0 published
+SPI 1.1) contains no agent framework and implements no framework glue.
 
 ## Status
 
