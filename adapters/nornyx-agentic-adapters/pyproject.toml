@@ -21,7 +21,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-dependencies = ["nornyx>=1.10,<2"]
+# jsonschema is declared directly because the runtime-conformance kit imports
+# it to validate its own report against the bundled schema. It was already
+# guaranteed transitively by nornyx; naming it here states what this package
+# actually imports and does not raise the nornyx floor.
+dependencies = ["nornyx>=1.10,<2", "jsonschema>=4.21"]
 
 [project.optional-dependencies]
 crewai = ["crewai==1.15.4"]
@@ -39,6 +43,19 @@ Repository = "https://github.com/mazinmarji/nornyx"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["nornyx_agentic_adapters*"]
+
+# The runtime-conformance kit resolves its report schema and its governance
+# contract fixture through importlib.resources against its own package, which
+# is what lets conformance run from an installed wheel outside every source
+# root. Without this declaration those files exist in an editable install and
+# in the repository test run, but are silently absent from the built wheel --
+# a defect that would surface only when a consumer ran the kit. The adapter
+# tests assert both resources are present in the built wheel.
+[tool.setuptools.package-data]
+nornyx_agentic_adapters = [
+    "conformance/schemas/*.json",
+    "conformance/fixtures/*.nyx",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
