@@ -25,8 +25,23 @@ os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 os.environ.setdefault("CREWAI_TRACING_ENABLED", "false")
 
-from crewai import Agent, BaseLLM, Crew, Process, Task  # noqa: E402
-from pydantic import BaseModel  # noqa: E402
+from ..._compat import require_extra  # noqa: E402
+
+# Imported through require_extra rather than a module-level `import crewai`,
+# matching this package's established pattern: the base package's import
+# boundary forbids a module-level framework import anywhere in its source, and
+# a missing extra should yield an actionable MissingOptionalDependencyError
+# rather than a bare ImportError.
+_crewai = require_extra("crewai", extra="crewai")
+Agent = _crewai.Agent
+BaseLLM = _crewai.BaseLLM
+Crew = _crewai.Crew
+Process = _crewai.Process
+Task = _crewai.Task
+
+# The crewai extra guarantees pydantic; import it only after require_extra has
+# confirmed the framework is present.
+BaseModel = require_extra("pydantic", extra="crewai").BaseModel
 
 from ...binding import SurfaceBinding  # noqa: E402
 from ...coverage import SurfaceStatus  # noqa: E402

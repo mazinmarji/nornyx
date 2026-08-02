@@ -41,9 +41,14 @@ def test_nornyx_core_never_imports_the_adapter_package() -> None:
 
 def test_no_module_level_framework_import_in_source() -> None:
     """Static check: no module-level `import crewai`/`import langgraph` anywhere
-    in the base package's source (lazy, function-scoped imports inside a
-    framework-specific submodule are the only permitted pattern, and no such
-    submodule exists yet in this foundation release)."""
+    in the base package's source.
+
+    The framework-specific submodules (``crewai_adapter``, ``langgraph``) and
+    the conformance suites reach their framework through
+    ``_compat.require_extra``, which is a call rather than an import statement,
+    so a missing extra raises an actionable ``MissingOptionalDependencyError``
+    and importing the base package still pulls in neither framework.
+    """
     import ast
     from pathlib import Path
 
@@ -52,14 +57,20 @@ def test_no_module_level_framework_import_in_source() -> None:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         # Only the module's direct top-level statements count as "module-level"
         # imports; imports nested inside a function/class body are lazy and
-        # permitted (the pattern a future framework-specific submodule would use).
+        # permitted.
         for node in tree.body:
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
-                names = (
-                    [alias.name for alias in node.names]
-                    if isinstance(node, ast.Import)
-                    else [node.module or ""]
-                )
-                for name in names:
-                    assert not (name == "crewai" or name.startswith("crewai.")), (path, name)
-                    assert not (name == "langgraph" or name.startswith("langgraph.")), (path, name)
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                # `level > 0` is a relative import of a sibling module inside
+                # this package (for example `from ...langgraph import ...`,
+                # which is this package's own adapter module, not the
+                # framework). Only an absolute import can reach the framework.
+                if node.level != 0:
+                    continue
+                names = [node.module or ""]
+            else:
+                continue
+            for name in names:
+                assert not (name == "crewai" or name.startswith("crewai.")), (path, name)
+                assert not (name == "langgraph" or name.startswith("langgraph.")), (path, name)

@@ -15,17 +15,26 @@ from __future__ import annotations
 import importlib.metadata
 from typing import Any, Callable, TypedDict
 
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.graph import END, START, StateGraph
-from langgraph.runtime import Runtime
-from langgraph.types import Command, RetryPolicy, interrupt
-
 from nornyx.agentic import EvidenceRecorder
 
-from ...binding import SurfaceBinding
-from ...coverage import SurfaceStatus
-from ...errors import AdapterConfigurationError, AdapterDenied
-from ...langgraph import (
+from ..._compat import require_extra
+
+# Imported through require_extra rather than module-level `import langgraph`,
+# matching this package's established pattern: the base package's import
+# boundary forbids a module-level framework import anywhere in its source, and
+# a missing extra should yield an actionable MissingOptionalDependencyError
+# rather than a bare ImportError.
+InMemorySaver = require_extra("langgraph.checkpoint.memory", extra="langgraph").InMemorySaver
+_graph = require_extra("langgraph.graph", extra="langgraph")
+END, START, StateGraph = _graph.END, _graph.START, _graph.StateGraph
+Runtime = require_extra("langgraph.runtime", extra="langgraph").Runtime
+_types = require_extra("langgraph.types", extra="langgraph")
+Command, RetryPolicy, interrupt = _types.Command, _types.RetryPolicy, _types.interrupt
+
+from ...binding import SurfaceBinding  # noqa: E402
+from ...coverage import SurfaceStatus  # noqa: E402
+from ...errors import AdapterConfigurationError, AdapterDenied  # noqa: E402
+from ...langgraph import (  # noqa: E402
     COVERAGE_INVENTORY,
     FRAMEWORK,
     METADATA,
@@ -33,8 +42,8 @@ from ...langgraph import (
     make_governed_node,
     resolve_identity,
 )
-from .. import harness as H
-from ..model import (
+from .. import harness as H  # noqa: E402
+from ..model import (  # noqa: E402
     CaseClassification,
     CaseOutcome,
     CaseResult,
