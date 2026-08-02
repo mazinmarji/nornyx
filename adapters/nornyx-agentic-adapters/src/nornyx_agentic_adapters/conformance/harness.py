@@ -13,9 +13,14 @@ wall clock, so repeated runs produce identical evidence.
 
 from __future__ import annotations
 
+import contextlib
+import os
+import socket
+import subprocess
 import sys
+import threading
 from importlib import resources
-from typing import Any
+from typing import Any, Iterator
 
 import yaml
 
@@ -148,12 +153,15 @@ class CountingAuthorizer:
 
     def __init__(self, authorizer: Authorizer) -> None:
         self._authorizer = authorizer
+        # Locked: LangGraph schedules parallel branches on a real thread pool.
+        self._lock = threading.Lock()
         self.evaluations = 0
 
     def evaluate(
         self, request: AuthorizationRequest, *, context: EvaluationContext
     ) -> Decision:
-        self.evaluations += 1
+        with self._lock:
+            self.evaluations += 1
         return self._authorizer.evaluate(request, context=context)
 
     def resolve_identity(self, framework: str, agent_key: str) -> str:
@@ -164,16 +172,101 @@ class CountingAuthorizer:
 
 
 class ExecutionCounter:
-    """Counts how many times a protected action actually ran."""
+    """Counts how many times a protected action actually ran.
+
+    Locked because LangGraph runs parallel branches on a real thread pool, so
+    an unguarded increment could lose an update and report a count lower than
+    what actually executed.
+    """
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         self.count = 0
 
+    def bump(self) -> None:
+        with self._lock:
+            self.count += 1
+
     def run(self, result: Any = None, raises: BaseException | None = None) -> Any:
-        self.count += 1
+        self.bump()
         if raises is not None:
             raise raises
         return result
+
+
+class NetworkGuard:
+    """Blocks external connections and subprocesses for the duration of a run.
+
+    Loopback is tolerated because CrewAI's own telemetry stack may touch it;
+    anything leaving the machine raises. ``attempts`` counts every blocked
+    call, so the report's ``network_used`` is derived from an observation
+    rather than asserted — a guard that were never installed, or a run that
+    really did reach outward, both become visible.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.attempts = 0
+
+    def _record(self) -> None:
+        with self._lock:
+            self.attempts += 1
+
+    @contextlib.contextmanager
+    def active(self) -> Iterator[NetworkGuard]:
+        real_connect = socket.socket.connect
+        real_create = socket.create_connection
+        real_getaddrinfo = socket.getaddrinfo
+        real_run, real_popen = subprocess.run, subprocess.Popen
+        real_system = os.system
+
+        def loopback_only(sock: socket.socket, address: Any) -> Any:
+            host = address[0] if isinstance(address, tuple) else address
+            if isinstance(host, str) and host in ("127.0.0.1", "::1", "localhost"):
+                return real_connect(sock, address)
+            self._record()
+            raise AssertionError(f"external connection attempted: {address!r}")
+
+        def forbidden(*_a: Any, **_k: Any) -> Any:
+            self._record()
+            raise AssertionError("external operation attempted during conformance")
+
+        def _is_own_interpreter(args: Any) -> bool:
+            """Permit only re-running this exact interpreter.
+
+            The kit deliberately spawns ``sys.executable -c ...`` to check the
+            import boundary in a clean process. Everything else -- a shell-out
+            from a framework, an arbitrary binary -- stays blocked.
+            """
+            if isinstance(args, (list, tuple)) and args:
+                return str(args[0]) == sys.executable
+            return False
+
+        def guarded_run(*args: Any, **kwargs: Any) -> Any:
+            if args and _is_own_interpreter(args[0]):
+                return real_run(*args, **kwargs)
+            return forbidden(*args, **kwargs)
+
+        def guarded_popen(*args: Any, **kwargs: Any) -> Any:
+            if args and _is_own_interpreter(args[0]):
+                return real_popen(*args, **kwargs)
+            return forbidden(*args, **kwargs)
+
+        socket.socket.connect = loopback_only  # type: ignore[method-assign]
+        socket.create_connection = forbidden  # type: ignore[assignment]
+        socket.getaddrinfo = forbidden  # type: ignore[assignment]
+        subprocess.run = guarded_run  # type: ignore[assignment]
+        subprocess.Popen = guarded_popen  # type: ignore[assignment]
+        os.system = forbidden  # type: ignore[assignment]
+        try:
+            yield self
+        finally:
+            socket.socket.connect = real_connect  # type: ignore[method-assign]
+            socket.create_connection = real_create  # type: ignore[assignment]
+            socket.getaddrinfo = real_getaddrinfo  # type: ignore[assignment]
+            subprocess.run = real_run  # type: ignore[assignment]
+            subprocess.Popen = real_popen  # type: ignore[assignment]
+            os.system = real_system  # type: ignore[assignment]
 
 
 def event_types(recorder: EvidenceRecorder) -> list[str]:
@@ -204,15 +297,23 @@ def normalized(types: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(sorted(set(types)))
 
 
-def decision_precedes_observations(recorder: EvidenceRecorder) -> bool:
-    """True when every observation follows at least one decision event.
+def decision_precedes_observations(recorder: EvidenceRecorder) -> bool | None:
+    """Whether every recorded observation followed at least one decision event.
 
-    This is the recorded-order form of the boundary's central guarantee:
-    decision intents are committed before a protected action can produce a
-    post-action observation.
+    Returns ``None`` when the stream contains no observation at all. There is
+    no ordering to report in that case, and answering ``True`` would affirm an
+    ordering property for a case that recorded nothing — including the bypass
+    controls, which by design record nothing.
+
+    Note the narrow scope: this is about the order of *recorded events*, not
+    about when the protected action ran. The action-failure and retry cases are
+    what pin the observation to the action.
     """
+    recorded = event_types(recorder)
+    if not any(event_type in OBSERVATION_EVENT_TYPES for event_type in recorded):
+        return None
     seen_decision = False
-    for event_type in event_types(recorder):
+    for event_type in recorded:
         if event_type in DECISION_EVENT_TYPES:
             seen_decision = True
         elif event_type in OBSERVATION_EVENT_TYPES and not seen_decision:
@@ -225,7 +326,15 @@ def validate_evidence(recorder: EvidenceRecorder) -> EvidenceValidation:
 
     Never a claim that the recorded events are true — only that they are
     well-formed and consistently bound to the contract, lock, and revision.
+
+    An empty stream is ``NOT_APPLICABLE`` rather than ``PASS``: "the evidence
+    validated" is a positive statement, and there is nothing to make it about
+    when nothing was recorded. Reporting ``PASS`` there would let a bypass
+    control, which by design produces no evidence, look like it produced good
+    evidence.
     """
+    if not recorder.stream()["events"]:
+        return EvidenceValidation.NOT_APPLICABLE
     try:
         report = recorder.validate()
     except Exception:  # noqa: BLE001 - a failed validation is a conformance result
@@ -235,6 +344,27 @@ def validate_evidence(recorder: EvidenceRecorder) -> EvidenceValidation:
         if report.get("status") == "pass"
         else EvidenceValidation.FAIL
     )
+
+
+def evidence_diagnostics(recorder: EvidenceRecorder) -> tuple[str, ...]:
+    """The sorted unique diagnostic codes the evidence validator reported.
+
+    A case that documents a known non-validating path must assert *which*
+    failure it is seeing. Without this, any future evidence regression on that
+    path — a broken digest, a stale lock, a schema-invalid event — would
+    produce the same bare ``fail`` and the same reassuring prose, and would be
+    structurally invisible.
+    """
+    try:
+        report = recorder.validate()
+    except Exception:  # noqa: BLE001
+        return ("VALIDATION_RAISED",)
+    codes = {
+        str(item.get("code"))
+        for item in report.get("diagnostics", [])
+        if isinstance(item, dict) and item.get("code")
+    }
+    return tuple(sorted(codes))
 
 
 def summarize_occurrences(recorder: EvidenceRecorder) -> OccurrenceSummary:
@@ -300,6 +430,7 @@ __all__ = [
     "REVIEWER",
     "CountingAuthorizer",
     "ExecutionCounter",
+    "NetworkGuard",
     "build_authorizer",
     "build_context",
     "build_occurrence_recorder",
@@ -307,6 +438,7 @@ __all__ = [
     "decision_event_types",
     "decision_precedes_observations",
     "event_types",
+    "evidence_diagnostics",
     "normalized",
     "fixture_text",
     "load_document",

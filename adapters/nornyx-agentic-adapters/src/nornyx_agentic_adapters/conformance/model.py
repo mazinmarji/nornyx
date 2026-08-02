@@ -34,7 +34,8 @@ LIMITATIONS: tuple[str, ...] = (
     "Nornyx, SPI, and Python versions named in this report.",
     "Conformance does not authenticate agents or approvers.",
     "Conformance does not prove that a recorded runtime event is true; it "
-    "establishes that the event stream is schema-valid and consistently bound.",
+    "establishes only whether the event stream is schema-valid and consistently "
+    "bound. See each case's evidence_validation.",
     "Conformance does not prevent bypass. Bypassing an adapter bypasses "
     "enforcement; bypass is reported as a negative control outside declared "
     "coverage, never as a prevented path.",
@@ -225,8 +226,9 @@ class CaseResult:
     observed_effect: str | None = None
     expected_code: str | None = None
     observed_code: str | None = None
-    decision_precedes_action: bool | None = None
+    decision_precedes_observation: bool | None = None
     evidence_validation: EvidenceValidation = EvidenceValidation.NOT_APPLICABLE
+    evidence_diagnostics: tuple[str, ...] = ()
     occurrence_summary: OccurrenceSummary | None = None
     covered_by: str | None = None
     detail: str = ""
@@ -260,6 +262,7 @@ class CaseResult:
             "observation_events": list(self.observation_events),
             "event_order": self.event_order.value,
             "evidence_validation": self.evidence_validation.value,
+            "evidence_diagnostics": list(self.evidence_diagnostics),
             "detail": self.detail,
         }
         if self.event_order is EventOrder.NORMALIZED:
@@ -273,8 +276,8 @@ class CaseResult:
         ):
             if value is not None:
                 payload[key] = value
-        if self.decision_precedes_action is not None:
-            payload["decision_precedes_action"] = self.decision_precedes_action
+        if self.decision_precedes_observation is not None:
+            payload["decision_precedes_observation"] = self.decision_precedes_observation
         if self.occurrence_summary is not None:
             payload["occurrence_summary"] = self.occurrence_summary.as_dict()
         return payload
@@ -326,6 +329,13 @@ class RunSafety:
 
     adapter_actions_executed: bool
     frameworks_executed: tuple[str, ...]
+    #: True when a guard was installed around the whole run. Reported so a
+    #: reader can tell an observed ``network_used: false`` from an unguarded
+    #: run that simply asserted one.
+    network_guard_active: bool = False
+    #: Derived from the guard's own count of blocked outbound attempts, not
+    #: declared. An unguarded run reports ``network_guard_active: false`` and
+    #: makes no observation.
     network_used: bool = False
     models_called: bool = False
     external_connectors_used: bool = False
@@ -335,6 +345,7 @@ class RunSafety:
         return {
             "adapter_actions_executed": self.adapter_actions_executed,
             "frameworks_executed": list(self.frameworks_executed),
+            "network_guard_active": self.network_guard_active,
             "network_used": self.network_used,
             "models_called": self.models_called,
             "external_connectors_used": self.external_connectors_used,

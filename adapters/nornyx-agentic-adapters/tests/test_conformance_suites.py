@@ -209,8 +209,12 @@ def test_allow_paths_record_the_decision_before_the_success_observation(
 ) -> None:
     _framework, _report, suite = framework_suite
     for case in suite.cases:
-        if case.observation_events and case.decision_precedes_action is not None:
-            assert case.decision_precedes_action, case.case_id
+        if case.observation_events:
+            assert case.decision_precedes_observation is True, case.case_id
+        else:
+            # No observation recorded means there is no ordering to report;
+            # a vacuous True would affirm a property the case never exercised.
+            assert case.decision_precedes_observation is None, case.case_id
 
 
 def test_normalized_event_order_is_justified(framework_suite) -> None:
@@ -224,17 +228,24 @@ def test_normalized_event_order_is_justified(framework_suite) -> None:
 
 def test_not_representable_cases_cross_reference_a_covering_case(framework_suite) -> None:
     _framework, report, suite = framework_suite
+    # The reference legitimately points into another suite — the whole point is
+    # that the behavior is proven at the framework-neutral boundary — so it is
+    # resolved against every case the kit can produce, not just this run's.
     known = {c.case_id for s in report.suites for c in s.cases}
+    known |= {
+        c.case_id
+        for s in run_conformance(
+            frameworks=["enforcement_boundary", "distribution"]
+        ).suites
+        for c in s.cases
+    }
     for case in suite.cases:
         if case.outcome is CaseOutcome.NOT_REPRESENTABLE:
             assert case.covered_by, case.case_id
-            # The referenced case need not be in this run's selection, but it
-            # must be a real case id somewhere in the kit.
-            assert case.covered_by.startswith(("neutral.", "crewai.", "langgraph.")), (
-                case.covered_by
+            assert case.covered_by != case.case_id
+            assert case.covered_by in known, (
+                f"{case.case_id} points at {case.covered_by!r}, which is not a real case"
             )
-            assert case.covered_by not in {case.case_id}
-            assert known or True
 
 
 # ------------------------------------------------------------------ observed limitations
@@ -249,7 +260,10 @@ def test_crewai_denial_evidence_limitation_is_reported_not_hidden(crewai_suite) 
     assert case.action_executions.observed == 0
     assert case.authorizations.kind == "at_least"
     assert case.authorizations.observed is None
-    assert "AN_EVT_REPLAY" in case.detail
+    # Asserted against the code the validator actually emitted, not against a
+    # literal in the suite under test -- otherwise an unrelated evidence
+    # regression would satisfy this check unchanged.
+    assert case.evidence_diagnostics == ("AN_EVT_REPLAY",), case.evidence_diagnostics
 
 
 def test_crewai_failure_path_records_runtime_failed_exactly_once(crewai_suite) -> None:
@@ -279,6 +293,17 @@ def test_langgraph_occurrence_claims_are_substantiated(langgraph_suite) -> None:
     for case in suite.cases:
         if case.occurrence_summary is not None:
             assert not case.occurrence_summary.collided, case.case_id
+
+
+def test_framework_suite_reports_are_byte_identical_across_runs(framework_suite) -> None:
+    """The determinism claim covers the framework suites, not just the base
+    ones: a framework executor is exactly where nondeterminism would enter."""
+    from nornyx_agentic_adapters.conformance import run_conformance, serialize
+
+    framework, _report, _suite = framework_suite
+    first = serialize(run_conformance(frameworks=[framework], require=[framework]))
+    second = serialize(run_conformance(frameworks=[framework], require=[framework]))
+    assert first == second
 
 
 def test_report_never_carries_a_raw_occurrence_identifier(langgraph_suite) -> None:

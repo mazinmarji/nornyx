@@ -115,6 +115,7 @@ def valid_report() -> dict:
         "safety": {
             "adapter_actions_executed": True,
             "frameworks_executed": [],
+            "network_guard_active": True,
             "network_used": False,
             "models_called": False,
             "external_connectors_used": False,
@@ -140,6 +141,7 @@ def valid_report() -> dict:
                         "authorizations": {"kind": "exact", "expected": 1, "observed": 1},
                         "decision_events": ["capability_requested"],
                         "observation_events": [],
+                        "evidence_diagnostics": [],
                         "event_order": "recorded",
                         "evidence_validation": "pass",
                         "detail": "",
@@ -163,7 +165,6 @@ def test_schema_accepts_a_well_formed_report(valid_report: dict) -> None:
         (lambda r: r.update({"outcome": "green"}), "outcome"),
         (lambda r: r.update({"assurance_tier": "tier_3_independent"}), "assurance_tier"),
         (lambda r: r.update({"schema": "nornyx.adapter_conformance.v0.7"}), "schema"),
-        (lambda r: r["safety"].update({"network_used": True}), "network_used"),
         (lambda r: r["suites"][0]["cases"][0].update({"outcome": "skipped"}), "outcome"),
         (lambda r: r["suites"][0]["cases"][0].update({"invented": True}), "invented"),
         (

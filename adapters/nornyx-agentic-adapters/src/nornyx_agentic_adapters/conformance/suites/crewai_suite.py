@@ -13,12 +13,9 @@ no external model.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import importlib.metadata
 import os
-import socket
-import subprocess
-from typing import Any, Callable, Iterator
+from typing import Any, Callable
 
 # Telemetry must be disabled before the first crewai import in this process.
 os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
@@ -83,53 +80,6 @@ _RETRY_REASON = (
 
 def _bounded(text: str) -> str:
     return " ".join(str(text).split())[:_DETAIL_LIMIT]
-
-
-class _NetworkGuard:
-    """Blocks external connections and subprocesses for the duration of a case.
-
-    Loopback is tolerated because CrewAI's own telemetry stack may touch it;
-    anything leaving the machine raises. ``blocked`` is exposed so the report's
-    ``network_used: false`` is backed by an observation rather than asserted.
-    """
-
-    def __init__(self) -> None:
-        self.blocked = 0
-
-    @contextlib.contextmanager
-    def active(self) -> Iterator[_NetworkGuard]:
-        real_connect = socket.socket.connect
-        real_create = socket.create_connection
-        real_getaddrinfo = socket.getaddrinfo
-        real_run, real_popen = subprocess.run, subprocess.Popen
-        real_system = os.system
-
-        def loopback_only(sock: socket.socket, address: Any) -> Any:
-            host = address[0] if isinstance(address, tuple) else address
-            if isinstance(host, str) and host in ("127.0.0.1", "::1", "localhost"):
-                return real_connect(sock, address)
-            self.blocked += 1
-            raise AssertionError(f"external connection attempted: {address!r}")
-
-        def forbidden(*_a: Any, **_k: Any) -> Any:
-            self.blocked += 1
-            raise AssertionError("external operation attempted during conformance")
-
-        socket.socket.connect = loopback_only  # type: ignore[method-assign]
-        socket.create_connection = forbidden  # type: ignore[assignment]
-        socket.getaddrinfo = forbidden  # type: ignore[assignment]
-        subprocess.run = forbidden  # type: ignore[assignment]
-        subprocess.Popen = forbidden  # type: ignore[assignment]
-        os.system = forbidden  # type: ignore[assignment]
-        try:
-            yield self
-        finally:
-            socket.socket.connect = real_connect  # type: ignore[method-assign]
-            socket.create_connection = real_create  # type: ignore[assignment]
-            socket.getaddrinfo = real_getaddrinfo  # type: ignore[assignment]
-            subprocess.run = real_run  # type: ignore[assignment]
-            subprocess.Popen = real_popen  # type: ignore[assignment]
-            os.system = real_system  # type: ignore[assignment]
 
 
 class _DeterministicLLM(BaseLLM):
@@ -208,6 +158,7 @@ def _result(
     authorizations: CountCheck,
     recorder: Any = None,
     expect_evidence: EvidenceValidation = EvidenceValidation.PASS,
+    expect_diagnostics: tuple[str, ...] | None = None,
     event_order: EventOrder = EventOrder.RECORDED,
     normalization_reason: str = "",
     expected_effect: str | None = None,
@@ -235,6 +186,15 @@ def _result(
         if recorder is not None
         else EvidenceValidation.NOT_APPLICABLE
     )
+    diagnostics = (
+        H.evidence_diagnostics(recorder)
+        if recorder is not None and evidence is EvidenceValidation.FAIL
+        else ()
+    )
+    if expect_diagnostics is not None and diagnostics != tuple(expect_diagnostics):
+        problems.append(
+            f"evidence diagnostics {list(diagnostics)}, expected {list(expect_diagnostics)}"
+        )
     if evidence is not expect_evidence:
         problems.append(
             f"evidence validation {evidence.value!r}, expected {expect_evidence.value!r}"
@@ -268,10 +228,11 @@ def _result(
         observed_effect=observed_effect,
         expected_code=expected_code,
         observed_code=observed_code,
-        decision_precedes_action=(
+        decision_precedes_observation=(
             H.decision_precedes_observations(recorder) if recorder is not None else None
         ),
         evidence_validation=evidence,
+        evidence_diagnostics=diagnostics,
         covered_by=covered_by,
         detail=_bounded(detail),
     )
@@ -322,7 +283,7 @@ def _case_native_allow() -> CaseResult:
     agent = _agent("researcher", llm)
 
     problems: list[str] = []
-    guard = _NetworkGuard()
+    guard = H.NetworkGuard()
     with guard.active():
         # Identity resolution through the adapter's own public path.
         if resolve_identity(counting, agent) != H.RESEARCHER:
@@ -346,8 +307,8 @@ def _case_native_allow() -> CaseResult:
         problems.append("expected exactly one tool_invoked observation")
     if not H.decision_precedes_observations(recorder):
         problems.append("tool_invoked was recorded before the authorizing decision")
-    if guard.blocked:
-        problems.append(f"{guard.blocked} external operations attempted")
+    if guard.attempts:
+        problems.append(f"{guard.attempts} external operations attempted")
 
     return _result(
         "crewai.native.allow",
@@ -377,7 +338,7 @@ def _case_native_deny() -> CaseResult:
     agent = _agent("reviewer", llm)
 
     problems: list[str] = []
-    guard = _NetworkGuard()
+    guard = H.NetworkGuard()
     with guard.active():
         tool = _governed_tool(
             counting,
@@ -407,8 +368,8 @@ def _case_native_deny() -> CaseResult:
         problems.append("capability_requested and capability_denied events did not pair up")
     if counting.evaluations < 1:
         problems.append("no authorization was evaluated")
-    if guard.blocked:
-        problems.append(f"{guard.blocked} external operations attempted")
+    if guard.attempts:
+        problems.append(f"{guard.attempts} external operations attempted")
 
     return _result(
         "crewai.native.deny",
@@ -422,10 +383,15 @@ def _case_native_deny() -> CaseResult:
         # An observed limitation, reported rather than hidden: because CrewAI's
         # executor retries the denied call and legacy-mode evidence carries no
         # occurrence identity, the repeated identical decision batches are
-        # flagged AN_EVT_REPLAY. Asserted as FAIL so the report cannot quietly
-        # claim a validating stream here, and so a future change in either
-        # direction is caught.
+        # flagged AN_EVT_REPLAY.
+        #
+        # The exact diagnostic code is asserted, not merely "it failed".
+        # Without that, any future evidence regression on this path -- a broken
+        # contract digest, a stale lock, a schema-invalid event -- would produce
+        # the same bare failure and the same reassuring prose, and would be
+        # structurally invisible on the deny control of a wrapped surface.
         expect_evidence=EvidenceValidation.FAIL,
+        expect_diagnostics=("AN_EVT_REPLAY",),
         event_order=EventOrder.NORMALIZED,
         normalization_reason=_RETRY_REASON,
         expected_effect="deny",
@@ -456,7 +422,7 @@ def _case_native_structured_args() -> CaseResult:
         return f"read:{topic}"
 
     problems: list[str] = []
-    guard = _NetworkGuard()
+    guard = H.NetworkGuard()
     with guard.active():
         tool = _governed_tool(counting, context, recorder, action, args_schema=_TopicInput)
         _kickoff(agent, tool)
@@ -469,8 +435,8 @@ def _case_native_structured_args() -> CaseResult:
         problems.append("expected exactly one tool_invoked observation")
     if not H.decision_precedes_observations(recorder):
         problems.append("tool_invoked was recorded before the authorizing decision")
-    if guard.blocked:
-        problems.append(f"{guard.blocked} external operations attempted")
+    if guard.attempts:
+        problems.append(f"{guard.attempts} external operations attempted")
 
     return _result(
         "crewai.native.structured_args",
@@ -565,6 +531,10 @@ def _case_invalid_args() -> CaseResult:
         problems=problems,
         executions=CountCheck("exact", 0, counter.count),
         authorizations=CountCheck("exact", 0, counting.evaluations),
+        # Rejected before any authorization, so nothing is recorded. There is
+        # no evidence to validate, and 'pass' would be a positive claim about
+        # an empty stream.
+        expect_evidence=EvidenceValidation.NOT_APPLICABLE,
         recorder=recorder,
     )
 
@@ -605,6 +575,9 @@ def _case_async_unsupported() -> CaseResult:
         executions=CountCheck("exact", 0, counter.count),
         authorizations=CountCheck("exact", 0, counting.evaluations),
         recorder=recorder,
+        # The inherited _arun raises before the governed _run is reached, so
+        # nothing is recorded and there is no evidence to validate.
+        expect_evidence=EvidenceValidation.NOT_APPLICABLE,
     )
 
 
@@ -642,12 +615,39 @@ def _case_bypass() -> CaseResult:
     """Calling the underlying work callable directly bypasses the adapter
     entirely. Nothing here prevents that — which is what cooperative Tier 2
     means, and why this is reported as outside declared coverage rather than
-    as a governed path."""
+    as a governed path.
+
+    A real governed tool is constructed first, and the action it wraps is then
+    invoked directly, so the control demonstrates bypass of an actually-built
+    wrapper rather than of nothing at all.
+    """
+    authorizer = H.build_authorizer()
+    context = H.build_context(authorizer)
+    recorder = H.build_recorder(authorizer, context)
+    counting = H.CountingAuthorizer(authorizer)
     counter = H.ExecutionCounter()
     problems: list[str] = []
-    result = counter.run("ran with no authorization check whatsoever")
+
+    action = lambda: counter.run("ran with no authorization check whatsoever")  # noqa: E731
+    # The reviewer identity does not hold this capability: through the governed
+    # tool this would be denied.
+    _governed_tool(
+        counting,
+        context,
+        recorder,
+        action,
+        name="proposer",
+        identity=H.REVIEWER,
+        capability=H.PROPOSE_CAPABILITY,
+    )
+
+    result = action()
     if result != "ran with no authorization check whatsoever" or counter.count != 1:
-        problems.append("the bypass control did not execute as expected")
+        problems.append("the bypassed action did not execute")
+    if counting.evaluations != 0:
+        problems.append("a decision was evaluated on a bypassed call")
+    if H.event_types(recorder):
+        problems.append("a bypassed call produced governance evidence")
 
     return _result(
         "crewai.bypass.direct_action",
@@ -656,10 +656,12 @@ def _case_bypass() -> CaseResult:
         execution_path=ExecutionPath.DIRECT,
         problems=problems,
         executions=CountCheck("exact", 1, counter.count),
-        authorizations=CountCheck("exact", 0, 0),
+        authorizations=CountCheck("exact", 0, counting.evaluations),
+        recorder=recorder,
         expect_evidence=EvidenceValidation.NOT_APPLICABLE,
         note=(
-            "Bypassing the adapter bypasses enforcement: no decision was "
+            "Bypassing the adapter bypasses enforcement: a governed tool was "
+            "built, its underlying action was called directly, no decision was "
             "evaluated and no evidence was produced. Outside declared coverage."
         ),
     )
@@ -680,7 +682,7 @@ def _case_version_guard() -> CaseResult:
 
     return _result(
         "crewai.boundary.version_pin_enforced",
-        surface=WRAPPED_SURFACE,
+        surface="distribution",
         classification=CaseClassification.DISTRIBUTION_BOUNDARY,
         execution_path=ExecutionPath.BOUNDARY,
         problems=problems,

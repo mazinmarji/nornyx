@@ -99,6 +99,9 @@ def test_report_safety_block_is_the_kits_own_not_the_validators(base_report) -> 
     assert ``tools_executed: false`` immediately after executing a tool."""
     safety = base_report.as_dict()["safety"]
     assert safety["adapter_actions_executed"] is True
+    # Observed, not declared: a guard was installed and counted zero blocked
+    # outbound attempts.
+    assert safety["network_guard_active"] is True
     assert safety["network_used"] is False
     assert safety["models_called"] is False
     assert "tools_executed" not in safety
@@ -109,6 +112,18 @@ def test_unknown_suite_and_unknown_required_framework_are_rejected() -> None:
         run_conformance(frameworks=["not_a_suite"])
     with pytest.raises(ValueError, match="unknown required framework"):
         run_conformance(frameworks=BASE_SUITES, require=["not_a_framework"])
+
+
+def test_requiring_a_framework_that_was_not_selected_is_rejected() -> None:
+    """Otherwise `require` is a silent no-op under that flag combination, and
+    a CI edit adding --suite would disarm the gate without saying so."""
+    with pytest.raises(ValueError, match="not selected to run"):
+        run_conformance(frameworks=["enforcement_boundary"], require=["crewai"])
+
+
+def test_an_unmatched_case_id_is_rejected_rather_than_yielding_an_empty_pass() -> None:
+    with pytest.raises(ValueError, match="no conformance case matches"):
+        run_conformance(frameworks=["enforcement_boundary"], case_ids=["no.such.case"])
 
 
 def test_duplicate_case_ids_are_rejected() -> None:

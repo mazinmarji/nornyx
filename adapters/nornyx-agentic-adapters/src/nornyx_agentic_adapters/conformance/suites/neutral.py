@@ -69,8 +69,17 @@ def _result(
     evidence = (
         H.validate_evidence(recorder) if recorder else EvidenceValidation.NOT_APPLICABLE
     )
-    if recorder is not None and evidence is not EvidenceValidation.PASS:
-        problems.append(f"evidence validation {evidence.value!r}, expected 'pass'")
+    # A stream that recorded nothing is NOT_APPLICABLE, not PASS: the
+    # fail-closed cases legitimately record nothing, and "the evidence
+    # validated" would be a positive statement about nothing.
+    if evidence is EvidenceValidation.FAIL:
+        problems.append("evidence validation failed")
+    actions = CountCheck("exact", expected_executions, executions)
+    authorizations = CountCheck("exact", 1, evaluations)
+    if not actions.satisfied:
+        problems.append(f"action executions {executions}, expected {expected_executions}")
+    if not authorizations.satisfied:
+        problems.append(f"authorizations {evaluations}, expected 1")
     outcome = CaseOutcome.FAIL if problems else CaseOutcome.PASS
     return CaseResult(
         case_id=case_id,
@@ -79,18 +88,23 @@ def _result(
         declared_status="not_declared",
         classification=CaseClassification.GOVERNED,
         outcome=outcome,
-        action_executions=CountCheck("exact", expected_executions, executions),
-        authorizations=CountCheck("exact", 1, evaluations),
+        action_executions=actions,
+        authorizations=authorizations,
         decision_events=H.decision_event_types(recorder) if recorder else (),
         observation_events=H.observation_event_types(recorder) if recorder else (),
         expected_effect=expected_effect,
         observed_effect=observed_effect,
         expected_code=expected_code,
         observed_code=observed_code,
-        decision_precedes_action=(
+        decision_precedes_observation=(
             H.decision_precedes_observations(recorder) if recorder else None
         ),
         evidence_validation=evidence,
+        evidence_diagnostics=(
+            H.evidence_diagnostics(recorder)
+            if recorder is not None and evidence is EvidenceValidation.FAIL
+            else ()
+        ),
         detail=_bounded("; ".join(problems)),
     )
 
@@ -296,7 +310,6 @@ def _fail_closed_case(
     case_id: str,
     *,
     build: Callable[[Any, Any, Any], tuple[Any, Any, Callable[[Decision], None] | None]],
-    expected_evaluations: int,
 ) -> CaseResult:
     """An internal failure before the action must leave the action un-run."""
     authorizer = H.build_authorizer()
@@ -328,7 +341,9 @@ def _fail_closed_case(
     if observations:
         problems.append(f"success observation recorded despite failure: {observations}")
 
-    evaluations = getattr(used_authorizer, "evaluations", expected_evaluations)
+    # Read directly: a getattr fallback to the *expected* value would
+    # manufacture agreement between expectation and observation.
+    evaluations = used_authorizer.evaluations
     return _result(
         case_id,
         problems=problems,
@@ -346,7 +361,6 @@ def _case_evaluate_error() -> CaseResult:
             recorder,
             None,
         ),
-        expected_evaluations=1,
     )
 
 
@@ -360,9 +374,7 @@ def _case_recorder_error() -> CaseResult:
         )
         return H.CountingAuthorizer(authorizer), exploding, None
 
-    return _fail_closed_case(
-        "neutral.enforce.recorder_error", build=build, expected_evaluations=1
-    )
+    return _fail_closed_case("neutral.enforce.recorder_error", build=build)
 
 
 def _case_on_decision_error() -> CaseResult:
@@ -376,7 +388,6 @@ def _case_on_decision_error() -> CaseResult:
             recorder,
             raise_from_hook,
         ),
-        expected_evaluations=1,
     )
 
 

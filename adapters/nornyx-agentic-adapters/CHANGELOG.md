@@ -43,6 +43,33 @@ package versions independently of the `nornyx` core package — see
   asserts the SPI *major* only. A truncated sentence about import-time pin
   enforcement is repaired.
 
+### Assurance remediations
+
+Independent review of the candidate found three claim-integrity defects in the
+kit, all fixed before this entry:
+
+- The CrewAI denial case asserted only that evidence validation *failed*, while
+  its reported detail named a specific cause it never observed. Any unrelated
+  evidence regression on that path would have produced the same reassuring
+  prose. Cases now record the validator's actual diagnostic codes, and that
+  case pins `AN_EVT_REPLAY` exactly.
+- `safety.network_used` was a dataclass default pinned to `false` by the
+  schema — unfalsifiable, despite a docstring claiming it was observed. A
+  guard now wraps every executing suite, `network_used` is derived from its
+  count of blocked outbound attempts, and a new `network_guard_active` field
+  states whether a guard was in place at all.
+- `decision_precedes_action` named a stronger property than it measured (it
+  compares recorded events, not the action) and was vacuously `true` for cases
+  that recorded nothing. Renamed to `decision_precedes_observation`, documented
+  in the schema, and now absent rather than `true` when no observation exists.
+
+Also: requiring a framework that was not selected, and selecting a case id that
+matches nothing, are now errors rather than silent no-ops that could exit `0`;
+an empty stream reports `not_applicable` rather than a validation `pass`; the
+interrupt/resume case counts the executions it actually performed; and the
+CrewAI bypass control now bypasses a real governed tool rather than a bare
+counter.
+
 ### Known limitations
 
 - On the CrewAI tool surface, a denied call retried by CrewAI's own executor

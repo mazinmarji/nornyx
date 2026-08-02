@@ -37,6 +37,7 @@
       "required": [
         "adapter_actions_executed",
         "frameworks_executed",
+        "network_guard_active",
         "network_used",
         "models_called",
         "external_connectors_used",
@@ -45,7 +46,14 @@
       "properties": {
         "adapter_actions_executed": {"type": "boolean"},
         "frameworks_executed": {"type": "array", "items": {"type": "string", "minLength": 1}},
-        "network_used": {"const": false},
+        "network_guard_active": {
+          "description": "Whether a guard was installed around the whole run. Distinguishes an observed network_used from an unguarded assertion.",
+          "type": "boolean"
+        },
+        "network_used": {
+          "description": "Derived from the guard's own count of blocked outbound attempts. Not a constant: an unguarded run cannot observe it, and a run that reached outward makes it true.",
+          "type": "boolean"
+        },
         "models_called": {"const": false},
         "external_connectors_used": {"const": false},
         "credentials_loaded": {"const": false}
@@ -123,6 +131,7 @@
         "observation_events",
         "event_order",
         "evidence_validation",
+        "evidence_diagnostics",
         "detail"
       ],
       "properties": {
@@ -157,19 +166,27 @@
         "action_executions": {"$ref": "#/$defs/count_check"},
         "authorizations": {"$ref": "#/$defs/count_check"},
         "decision_events": {
-          "description": "Sorted unique decision-event types observed in the adapter's own recorder.",
+          "description": "Decision-event types in the order the adapter's own recorder committed them, unless event_order is 'normalized'. Repeats are meaningful and preserved.",
           "type": "array",
           "items": {"type": "string", "minLength": 1}
         },
         "observation_events": {
-          "description": "Sorted unique post-action observation types observed in the adapter's own recorder.",
+          "description": "Observation event types in the order the adapter's own recorder committed them, unless event_order is 'normalized'. Repeats are meaningful and preserved.",
           "type": "array",
           "items": {"type": "string", "minLength": 1}
         },
-        "decision_precedes_action": {"type": "boolean"},
+        "decision_precedes_observation": {
+          "description": "Whether every recorded observation followed at least one recorded decision event. Absent when the case recorded no observation, rather than vacuously true.",
+          "type": "boolean"
+        },
         "evidence_validation": {
           "description": "Schema validity and binding consistency of the recorded stream. Never a claim that the events are true.",
           "enum": ["pass", "fail", "not_applicable"]
+        },
+        "evidence_diagnostics": {
+          "description": "Sorted unique diagnostic codes the evidence validator reported. A case documenting a known non-validating path asserts which failure it observed, so an unrelated regression cannot hide behind the same bare 'fail'.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
         },
         "occurrence_summary": {"$ref": "#/$defs/occurrence_summary"},
         "detail": {"type": "string"}
@@ -206,7 +223,7 @@
       ]
     },
     "occurrence_summary": {
-      "description": "Determinism-safe facts derived from an occurrence-aware stream. Raw occurrence ids are deliberately absent: LangGraph mints a fresh task id per process.",
+      "description": "Determinism-safe facts derived from an occurrence-aware stream. Raw occurrence ids are deliberately absent: LangGraph mints a fresh task id per process. 'collided' detects one specific shape: two different logical operations recorded under one occurrence id.",
       "type": "object",
       "additionalProperties": false,
       "required": ["distinct_occurrences", "attempts", "collided"],

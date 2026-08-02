@@ -372,9 +372,15 @@ jobs:
           assert payload["outcome"] == "pass", payload["outcome"]
           assert payload["assurance_tier"] == "tier_2_cooperative"
           assert payload["safety"]["network_used"] is False
+          assert payload["safety"]["network_guard_active"] is True
           frameworks = sorted(payload["safety"]["frameworks_executed"])
           assert frameworks == ["crewai", "langgraph"], frameworks
-          print("conformance report OK:", sum(len(s["cases"]) for s in payload["suites"]), "cases")
+          # A zero-case report is schema-valid and would otherwise read as a
+          # pass; require a floor so an empty run cannot go green.
+          cases = sum(len(s["cases"]) for s in payload["suites"])
+          assert cases >= 30, cases
+          assert all(s["cases"] for s in payload["suites"]), "a selected suite produced no cases"
+          print("conformance report OK:", cases, "cases")
           PY
       - name: Upload the runtime conformance report
         if: always()

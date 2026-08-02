@@ -90,14 +90,24 @@ they fail closed, and are reported as unsupported.
 Exported from `nornyx_agentic_adapters.conformance`:
 
 - Constants: `CONFORMANCE_SCHEMA_ID`, `CONFORMANCE_SCHEMA_VERSION`,
-  `ASSURANCE_TIER`, `LIMITATIONS`.
+  `ASSURANCE_TIER`, `LIMITATIONS`, `NON_GOALS`.
 - Enums: `CaseClassification` (`governed`, `unsupported_surface`,
-  `bypass_control`, `distribution_boundary`), `CaseOutcome` (`pass`, `fail`),
-  `SuiteOutcome` (`pass`, `fail`, `unavailable`).
-- Frozen dataclasses: `CountCheck`, `CaseResult`, `SuiteResult`,
-  `ConformanceReport`.
+  `bypass_control`, `distribution_boundary`); `CaseOutcome` (`pass`, `fail`,
+  `not_representable`); `RunOutcome` (`pass`, `fail`); `SuiteOutcome` (`pass`,
+  `fail`, `unavailable`); `ExecutionPath` (`native`, `direct`, `boundary`);
+  `EventOrder` (`recorded`, `normalized`); `EvidenceValidation` (`pass`,
+  `fail`, `not_applicable`).
+- Frozen dataclasses: `CountCheck`, `OccurrenceSummary`, `CaseResult`,
+  `SuiteResult`, `RunSafety`, `ConformanceReport`.
 - Functions: `run_conformance()`, `available_suites()`, `validate_report()`,
-  `load_report_schema()`.
+  `load_report_schema()`, `serialize()`, `write_report()`.
+
+`CaseOutcome.not_representable` is deliberately a third state, neither a pass
+nor a skip. It records a case that **cannot exist** on the surface it names —
+the surface structurally cannot reach the outcome — and it must cross-reference
+the case that does prove the behavior. Without a distinct state, such a gap
+would have to be either silently omitted (hiding it) or reported as a skip
+(implying it was environmental and might pass elsewhere).
 
 The report schema is bundled as package data and validated by
 `validate_report()`, which is strict: `additionalProperties: false` throughout,
@@ -182,6 +192,32 @@ same way.
   shipping the kit.
 - **Report raw framework identifiers (task ids, timestamps).** Rejected:
   measured to be nondeterministic, and reproducibility is a stated requirement.
+
+## Accepted limitations
+
+Independent assurance raised these and they are accepted deliberately rather
+than fixed, because fixing them would cost more than the risk they carry:
+
+- **Suites evaluate every case before `--case` filtering is applied.** A
+  filtered run therefore still executes the whole suite. This is a runtime cost,
+  not a correctness problem: filtering removes results, it never invents them.
+  Restructuring each suite around a case-id table is deferred.
+- **A framework suite that fails to *import* is reported `unavailable`, the
+  same outcome as a missing extra.** A genuine API drift is therefore
+  distinguishable only by its stated reason. CI passes `--require` for both
+  frameworks, and requiring a framework that was not selected is now an error,
+  so an unavailable suite cannot pass silently there.
+- **Importing the CrewAI suite sets three telemetry environment variables.**
+  This is required to keep CrewAI offline and deterministic, and it must happen
+  before the framework is first imported.
+- **Whether the conformance job blocks a merge is branch-protection
+  configuration**, which lives outside this repository's files. The job fails
+  the workflow on a nonconforming case; making it a required check is an owner
+  action.
+- **`OccurrenceSummary.collided` detects one specific shape**: two *different*
+  logical operations recorded under one occurrence id. The per-case
+  `distinct_occurrences` assertions cover the concrete collision scenarios; the
+  field's description now states exactly what it detects.
 
 ## Consequences and non-goals
 

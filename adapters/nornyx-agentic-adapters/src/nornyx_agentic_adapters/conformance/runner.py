@@ -75,21 +75,29 @@ def run_conformance(
     unknown_required = required - set(_FRAMEWORK_SUITES)
     if unknown_required:
         raise ValueError(f"unknown required framework(s): {sorted(unknown_required)}")
+    # Requiring a framework whose suite was never selected would be a silent
+    # no-op — exactly the failure `require` exists to prevent. A CI edit that
+    # adds `--suite` must not quietly disarm the gate.
+    not_selected = required - selected
+    if not_selected:
+        raise ValueError(
+            f"required framework(s) not selected to run: {sorted(not_selected)}"
+        )
 
     wanted = frozenset(case_ids) if case_ids is not None else None
     suites: list[SuiteResult] = []
     executed_frameworks: list[str] = []
 
-    if distribution.SUITE_ID in selected:
-        suites.append(distribution.run(wanted))
-    if neutral.SUITE_ID in selected:
-        suites.append(neutral.run(wanted))
-
+    # Resolve framework suite modules BEFORE the guard is installed. Importing
+    # a framework is not a governed action, and some frameworks touch name
+    # resolution at import time; guarding the import would misreport an
+    # ordinary import as an outbound network attempt.
+    loaded: list[tuple[str, Any]] = []
     for framework in sorted(_FRAMEWORK_SUITES):
         if framework not in selected:
             continue
         try:
-            module = _load_framework_suite(framework)
+            loaded.append((framework, _load_framework_suite(framework)))
         except ImportError as exc:
             suites.append(
                 _unavailable(
@@ -97,17 +105,38 @@ def run_conformance(
                     f"the {framework!r} extra is not installed ({type(exc).__name__})",
                 )
             )
-            continue
-        except Exception as exc:  # noqa: BLE001 - a broken guard is a real result
+        except Exception as exc:  # noqa: BLE001 - a broken suite is a real result
             suites.append(
                 _unavailable(framework, f"the suite failed to load ({type(exc).__name__})")
             )
-            continue
-        suites.append(module.run(wanted))
-        executed_frameworks.append(framework)
+
+    # One guard around every executing suite, so `network_used` is derived from
+    # an observation rather than declared. Any outbound attempt is blocked,
+    # raises into the case that made it, and is counted here.
+    guard = H.NetworkGuard()
+    with guard.active():
+        if distribution.SUITE_ID in selected:
+            suites.append(distribution.run(wanted))
+        if neutral.SUITE_ID in selected:
+            suites.append(neutral.run(wanted))
+        for framework, module in loaded:
+            suites.append(module.run(wanted))
+            executed_frameworks.append(framework)
 
     suites.sort(key=lambda suite: suite.suite_id)
     _validate_case_ids_unique(suites)
+
+    produced = {case.case_id for suite in suites for case in suite.cases}
+    if wanted is not None:
+        # An unmatched case id must not yield a zero-case report that validates
+        # and exits 0 — a typo would read as a passing run of that case.
+        unmatched = sorted(wanted - produced)
+        if unmatched:
+            raise ValueError(f"no conformance case matches: {unmatched}")
+    if not produced and any(
+        suite.outcome is not SuiteOutcome.UNAVAILABLE for suite in suites
+    ):
+        raise ValueError("the selection produced no conformance cases")
 
     failed_cases = any(
         case.outcome is CaseOutcome.FAIL for suite in suites for case in suite.cases
@@ -132,6 +161,8 @@ def run_conformance(
         safety=RunSafety(
             adapter_actions_executed=True,
             frameworks_executed=tuple(sorted(executed_frameworks)),
+            network_guard_active=True,
+            network_used=guard.attempts > 0,
         ),
     )
 

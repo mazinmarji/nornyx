@@ -133,6 +133,11 @@ def _result(
         if recorder is not None
         else EvidenceValidation.NOT_APPLICABLE
     )
+    diagnostics = (
+        H.evidence_diagnostics(recorder)
+        if recorder is not None and evidence is EvidenceValidation.FAIL
+        else ()
+    )
     if evidence is not expect_evidence:
         problems.append(
             f"evidence validation {evidence.value!r}, expected {expect_evidence.value!r}"
@@ -166,10 +171,11 @@ def _result(
         observed_effect=observed_effect,
         expected_code=expected_code,
         observed_code=observed_code,
-        decision_precedes_action=(
+        decision_precedes_observation=(
             H.decision_precedes_observations(recorder) if recorder else None
         ),
         evidence_validation=evidence,
+        evidence_diagnostics=diagnostics,
         occurrence_summary=summary,
         detail=_bounded("; ".join(problems) if problems else note),
     )
@@ -400,9 +406,11 @@ def _case_interrupt_and_resume() -> CaseResult:
     resumed attempt must not collide with the incomplete prefix."""
     ctx = _Ctx()
     problems: list[str] = []
-    graph = _single_graph(
-        ctx.node(lambda _s: {"answer": interrupt("approve")}), checkpointer=InMemorySaver()
-    )
+    def interrupting(_state: Any) -> Any:
+        ctx.counter.bump()
+        return {"answer": interrupt("approve")}
+
+    graph = _single_graph(ctx.node(interrupting), checkpointer=InMemorySaver())
     config = {"configurable": {"thread_id": "conformance-thread"}}
     interrupted = graph.invoke({}, config)
     if not interrupted.get("__interrupt__"):
@@ -428,7 +436,10 @@ def _case_interrupt_and_resume() -> CaseResult:
         classification=CaseClassification.GOVERNED,
         execution_path=ExecutionPath.NATIVE,
         problems=problems,
-        executions=CountCheck("exact", 0, 0),
+        # The node body runs on both the interrupted attempt and the resumed
+        # one; reporting zero here would contradict the success observation
+        # this same case records.
+        executions=CountCheck("exact", 2, ctx.counter.count),
         authorizations=CountCheck("exact", 2, ctx.counting.evaluations),
         ctx=ctx,
         note=(
@@ -463,6 +474,7 @@ def _case_missing_execution_info() -> CaseResult:
         executions=CountCheck("exact", 0, ctx.counter.count),
         authorizations=CountCheck("exact", 0, ctx.counting.evaluations),
         ctx=ctx,
+        expect_evidence=EvidenceValidation.NOT_APPLICABLE,
     )
 
 
@@ -492,6 +504,7 @@ def _case_async_node_unsupported() -> CaseResult:
         executions=CountCheck("exact", 0, 0),
         authorizations=CountCheck("exact", 0, 0),
         ctx=ctx,
+        expect_evidence=EvidenceValidation.NOT_APPLICABLE,
     )
 
 
@@ -516,6 +529,7 @@ def _case_legacy_recorder_rejected() -> CaseResult:
         executions=CountCheck("exact", 0, 0),
         authorizations=CountCheck("exact", 0, 0),
         ctx=ctx,
+        expect_evidence=EvidenceValidation.NOT_APPLICABLE,
     )
 
 
@@ -545,6 +559,7 @@ def _case_unwrapped_topology() -> CaseResult:
         executions=CountCheck("exact", 1, ctx.counter.count),
         authorizations=CountCheck("exact", 0, ctx.counting.evaluations),
         ctx=ctx,
+        expect_evidence=EvidenceValidation.NOT_APPLICABLE,
         note=(
             "A node the caller never wrapped executes with no decision and no "
             "evidence. Outside declared coverage, exactly as the inventory says."
@@ -566,7 +581,7 @@ def _case_version_guard() -> CaseResult:
 
     return _result(
         "langgraph.boundary.version_pin_enforced",
-        surface=WRAPPED_SURFACE,
+        surface="distribution",
         classification=CaseClassification.DISTRIBUTION_BOUNDARY,
         execution_path=ExecutionPath.BOUNDARY,
         problems=problems,

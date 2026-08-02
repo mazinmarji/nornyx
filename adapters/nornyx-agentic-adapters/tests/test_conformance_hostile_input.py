@@ -103,17 +103,28 @@ def test_a_returned_report_dict_is_independent_of_later_mutation() -> None:
     assert "forged" not in report.as_dict()["suites"][0]["cases"][0]["decision_events"]
 
 
-def test_hostile_str_subclass_selection_does_not_reach_the_report() -> None:
-    """A subclass whose ``__eq__`` always returns True must not be able to
-    select every case, nor appear in the report."""
+def test_hostile_str_subclass_selection_cannot_produce_a_quiet_empty_report() -> None:
+    """A subclass whose ``__eq__`` always returns True and whose ``__hash__``
+    is constant cannot match by set membership, so it selects nothing.
+
+    The failure mode that matters is not the non-match — it is what happens
+    next. Selecting nothing must be rejected, not turned into a zero-case
+    report that validates and reports ``pass``.
+    """
     HostileStr.calls = 0
     hostile = HostileStr("neutral.enforce.allow")
-    report = run_conformance(frameworks=["enforcement_boundary"], case_ids=[hostile])
+    with pytest.raises(ValueError, match="no conformance case matches"):
+        run_conformance(frameworks=["enforcement_boundary"], case_ids=[hostile])
+
+
+def test_a_plain_case_id_still_selects_normally() -> None:
+    """The rejection above is about the hostile subclass, not about filtering."""
+    report = run_conformance(
+        frameworks=["enforcement_boundary"], case_ids=["neutral.enforce.allow"]
+    )
     selected = [case.case_id for suite in report.suites for case in suite.cases]
-    # Membership uses the *frozenset*, so the hostile value's hash/eq can only
-    # ever match; what matters is that the report carries exact plain strings.
-    for case_id in selected:
-        assert type(case_id) is str
+    assert selected == ["neutral.enforce.allow"]
+    assert all(type(case_id) is str for case_id in selected)
     assert "innocent" not in serialize(report)
 
 
@@ -122,11 +133,11 @@ def test_unknown_suite_selection_is_rejected_rather_than_silently_empty() -> Non
         run_conformance(frameworks=["enforcement_boundary", "no_such_suite"])
 
 
-def test_an_unmatched_case_id_yields_an_empty_suite_not_a_false_pass() -> None:
-    """Selecting a case that does not exist must not look like a passing run of
-    that case."""
-    report = run_conformance(frameworks=["enforcement_boundary"], case_ids=["no.such.case"])
-    assert [c.case_id for s in report.suites for c in s.cases] == []
+def test_an_unmatched_case_id_is_rejected_not_reported_as_a_pass() -> None:
+    """Selecting a case that does not exist must not produce a zero-case report
+    that validates and exits 0 — a typo would read as a passing run."""
+    with pytest.raises(ValueError, match="no conformance case matches"):
+        run_conformance(frameworks=["enforcement_boundary"], case_ids=["no.such.case"])
 
 
 # ------------------------------------------------------------------ inventory input
