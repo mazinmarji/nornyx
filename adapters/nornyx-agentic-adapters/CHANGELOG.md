@@ -6,6 +6,57 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+### Added
+
+- ADR-0043 M2-E: `nornyx_agentic_adapters.conformance`, an executable runtime
+  adapter-conformance kit. Runs the real supported adapter paths under the
+  exact declared framework versions and emits a deterministic report
+  identified by `nornyx.agentic_runtime_conformance.v1` (format version 1.0),
+  validated against a schema bundled in this distribution. Public surface:
+  `run_conformance`, `available_suites`, `validate_report`,
+  `load_report_schema`, `serialize`, `write_report`, and the typed result
+  model. Entry point: `python -m nornyx_agentic_adapters.conformance`, exiting
+  `0` conformant, `1` nonconformant or a required framework unavailable, `2`
+  invalid configuration or internal error.
+- First-party suites for the framework-neutral `enforce()` boundary, the
+  CrewAI synchronous tool surface driven through native `Crew.kickoff()`, the
+  LangGraph synchronous node surface driven through native `graph.invoke()`
+  (retry, loop, parallel, interrupt, checkpoint resume), the
+  distribution/import boundary, coverage-inventory integrity, evidence
+  validity, and bypass negative controls.
+- The distribution now ships package data: the report schema and a governance
+  contract fixture, resolved through `importlib.resources`, so conformance
+  runs from an installed wheel outside every source root.
+
+### Changed
+
+- `crewai_adapter.make_governed_tool` records a `runtime_failed` observation
+  exactly once when an authorized action raises, before re-raising. Previously
+  that path recorded nothing, while the LangGraph adapter recorded
+  `runtime_failed` on the equivalent path. `enforce()` invokes the action only
+  on ALLOW, so a denial can never produce this event.
+- `jsonschema>=4.21` is now a direct dependency: the conformance kit imports it
+  to validate its own report. It was already guaranteed transitively by
+  `nornyx`, and the `nornyx>=1.10,<2` floor is unchanged.
+- Documentation: the README's SPI column now reads `1.x (tested with 1.1 and
+  1.2)`, matching `docs/COMPATIBILITY.md` and the import-time check, which
+  asserts the SPI *major* only. A truncated sentence about import-time pin
+  enforcement is repaired.
+
+### Known limitations
+
+- On the CrewAI tool surface, a denied call retried by CrewAI's own executor
+  produces repeated identical decision batches that the evidence validator
+  flags as replay, because legacy-mode events carry no occurrence identity.
+  Fail-closed behavior is unaffected (zero executions); the conformance report
+  states `evidence_validation: fail` for that case rather than claiming a
+  validating stream. See `docs/COMPATIBILITY.md`.
+- `APPROVAL_REQUIRED` is not representable on the CrewAI tool surface: the
+  governed tool issues a `CapabilityRequest`, and that effect is reachable in
+  this core only via a zone-crossing request. The report records the case as
+  `not_representable` and cross-references the framework-neutral case that
+  does prove the behavior.
+
 ## [0.2.0] - 2026-07-30
 
 ### Added
