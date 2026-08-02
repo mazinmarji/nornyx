@@ -240,13 +240,32 @@ class _GovernedTool(BaseTool):  # type: ignore[misc, valid-type]
                     item.ref for item in decision.basis if item.kind == "delegation"
                 )
 
+        def run_action() -> Any:
+            # A failure here is a runtime failure of an ALREADY-AUTHORIZED
+            # action: enforce() calls this only on ALLOW. Recording it states
+            # the same failure the LangGraph adapter states on its equivalent
+            # path, instead of leaving an authorized-but-failed execution with
+            # no observation at all. A denial never reaches this callable, so
+            # it can never produce a runtime_failed.
+            try:
+                return action(*args, **kwargs)
+            except Exception:
+                recorder.record_observation(
+                    "runtime_failed",
+                    mission_id=mission_id,
+                    actor_ref=binding.identity_ref,
+                    capability_ref=binding.capability_ref,
+                    delegation_ref=authorizing[0] if authorizing else None,
+                )
+                raise
+
         result = enforce(
             authorizer,
             request,
             context=context,
             recorder=recorder,
             mission_id=mission_id,
-            action=lambda: action(*args, **kwargs),
+            action=run_action,
             on_decision=capture,
         )
         recorder.record_observation(
