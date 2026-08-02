@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 from copy import deepcopy
+from dataclasses import replace
 import inspect
 import json
 from pathlib import Path
@@ -47,6 +48,9 @@ from nornyx_reference_adapters.crewai_adapter import (  # noqa: E402
     CrewAIGovernanceAdapter,
 )
 from nornyx_reference_adapters.governance_kernel import (  # noqa: E402
+    _APPROVER_ACTOR_TYPES,
+    _RUNTIME_EVENT_ID_MAX_LENGTH,
+    _RUNTIME_EVENT_ID_PATTERN,
     DeterministicClock,
     GovernanceKernel,
     GovernanceViolation,
@@ -1022,3 +1026,399 @@ def test_repository_shim_is_not_declared_in_the_core_distribution() -> None:
     assert 'include = ["nornyx*"]' in pyproject
     assert "integrations" not in pyproject
     assert "nornyx_reference_adapters" not in pyproject
+
+
+# --------------------------------------------------------------------------
+# Adapter-boundary approver-block validation (assurance finding M1).
+#
+# A denial echoes the caller's approver claim into the runtime-events stream as
+# ``approver = {"role": ..., "actor_type": ...}``. Before this was validated at
+# the boundary the shim fabricated ``role=""`` / ``actor_type="legacy_invalid"``
+# for omitted fields, the Authorizer denied correctly, and the *invalid decision
+# was still recorded* — which then broke ``EvidenceRecorder.resume`` for every
+# later operation. These tests pin the invariant:
+#
+#   a malformed adapter-boundary request cannot append schema-invalid evidence
+#   and cannot poison the next operation.
+# --------------------------------------------------------------------------
+
+_APPROVER = "identity.escalation_agent"
+_ELIGIBLE_ROLE = "network_governance_owner"
+_SCHEMA_LEGAL_ACTOR_TYPES = (
+    "human",
+    "ai_tool",
+    "execution_surface",
+    "autonomous_agent",
+    "model",
+    "connector",
+    "generated_output",
+)
+
+_MALFORMED_APPROVAL_RECORDS: dict[str, dict[str, Any]] = {
+    "empty_record": {},
+    "role_only_missing_actor_type": {"role": "r"},
+    "actor_type_only_missing_role": {"actor_type": "human", "granted": False},
+    "empty_role": {"role": "", "actor_type": "human", "granted": True},
+    "non_string_role": {"role": 7, "actor_type": "human", "granted": True},
+    "role_with_whitespace": {
+        "role": "network governance owner",
+        "actor_type": "human",
+        "granted": True,
+    },
+    "role_with_illegal_character": {
+        "role": "role/owner",
+        "actor_type": "human",
+        "granted": True,
+    },
+    "role_leading_illegal_character": {
+        "role": ".owner",
+        "actor_type": "human",
+        "granted": True,
+    },
+    "role_too_long": {"role": "a" * 129, "actor_type": "human", "granted": True},
+    "missing_actor_type": {"role": _ELIGIBLE_ROLE, "granted": True},
+    "non_string_actor_type": {
+        "role": _ELIGIBLE_ROLE,
+        "actor_type": 3,
+        "granted": True,
+    },
+    "unknown_actor_type": {
+        "role": _ELIGIBLE_ROLE,
+        "actor_type": "legacy_invalid",
+        "granted": True,
+    },
+    "none_actor_type": {
+        "role": _ELIGIBLE_ROLE,
+        "actor_type": None,
+        "granted": True,
+    },
+}
+
+
+class _CountingAuthorizer:
+    """Wrap an Authorizer and count ``evaluate`` calls."""
+
+    def __init__(self, inner: Any):
+        self._inner = inner
+        self.evaluations = 0
+
+    def evaluate(self, request: Any, *, context: Any) -> Any:
+        self.evaluations += 1
+        return self._inner.evaluate(request, context=context)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
+def _count_evaluations(kernel: GovernanceKernel) -> _CountingAuthorizer:
+    counter = _CountingAuthorizer(kernel._authorizer)
+    kernel._authorizer = counter
+    return counter
+
+
+def _validates(kernel: GovernanceKernel, controls: tuple[dict[str, Any], Any]) -> bool:
+    document, composition = controls
+    report = validate_runtime_events(
+        document, composition, kernel.lock_payload, kernel.events_payload()
+    )
+    return report["status"] == "pass"
+
+
+@pytest.mark.parametrize("case", sorted(_MALFORMED_APPROVAL_RECORDS))
+@pytest.mark.parametrize("schema_version", ["1.0", "1.1"])
+def test_malformed_approval_record_is_rejected_before_evidence(
+    controls: tuple[dict[str, Any], Any], case: str, schema_version: str
+) -> None:
+    """Malformed approver claims fail closed without touching the stream."""
+
+    kernel = _kernel(controls, schema_version=schema_version)
+    # Give the stream real prior content so "unchanged" is a meaningful claim.
+    kernel.invoke_tool(
+        "identity.support_coordinator",
+        "classify_support_request",
+        mission_id="M.prior",
+    )
+    counter = _count_evaluations(kernel)
+    before = deepcopy(kernel.events_payload())
+    assert before["events"], "precondition: stream should not be empty"
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            _MALFORMED_APPROVAL_RECORDS[case],
+            mission_id="M.malformed",
+            actor_ref=_APPROVER,
+        )
+
+    assert excinfo.value.code == "AN_ADAPTER_REQUEST_MALFORMED"
+    # No Authorizer evaluation, no recorder advancement, no event mutation.
+    assert counter.evaluations == 0
+    assert kernel.events_payload() == before
+    assert _validates(kernel, controls)
+
+    # The kernel remains usable and the next operation still validates.
+    kernel.require_human_approval(
+        {"role": _ELIGIBLE_ROLE, "actor_type": "human", "granted": True},
+        mission_id="M.after-malformed",
+        actor_ref=_APPROVER,
+    )
+    assert counter.evaluations == 1
+    assert "approval_granted" in _event_types(kernel)
+    assert _validates(kernel, controls)
+
+
+@pytest.mark.parametrize("case", sorted(_MALFORMED_APPROVAL_RECORDS))
+def test_malformed_approval_leaves_zone_crossing_path_usable(
+    controls: tuple[dict[str, Any], Any], case: str
+) -> None:
+    """A poisoned stream would break the other approval call path too."""
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+    before = deepcopy(kernel.events_payload())
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            _MALFORMED_APPROVAL_RECORDS[case],
+            mission_id="M.zone-malformed",
+            actor_ref=_APPROVER,
+        )
+    assert excinfo.value.code == "AN_ADAPTER_REQUEST_MALFORMED"
+    assert counter.evaluations == 0
+    assert kernel.events_payload() == before
+
+    # A valid zone crossing still works afterwards on the same kernel.
+    kernel.record_zone_crossing(
+        "identity.refund_agent",
+        "zone.support_internal",
+        "zone.customer_channel",
+        mission_id="M.zone-after",
+        approval_ref="agentic_network_authority",
+    )
+    assert "trust_zone_crossed" in _event_types(kernel)
+    assert _validates(kernel, controls)
+
+
+def test_zone_crossing_without_a_named_role_fails_closed(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """A requirement naming no role cannot fabricate an empty approver role.
+
+    This is the second ``_approval_assertion`` call path: ``record_zone_crossing``
+    synthesizes its approver claim from the composed requirement, so the only
+    way it can produce a schema-inexpressible block is a requirement that names
+    no role at all.
+    """
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+    before = deepcopy(kernel.events_payload())
+
+    spec = kernel._approval_specs["agentic_network_authority"]
+    patched = dict(kernel._approval_specs)
+    patched["agentic_network_authority"] = replace(
+        spec, required_roles=(), eligible_roles=()
+    )
+    kernel._approval_specs = patched
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.record_zone_crossing(
+            "identity.refund_agent",
+            "zone.support_internal",
+            "zone.customer_channel",
+            mission_id="M.zone-no-role",
+            approval_ref="agentic_network_authority",
+        )
+    assert excinfo.value.code == "AN_ADAPTER_REQUEST_MALFORMED"
+    assert counter.evaluations == 0
+    assert kernel.events_payload() == before
+    assert _validates(kernel, controls)
+
+
+@pytest.mark.parametrize(
+    "actor_type", [t for t in _SCHEMA_LEGAL_ACTOR_TYPES if t != "human"]
+)
+def test_schema_legal_non_human_actor_types_are_policy_denials(
+    controls: tuple[dict[str, Any], Any], actor_type: str
+) -> None:
+    """Legal-but-non-human claims reach the Authorizer and record validly."""
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {"role": _ELIGIBLE_ROLE, "actor_type": actor_type, "granted": True},
+            mission_id=f"M.non-human-{actor_type}",
+            actor_ref=_APPROVER,
+        )
+
+    assert excinfo.value.code == "AN_ADAPTER_APPROVAL_NON_HUMAN"
+    assert counter.evaluations == 1
+    events = kernel.events_payload()["events"]
+    assert events[-1]["event_type"] == "approval_rejected"
+    assert events[-1]["approver"] == {"role": _ELIGIBLE_ROLE, "actor_type": actor_type}
+    assert _validates(kernel, controls)
+
+    # Evidence stays resumable: the next operation is unaffected.
+    kernel.invoke_tool(
+        "identity.support_coordinator",
+        "classify_support_request",
+        mission_id="M.after-non-human",
+    )
+    assert _validates(kernel, controls)
+
+
+def test_schema_valid_but_ineligible_role_is_a_policy_denial(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """An expressible but unauthorized role denies without poisoning evidence."""
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {"role": "not_an_eligible_role", "actor_type": "human", "granted": True},
+            mission_id="M.role-invalid",
+            actor_ref=_APPROVER,
+        )
+
+    assert excinfo.value.code == "AN_ADAPTER_APPROVAL_ROLE_INVALID"
+    assert counter.evaluations == 1
+    assert kernel.events_payload()["events"][-1]["approver"] == {
+        "role": "not_an_eligible_role",
+        "actor_type": "human",
+    }
+    assert _validates(kernel, controls)
+
+    kernel.require_human_approval(
+        {"role": _ELIGIBLE_ROLE, "actor_type": "human", "granted": True},
+        mission_id="M.role-invalid-after",
+        actor_ref=_APPROVER,
+    )
+    assert _validates(kernel, controls)
+
+
+def test_not_granted_reaches_the_authorizer_and_records_validly(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """``granted=False`` is a semantic denial, not a structural rejection."""
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {"role": _ELIGIBLE_ROLE, "actor_type": "human", "granted": False},
+            mission_id="M.not-granted",
+            actor_ref=_APPROVER,
+        )
+
+    assert excinfo.value.code == "AN_ADAPTER_APPROVAL_NOT_GRANTED"
+    assert counter.evaluations == 1
+    assert _validates(kernel, controls)
+
+
+def test_valid_human_approval_behaviour_is_unchanged(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """The happy path keeps its exact approver block and grant event."""
+
+    kernel = _kernel(controls)
+    kernel.require_human_approval(
+        {"role": _ELIGIBLE_ROLE, "actor_type": "human", "granted": True},
+        mission_id="M.valid",
+        actor_ref=_APPROVER,
+    )
+    event = kernel.events_payload()["events"][-1]
+    assert event["event_type"] == "approval_granted"
+    assert event["approver"] == {"role": _ELIGIBLE_ROLE, "actor_type": "human"}
+    assert _validates(kernel, controls)
+
+
+def test_approver_role_is_never_defaulted_from_the_requirement(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """A caller claim is never fabricated from composed policy.
+
+    The requirement names ``network_governance_owner``. If the shim defaulted
+    the role from policy, an omitted role would silently *succeed* as that
+    role. It must fail instead.
+    """
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {"actor_type": "human", "granted": True},
+            mission_id="M.no-role-default",
+            actor_ref=_APPROVER,
+        )
+    assert excinfo.value.code == "AN_ADAPTER_REQUEST_MALFORMED"
+    assert counter.evaluations == 0
+    assert "approval_granted" not in _event_types(kernel)
+
+
+def test_approver_actor_type_is_never_substituted_with_a_legal_value(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """An unknown actor type is rejected, never coerced to ``human``."""
+
+    kernel = _kernel(controls)
+    counter = _count_evaluations(kernel)
+
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {"role": _ELIGIBLE_ROLE, "actor_type": "LEGACY", "granted": True},
+            mission_id="M.no-actor-substitution",
+            actor_ref=_APPROVER,
+        )
+    assert excinfo.value.code == "AN_ADAPTER_REQUEST_MALFORMED"
+    assert counter.evaluations == 0
+    assert "approval_granted" not in _event_types(kernel)
+
+
+def test_approver_validation_matches_the_published_schema_contract() -> None:
+    """The boundary constants stay tied to the runtime-events schema."""
+
+    schema = json.loads(
+        (ROOT / "schemas" / "agentic_runtime_events_v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    approver = schema["$defs"]["approver"]
+    assert set(approver["required"]) == {"role", "actor_type"}
+    assert set(approver["properties"]["actor_type"]["enum"]) == set(
+        _APPROVER_ACTOR_TYPES
+    )
+    assert set(_SCHEMA_LEGAL_ACTOR_TYPES) == set(_APPROVER_ACTOR_TYPES)
+    identifier = schema["$defs"]["id"]
+    assert identifier["pattern"] == _RUNTIME_EVENT_ID_PATTERN.pattern
+    assert identifier["maxLength"] == _RUNTIME_EVENT_ID_MAX_LENGTH
+    assert identifier["minLength"] == 1
+
+
+def test_hostile_role_str_is_not_invoked_by_the_boundary_validator(
+    controls: tuple[dict[str, Any], Any],
+) -> None:
+    """Canonicalization never calls a caller-supplied ``__str__``."""
+
+    class HostileRole(str):
+        def __str__(self) -> str:  # pragma: no cover - must never run
+            raise AssertionError("hostile __str__ was invoked")
+
+    kernel = _kernel(controls)
+    kernel.require_human_approval(
+        {
+            "role": HostileRole(_ELIGIBLE_ROLE),
+            "actor_type": "human",
+            "granted": True,
+        },
+        mission_id="M.hostile-role",
+        actor_ref=_APPROVER,
+    )
+    event = kernel.events_payload()["events"][-1]
+    assert event["approver"]["role"] == _ELIGIBLE_ROLE
+    assert type(event["approver"]["role"]) is str
+    assert _validates(kernel, controls)

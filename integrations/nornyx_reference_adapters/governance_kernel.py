@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import re
 from types import MappingProxyType
 from typing import Any, TypeVar
 import warnings
@@ -126,6 +127,92 @@ def _plain_optional_string(value: Any, field: str) -> str | None:
     if value is None:
         return None
     return _plain_string(value, field)
+
+
+# --------------------------------------------------- approver-block boundary
+#
+# A denial decision carries the caller's approver claim into the runtime-events
+# stream as ``approver = {"role": ..., "actor_type": ...}``.  Those two fields
+# are therefore adapter-boundary *structural* requirements, not merely semantic
+# ones: a value the published schema cannot express produces an event that
+# fails validation, and — because ``EvidenceRecorder.resume`` re-validates the
+# whole stream — poisons every later operation on the kernel.
+#
+# The constants below mirror ``schemas/agentic_runtime_events_v1.schema.json``:
+# ``$defs.approver.properties.role`` is a ``$defs.id`` and
+# ``$defs.approver.properties.actor_type`` is a closed enum.  They are
+# duplicated here (rather than defaulted or inferred) so a schema-inexpressible
+# claim is rejected *before* any evaluation or recorder advancement.
+_RUNTIME_EVENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
+_RUNTIME_EVENT_ID_MAX_LENGTH = 128
+_APPROVER_ACTOR_TYPES = frozenset(
+    {
+        "human",
+        "ai_tool",
+        "execution_surface",
+        "autonomous_agent",
+        "model",
+        "connector",
+        "generated_output",
+    }
+)
+
+
+def _approver_role(value: Any) -> str:
+    """Return a schema-expressible approver role, or fail closed.
+
+    The role is a caller assertion. It is never defaulted from the composed
+    approval requirement: inferring a claim from policy would fabricate the
+    very attestation the approver block is supposed to carry.
+    """
+
+    if not isinstance(value, str):
+        raise GovernanceViolation(
+            _MALFORMED,
+            "approval_record.role is required and must be a string.",
+        )
+    plain = str.__str__(value)
+    if not plain:
+        raise GovernanceViolation(
+            _MALFORMED,
+            "approval_record.role must not be empty.",
+        )
+    if len(plain) > _RUNTIME_EVENT_ID_MAX_LENGTH:
+        raise GovernanceViolation(
+            _MALFORMED,
+            "approval_record.role must be at most "
+            f"{_RUNTIME_EVENT_ID_MAX_LENGTH} characters.",
+        )
+    if _RUNTIME_EVENT_ID_PATTERN.match(plain) is None:
+        raise GovernanceViolation(
+            _MALFORMED,
+            "approval_record.role must match the runtime-event identifier "
+            f"shape {_RUNTIME_EVENT_ID_PATTERN.pattern}.",
+        )
+    return plain
+
+
+def _approver_actor_type(value: Any) -> str:
+    """Return a schema-legal approver actor type, or fail closed.
+
+    An unknown value is never coerced to a legal one. Substituting a legal
+    actor type would silently change what the caller claimed, and substituting
+    ``human`` in particular would manufacture human attestation.
+    """
+
+    if not isinstance(value, str):
+        raise GovernanceViolation(
+            _MALFORMED,
+            "approval_record.actor_type is required and must be a string.",
+        )
+    plain = str.__str__(value)
+    if plain not in _APPROVER_ACTOR_TYPES:
+        raise GovernanceViolation(
+            _MALFORMED,
+            "approval_record.actor_type must be one of "
+            f"{', '.join(sorted(_APPROVER_ACTOR_TYPES))}.",
+        )
+    return plain
 
 
 _LOAD_CODES = {
@@ -680,17 +767,19 @@ class GovernanceKernel:
         record = self._approval_mapping(approval_record)
         requirement = self._approval_requirement(approval_ref)
 
-        role_value = record.get("role")
-        role = str.__str__(role_value) if isinstance(role_value, str) else ""
-        actor_type_value = record.get("actor_type")
-        actor_type = (
-            str.__str__(actor_type_value)
-            if isinstance(actor_type_value, str)
-            else "legacy_invalid"
-        )
+        # Structural approver-block validation happens first, before any
+        # Authorizer evaluation and before the deterministic recorder is
+        # advanced, so a schema-inexpressible claim can never reach the
+        # evidence stream. A denial decision echoes both values into
+        # ``approver``; fabricating a placeholder here (the previous
+        # ``""`` / ``"legacy_invalid"`` behaviour) produced a schema-invalid
+        # event that later broke ``EvidenceRecorder.resume``.
+        role = _approver_role(record.get("role"))
+        actor_type = _approver_actor_type(record.get("actor_type"))
         claimed_ref = record.get("claimed_approver_ref", record.get("approver_ref"))
         if claimed_ref is None:
-            claimed_ref = f"legacy.approver.{role or 'unknown'}"
+            # ``role`` is non-empty by construction above.
+            claimed_ref = f"legacy.approver.{role}"
         claimed_ref = _plain_string(claimed_ref, "claimed_approver_ref")
 
         if action_ref is None:
@@ -794,7 +883,12 @@ class GovernanceKernel:
             roles = tuple(getattr(requirement, "required_roles", ()) or ())
             if not roles:
                 roles = tuple(getattr(requirement, "eligible_roles", ()) or ())
-            role = str(roles[0]) if roles else ""
+            # Passed through unconverted so the approver-block validator does
+            # the isinstance check itself rather than accepting whatever a
+            # hostile ``__str__`` would have produced. A requirement that
+            # names no role cannot yield a schema-expressible approver block,
+            # so this fails closed instead of asserting an empty role.
+            role = roles[0] if roles else None
             assertion = self._approval_assertion(
                 {"role": role, "actor_type": "human", "granted": True},
                 approval_ref=ref,

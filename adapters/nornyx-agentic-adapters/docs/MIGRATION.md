@@ -76,16 +76,42 @@ failed callable.
 The old approval mapping contains only `role`, `actor_type`, and `granted`; a
 zone crossing may contain only an `approval_ref`. The current SPI requires an
 `ApprovalAssertion` with action, revision, issuance, evidence, and claimed
-approver fields. For omitted fields only, the shim takes the action/evidence and
-role from the composed approval requirement and governing gate, the revision
-from the bound Authorizer, and issuance from `EvaluationContext.decision_at`.
-Caller-supplied fields are not overwritten and remain subject to Authorizer
-checks. A bare legacy approval reference remains a cooperative claimed-human
-assertion; neither the shim nor the supported package authenticates it.
+approver fields.
 
-Unknown requirements/gates and malformed values fail closed. This translation
-preserves the old minimal input while making the current Authorizer the only
-policy decision point; it is not a new public approval guarantee.
+**`role` and `actor_type` are caller assertions and are required.** They are
+never inferred or defaulted from the composed approval requirement. Defaulting
+the role from policy would fabricate the very claim the approver block exists to
+carry — an omitted role would silently succeed *as* the eligible role — and
+substituting a legal `actor_type` would silently change what the caller claimed.
+Neither substitution is performed.
+
+Both are validated at the adapter boundary against the published runtime-events
+contract before anything else happens: `role` must be a non-empty string of at
+most 128 characters matching `^[A-Za-z0-9][A-Za-z0-9._:-]*$`, and `actor_type`
+must be one of `human`, `ai_tool`, `execution_surface`, `autonomous_agent`,
+`model`, `connector`, `generated_output`. A missing, non-string, empty,
+overlong, pattern-invalid, or unknown value raises
+`AN_ADAPTER_REQUEST_MALFORMED` **before** the Authorizer is consulted and before
+the deterministic recorder advances, so the call adds no event, leaves the
+existing stream valid, and leaves the kernel usable for the next operation.
+
+Fields that are authoritative policy state — not caller claims — are still
+normalized when omitted: action scope and required evidence from the composed
+approval requirement and governing gate, subject revision from the bound
+Authorizer, and issuance from `EvaluationContext.decision_at`. Caller-supplied
+values are not overwritten and remain subject to Authorizer checks.
+
+Claims that the schema *can* express are decided by the Authorizer, not by the
+boundary: a legal non-human `actor_type`, a well-formed but ineligible role, and
+`granted=false` each reach the Authorizer and are recorded as ordinary,
+schema-valid policy denials (`AN_ADAPTER_APPROVAL_NON_HUMAN`,
+`AN_ADAPTER_APPROVAL_ROLE_INVALID`, `AN_ADAPTER_APPROVAL_NOT_GRANTED`).
+
+A bare legacy approval reference remains a cooperative claimed-human assertion;
+neither the shim nor the supported package authenticates approvers. Unknown
+requirements/gates and malformed values fail closed. This translation preserves
+the old minimal input while making the current Authorizer the only policy
+decision point; it is not a new public approval guarantee.
 
 ### Diagnostic mapping
 
