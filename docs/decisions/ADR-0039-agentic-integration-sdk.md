@@ -1,9 +1,10 @@
 # ADR-0039 — Agentic Integration SDK: `nornyx.agentic` authorization SPI and distributable adapters
 
-- Status: Accepted — M1 core authorization SPI implemented; adapter distribution
-  and migration phases remain pending
+- Status: Accepted — M1 and M2-A through M2-D implemented; later roadmap
+  milestones remain separately authorized
 - Date: 2026-07-20
-- Revised: 2026-07-31 (additive SPI 1.2 Authorizer construction-state access);
+- Revised: 2026-07-31 (M2-D legacy compatibility shim and baseline closure);
+  2026-07-31 (additive SPI 1.2 Authorizer construction-state access);
   2026-07-22 (pilot-derived authorization-SPI correction, with the Step-3
   independent-audit findings F1–F8 and their binding refinements resolved;
   supersedes the original "re-export-only facade / kernel stays in adapters"
@@ -14,9 +15,14 @@
   - Implementation head: `8b3c8b2eee4d181b7a896097b7210644c8ff4ce0`
   - Merge commit: `c83a8a4897f1de8ab776885be52992bbf2280594`
   - Post-merge CI: run 29956041864 — success
-  - Package state: merged on `main`; core SPI implementation is complete and
-    included in Nornyx **1.8.0**. Publication (GitHub Release / PyPI) remains a
-    separately authorized operational action until it succeeds.
+  - Package state: the current SPI **1.2** is published in Nornyx **1.11.0**
+    (Nornyx 1.10.0 published SPI 1.1); `nornyx-agentic-adapters` **0.2.0** is
+    also published and keeps its `nornyx>=1.10,<2` floor. M2-D changes runtime
+    behavior only in the unpackaged repository compatibility tree, which now
+    consumes the public `Authorizer.state` and therefore requires Nornyx
+    1.11.0. It changes no core or adapter runtime code and no version; the
+    adapter distribution's README metadata is updated to close the stale
+    migration status.
 - Relates to: ADR-0032 (verifiable effective approvals), ADR-0037 (AN-005
   reference adapters, deliberately unpackaged), ADR-0040 (governance assurance
   tiers — this SPI is a **Tier 2, cooperative** boundary), and the external
@@ -376,6 +382,54 @@ completed migration documentation and compatibility tests. Its legacy
 `DecisionCode` mapping) and are **not** promoted into the new public
 `nornyx.agentic` namespace — they were never a public SPI.
 
+#### M2-D implemented compatibility mapping
+
+M2-D makes the temporary kernel a facade, not a second engine. It imports only
+the public `nornyx.agentic` facade and maps the preserved legacy calls as
+follows:
+
+| Legacy call | SPI 1.2 authorization/evidence path |
+| --- | --- |
+| `from_local_controls` | `load_authorizer(validation_as_of=as_of)` as the only read; legacy load-code translation; every compatibility projection is derived from that authorizer's public `state` (no second read, composition, verification, or authorization) |
+| `resolve_identity` | `Authorizer.resolve_identity(framework, agent_key)` |
+| `check_capability` | one `CapabilityRequest`; `EvidenceRecorder.record_decision`; returns the recorded `capability_allowed` event |
+| `invoke_tool` | one `CapabilityRequest`; the signature has no callable, so method entry is the complete legacy occurrence; `tool_invoked` is recorded after that occurrence |
+| legacy CrewAI/LangGraph wrappers | one `CapabilityRequest`; execute the protected callable once only on ALLOW; then `tool_invoked`, or `runtime_failed` when the callable raises |
+| `request_delegation` | one `DelegationRequest`; recorder-owned decision intents |
+| `request_handoff` | one `HandoffRequest`; `handoff_initiated` observation after ALLOW |
+| `complete_handoff` | `handoff_completed` observation completing the already-authorized handoff lifecycle; no duplicate authorization |
+| `require_human_approval` | authoritative legacy-field normalization into `ApprovalAssertion`; one `ApprovalRequest`; recorder-owned decision intents |
+| `record_zone_crossing` | one `ZoneCrossingRequest`; a legacy approval reference is normalized from the composed requirement and governing gate, then evaluated by the Authorizer; `trust_zone_crossed` only after ALLOW |
+| `record_data_shared` | one `DataShareRequest`; `data_shared` only after ALLOW |
+| `events_payload` / `write_events` | `EvidenceRecorder.stream`; serialization only, with no independent event construction |
+
+Legacy minimal approval records do not carry the SPI's approver reference,
+action, revision, issuance, or evidence fields. The shim fills only omitted
+fields from the authoritative composed approval requirement, governing gate,
+bound subject revision, and evaluation context; caller-supplied values are
+still evaluated and may deny. A bare crossing `approval_ref` retains the old
+cooperative assertion semantics: it is normalized as a claimed human approval,
+not authenticated. This is a compatibility limitation, not a new SPI guarantee.
+Malformed values, an unknown requirement/gate, or any incompatible assertion
+fail closed.
+
+The legacy `AN_ADAPTER_*` taxonomy remains local to the shim. Direct equivalents
+keep their existing codes. SPI-only approval-integrity denials (stale,
+revision/action mismatch, or missing evidence) translate to the existing
+`AN_ADAPTER_APPROVAL_NOT_GRANTED`; SPI-only party/revision/malformed outcomes
+translate to the applicable legacy surface denial, or to the shim-local
+`AN_ADAPTER_REQUEST_MALFORMED` before authorization. Recorder rejection uses
+the shim-local `AN_ADAPTER_EVIDENCE_INVALID`. Neither shim-only code is exported
+from `nornyx.agentic`.
+
+Construction emits one standard `DeprecationWarning` naming
+`nornyx-agentic-adapters` and `nornyx.agentic`. The shim is retained for at
+least one published Nornyx minor release after this migration lands. Removal
+requires all of: that minimum window has elapsed; the mapping and compatibility
+tests remain complete; supported adapters cover the caller's needed surface;
+and a separately authorized removal decision is recorded. No removal version is
+assigned here.
+
 ### 4. Versioning, surface guards & compatibility
 
 `SPI_VERSION` is the integration-contract version, independent of the package
@@ -401,7 +455,8 @@ remain independently selected by the verified lock.
 
 | adapters | nornyx SPI | CrewAI | LangGraph | Python |
 | --- | --- | --- | --- | --- |
-| 0.1.x | 1.0 (nornyx 1.8–1.x) | test lowest+highest | test lowest+highest | 3.10–3.13 |
+| 0.1.x | 1.0 (nornyx 1.8–1.x) | 1.15.4 | Not implemented | 3.10–3.13 |
+| 0.2.x | 1.1 (nornyx 1.10–1.x) | 1.15.4 | 1.2.2 | 3.10–3.13 |
 
 ## Consequences
 
@@ -463,16 +518,16 @@ The `nornyx.agentic` authorization engine does **not**:
 
 ## Migration plan
 
-1. Land `nornyx/agentic/` (re-exports + `SPI_VERSION` + surface-freeze test) in a
-   `nornyx` minor release (≥1.8).
-2. Migrate the `GovernanceKernel` decision logic into the core `Authorizer`
+1. **Complete (M1).** Land `nornyx/agentic/` (re-exports + `SPI_VERSION` +
+   surface-freeze test) in a `nornyx` minor release (≥1.8).
+2. **Complete (M1).** Migrate the `GovernanceKernel` decision logic into the core `Authorizer`
    (return `Decision`; intents not events; immutable; time from `decision_at`);
    add the typed `ApprovalAssertion`, `EvaluationContext`, the core evidence
    recorder, and the three code enums.
-3. Stand up `nornyx-agentic-adapters` (framework extras + argument normalization +
+3. **Complete (M2-A/M2-B/M2-C).** Stand up `nornyx-agentic-adapters` (framework extras + argument normalization +
    recorder triggering + import-boundary test + matrix CI), depending only on
    `nornyx.agentic`.
-4. Keep the in-tree `integrations/` kernel as a deprecated compat shim for **at
+4. **Complete (M2-D).** Keep the in-tree `integrations/` kernel as a deprecated compat shim for **at
    least one published minor release** (retaining `AN_ADAPTER_*` with the mapping
    table); removal not before the following minor release and only after
    completed migration documentation and compatibility tests. Update AN-005/AN-006
@@ -487,16 +542,23 @@ The `nornyx.agentic` authorization engine does **not**:
 | Independent API-design audit | Complete |
 | Facade, `SPI_VERSION`, frozen exports | Complete |
 | Core `Authorizer`, typed models and recorder | Complete |
-| Separate adapter package (`nornyx-agentic-adapters`) | Pending |
-| Legacy-kernel shim migration (`AN_ADAPTER_*` ⇄ `DecisionCode`) | Pending |
+| M2-A adapter-package foundation | Complete |
+| M2-B supported CrewAI adapter | Complete |
+| M2-C supported LangGraph adapter / SPI 1.1 occurrence integration | Complete |
+| M2-D legacy-kernel shim migration (`AN_ADAPTER_*` ⇄ `DecisionCode`) | Complete |
 | Pip-only example | Pending |
 | External pilot consumption | Pending |
-| Nornyx 1.8.0 publication | Pending |
+| Nornyx 1.10.0 publication | Complete |
+| Nornyx 1.11.0 publication (SPI 1.2 `Authorizer.state`) | Complete |
+| `nornyx-agentic-adapters` 0.2.0 publication | Complete |
 
-The **Complete** items landed via PR #44 (merge `c83a8a4`) and are included in
-Nornyx **1.8.0**. The **Pending** items — the separate adapter package,
-legacy-kernel shim migration, pip-only example, and external pilot
-consumption — are subsequent, separately-audited milestones; the in-tree
-`GovernanceKernel` removal remains time-gated to no earlier than the following
-published minor release. Nornyx 1.8.0 publication itself remains a separately
-authorized operational action until the GitHub Release succeeds.
+The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C ship in
+published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`; the
+current published core is Nornyx 1.11.0 / SPI 1.2. M2-D closes the repository
+compatibility baseline without entering either distribution's runtime code: the
+unpackaged shim consumes the public `Authorizer.state` and so requires Nornyx
+1.11.0, which does not change the adapter distribution's own floor. Its update to the adapter README is distribution metadata, so the
+actual diff is release classification C; any adapter publication remains a
+later, separately authorized decision. The pip-only example, external pilot
+consumption, shim removal, and every later roadmap milestone remain separate;
+this decision grants none of them.

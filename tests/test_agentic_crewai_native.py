@@ -467,7 +467,9 @@ def test_native_human_approval_required_and_accepted(
     )
     types = [event["event_type"] for event in kernel.events_payload()["events"]]
     assert types == [
-        "policy_violation",
+        "approval_requested",
+        "approval_requested",
+        "approval_granted",
         "approval_requested",
         "approval_granted",
         "trust_zone_crossed",
@@ -477,7 +479,9 @@ def test_native_human_approval_required_and_accepted(
 # (9) AI-generated approval is rejected and never becomes an approval outcome
 def test_native_ai_generated_approval_rejected(controls: dict[str, Any]) -> None:
     kernel = _kernel(controls)
-    for actor_type in ("model", "ai_tool", "autonomous_agent", "crewai_agent"):
+    # Schema-legal non-human claims are a *policy* decision: they reach the
+    # Authorizer and are recorded as valid approval_rejected evidence.
+    for actor_type in ("model", "ai_tool", "autonomous_agent"):
         with pytest.raises(GovernanceViolation) as excinfo:
             kernel.require_human_approval(
                 {
@@ -489,12 +493,34 @@ def test_native_ai_generated_approval_rejected(controls: dict[str, Any]) -> None
                 actor_ref="identity.researcher.local",
             )
         assert excinfo.value.code == "AN_ADAPTER_APPROVAL_NON_HUMAN"
+
+    # A claim the runtime-events schema cannot express is a *structural*
+    # rejection at the adapter boundary instead. It must fail before the
+    # Authorizer is consulted: echoing it into the approver block produced a
+    # schema-invalid event that later broke EvidenceRecorder.resume.
+    with pytest.raises(GovernanceViolation) as excinfo:
+        kernel.require_human_approval(
+            {
+                "actor_type": "crewai_agent",
+                "role": "network_governance_owner",
+                "granted": True,
+            },
+            mission_id="GOAL-001",
+            actor_ref="identity.researcher.local",
+        )
+    assert excinfo.value.code == "AN_ADAPTER_REQUEST_MALFORMED"
+
     granted = [
         event
         for event in kernel.events_payload()["events"]
         if event["event_type"] == "approval_granted"
     ]
     assert granted == []
+    assert all(
+        event["approver"]["actor_type"] != "crewai_agent"
+        for event in kernel.events_payload()["events"]
+        if "approver" in event
+    )
 
 
 # (10) trust-zone restriction: an undeclared transition is denied

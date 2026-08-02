@@ -12,14 +12,14 @@ Layer 3 — External framework runtime or the bundled deterministic harness
 
 ## Contents
 
-- `nornyx_reference_adapters/governance_kernel.py` — framework-free enforcement
-  kernel: loads local controls, verifies the agentic-network lock before use,
-  maps framework agent keys to declared identities, checks capability
-  ownership (including declared delegations), validates delegation and
-  handoff requests, enforces trust-zone and sensitive-sharing declarations,
-  verifies externally supplied **human** approval records (AI approval is
-  rejected), and emits `nornyx.agentic_runtime_events.v1` evidence bound to
-  the exact contract digest and lock digest.
+- `nornyx_reference_adapters/governance_kernel.py` — deprecated compatibility
+  shim preserving the historical reference API and `AN_ADAPTER_*` diagnostics
+  while delegating decisions to the public SPI 1.2 `Authorizer` and evidence
+  construction to `EvidenceRecorder`. Its `document`, `composition`,
+  `lock_payload`, and `network` surfaces are non-authoritative read-only
+  projections of `Authorizer.state`, so no compatibility data can drift from the
+  Authorizer's validated state. Requires Nornyx 1.11.0 or newer. Construction emits `DeprecationWarning`;
+  new integrations should use `nornyx-agentic-adapters` and `nornyx.agentic`.
 - `nornyx_reference_adapters/crewai_adapter.py` — CrewAI mapping + task guard.
 - `nornyx_reference_adapters/langgraph_adapter.py` — LangGraph node guard and
   governed `StateGraph` builder.
@@ -42,3 +42,10 @@ Nothing here is a Nornyx runtime dependency. `crewai` and `langgraph` are
 imported lazily and only if you installed them yourself; every enforcement
 path is also exercised with the bundled deterministic harness, so the
 demonstrations and tests run offline without either framework.
+
+The compatibility shim itself imports only `nornyx.agentic`; neither framework
+enters the core package or wheel. It follows the supplied lock's runtime-events
+version (exact 1.0 envelope or 1.1 `legacy` mode), and it does not infer the
+explicit occurrence metadata used by the supported LangGraph adapter. See
+`adapters/nornyx-agentic-adapters/docs/MIGRATION.md` for the complete method,
+error, deprecation, retention, and unsupported-surface mapping.

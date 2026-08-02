@@ -1,10 +1,10 @@
-"""Isolated compatibility check against the *published* Nornyx 1.7.0 core.
+"""Isolated compatibility check against the *published* Nornyx 1.11.0 core.
 
 This harness proves the example runs on the Nornyx distribution from PyPI, not
 on the editable repository checkout. It:
 
 1. creates a clean virtual environment;
-2. installs only ``nornyx==1.7.0`` and ``crewai==1.15.4`` (plus their own
+2. installs only ``nornyx==1.11.0`` and ``crewai==1.15.4`` (plus their own
    dependencies) — no editable repo install;
 3. makes the repository's ``integrations/`` directory importable for the
    unpackaged adapter, WITHOUT placing the repo root ahead of site-packages;
@@ -14,7 +14,15 @@ on the editable repository checkout. It:
 
 The CrewAI adapter is deliberately NOT part of the ``nornyx`` wheel. This check
 uses the wheel for the core and the repository's ``integrations/`` tree for the
-adapter — exactly how a real consumer would wire it in Nornyx 1.7.0.
+adapter — exactly how a real consumer would wire it in Nornyx 1.11.0.
+
+The pinned core is 1.11.0 because the unpackaged repository shim now consumes
+the public ``nornyx.agentic`` authorization SPI. Cores older than 1.8.0 — the
+1.7.0 this harness originally pinned — ship no ``nornyx.agentic`` module at all,
+so the shim cannot import against them. That is a deliberate compatibility
+boundary, not a regression: runtime-events envelope compatibility is a
+schema-level statement and never implied that every historical Nornyx
+distribution could run current adapter code.
 
 Unlike the offline example itself, this harness intentionally uses the network
 and subprocesses: it installs packages with pip. Run it as a validation step,
@@ -41,7 +49,7 @@ REPO_ROOT = EXAMPLE_DIR.parents[1]
 INTEGRATIONS = REPO_ROOT / "integrations"
 CONTRACT = REPO_ROOT / "examples" / "agentic_network_support" / "support_network.nyx"
 
-NORNYX_PIN = "nornyx==1.7.0"
+NORNYX_PIN = "nornyx==1.11.0"
 CREWAI_PIN = "crewai==1.15.4"
 
 # The child runs in the clean venv. It puts ONLY integrations/ on sys.path (not
@@ -222,8 +230,8 @@ def verify(out_dir: Path) -> dict:
     data = json.loads(line[len("AB_RESULT "):])
 
     problems = []
-    if data["nornyx_version"] != "1.7.0":
-        problems.append(f"nornyx version is {data['nornyx_version']}, expected 1.7.0")
+    if data["nornyx_version"] != "1.11.0":
+        problems.append(f"nornyx version is {data['nornyx_version']}, expected 1.11.0")
     if not data["resolves_to_installed_distribution"]:
         problems.append("nornyx did not resolve to the installed distribution")
     if not data["not_repo_checkout"]:

@@ -68,10 +68,19 @@ class CrewAIGovernanceAdapter:
     ) -> Callable[..., Any]:
         """Wrap one unit of CrewAI task work with capability enforcement."""
 
+        if not callable(work):
+            raise GovernanceViolation(
+                "AN_ADAPTER_REQUEST_MALFORMED",
+                "CrewAI protected work must be callable.",
+            )
         identity = self.resolve_identity(agent)
 
         def run(*args: Any, **kwargs: Any) -> Any:
-            self.kernel.invoke_tool(identity, capability, mission_id=mission_id)
-            return work(*args, **kwargs)
+            return self.kernel._execute_tool_callable(
+                identity,
+                capability,
+                lambda: work(*args, **kwargs),
+                mission_id=mission_id,
+            )
 
         return run

@@ -2,6 +2,7 @@
 
 - Status: Proposed (design only; execution is a separate, owner-authorized milestone)
 - Date: 2026-07-22
+- Reconciled: 2026-07-31 (published adapter state and M2-D compatibility shim)
 - Decision owner: human repository owner
 - Relates to: ADR-0032 (verifiable effective approvals), ADR-0035 (network
   artifacts and lock), ADR-0036 (agentic runtime event evidence), ADR-0037
@@ -95,13 +96,17 @@ eligibility criteria.
 
 ### Tier 2 — Integrated cooperative enforcement over declared surfaces
 
-- **What it is.** The reference adapters (ADR-0037) wrap declared surfaces
-  (tasks, tools, handoffs) and evaluate the contract in the execution path;
-  a denial blocks the wrapped call; runtime events are emitted and bound to the
-  approved revision.
-- **Evidence basis.** Adapter-level allow/deny scenarios with stable diagnostic
-  codes (e.g. `AN_ADAPTER_APPROVAL_NON_HUMAN`,
-  `AN_ADAPTER_CAPABILITY_DENIED`); runtime events whose schema *requires*
+- **What it is.** The published `nornyx-agentic-adapters` package wraps the
+  surfaces named in its coverage inventories and evaluates through the public
+  `nornyx.agentic` SPI. The deprecated, unpackaged ADR-0037 reference tree is a
+  compatibility path over that same Authorizer/recorder boundary, not a second
+  policy engine. A denial blocks a wrapped callable; runtime events are bound to
+  the approved revision.
+- **Evidence basis.** Supported-adapter allow/deny scenarios use core
+  `DecisionCode` values. Legacy-shim scenarios retain local `AN_ADAPTER_*`
+  translations (for example `AN_ADAPTER_APPROVAL_NON_HUMAN` and
+  `AN_ADAPTER_CAPABILITY_DENIED`) without making those codes public SPI
+  guarantees; runtime events whose schema *requires*
   `network_id` + `contract_digest` + `network_lock_digest` + `subject_revision`,
   cross-checked against validated state with deterministic diagnostics on
   mismatch; `lock-check` drift detection.
@@ -168,17 +173,18 @@ eligibility criteria.
 
 ### What Nornyx alone can establish
 
-Current Nornyx can establish **Tier 1** for qualifying evidence packages and
-demonstrates mechanisms that **contribute to Tier 2**. **Nornyx 1.8.0 contains
-the supported core `nornyx.agentic` authorization SPI** (ADR-0039, M1), but the
-separately distributed supported adapter package and a standardized coverage
-inventory remain unimplemented; **Nornyx therefore does not yet provide a
-complete supported Tier 2 integration package**. Qualifying third-party
-integrations may use the SPI to construct cooperative, surface-scoped Tier 2
-controls, but must independently satisfy all Tier 2 eligibility requirements
-below. Nornyx **cannot award Tier 3** — that remains external and unavailable
-from Nornyx alone; it requires an external enforcement/attestation system that
-Nornyx neither provides nor verifies.
+Current Nornyx can establish **Tier 1** for qualifying evidence packages.
+Nornyx 1.11.0 publishes the core SPI 1.2, and
+`nornyx-agentic-adapters` 0.2.0 publishes coverage inventories plus supported
+CrewAI synchronous-tool and LangGraph synchronous-node wrappers. Those
+mechanisms can satisfy part of a surface-scoped Tier 2 claim, but the claim is
+eligible only when the remaining criteria above are evidenced for the exact
+declared surfaces. The legacy shim does not broaden supported-package coverage.
+In every case the limitation remains **cooperative, declared surfaces only**:
+bypass can leave no Nornyx trace, producer assertions are not attested, and no
+wrapped subset upgrades a whole application. Nornyx **cannot award Tier 3**;
+that requires an external enforcement/attestation system that Nornyx neither
+provides nor verifies.
 
 ### Claim-eligibility summary
 

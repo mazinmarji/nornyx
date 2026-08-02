@@ -25,8 +25,8 @@ told you sooner?
 ### 2. Was installation straightforward?
 
 Specifically: did the Python version requirement (3.10–3.13, not 3.14) bite you?
-Did the fact that `nornyx-agentic-adapters` is not on PyPI cause confusion? Did
-anything fail without telling you why?
+Was it clear whether you were testing published adapter 0.2.0 or the editable
+repository candidate? Did anything fail without telling you why?
 
 ### 3. Did the A/B comparison appear fair?
 
@@ -69,7 +69,8 @@ Candidates the benchmark already surfaces:
 - identity resolution is a binding, not cryptographic authentication
 - validated evidence proves structural and content integrity, not that any
   external side effect really happened
-- the adapter package is not published on PyPI
+- the supported package is published, but the cooperative coverage remains
+  deliberately narrow and framework-version pins are exact
 - the three defects in `FINDINGS.md` were found by this benchmark and are now
   fixed — the question worth answering is whether the *class* of defect (correct
   enforcement that cannot be evidenced) makes you less confident in the rest
@@ -79,9 +80,10 @@ there a limitation we did not list that matters more than the ones we did?
 
 ### 7. Which additional framework or integration would be most valuable?
 
-LangGraph is declared pending. Would that be the right next one for your work, or
-would something else (LlamaIndex, AutoGen, OpenAI Agents SDK, a plain
-function-calling loop, an MCP server boundary) be more useful?
+LangGraph synchronous nodes are implemented in adapter 0.2.0. Would broader
+LangGraph coverage be the right next step for your work, or would something else
+(LlamaIndex, AutoGen, OpenAI Agents SDK, a plain function-calling loop, an MCP
+server boundary) be more useful?
 
 ### 8. Would you use this in a real project? Why or why not?
 
