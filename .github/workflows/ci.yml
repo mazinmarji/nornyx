@@ -95,6 +95,16 @@ jobs:
       - name: Run adapter package tests
         working-directory: adapters/nornyx-agentic-adapters
         run: python -m pytest -q
+      - name: Runtime conformance, base suites, no framework extras
+        # ADR-0043 M2-E. With no extras installed the framework suites report
+        # 'unavailable' rather than passing quietly, so this run proves the
+        # framework-neutral and distribution boundaries across the whole
+        # supported Python matrix. The framework suites are required in the
+        # dedicated adapter-conformance job below.
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python -m nornyx_agentic_adapters.conformance \
+            --suite distribution --suite enforcement_boundary --summary
       - name: Check candidate diff hygiene
         if: github.event_name == 'pull_request'
         run: git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
@@ -289,6 +299,93 @@ jobs:
           test -n "$adapter_wheel"
           test -n "$core_wheel"
           python scripts/test_wheel_install.py "$adapter_wheel" --core-wheel "$core_wheel" --with-langgraph
+
+  adapter-conformance:
+    # ADR-0043 M2-E: runtime adapter conformance. Installs BOTH framework
+    # extras at their exact pinned versions and requires both suites, so a
+    # missing extra fails the job instead of reading as a silent pass. Builds
+    # the core wheel from this candidate first, like every other adapter job,
+    # so the adapter is measured against itself and never against a previously
+    # published core.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build and install the core nornyx wheel from this candidate
+        run: |
+          python -m pip install build
+          python -m build
+          wheel="$(find dist -maxdepth 1 -type f -name 'nornyx-*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install "$wheel"
+      - name: Install the adapter package with both framework extras
+        working-directory: adapters/nornyx-agentic-adapters
+        run: python -m pip install -e ".[crewai,langgraph,dev]"
+      - name: Record exact framework versions
+        run: |
+          python -c "import importlib.metadata as m; assert m.version('crewai') == '1.15.4', m.version('crewai')"
+          python -c "import importlib.metadata as m; assert m.version('langgraph') == '1.2.2', m.version('langgraph')"
+      - name: Conformance tests (no skips permitted)
+        working-directory: adapters/nornyx-agentic-adapters
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          python -m pytest tests/test_conformance_contract.py tests/test_conformance_runner.py \
+            tests/test_conformance_suites.py -v -rs --junitxml=conformance-results.xml
+          # Both extras are installed, so every conformance test must have run.
+          # A skip here means a native suite silently did not execute.
+          python -c "import xml.etree.ElementTree as ET, sys; suites = ET.parse('conformance-results.xml').getroot().findall('.//testsuite'); skipped = sum(int(s.get('skipped', 0)) for s in suites); tests = sum(int(s.get('tests', 0)) for s in suites); print('conformance tests', tests, 'skipped', skipped); sys.exit(1 if (skipped or not tests) else 0)"
+      - name: Runtime conformance report, both frameworks required
+        working-directory: adapters/nornyx-agentic-adapters
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+          CREWAI_TESTING: "true"
+        run: |
+          python -m nornyx_agentic_adapters.conformance \
+            --require crewai --require langgraph \
+            --json "${{ runner.temp }}/runtime-conformance-report.json" --summary
+      - name: Verify the emitted report validates against its bundled schema
+        working-directory: adapters/nornyx-agentic-adapters
+        run: |
+          python - "${{ runner.temp }}/runtime-conformance-report.json" <<'PY'
+          import json, sys
+          from nornyx_agentic_adapters.conformance import validate_report
+          payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
+          diagnostics = validate_report(payload)
+          assert not diagnostics, diagnostics
+          assert payload["outcome"] == "pass", payload["outcome"]
+          assert payload["assurance_tier"] == "tier_2_cooperative"
+          assert payload["safety"]["network_used"] is False
+          frameworks = sorted(payload["safety"]["frameworks_executed"])
+          assert frameworks == ["crewai", "langgraph"], frameworks
+          print("conformance report OK:", sum(len(s["cases"]) for s in payload["suites"]), "cases")
+          PY
+      - name: Upload the runtime conformance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-conformance-report
+          path: |
+            ${{ runner.temp }}/runtime-conformance-report.json
+            adapters/nornyx-agentic-adapters/conformance-results.xml
+          if-no-files-found: warn
+          retention-days: 14
 
   crewai-governance-benchmark:
     # examples/crewai_governance_benchmark is an external-facing A/B benchmark

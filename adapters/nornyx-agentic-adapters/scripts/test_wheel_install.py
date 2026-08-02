@@ -19,6 +19,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import venv
+import zipfile
 
 
 def _venv_python(root: Path) -> Path:
@@ -83,6 +84,71 @@ assert adapter.COVERAGE_INVENTORY.wrapped()[0].surface == "sync_node_invocation"
 print("LANGGRAPH_OK")
 """
 
+# The runtime-conformance kit resolves its schema and contract fixture through
+# importlib.resources. Both are package data, and package data is exactly what
+# a wheel silently drops when it is not declared -- so this probe runs the kit
+# from the INSTALLED distribution, in a fresh venv, from a directory that is not
+# the repository, and proves the resources are really there.
+_CONFORMANCE_PROBE = """
+import json
+import pathlib
+import sys
+import sysconfig
+
+import nornyx_agentic_adapters.conformance as kit
+from nornyx_agentic_adapters.conformance import (
+    load_report_schema, run_conformance, serialize, validate_report,
+)
+
+# The code under test must be the installed one, not a source tree that
+# happened to be importable.
+purelib = pathlib.Path(sysconfig.get_paths()["purelib"]).resolve()
+located = pathlib.Path(kit.__file__).resolve()
+assert located.is_relative_to(purelib), (str(located), str(purelib))
+
+schema = load_report_schema()
+assert schema["$id"] == "nornyx.agentic_runtime_conformance.v1", schema.get("$id")
+
+report = run_conformance(frameworks=["distribution", "enforcement_boundary"])
+payload = report.as_dict()
+diagnostics = validate_report(payload)
+assert not diagnostics, diagnostics
+assert payload["outcome"] == "pass", [
+    c for s in payload["suites"] for c in s["cases"] if c["outcome"] == "fail"
+]
+assert payload["assurance_tier"] == "tier_2_cooperative"
+assert payload["safety"]["network_used"] is False
+
+# Determinism, from the installed distribution.
+assert serialize(report) == serialize(run_conformance(
+    frameworks=["distribution", "enforcement_boundary"]))
+
+print("CONFORMANCE_OK " + json.dumps({
+    "cases": sum(len(s["cases"]) for s in payload["suites"]),
+    "schema": payload["schema"],
+}, sort_keys=True))
+"""
+
+
+#: Package data the runtime-conformance kit resolves at run time. Checked
+#: against the wheel's own manifest, because a missing resource otherwise
+#: surfaces only when a consumer runs the kit from an installed distribution.
+_REQUIRED_WHEEL_MEMBERS = (
+    "nornyx_agentic_adapters/conformance/schemas/runtime_conformance_report.schema.json",
+    "nornyx_agentic_adapters/conformance/fixtures/conformance_network.nyx",
+)
+
+
+def _assert_bundled_resources(wheel: Path) -> None:
+    with zipfile.ZipFile(wheel) as archive:
+        names = set(archive.namelist())
+    missing = [member for member in _REQUIRED_WHEEL_MEMBERS if member not in names]
+    if missing:
+        raise RuntimeError(
+            "the wheel is missing bundled conformance resources "
+            f"(declare them in [tool.setuptools.package-data]): {missing}"
+        )
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -131,12 +197,29 @@ def main(argv: list[str] | None = None) -> int:
             [str(python), "-m", "pip", "install", "--no-deps", "--disable-pip-version-check", str(wheel)],
             cwd=root,
         )
+        _assert_bundled_resources(wheel)
         probe = _run([str(python), "-c", _RUNTIME_PROBE], cwd=root)
         payload = json.loads(probe.stdout)
         if payload["version"] != expected_version:
             raise RuntimeError(f"installed wheel reports version {payload['version']!r}, expected {expected_version!r}")
         if payload["crewai_in_sys_modules"] or payload["langgraph_in_sys_modules"]:
             raise RuntimeError(f"framework leaked into sys.modules: {payload!r}")
+        conformance = _run([str(python), "-c", _CONFORMANCE_PROBE], cwd=root)
+        if "CONFORMANCE_OK" not in conformance.stdout:
+            raise RuntimeError("the installed runtime-conformance kit did not complete")
+        cli = _run(
+            [
+                str(python),
+                "-m",
+                "nornyx_agentic_adapters.conformance",
+                "--suite",
+                "enforcement_boundary",
+                "--summary",
+            ],
+            cwd=root,
+        )
+        if "tier_2_cooperative" not in cli.stdout:
+            raise RuntimeError("the installed conformance entry point did not state its tier")
         if args.with_langgraph:
             _run(
                 [

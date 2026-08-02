@@ -417,10 +417,10 @@ def _case_native_deny() -> CaseResult:
         observed_effect="deny",
         expected_code="CAPABILITY_DENIED",
         note=(
-            "Fail-closed behavior held: zero executions and paired "
-            "requested/denied events. Evidence does not validate on this path: "
-            "CrewAI's executor retried the denied call and legacy-mode events "
-            "carry no occurrence identity, so repeats are flagged AN_EVT_REPLAY."
+            "Fail-closed held: zero executions, paired requested/denied events. "
+            "Evidence does not validate: CrewAI retried the denied call and "
+            "legacy-mode events carry no occurrence identity, so the repeats "
+            "are flagged AN_EVT_REPLAY."
         ),
     )
 
