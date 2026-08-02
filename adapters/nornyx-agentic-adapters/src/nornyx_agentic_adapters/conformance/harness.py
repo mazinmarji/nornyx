@@ -195,13 +195,21 @@ class ExecutionCounter:
 
 
 class NetworkGuard:
-    """Blocks external connections and subprocesses for the duration of a run.
+    """Blocks outbound operations for the duration of a guarded run.
 
-    Loopback is tolerated because CrewAI's own telemetry stack may touch it;
-    anything leaving the machine raises. ``attempts`` counts every blocked
-    call, so the report's ``network_used`` is derived from an observation
-    rather than asserted — a guard that were never installed, or a run that
-    really did reach outward, both become visible.
+    ``socket.socket.connect`` permits loopback, because CrewAI's own telemetry
+    stack may touch it; every other guarded entry point
+    (``create_connection``, ``getaddrinfo``, ``subprocess``, ``os.system``)
+    is blocked unconditionally. A blocked call raises into the case that made
+    it, so an attempt fails that case rather than passing quietly.
+
+    ``attempts`` counts blocked calls. It is reported as exactly that — a count
+    of blocked attempts — and never as "the network was used": a blocked
+    attempt means the network was *not* reached, so deriving a "used" flag from
+    it would invert the meaning.
+
+    Not re-entrant across threads: two threads entering :meth:`active`
+    concurrently would leak a patched module attribute. One guard per run.
     """
 
     def __init__(self) -> None:
@@ -231,32 +239,14 @@ class NetworkGuard:
             self._record()
             raise AssertionError("external operation attempted during conformance")
 
-        def _is_own_interpreter(args: Any) -> bool:
-            """Permit only re-running this exact interpreter.
-
-            The kit deliberately spawns ``sys.executable -c ...`` to check the
-            import boundary in a clean process. Everything else -- a shell-out
-            from a framework, an arbitrary binary -- stays blocked.
-            """
-            if isinstance(args, (list, tuple)) and args:
-                return str(args[0]) == sys.executable
-            return False
-
-        def guarded_run(*args: Any, **kwargs: Any) -> Any:
-            if args and _is_own_interpreter(args[0]):
-                return real_run(*args, **kwargs)
-            return forbidden(*args, **kwargs)
-
-        def guarded_popen(*args: Any, **kwargs: Any) -> Any:
-            if args and _is_own_interpreter(args[0]):
-                return real_popen(*args, **kwargs)
-            return forbidden(*args, **kwargs)
-
+        # No escape hatch: a permitted child process would be entirely
+        # unguarded, and a count of blocked attempts made in this process could
+        # then say nothing about what that child did.
         socket.socket.connect = loopback_only  # type: ignore[method-assign]
         socket.create_connection = forbidden  # type: ignore[assignment]
         socket.getaddrinfo = forbidden  # type: ignore[assignment]
-        subprocess.run = guarded_run  # type: ignore[assignment]
-        subprocess.Popen = guarded_popen  # type: ignore[assignment]
+        subprocess.run = forbidden  # type: ignore[assignment]
+        subprocess.Popen = forbidden  # type: ignore[assignment]
         os.system = forbidden  # type: ignore[assignment]
         try:
             yield self

@@ -194,7 +194,7 @@ def _case_allow() -> CaseResult:
         problems.append("unexpected decision-event order on ALLOW")
     if H.observation_event_types(ctx.recorder) != ("agent_invoked",):
         problems.append("expected exactly one agent_invoked observation")
-    if not H.decision_precedes_observations(ctx.recorder):
+    if H.decision_precedes_observations(ctx.recorder) is False:
         problems.append("the success observation preceded the authorizing decision")
     summary = H.summarize_occurrences(ctx.recorder)
     if summary.distinct_occurrences != 1 or summary.attempts != (1,):
@@ -294,7 +294,7 @@ def _case_retry() -> CaseResult:
     problems: list[str] = []
 
     def flaky(_state: Any) -> Any:
-        ctx.counter.count += 1
+        ctx.counter.bump()
         if ctx.counter.count < 3:
             raise ValueError("retry")
         return {"value": ctx.counter.count}

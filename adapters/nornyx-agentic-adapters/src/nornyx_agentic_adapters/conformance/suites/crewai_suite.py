@@ -283,15 +283,16 @@ def _case_native_allow() -> CaseResult:
     agent = _agent("researcher", llm)
 
     problems: list[str] = []
-    guard = H.NetworkGuard()
-    with guard.active():
-        # Identity resolution through the adapter's own public path.
-        if resolve_identity(counting, agent) != H.RESEARCHER:
-            problems.append("resolve_identity did not map the CrewAI role to its identity")
-        tool = _governed_tool(
-            counting, context, recorder, lambda: counter.run("sanitized governed context")
-        )
-        result = _kickoff(agent, tool)
+    # No guard here: the runner installs one around every executing suite, and
+    # a nested guard would capture attempts into its own counter where the
+    # run-level report could not see them.
+    # Identity resolution through the adapter's own public path.
+    if resolve_identity(counting, agent) != H.RESEARCHER:
+        problems.append("resolve_identity did not map the CrewAI role to its identity")
+    tool = _governed_tool(
+        counting, context, recorder, lambda: counter.run("sanitized governed context")
+    )
+    result = _kickoff(agent, tool)
 
     if "governed research complete" not in str(result):
         problems.append("the native executor did not return the scripted final answer")
@@ -305,10 +306,8 @@ def _case_native_allow() -> CaseResult:
         problems.append("unexpected decision-event order on ALLOW")
     if H.observation_event_types(recorder) != ("tool_invoked",):
         problems.append("expected exactly one tool_invoked observation")
-    if not H.decision_precedes_observations(recorder):
+    if H.decision_precedes_observations(recorder) is False:
         problems.append("tool_invoked was recorded before the authorizing decision")
-    if guard.attempts:
-        problems.append(f"{guard.attempts} external operations attempted")
 
     return _result(
         "crewai.native.allow",
@@ -338,18 +337,16 @@ def _case_native_deny() -> CaseResult:
     agent = _agent("reviewer", llm)
 
     problems: list[str] = []
-    guard = H.NetworkGuard()
-    with guard.active():
-        tool = _governed_tool(
-            counting,
-            context,
-            recorder,
-            lambda: counter.run("must not run"),
-            name="proposer",
-            identity=H.REVIEWER,
-            capability=H.PROPOSE_CAPABILITY,
-        )
-        _kickoff(agent, tool)
+    tool = _governed_tool(
+        counting,
+        context,
+        recorder,
+        lambda: counter.run("must not run"),
+        name="proposer",
+        identity=H.REVIEWER,
+        capability=H.PROPOSE_CAPABILITY,
+    )
+    _kickoff(agent, tool)
 
     recorded = H.decision_event_types(recorder)
     observations = H.observation_event_types(recorder)
@@ -368,8 +365,6 @@ def _case_native_deny() -> CaseResult:
         problems.append("capability_requested and capability_denied events did not pair up")
     if counting.evaluations < 1:
         problems.append("no authorization was evaluated")
-    if guard.attempts:
-        problems.append(f"{guard.attempts} external operations attempted")
 
     return _result(
         "crewai.native.deny",
@@ -422,10 +417,8 @@ def _case_native_structured_args() -> CaseResult:
         return f"read:{topic}"
 
     problems: list[str] = []
-    guard = H.NetworkGuard()
-    with guard.active():
-        tool = _governed_tool(counting, context, recorder, action, args_schema=_TopicInput)
-        _kickoff(agent, tool)
+    tool = _governed_tool(counting, context, recorder, action, args_schema=_TopicInput)
+    _kickoff(agent, tool)
 
     if seen != ["alpha"]:
         problems.append(f"validated arguments did not reach the action: {seen}")
@@ -433,10 +426,8 @@ def _case_native_structured_args() -> CaseResult:
         problems.append(f"the ReAct executor drove the LLM {llm.calls} times, expected 2+")
     if H.observation_event_types(recorder) != ("tool_invoked",):
         problems.append("expected exactly one tool_invoked observation")
-    if not H.decision_precedes_observations(recorder):
+    if H.decision_precedes_observations(recorder) is False:
         problems.append("tool_invoked was recorded before the authorizing decision")
-    if guard.attempts:
-        problems.append(f"{guard.attempts} external operations attempted")
 
     return _result(
         "crewai.native.structured_args",

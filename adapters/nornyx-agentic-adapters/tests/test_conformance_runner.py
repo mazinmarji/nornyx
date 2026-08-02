@@ -99,10 +99,13 @@ def test_report_safety_block_is_the_kits_own_not_the_validators(base_report) -> 
     assert ``tools_executed: false`` immediately after executing a tool."""
     safety = base_report.as_dict()["safety"]
     assert safety["adapter_actions_executed"] is True
-    # Observed, not declared: a guard was installed and counted zero blocked
-    # outbound attempts.
-    assert safety["network_guard_active"] is True
-    assert safety["network_used"] is False
+    # Observed, not declared: the guard names the suites it covered and reports
+    # a real count. It is deliberately NOT restated as a "network was used"
+    # flag — a blocked attempt means the network was not reached, so such a
+    # flag would invert the meaning.
+    assert safety["guarded_suites"] == ["enforcement_boundary"]
+    assert safety["blocked_outbound_attempts"] == 0
+    assert "network_used" not in safety
     assert safety["models_called"] is False
     assert "tools_executed" not in safety
 
@@ -146,6 +149,21 @@ def test_case_selection_narrows_the_run() -> None:
     assert [c.case_id for s in report.suites for c in s.cases] == ["neutral.enforce.allow"]
 
 
+def test_a_run_that_produced_no_cases_is_not_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Selecting a framework whose extra is absent verifies nothing, so it
+    cannot report `pass` with zero evidence behind it."""
+    from nornyx_agentic_adapters.conformance import runner
+
+    monkeypatch.setattr(
+        runner,
+        "_load_framework_suite",
+        lambda framework: (_ for _ in ()).throw(ImportError("absent")),
+    )
+    report = runner.run_conformance(frameworks=["crewai"])
+    assert report.cases() == ()
+    assert report.outcome is RunOutcome.FAIL
+
+
 def test_requiring_an_absent_framework_fails_the_run(monkeypatch: pytest.MonkeyPatch) -> None:
     from nornyx_agentic_adapters.conformance import runner
 
@@ -161,7 +179,6 @@ def test_requiring_an_absent_framework_fails_the_run(monkeypatch: pytest.MonkeyP
     # carries a reason and no cases, so a reader cannot mistake absence for
     # evidence even when the run was not required to have it.
     permissive = runner.run_conformance(frameworks=["crewai"])
-    assert permissive.outcome is RunOutcome.PASS
     unavailable = permissive.suites[0]
     assert unavailable.outcome is SuiteOutcome.UNAVAILABLE
     assert unavailable.unavailable_reason

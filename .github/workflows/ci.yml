@@ -371,8 +371,8 @@ jobs:
           assert not diagnostics, diagnostics
           assert payload["outcome"] == "pass", payload["outcome"]
           assert payload["assurance_tier"] == "tier_2_cooperative"
-          assert payload["safety"]["network_used"] is False
-          assert payload["safety"]["network_guard_active"] is True
+          assert payload["safety"]["blocked_outbound_attempts"] == 0
+          assert set(payload["safety"]["guarded_suites"]) >= {"crewai", "langgraph"}
           frameworks = sorted(payload["safety"]["frameworks_executed"])
           assert frameworks == ["crewai", "langgraph"], frameworks
           # A zero-case report is schema-valid and would otherwise read as a

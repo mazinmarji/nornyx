@@ -329,14 +329,15 @@ class RunSafety:
 
     adapter_actions_executed: bool
     frameworks_executed: tuple[str, ...]
-    #: True when a guard was installed around the whole run. Reported so a
-    #: reader can tell an observed ``network_used: false`` from an unguarded
-    #: run that simply asserted one.
-    network_guard_active: bool = False
-    #: Derived from the guard's own count of blocked outbound attempts, not
-    #: declared. An unguarded run reports ``network_guard_active: false`` and
-    #: makes no observation.
-    network_used: bool = False
+    #: Which suites actually ran under the outbound guard. Named rather than a
+    #: bare boolean so a reader can tell exactly what was covered.
+    guarded_suites: tuple[str, ...] = ()
+    #: Observed count of outbound calls the guard blocked. Reported as what it
+    #: is. A blocked attempt means the network was *not* reached, so this is
+    #: deliberately not restated as a "network was used" flag.
+    blocked_outbound_attempts: int = 0
+    #: Structural properties of the kit's design, not measurements: it contains
+    #: no model client, no connector, and no credential loading.
     models_called: bool = False
     external_connectors_used: bool = False
     credentials_loaded: bool = False
@@ -345,8 +346,8 @@ class RunSafety:
         return {
             "adapter_actions_executed": self.adapter_actions_executed,
             "frameworks_executed": list(self.frameworks_executed),
-            "network_guard_active": self.network_guard_active,
-            "network_used": self.network_used,
+            "guarded_suites": list(self.guarded_suites),
+            "blocked_outbound_attempts": self.blocked_outbound_attempts,
             "models_called": self.models_called,
             "external_connectors_used": self.external_connectors_used,
             "credentials_loaded": self.credentials_loaded,

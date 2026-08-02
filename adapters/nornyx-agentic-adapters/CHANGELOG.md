@@ -54,10 +54,14 @@ kit, all fixed before this entry:
   prose. Cases now record the validator's actual diagnostic codes, and that
   case pins `AN_EVT_REPLAY` exactly.
 - `safety.network_used` was a dataclass default pinned to `false` by the
-  schema — unfalsifiable, despite a docstring claiming it was observed. A
-  guard now wraps every executing suite, `network_used` is derived from its
-  count of blocked outbound attempts, and a new `network_guard_active` field
-  states whether a guard was in place at all.
+  schema — unfalsifiable, despite a docstring claiming it was observed. The
+  block now reports what can actually be observed: `guarded_suites` names the
+  suites that ran under the outbound guard, and `blocked_outbound_attempts` is
+  its real count. It is deliberately *not* restated as a "network was used"
+  flag: a blocked attempt means the network was **not** reached, so such a flag
+  would invert the meaning. `models_called`, `external_connectors_used`, and
+  `credentials_loaded` remain constants and now say in the schema that they are
+  structural properties of the kit's design rather than measurements.
 - `decision_precedes_action` named a stronger property than it measured (it
   compares recorded events, not the action) and was vacuously `true` for cases
   that recorded nothing. Renamed to `decision_precedes_observation`, documented
@@ -65,10 +69,20 @@ kit, all fixed before this entry:
 
 Also: requiring a framework that was not selected, and selecting a case id that
 matches nothing, are now errors rather than silent no-ops that could exit `0`;
+a run that produced no case at all reports `fail`, because it verified nothing;
 an empty stream reports `not_applicable` rather than a validation `pass`; the
 interrupt/resume case counts the executions it actually performed; and the
 CrewAI bypass control now bypasses a real governed tool rather than a bare
 counter.
+
+A second review round found that the first `network_used` fix was itself
+unsound and it was redesigned as above. It also found that the guard's
+`sys.executable` escape handed out a fully unguarded child process, and that
+per-case guards nested inside the run-level guard recorded into their own
+counters where the run-level report could not see them. The escape is removed
+— the distribution suite, which deliberately spawns a clean interpreter, now
+runs outside the guard instead — and the nested guards are gone, leaving one
+observer per run.
 
 ### Known limitations
 

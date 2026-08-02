@@ -214,6 +214,11 @@ than fixed, because fixing them would cost more than the risk they carry:
   configuration**, which lives outside this repository's files. The job fails
   the workflow on a nonconforming case; making it a required check is an owner
   action.
+- **The distribution suite runs outside the outbound guard.** It spawns a
+  clean interpreter on purpose, to check the import boundary in a process that
+  has imported nothing. Giving the guard an escape hatch for that child would
+  have handed out a fully unguarded process, so the suite is excluded instead
+  and `safety.guarded_suites` names exactly which suites were covered.
 - **`OccurrenceSummary.collided` detects one specific shape**: two *different*
   logical operations recorded under one occurrence id. The per-case
   `distinct_occurrences` assertions cover the concrete collision scenarios; the

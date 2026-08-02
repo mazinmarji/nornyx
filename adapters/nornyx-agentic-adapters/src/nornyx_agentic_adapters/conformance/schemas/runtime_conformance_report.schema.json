@@ -37,8 +37,8 @@
       "required": [
         "adapter_actions_executed",
         "frameworks_executed",
-        "network_guard_active",
-        "network_used",
+        "guarded_suites",
+        "blocked_outbound_attempts",
         "models_called",
         "external_connectors_used",
         "credentials_loaded"
@@ -46,17 +46,28 @@
       "properties": {
         "adapter_actions_executed": {"type": "boolean"},
         "frameworks_executed": {"type": "array", "items": {"type": "string", "minLength": 1}},
-        "network_guard_active": {
-          "description": "Whether a guard was installed around the whole run. Distinguishes an observed network_used from an unguarded assertion.",
-          "type": "boolean"
+        "guarded_suites": {
+          "description": "Which suites actually ran under the outbound guard. Named rather than a bare boolean so a reader can tell exactly what was covered.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
         },
-        "network_used": {
-          "description": "Derived from the guard's own count of blocked outbound attempts. Not a constant: an unguarded run cannot observe it, and a run that reached outward makes it true.",
-          "type": "boolean"
+        "blocked_outbound_attempts": {
+          "description": "Observed count of outbound calls the guard blocked. A blocked attempt means the network was not reached; this is deliberately not restated as a 'network was used' flag, which would invert its meaning.",
+          "type": "integer",
+          "minimum": 0
         },
-        "models_called": {"const": false},
-        "external_connectors_used": {"const": false},
-        "credentials_loaded": {"const": false}
+        "models_called": {
+          "description": "Structural property of the kit's design, not a measurement: it contains no model client.",
+          "const": false
+        },
+        "external_connectors_used": {
+          "description": "Structural property of the kit's design, not a measurement: it executes no connector.",
+          "const": false
+        },
+        "credentials_loaded": {
+          "description": "Structural property of the kit's design, not a measurement: it loads no credentials.",
+          "const": false
+        }
       }
     },
     "suites": {

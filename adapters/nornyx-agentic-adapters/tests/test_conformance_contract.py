@@ -115,8 +115,8 @@ def valid_report() -> dict:
         "safety": {
             "adapter_actions_executed": True,
             "frameworks_executed": [],
-            "network_guard_active": True,
-            "network_used": False,
+            "guarded_suites": ["enforcement_boundary"],
+            "blocked_outbound_attempts": 0,
             "models_called": False,
             "external_connectors_used": False,
             "credentials_loaded": False,

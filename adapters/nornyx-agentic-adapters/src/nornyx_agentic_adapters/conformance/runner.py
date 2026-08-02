@@ -110,18 +110,26 @@ def run_conformance(
                 _unavailable(framework, f"the suite failed to load ({type(exc).__name__})")
             )
 
-    # One guard around every executing suite, so `network_used` is derived from
-    # an observation rather than declared. Any outbound attempt is blocked,
-    # raises into the case that made it, and is counted here.
+    # The distribution suite deliberately spawns a clean interpreter to check
+    # the import boundary, so it runs outside the guard rather than being given
+    # an escape hatch — a permitted child would be entirely unguarded, and a
+    # count of attempts blocked in *this* process would say nothing about it.
+    if distribution.SUITE_ID in selected:
+        suites.append(distribution.run(wanted))
+
+    # One guard around every executing suite, and only one: a nested guard
+    # would record attempts into its own counter, so the run-level count could
+    # not observe anything that happened inside it.
     guard = H.NetworkGuard()
+    guarded: list[str] = []
     with guard.active():
-        if distribution.SUITE_ID in selected:
-            suites.append(distribution.run(wanted))
         if neutral.SUITE_ID in selected:
             suites.append(neutral.run(wanted))
+            guarded.append(neutral.SUITE_ID)
         for framework, module in loaded:
             suites.append(module.run(wanted))
             executed_frameworks.append(framework)
+            guarded.append(framework)
 
     suites.sort(key=lambda suite: suite.suite_id)
     _validate_case_ids_unique(suites)
@@ -129,14 +137,21 @@ def run_conformance(
     produced = {case.case_id for suite in suites for case in suite.cases}
     if wanted is not None:
         # An unmatched case id must not yield a zero-case report that validates
-        # and exits 0 — a typo would read as a passing run of that case.
-        unmatched = sorted(wanted - produced)
+        # and exits 0 — a typo would read as a passing run of that case. Ids
+        # belonging to a suite that is unavailable are exempt: the case exists,
+        # its extra does not, and that is already reported as unavailable.
+        absent = tuple(
+            f"{suite.framework}."
+            for suite in suites
+            if suite.outcome is SuiteOutcome.UNAVAILABLE
+        )
+        unmatched = sorted(
+            case_id
+            for case_id in wanted - produced
+            if not case_id.startswith(absent)
+        )
         if unmatched:
             raise ValueError(f"no conformance case matches: {unmatched}")
-    if not produced and any(
-        suite.outcome is not SuiteOutcome.UNAVAILABLE for suite in suites
-    ):
-        raise ValueError("the selection produced no conformance cases")
 
     failed_cases = any(
         case.outcome is CaseOutcome.FAIL for suite in suites for case in suite.cases
@@ -146,8 +161,13 @@ def run_conformance(
         for suite in suites
         if suite.outcome is SuiteOutcome.UNAVAILABLE and suite.framework in required
     ]
+    # A run that produced no case verified nothing, so it cannot be a pass.
+    # Otherwise selecting a framework whose extra is absent would report
+    # `pass` with zero evidence behind it.
     outcome = (
-        RunOutcome.FAIL if (failed_cases or missing_required) else RunOutcome.PASS
+        RunOutcome.FAIL
+        if (failed_cases or missing_required or not produced)
+        else RunOutcome.PASS
     )
 
     return ConformanceReport(
@@ -161,8 +181,8 @@ def run_conformance(
         safety=RunSafety(
             adapter_actions_executed=True,
             frameworks_executed=tuple(sorted(executed_frameworks)),
-            network_guard_active=True,
-            network_used=guard.attempts > 0,
+            guarded_suites=tuple(guarded),
+            blocked_outbound_attempts=guard.attempts,
         ),
     )
 
