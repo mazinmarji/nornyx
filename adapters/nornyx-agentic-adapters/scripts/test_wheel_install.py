@@ -117,7 +117,12 @@ assert payload["outcome"] == "pass", [
     c for s in payload["suites"] for c in s["cases"] if c["outcome"] == "fail"
 ]
 assert payload["assurance_tier"] == "tier_2_cooperative"
-assert payload["safety"]["network_used"] is False
+# Observed, not declared: the guard names what it covered and reports a real
+# count. A blocked attempt means the network was not reached, so the report
+# deliberately carries no "network was used" flag to invert.
+assert payload["safety"]["blocked_outbound_attempts"] == 0
+assert "enforcement_boundary" in payload["safety"]["guarded_suites"]
+assert "network_used" not in payload["safety"]
 
 # Determinism, from the installed distribution.
 assert serialize(report) == serialize(run_conformance(
