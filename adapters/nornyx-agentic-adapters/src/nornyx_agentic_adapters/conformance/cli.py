@@ -16,7 +16,7 @@ import argparse
 import sys
 from typing import Sequence, TextIO
 
-from .model import CaseOutcome, RunOutcome, SuiteOutcome
+from .model import RunOutcome
 from .report import serialize, validate_report, write_report
 from .runner import available_suites, missing_required, run_conformance
 
@@ -160,9 +160,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 __all__ = ["EXIT_NONCONFORMANT", "EXIT_OK", "EXIT_USAGE", "main"]
-
-
-# Referenced by the summary printer's outcome markers; kept close to the enums
-# they mirror so a new outcome value cannot silently fall through.
-_OUTCOME_VALUES = {member.value for member in CaseOutcome}
-_SUITE_OUTCOME_VALUES = {member.value for member in SuiteOutcome}

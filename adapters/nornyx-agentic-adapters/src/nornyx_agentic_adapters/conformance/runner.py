@@ -8,7 +8,7 @@ gate stops meaning anything.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 
 from .. import __version__ as ADAPTER_VERSION
 from . import harness as H
@@ -159,7 +159,5 @@ def missing_required(report: ConformanceReport, require: Iterable[str]) -> tuple
         )
     )
 
-
-_CASE_FACTORIES: tuple[Callable[..., SuiteResult], ...] = ()
 
 __all__ = ["ADAPTER_NAME", "available_suites", "missing_required", "run_conformance"]
