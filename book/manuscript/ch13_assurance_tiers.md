@@ -128,6 +128,8 @@ The first is <span class="ix" data-ix="consequence of failure">consequence of fa
 
 The second is the <span class="ix" data-ix="adversary model">adversary</span> in scope, and it is the variable teams most often leave implicit. Tier 2 is a sound choice against *accident*: a planner that wanders outside its charter, a developer who forgets a constraint, a model that follows a malicious instruction in retrieved text. All of those go through the wrapper, because none of them is trying to avoid it. Tier 2 is not a sound choice against an adversary who can modify the agent's code or influence what it imports, because for that adversary the wrapper is one line to delete. If the threat model includes a hostile insider with commit access, or a supply-chain compromise of the agent's dependencies, cooperative enforcement is the wrong instrument regardless of how well it is implemented.
 
+Table 13.2 works the two variables across the book's case studies.
+
 | Surface | Consequence | Adversary in scope | Defensible tier |
 |---|---|---|---|
 | Atlas files a summary to an internal store | Low; recoverable | Accident; prompt injection | Tier 1 declaration plus Tier 2 on the tool surface |
@@ -167,6 +169,25 @@ Tier-accurate: "Tier 1: the support-network contract is validated, locked, and
 ```
 
 **Listing 13.1 — One claim at three levels of honesty.** Illustrative — not drawn from the repository. The hedged version is worse than the inflated one for the reader: it sounds cautious while conveying nothing checkable. The tier-accurate version is longer, and every additional clause is a sentence someone can verify or refute — which is the only property that matters in an audit.
+
+Inside an organization the same discipline takes the form of a <span class="ix" data-ix="claim register">claim register</span>: one entry per assurance claim, structured so that the tier and the unproven remainder cannot be dropped in transit. Listing 13.2 gives the shape; Chapter 39 builds a full register for the capstone system.
+
+```yaml
+claim_id: NS-ATLAS-002
+claim: "Atlas cannot publish to an external site."
+tier: 2                       # cooperative, declared surfaces only
+surfaces_in_scope: [tool.publish_external, tool.file_internal]
+evidence: [contract_digest, network_lock, coverage_inventory, deny_path_test, event_stream]
+assumptions: ["all publication paths route through the wrapped tool surface",
+              "the event producer does not omit or fabricate records"]
+bypass_paths: ["direct call to the underlying client library",
+               "any undeclared network egress from the agent process"]
+on_component_failure: "fail-closed: the wrapped call is denied"
+not_claimed: ["network-level egress control", "producer authentication",
+              "completeness of the event stream"]
+```
+
+**Listing 13.2 — A claim-register entry.** Illustrative — not drawn from the repository. The last four keys are the ones that make the entry useful: assumptions can be checked, bypass paths can be tested, failure behavior can be injected, and `not_claimed` is what stops the claim from growing a tier on its way to a slide.
 
 For procurement, the practical instrument is a small set of questions that force tier disclosure without requiring the reader to be an engineer: *Which specific surfaces does the control cover, and what is the list?* *What happens if my system calls the underlying function directly — is it blocked, and is there a record?* *Who produces the evidence, and can my system alter or suppress it?* *Show me one denial in your evidence, not one allow.* A vendor at Tier 3 answers all four immediately. A vendor at Tier 2 answers the first two and must qualify the rest. A vendor whose answers are about product categories rather than mechanisms is at Tier 1 and does not know it.
 

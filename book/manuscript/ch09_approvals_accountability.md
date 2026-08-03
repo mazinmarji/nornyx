@@ -62,7 +62,7 @@ Two fields deserve comment. The <span class="ix" data-ix="accountable authority"
 
 ## 9.3 Expiry, revocation, and invalidation
 
-These three words are used interchangeably in practice and mean three different things. The distinction is not pedantry: they are triggered by different parties, detected by different mechanisms, and demand different responses.
+These three words are used interchangeably in practice and mean three different things. The distinction is not pedantry: they are triggered by different parties, detected by different mechanisms, and demand different responses, as Table 9.1 sets out.
 
 <span class="ix" data-ix="expiry!of approvals">Expiry</span> is *time acting on the approval*. It was valid, a declared duration elapsed, and it is now inert. Expiry needs no actor and no notification — the enforcement point compares the decision instant against the expiry instant — and its purpose is to bound the staleness of a human judgment, encoding the belief that judgments decay because the system around them moves. *Example.* Northstar's engineering approval requirement carries a relative expiry of 24 hours; an approval issued at 08:00 Monday for a merge that runs at 09:00 Tuesday is refused. Nobody withdrew it and nothing changed; it aged out.
 
@@ -118,7 +118,7 @@ An approval must also be *informed* to be truthful. When an approver signs, they
 | The maker, and the accountable authority | "Who else stands behind this?" | Maker–checker violations become invisible |
 | What is explicitly *not* being attested | "What am I not vouching for?" | Approvals silently accumulate implied guarantees |
 
-**Table 9.2 — Requirements for an informed approval interface.** Illustrative synthesis, not drawn from the repository. Its teaching purpose is to relocate approval quality from the approver's diligence to the interface's design: most "the approver should have caught it" findings are, on inspection, findings that the approver was never shown it. The last row repays attention, because approvals accrete implied meaning — a merge approval becomes a security sign-off, then a licensing check, then an architectural review — until one click carries five guarantees, four of which nobody agreed to provide.
+**Table 9.2 — Requirements for an informed approval interface.** Illustrative synthesis, not drawn from the repository. Its teaching purpose is to relocate approval quality from the approver's diligence to the interface's design: most "the approver should have caught it" findings are findings that the approver was never shown it. The last row repays attention, because approvals accrete implied meaning — a merge approval becomes a security sign-off, then a licensing check, then an architectural review — until one click carries five guarantees, four of which nobody agreed to provide.
 
 <span class="ix" data-ix="approval fatigue">Approval fatigue</span>, finally, is not a character flaw but an arithmetic result. An approver has a roughly fixed daily budget of careful attention. If the number of items times the per-item cost of careful review exceeds that budget, the approver does not work harder — they *reduce the per-item cost*, the only free variable. Reduction proceeds by heuristic: approve anything from a trusted colleague, anything whose test suite is green, anything resembling last week's change. The gate keeps firing, records keep accumulating, and the control becomes a latency tax producing evidence of a review that did not occur. Agentic systems make this acute, raising the number of gate-eligible actions by an order of magnitude while leaving the number of approvers unchanged.
 
@@ -181,7 +181,7 @@ Every organization eventually needs to do something its policy forbids: the migr
 
 The edit path is what Chapter 8 called silent weakening: someone removes the rule, or adds a condition excluding this case, and the policy now permits the behavior permanently and invisibly. The record path keeps the rule intact and adds a bounded, reviewable artifact saying: this control, for this scope, for this reason, is not being enforced, until this date, under this owner, with these compensating controls, evidenced by this. The rule never changes, so the exception is visible by construction — something that must be listed, aged, renewed, and closed.
 
-A serious <span class="ix" data-ix="exception!governed record">exception record</span> therefore carries a fixed field set: the control excepted; the reason; the scope (which systems, agents, actions — never "everywhere"); a risk tier; the requester; the <span class="ix" data-ix="accountable owner">accountable owner</span> carrying residual risk; an approving authority distinct from the requester; compensating controls; supporting evidence; a start and an expiry; a renewal policy; closure evidence; and a lifecycle status. Expiry is what distinguishes an exception from a policy change: an exception that never expires *is* a policy change, one that avoided review.
+A serious <span class="ix" data-ix="exception!governed record">exception record</span> therefore carries a fixed field set: the control excepted; the reason; the scope (which systems, agents, actions — never "everywhere"); a risk tier; the requester; the <span class="ix" data-ix="accountable owner">accountable owner</span> carrying residual risk; an approving authority distinct from the requester; compensating controls; supporting evidence; a start and an expiry; a renewal policy; closure evidence; and a lifecycle status. Expiry is what distinguishes an exception from a policy change: an exception that never expires *is* a policy change, one that avoided review. Listing 9.2 shows the set filled in for a Northstar incident.
 
 ```json
 {
@@ -211,7 +211,7 @@ Three lifecycle rules turn this from a form into a control. *Self-approval is re
 
 > **Misconception.** *"An exception register is bureaucracy; the engineering fix is better policy."* Better policy reduces exceptions; it never reaches zero, because policy is written in advance and operations happen in particular. The choice is between exceptions that are counted, owned, and dated, and exceptions that took the form of a quiet edit six months ago and are now indistinguishable from the intended design.
 
-> **Design checkpoint.** For one approval gate in your own system, write down: which of the eight bindings in Section 9.2 the record carries; what happens to a valid approval when the subject changes; what the approver was shown, field by field, when they clicked; the gate's approval rate and median dwell time last month; and who can revoke, by what mechanism, reaching the enforcement point in what time.
+> **Design checkpoint.** For one approval gate in your own system, write down: which of the eight bindings in Section 9.2 the record carries; what happens to a valid approval when the subject changes; what the approver was shown when they clicked; the gate's approval rate and median dwell time last month; and who can revoke, by what mechanism, in what time.
 
 ## Summary
 

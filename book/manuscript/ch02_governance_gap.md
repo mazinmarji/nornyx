@@ -83,9 +83,26 @@ The opening scenario contains a clean instance. Branch protection on `main` was 
 
 ### Policy drift
 
-<span class="ix" data-ix="drift!policy">Policy drift</span> is divergence in *content* between two or more representations of the same rule. Each is running, each is covered, and they say different things.
+<span class="ix" data-ix="drift!policy">Policy drift</span> is divergence in *content* between two or more representations of the same rule. Each is running, each is covered, and they say different things. Listing 2.1 shows Northstar's instance as it appeared in the three files: the prose list, the pipeline's pattern list, and the fragment the prompt builder assembles.
 
-Northstar's instance: `AGENTS.md` lists four security-sensitive path prefixes, the CI job's regex lists three, and the prompt copy lists none. All three are consulted, all three are alive, and they disagree; because no artifact names the others, the disagreement is invisible until an action falls into the difference. Note the direction of the failure: the *weakest* representation determines the actual guarantee, while the *strongest* determines what people say the guarantee is. Chapter 8 treats the structural cure — deriving representations from a single source and comparing them as canonical sets rather than as text — and shows why weakening must be made loud rather than merely discouraged.
+```text
+# AGENTS.md (repository root)
+Security-sensitive paths requiring human sign-off:
+  auth/  crypto/  .github/workflows/  db/migrations/
+
+# .ci/path-guard.yml (platform-owned)
+protected:
+  - "^src/auth/"
+  - "^src/crypto/"
+  - "^\\.github/workflows/"
+
+# prompt_fragments/forge_charter.txt (assembled by build_prompt.py)
+You may propose changes on branches and open pull requests.
+```
+
+**Listing 2.1 — Three representations of one rule, in three formats, with three different contents.** Illustrative — not drawn from the repository. The first block names four path prefixes; the second names three, each prefixed with a directory that no longer exists; the third has lost the clause entirely.
+
+All three are consulted, all three are alive, and they disagree. Because no artifact references any other, the disagreement is invisible until an action falls into the difference. Note the direction of the failure: the *weakest* representation determines the actual guarantee, while the *strongest* determines what people say the guarantee is. Chapter 8 treats the structural cure — deriving representations from a single source and comparing them as canonical sets rather than as text — and shows why weakening must be made loud rather than merely discouraged.
 
 ### Configuration drift
 
