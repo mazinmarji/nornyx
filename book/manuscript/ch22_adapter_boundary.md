@@ -16,7 +16,7 @@ title: "Designing an Adapter Boundary"
 > - Explain why exactly-once execution is local to one wrapped call and not a distributed transaction guarantee.
 > - Justify injecting the authorizer, context, and recorder as a defence against Chapter 19's split-brain hazard, and version pinning as a governance decision rather than a packaging preference.
 
-> **Prerequisites.** Chapter 10 (policy decision point and policy enforcement point separation; cooperative versus independent enforcement), Chapter 11 (evidence and its producers), Chapter 13 (assurance tiers), Chapter 14 (coverage inventories, the three coverage states, and bypass), Chapter 16 (the status badges used from here on), and Chapter 19 (the authorization interface, the assured construction path, and the split-brain hazard). This chapter builds directly on all six and re-teaches none of them.
+> **Prerequisites.** Chapter 10 (decision/enforcement separation; cooperative versus independent enforcement), Chapter 11 (evidence and producers), Chapter 13 (assurance tiers), Chapter 14 (coverage inventories and bypass), Chapter 16 (status badges), and Chapter 19 (the authorization interface, the assured construction path, and the split-brain hazard). This chapter builds on all six and re-teaches none.
 
 ## 22.1 One request model against many execution surfaces
 
@@ -34,13 +34,13 @@ The precision matters more than the pattern. The pattern is ordinary software en
 
 Once translation is confined, the responsibilities in a single governed call divide cleanly into three, and most defective integrations are a case of one owner taking on another's job.
 
-The **adapter owns mapping and interception**: being on the path, so the wrapped method is actually called by the framework's own dispatch; the declarative mapping from a named surface to a governance identity and capability; the translation of framework-public metadata — an agent's role string, a node key, a task identifier — into request and evidence fields; and failing closed when its own configuration is incomplete.
+The **adapter owns mapping and interception**: being on the path, so the framework's own dispatch calls the wrapped method; the declarative mapping from a named surface to a governance identity and capability; the translation of framework-public metadata — a role string, a node key, a task identifier — into request and evidence fields; and failing closed when its own configuration is incomplete.
 
 The **core owns governance semantics and the decision**: what a capability means, when a delegation is valid, whether a zone crossing needs approval, which decision code applies, and what event intents a decision carries. The adapter consumes a `Decision` and never constructs, modifies, caches, or second-guesses one.
 
-The **runtime owns execution**. The framework schedules, retries, and parallelizes; the business callable produces the effect. Neither the adapter nor the core executes anything — the adapter calls a callable the integrator supplied, and the core never sees it.
+The **runtime owns execution**: the framework schedules, retries, and parallelizes, and the business callable produces the effect. Neither the adapter nor the core executes anything — the adapter calls a callable the integrator supplied, and the core never sees it.
 
-**Evidence records the bounded interaction** and nothing wider: what was requested, what was decided, and — separately, afterwards — what the adapter observed. It does not say that the work was correct, that the actor was authenticated, or that the record is true. Chapter 20 develops the resulting proof boundary.
+**Evidence records the bounded interaction** and nothing wider: what was requested, what was decided, and — separately, afterwards — what the adapter observed. It does not say the work was correct, the actor authenticated, or the record true. Chapter 20 develops the resulting proof boundary.
 
 Figure 22.1 draws the split.
 
@@ -84,7 +84,7 @@ Table 22.1 states the same split as a set of misassignment failures — the form
 | Executing the work | Runtime | The adapter becomes an execution engine and inherits every declared non-goal |
 | Asserting that an event is true | Nobody | Evidence is presented as runtime proof; Tier 2 is written as Tier 3 |
 
-**Table 22.1 — Ownership, and what each misassignment costs.** The rightmost column is why the split is worth stating explicitly: each failure is plausible, locally reasonable, and produces a system that still works while making a claim that no longer holds. The last row has no correct owner at all, which is what Chapter 13's tier model exists to keep visible.
+**Table 22.1 — Ownership, and what each misassignment costs.** Each failure is plausible, locally reasonable, and produces a system that still works while making a claim that no longer holds. The last row has no correct owner at all — which is what Chapter 13's tier model exists to keep visible.
 
 ## 22.3 Surface binding and request normalization
 
@@ -165,7 +165,7 @@ def enforce(
     return action()
 ```
 
-**Listing 22.2 — The single enforcement boundary.** Verbatim from `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/enforcement.py:28-65`, with the docstring body elided. Six executable lines carry the ordering guarantee. The module docstring at lines 1-9 names it as the one place a wrapped action is ever invoked, and states the fail-closed consequence: an unexpected error from `authorizer.evaluate` or `recorder.record_decision` "propagates before `action` is reached."
+**Listing 22.2 — The single enforcement boundary.** Verbatim from `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/enforcement.py:28-65`, docstring body elided. Six executable lines carry the ordering guarantee. The module docstring (lines 1-9) names it as the one place a wrapped action is ever invoked, and states the fail-closed consequence: an unexpected error from `authorizer.evaluate` or `recorder.record_decision` "propagates before `action` is reached."
 
 Read the six lines as a proof sketch. Evaluation precedes recording textually, so no decision can be recorded that was not made. Recording precedes the branch, so deny and allow produce identical evidence up to the moment they diverge — a denial is as well recorded as an approval, which is what makes denial counts trustworthy. The branch raises rather than returning a sentinel, so a caller cannot forget to check, and the error carries the core `Decision` unmodified. And `action()` appears exactly once, on the final line, after every check.
 
@@ -259,7 +259,7 @@ _check_crewai_version(_installed_crewai_version())
 
 **Listing 22.3 — A version pin that executes.** Verbatim from `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/crewai_adapter.py:55,89-105`, with the tail of the message elided. The final line runs at module import. The companion helper `_installed_crewai_version` (lines 66-86) treats missing or malformed distribution metadata as an unsupported configuration rather than assuming compatibility, so three states are reachable: framework absent (`MissingOptionalDependencyError`, naming the install command), framework present at any other version or unreadable (`AdapterConfigurationError`), and the pinned version (imports normally).
 
-Why is this governance rather than packaging? Because <span class="ix" data-ix="coverage!and version pinning">coverage is a claim about a specific build</span>. "The synchronous tool path is wrapped" states which extension points exist in one framework release and which of them the adapter demonstrably occupies. A permissive range asserts the same about builds nobody has tested — including future builds that add a dispatch path the adapter does not wrap, which is Chapter 14's framework-adapter drift arriving with no code change on the governed side. Enforcing the pin at import converts a silent coverage reduction into a loud startup failure.
+Why is this governance rather than packaging? Because <span class="ix" data-ix="coverage!and version pinning">coverage is a claim about a specific build</span>. "The synchronous tool path is wrapped" states which extension points exist in one framework release and which the adapter demonstrably occupies. A permissive range asserts the same about builds nobody has tested — including future builds that add a dispatch path the adapter does not wrap, Chapter 14's framework-adapter drift arriving with no code change on the governed side. Enforcing the pin at import converts a silent coverage reduction into a loud startup failure.
 
 The cost should be stated rather than admired. An exact pin makes the adapter unusable with every other release of its framework, including patch releases that fix security defects, and upgrading requires new test evidence first. The package accepts that friction on the stated ground that the pins "name the only version of each framework this package has been tested against." A team for whom the friction is unacceptable has a legitimate position — but its honest form is "we accept coverage claims against untested framework builds," not "we widened the range."
 
@@ -295,28 +295,28 @@ Finally, an adapter's refusals are as much part of its specification as its capa
 
 > **Case study — Gateway.** Northstar's Engineering Platform ends the afternoon with the artefact the opening scenario demanded: a <span class="ix" data-ix="wrapper evaluation matrix">wrapper evaluation matrix</span> with one row per candidate interception point across both frameworks and columns drawn from this chapter — *public hook or internal?*, *synchronous or asynchronous?*, *what identity does the framework present?*, *what happens when the wrapper raises?*, *does each retry re-enter the wrapper?*, and *if we do not wrap this, what reaches the effect?* Filling in the last column changes the meeting. Two rows the team had assumed were coverage gaps turn out to be surfaces where the framework raises rather than executing — uncovered, but loud. One row they had not considered at all, the underlying business callable still importable by any code in the process, has no wrapper available on any dimension and becomes Chapter 14's declared bypass control. The matrix does not decide the architecture; it converts "we will write an adapter for each framework" into a reviewable list of what each adapter will and will not be on the path of — the only form in which the claim registered in Chapter 16 can later be checked. Chapters 23 and 24 fill it in per framework; Chapter 25 turns it into a conformance obligation.
 
-> **Assurance boundary.** Chapter 3's questions applied to the adapter boundary as a design, before any framework is named. *Guaranteed:* for a surface an adapter declares wrapped, every dispatch through it produces exactly one evaluation whose decision is recorded before any effect, and no effect on any outcome other than allow. *Enforcing component:* the adapter, cooperatively, in the agent's own process — on the path only where the integrator put it. *Evidence:* a decision event pair and a post-action observation, bound to a contract revision and a lock digest. *Assumptions:* the authorizer was constructed through the assured path, the process holds exactly one, and the framework is the pinned build. *Bypass:* call the underlying callable, use an undeclared surface, or do not wrap a surface at all. *On failure:* evaluation, recording, and hook defects propagate before the action; a framework version outside the pin prevents import. *Tier:* 2, cooperative, declared surfaces only. *Unproven:* that the wrapped surface is the only route to the effect, that the acting identity is who the framework says it is, and that any recorded event describes something that happened.
+> **Assurance boundary.** Chapter 3's questions applied to the adapter boundary as a design. *Guaranteed:* for a declared wrapped surface, every dispatch produces exactly one evaluation whose decision is recorded before any effect, and no effect on any outcome other than allow. *Enforcing component:* the adapter, cooperatively, in the agent's own process — on the path only where the integrator put it. *Evidence:* a decision event pair and a post-action observation, bound to a contract revision and a lock digest. *Assumptions:* the authorizer came from the assured path, the process holds exactly one, and the framework is the pinned build. *Bypass:* call the underlying callable, use an undeclared surface, or do not wrap a surface at all. *On failure:* evaluation, recording, and hook defects propagate before the action; an unpinned framework version prevents import. *Tier:* 2, cooperative, declared surfaces only. *Unproven:* that the wrapped surface is the only route to the effect, that the acting identity is who the framework says, and that any recorded event describes something that happened.
 
 ## Summary
 
 An adapter exists because frameworks expose heterogeneous execution surfaces while governance needs one stable request model, and its value is a function of how tightly its translation is constrained. Responsibilities divide three ways — the adapter owns mapping and interception, the core owns semantics and the decision, the runtime owns execution — with evidence recording the bounded interaction rather than vouching for it. The mapping is a closed declarative binding built from static configuration, never from caller-controlled arguments. The protected execution sequence is a set of ordering obligations: evaluate once, record before acting, act once and only on allow, record the outcome after the action returns, record failure when it raises, and fail closed on any internal error; the shared routine discharges the first three in six lines and delegates the observation obligations to each adapter — a real asymmetry between the two supported adapters. Exactly-once is local to one call in one process, not a distributed transaction guarantee. Injecting an already-constructed authorizer, context, and recorder keeps a deployment to one interpretation of its contract; version pinning enforced at import keeps a coverage claim attached to a build that was actually tested.
 
 - Adapters convert reachability into a request; they must invent no part of that request.
-- Three failure kinds — configuration error, identity-resolution failure, policy denial — mean three different things and must be counted separately.
+- Configuration error, identity-resolution failure, and policy denial mean three different things and must be counted separately.
 - The evaluate → record → execute ordering is versioned interface, not implementation detail: changing it is classified breaking.
-- Exactly-once is a property of a wrapper, not of the world; framework retries are new passes and remote effects are not compensated.
-- No file input or output and no contract re-reading is what makes a second interpretation structurally impossible.
-- Exact framework pins enforced at import trade usability for a claim that stays attached to tested code, and the trade should be stated.
+- Exactly-once is a property of a wrapper, not of the world; framework retries are new passes.
+- No file input or output and no contract re-reading make a second interpretation structurally impossible.
+- Exact framework pins enforced at import trade usability for a claim that stays attached to tested code.
 - An adapter's refusals — to decide, to widen, to re-interpret, to attest, to imply coverage — are part of its specification.
 
 ## Review questions
 
-1. A colleague proposes reading the capability reference from a field in the tool's input schema, so that one governed tool can serve several capabilities. Using Section 22.3, state the property this breaks and describe the concrete attack it enables in a system whose planner is exposed to untrusted retrieved content.
-2. `enforce` discharges three of the six obligations in Section 22.4 and delegates two of the remaining three. Identify which, explain the stated reason for the delegation, and say what a reviewer must check per adapter as a result.
-3. Explain precisely what "exactly once" does and does not guarantee for an action that issues a non-idempotent remote payment. Name two distinct scenarios in which the effect occurs but the evidence stream does not record its completion.
-4. The adapter package performs no file input or output. Give two conveniences this costs the integrator, and explain why the architecture prefers those costs to the alternative.
-5. An exact framework pin is enforced at import. Contrast the failure mode of a pinned adapter running against an unlisted framework version with the failure mode of a permissively ranged one, and state which failure an auditor would rather find.
-6. Table 22.2 offers per-callable and per-agent wrapping granularity. For a workflow in which one agent uses eight tools of widely differing risk, argue for one choice and state precisely what the other would make unprovable.
+1. A colleague proposes reading the capability reference from a field in the tool's input schema, so one governed tool can serve several capabilities. State the property this breaks and the concrete attack it enables when the planner is exposed to untrusted retrieved content.
+2. `enforce` discharges three of Section 22.4's six obligations and delegates two of the rest. Identify which, explain the stated reason for the delegation, and say what a reviewer must check per adapter as a result.
+3. Explain what "exactly once" does and does not guarantee for an action issuing a non-idempotent remote payment. Name two scenarios in which the effect occurs but the stream does not record its completion.
+4. The adapter package performs no file input or output. Give two conveniences this costs the integrator, and explain why the architecture prefers those costs.
+5. Contrast the failure mode of a pinned adapter against an unlisted framework version with that of a permissively ranged one, and state which failure an auditor would rather find.
+6. For a workflow in which one agent uses eight tools of widely differing risk, argue for per-callable or per-agent wrapping granularity, and state precisely what the other choice would make unprovable.
 
 ## Exercises
 
@@ -326,8 +326,8 @@ An adapter exists because frameworks expose heterogeneous execution surfaces whi
 
 ## Further reading
 
-- [@parnas-criteria] — the module-decomposition criterion behind Section 22.2; the argument that boundaries should hide what is most likely to change is precisely why framework code belongs in exactly one place.
-- [@rfc2904] — the authorization framework that gives the decision/enforcement split its standard vocabulary; useful for placing an in-process adapter among push, pull, and agent sequences.
-- [@schneider-enforceable] — establishes which policies a mechanism can enforce by observing execution; read as the formal statement of why an adapter's guarantee stops where its interception does.
-- [@crewai-docs; @langgraph-docs] — the two frameworks whose surfaces Chapters 23 and 24 examine; skim each one's extension-point documentation before those chapters and note how much of the dispatch path it describes.
-- [@nornyx-repo] — `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/` is under a thousand lines in total; reading `enforcement.py`, `binding.py`, and `coverage.py` end to end takes fifteen minutes and is the most efficient way to check every claim in this chapter.
+- [@parnas-criteria] — the module-decomposition criterion behind Section 22.2; boundaries hiding what is most likely to change is why framework code belongs in exactly one place.
+- [@rfc2904] — the authorization framework giving the decision/enforcement split its standard vocabulary; places an in-process adapter among push, pull, and agent sequences.
+- [@schneider-enforceable] — which policies a mechanism can enforce by observing execution; the formal statement of why an adapter's guarantee stops where its interception does.
+- [@crewai-docs; @langgraph-docs] — the frameworks Chapters 23 and 24 examine; skim each one's extension-point documentation and note how much of the dispatch path it describes.
+- [@nornyx-repo] — the adapter package source is under a thousand lines; reading `enforcement.py`, `binding.py`, and `coverage.py` end to end is the fastest way to check every claim in this chapter.
