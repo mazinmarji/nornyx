@@ -57,10 +57,11 @@ All are supported by fact pack 03 with paths; I did not open the underlying file
 2. **The LangGraph adapter's five surfaces, including `graph_topology` as the sole `unwrapped`
    entry** — fact pack 03 §5.3, citing `langgraph.py:82-125`. This is the load-bearing example for
    the three-state argument in Section 14.2, so I flag that it is fact-pack-sourced.
-3. **`test_async_arun_fails_closed_and_records_nothing`, `test_coverage_never_claims_unnamed_
-   surfaces`, `test_coverage_inventory_declares_only_tool_invocation_wrapped`** — fact pack 03
-   §§2.2, 4. Test names are copied exactly from the fact pack; only the first is named in the
-   chapter body.
+3. **`test_async_arun_fails_closed_and_records_nothing`** and
+   **`test_coverage_inventory_declares_only_tool_invocation_wrapped`** — fact pack 03 §2.2. Test
+   names are copied exactly from the fact pack; only the first is named in the chapter body.
+   (`test_coverage_never_claims_unnamed_surfaces` was verified directly in
+   `adapters/nornyx-agentic-adapters/tests/test_coverage.py` and is referenced in Chapter 34.)
 4. **Import-time framework pin enforcement** (wrong version → configuration error) — fact pack 03
    §1.2, citing `crewai_adapter.py:66-105` and `langgraph.py:45-69`. I wrote "raises a configuration
    error" rather than naming `AdapterConfigurationError`, since I had not read the raise site.

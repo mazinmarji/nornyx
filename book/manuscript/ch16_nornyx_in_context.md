@@ -145,6 +145,31 @@ Nornyx check passed
 
 A governance tool's <span class="ix" data-ix="non-goal">non-goals</span> are more load-bearing than its features, because they are where a reader's assumptions get corrected before those assumptions become claims in a risk assessment. Nornyx states its non-goals in several places; the consolidated positioning document lists them as a flat set. Nornyx is not: "a full autonomous runtime; a general-purpose programming language; a LangGraph, CrewAI, or LangChain replacement; a production execution engine; a live MCP/A2A connector runtime; automatic approval or self-modification; regulated/enterprise GOAL-100 promotion." Its repository metadata adds the operational boundaries: no arbitrary shell execution by default, no live model calls in the v0.1 scaffold, no production deployment, no credential storage, no autonomous self-modification.
 
+Listing 16.2 collects the primary statements verbatim, so that a reader can see how the boundary is phrased in the sources rather than in this book's paraphrase.
+
+```text
+# docs/48_NORNYX_POSITIONING.md
+Nornyx is not:
+- a full autonomous runtime;
+- a general-purpose programming language;
+- a LangGraph, CrewAI, or LangChain replacement;
+- a production execution engine;
+- a live MCP/A2A connector runtime;
+- automatic approval or self-modification;
+- regulated/enterprise GOAL-100 promotion.
+
+# manifest.json  ("safety_boundaries")
+No arbitrary shell execution by default; No live LLM calls in v0.1 scaffold;
+No production deployment; No credential storage; No autonomous self-modification.
+
+# schemas/nornyx_v1_0.schema.json  ("x-nornyx-safety-boundary")
+Stable schema metadata only; does not publish packages, deploy software, enable
+live connectors, execute graph edges, call models, grant automatic approvals, or
+unlock GOAL-100.
+```
+
+**Listing 16.2 — Declared non-goals, quoted from three places in the repository.** Verbatim from `docs/48_NORNYX_POSITIONING.md`, `manifest.json`, and the metadata of `schemas/nornyx_v1_0.schema.json`. The third source is the most interesting: a *schema* that declares its own safety boundary is asserting the limit at the level that machines read, not only the level that humans read.
+
 Four of these deserve unpacking, because each one closes a door that readers coming from adjacent tools expect to be open.
 
 *Not a runtime.* Nothing in Nornyx executes the thing being governed. Commands whose names contain "runtime," "harness," or "connector" produce plans and reports, and the architecture documentation says so explicitly: those names exist "for historical reasons, but they do not turn Nornyx into an autonomous execution engine." When Chapter 17 runs `nornyx policy-check`, the resulting report embeds a safety block asserting that no tools were executed, no connectors were enabled, no models were called, and no agents were run.

@@ -31,7 +31,7 @@ Making <span class="ix" data-ix="execution identity">execution identity</span> a
 
 ## 20.2 One schema identifier, three envelope modes
 
-The <span class="ix" data-ix="runtime-events schema">runtime-events format</span> has a single schema identifier, `nornyx.agentic_runtime_events.v1`, and three <span class="ix" data-ix="envelope mode">envelope modes</span> underneath it. The top level of the schema document is a choice among exactly three definitions. **[implemented]**
+The <span class="ix" data-ix="runtime-events schema">runtime-events format</span> has a single schema identifier, `nornyx.agentic_runtime_events.v1`, and three <span class="ix" data-ix="envelope mode">envelope modes</span> underneath it. The top level of the schema document is a choice among exactly three definitions, summarized in Table 20.1. **[implemented]**
 
 | Mode | `schema_version` | `occurrence_mode` | Per-event `occurrence` |
 |---|---|---|---|
@@ -141,7 +141,7 @@ recorder.record_occurrence_observation(
 
 **Listing 20.1 — Recording two occurrences and a retry.** Run against `examples/agentic_network_support/support_network.nyx` with a lock built by `nornyx agentic-network lock`; `MISSION` is `"GOAL-SUPPORT-001"`. Note that the decision is evaluated afresh for every attempt: allowances are attempt-scoped, so a recorder never carries one attempt's authorization into the next.
 
-The resulting stream validates, and its shape is the whole lesson.
+The resulting stream validates, and its shape, in Listing 20.2, is the whole lesson.
 
 ```text
 status        : pass

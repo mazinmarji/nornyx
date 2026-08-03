@@ -76,8 +76,7 @@ Two contracts that exist only to demonstrate one mechanism. The first holds the 
 exactly one place; the second references it rather than copying it.
 
 ```yaml
-# org_policies.nyx
-policies:
+policies:            # org_policies.nyx
   - name: SafeDeliveryPolicy
     rules:
       - deny secrets_to_llm
@@ -88,8 +87,7 @@ policies:
 ```
 
 ```yaml
-# governed_service.nyx
-policies:
+policies:            # governed_service.nyx
   - name: SafeDeliveryPolicy
     ref: org_policies.nyx#SafeDeliveryPolicy
 ```

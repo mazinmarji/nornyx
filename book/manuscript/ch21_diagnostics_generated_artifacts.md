@@ -23,9 +23,9 @@ title: "Diagnostics and Generated Artifacts"
 
 A <span class="ix" data-ix="generated artifact">generated artifact</span> is a projection of a source into a form some consumer already knows how to read. The contract is the governed source; `AGENTS.md` is what a coding agent reads; `policy.yaml` is what a harness reads; a capability matrix is what a reviewer reads. Projection is valuable precisely because the consumers are heterogeneous and were not designed for the source. It is also where authority quietly leaks, because every one of those consumers reads the *projection*, and the projection is a file an engineer can edit.
 
-The distinction the system must maintain is between authority and readership. The contract holds authority: it is what review approves, what the lock binds, and what a claim refers to. The generated files hold readership: they are what runs. Where those two diverge, the running system is governed by something nobody approved. The opening scenario is not an exotic attack; it is the most natural thing in the world for an engineer to do at five o'clock on a Friday, and a governance design that relies on nobody doing it has not designed anything.
+The distinction the system must maintain is between <span class="ix" data-ix="authority versus readership">authority and readership</span>. The contract holds authority: it is what review approves, what the lock binds, and what a claim refers to. The generated files hold readership: they are what runs. Where those two diverge, the running system is governed by something nobody approved. The opening scenario is not an exotic attack; it is the most natural thing in the world for an engineer to do at five o'clock on a Friday, and a governance design that relies on nobody doing it has not designed anything.
 
-Three mechanisms, applied together, make the distinction hold. **Labelling** puts the fact in the artifact: the generated `AGENTS.md` opens with the line "This file is generated. Edit the `.nyx` source instead." **[implemented]** Labelling is weak on its own — it informs the conscientious and is invisible to a search-and-replace — but it is cheap and it removes the excuse. **Determinism** makes the projection a function, so that "did anyone edit this?" becomes a computation rather than an investigation (Section 21.3). **Gating** makes the computation consequential by running it where it can stop a merge (Section 21.5). Remove any one and the other two degrade: determinism without a gate is a property nobody checks; a gate without determinism is a random alarm that teams learn to override; labelling without either is a comment.
+Three mechanisms, applied together, make the distinction hold. **<span class="ix" data-ix="generated-file labelling">Labelling</span>** puts the fact in the artifact: the generated `AGENTS.md` opens with the line "This file is generated. Edit the `.nyx` source instead." **[implemented]** Labelling is weak on its own — it informs the conscientious and is invisible to a search-and-replace — but it is cheap and it removes the excuse. **Determinism** makes the projection a function, so that "did anyone edit this?" becomes a computation rather than an investigation (Section 21.3). **Gating** makes the computation consequential by running it where it can stop a merge (Section 21.5). Remove any one and the other two degrade: determinism without a gate is a property nobody checks; a gate without determinism is a random alarm that teams learn to override; labelling without either is a comment.
 
 Figure 21.1 puts the two roles side by side.
 
@@ -45,7 +45,7 @@ Figure 21.1 puts the two roles side by side.
 
 ## 21.2 What is actually generated
 
-Two generators exist in the repository, and their output sets are worth stating exactly, because a published summary that omits artifacts is a governance hazard in its own right.
+Two <span class="ix" data-ix="generator!output set">generators</span> exist in the repository, and their output sets are worth stating exactly, because a published summary that omits artifacts is a governance hazard in its own right.
 
 The core generator, `nornyx generate`, writes from one contract: **[implemented]**
 
@@ -54,7 +54,7 @@ The core generator, `nornyx generate`, writes from one contract: **[implemented]
 3. six block projections — `context.yaml`, `harness.yaml`, `policy.yaml`, `evals.yaml`, `trace.yaml`, and `goals.yaml`;
 4. when the contract declares goals, one `task_packets/<GOAL-ID>.md` per goal plus a `goal_ledger.md`;
 5. `evidence_contract.md`;
-6. `nornyx_generation_manifest.json` under schema `nornyx.generation_manifest.v0.1`, listing sorted source blocks, sorted artifact paths, and a SHA-256 for every artifact.
+6. <span class="ix" data-ix="generation manifest">`nornyx_generation_manifest.json`</span> under schema `nornyx.generation_manifest.v0.1`, listing sorted source blocks, sorted artifact paths, and a SHA-256 for every artifact.
 
 The project's own README summarizes this set as "`AGENTS.md` · `skills/` · `harness.yaml` · `policy.yaml` · `evals.yaml` · `context.yaml` · `evidence_contract.md`" — seven entries. The generator writes those seven and also `trace.yaml`, `goals.yaml`, the task packets, the goal ledger, and the manifest. On the delivery-control-plane example the manifest reports eleven artifacts; on the goals-heavy roadmap example it reports twenty-two. The gap between seven and twenty-two is not a documentation nit. A reader who takes the README as the artifact inventory and writes a gate over those seven files has built the opening scenario's gate: green while `trace.yaml` or a task packet drifts. This is why Section 21.5's user-facing gate reads its file list from the *manifest* rather than from any human's list.
 
@@ -66,7 +66,7 @@ Two of those ten deserve a note that Chapter 27 develops. The `a2a_declaration.j
 
 ## 21.3 Determinism, and the scan that keeps declarations inert
 
-Every gate in this chapter rests on generation being a *function*: same input, same bytes, on any machine, at any time. Three mechanisms deliver it.
+Every gate in this chapter rests on <span class="ix" data-ix="determinism!of generation">generation being a function</span>: same input, same bytes, on any machine, at any time. Three mechanisms deliver it.
 
 Newlines are forced to line-feed on every write, so a Windows checkout and a Linux runner produce identical files. Ordering is imposed rather than inherited: artifact path lists and hash lists are sorted, and the agentic generator sorts keyed records within each collection and renders canonical JSON — sorted keys, compact separators, no ASCII escaping — before hashing. And nothing carries a timestamp; the agentic declarations are described in the tutorial as "canonical, timestamp-free JSON declarations," and rerunning generation "produces byte-identical output." **[implemented]**
 
@@ -107,7 +107,7 @@ The design gains three things over numbers. A code is self-describing in a log, 
 
 What makes codes an *interface* rather than a convention is that consumers may depend on specific ones. A team that has a bounded, reviewed exception can write a pipeline step that tolerates one named condition and nothing else — "fail on any diagnostic except `PACK_NOT_RESOLVED`, which we accept for this repository until the org pack lands" — and that step remains correct when new diagnostics are added, because a new code is not the tolerated one. That property only holds if codes are stable, which is why the interface documentation commits to it: public behavior "will not be removed without a changelog deprecation notice lasting at least two package minor releases and six months."
 
-The second half of the interface is exit semantics, and they are deliberately coarse. Exit `0` means valid or nothing to check; exit `1` means a governance diagnostic, an invalid pack, invalid evidence, or an unresolved identity; exit `2` is reserved for the classes a caller must never confuse with a policy result — a contract that would not parse, a malformed `--as-of`, or a lock path, encoding, schema, set, hash, or semantic failure. **[implemented]** Three buckets are enough for a pipeline to distinguish "the governance said no" from "the governance could not be evaluated," and separating those two is the whole point: an unparseable contract that exited `1` would be indistinguishable from a policy denial, and a pipeline that treated both as "blocked" would give a broken toolchain the appearance of a working control.
+The second half of the interface is <span class="ix" data-ix="exit code contract">exit semantics</span>, and they are deliberately coarse. Exit `0` means valid or nothing to check; exit `1` means a governance diagnostic, an invalid pack, invalid evidence, or an unresolved identity; exit `2` is reserved for the classes a caller must never confuse with a policy result — a contract that would not parse, a malformed `--as-of`, or a lock path, encoding, schema, set, hash, or semantic failure. **[implemented]** Three buckets are enough for a pipeline to distinguish "the governance said no" from "the governance could not be evaluated," and separating those two is the whole point: an unparseable contract that exited `1` would be indistinguishable from a policy denial, and a pipeline that treated both as "blocked" would give a broken toolchain the appearance of a working control.
 
 A malformed `--as-of` exiting `2` rather than falling back to the system clock is the same principle at the level of a single flag. Silent fallback would produce a result — a plausible, wrong, unreproducible one — and Chapter 19's temporal-explicitness argument says a governance tool must never manufacture a temporal input the caller failed to supply.
 
@@ -115,15 +115,15 @@ A malformed `--as-of` exiting `2` rather than falling back to the system clock i
 
 <span class="ix" data-ix="drift!gate">Drift</span>, in the sense Chapter 2 defined, is the divergence between what a system's controls say and what they do. For generated artifacts it has an exact form: the committed files no longer equal what the contract produces. The repository implements two gates against it, with different audiences and different scopes, and confusing them is a common mistake.
 
-The **development baseline gate** protects the *generator*. It regenerates two fixed example contracts into a temporary directory and compares the resulting generation manifests against committed baseline files under `tests/fixtures/generated_drift/`, using the schema `nornyx.generated_drift_baseline.v0.1`; an `--update` path re-baselines deliberately. **[implemented]** Its question is "did a change to Nornyx alter what Nornyx emits?" — a regression check on the tool, run by the tool's own maintainers, with the baselines under review like any other fixture.
+The <span class="ix" data-ix="drift!development baseline gate">**development baseline gate**</span> protects the *generator*. It regenerates two fixed example contracts into a temporary directory and compares the resulting generation manifests against committed baseline files under `tests/fixtures/generated_drift/`, using the schema `nornyx.generated_drift_baseline.v0.1`; an `--update` path re-baselines deliberately. **[implemented]** Its question is "did a change to Nornyx alter what Nornyx emits?" — a regression check on the tool, run by the tool's own maintainers, with the baselines under review like any other fixture.
 
-The **user-facing full-artifact gate**, `nornyx drift <contract> --out <dir>`, protects the *user's repository*. It regenerates the contract into a throwaway directory and compares **every** artifact by SHA-256, taking the file list from the generation manifest, and reports each as `ok`, `changed`, `missing`, or `stray` under the schema `nornyx.repo_drift_report.v0.1`. Any divergence exits nonzero. **[implemented]**
+The <span class="ix" data-ix="drift!full-artifact gate">**user-facing full-artifact gate**</span>, `nornyx drift <contract> --out <dir>`, protects the *user's repository*. It regenerates the contract into a throwaway directory and compares **every** artifact by SHA-256, taking the file list from the generation manifest, and reports each as `ok`, `changed`, `missing`, or `stray` under the schema `nornyx.repo_drift_report.v0.1`. Any divergence exits nonzero. **[implemented]**
 
 The second gate exists because of a documented failure. Nornyx's own recommended pattern once told users to diff `AGENTS.md` against a fresh copy — and `AGENTS.md` does not render policy rules, so a change to `policy.yaml` passed green. The repository's multi-repository case study records this as a real bug that gave a "false sense of safety." The failure reproduces exactly. Deleting `deny secrets_to_llm` from a generated `policy.yaml` and then diffing `AGENTS.md` against a freshly generated one produces no difference at all: the naive gate stays green while a control has been removed from the file the harness reads.
 
-Figure 21.1 shows what the full gate does instead.
+Figure 21.2 shows what the full gate does instead.
 
-<figure class="nx-fig" id="fig-21-1">
+<figure class="nx-fig" id="fig-21-2">
   <div class="fig-body">
     <div class="flow">
       <div class="node">contract (.nyx)</div>
@@ -144,7 +144,7 @@ Figure 21.1 shows what the full gate does instead.
       <div class="node untrusted">green while policy.yaml drifts</div>
     </div>
   </div>
-  <figcaption><b>Figure 21.1 — The full-artifact drift gate, and the gate it replaced.</b> The upper flow takes its file list from the machine-written manifest, so no human's inventory can omit an artifact. The lower dashed flow is the documented failure: a single-file diff cannot detect drift in files it never reads. The teaching purpose is that a gate's coverage is a property of its *inventory*, not of its diligence.</figcaption>
+  <figcaption><b>Figure 21.2 — The full-artifact drift gate, and the gate it replaced.</b> The upper flow takes its file list from the machine-written manifest, so no human's inventory can omit an artifact. The lower dashed flow is the documented failure: a single-file diff cannot detect drift in files it never reads. The teaching purpose is that a gate's coverage is a property of its *inventory*, not of its diligence.</figcaption>
 </figure>
 
 Listing 21.1 is the whole cycle run against the bundled delivery example: generate, hand-edit, catch, regenerate, pass.
@@ -184,7 +184,7 @@ The transcript makes the chapter's central asymmetry concrete. The gate cannot t
 
 A within-repository gate cannot see a policy that is supposed to be identical across five repositories. The workspace layer addresses precisely that gap, and Chapter 8 introduced it; what belongs here is the mechanism.
 
-`nornyx workspace-check` reads a `nornyx.workspace.yaml` manifest that declares canonical policies once and lists member contracts. For each member it compares the named policy against the canonical rule set — not textually, but as a *normalized set*, with every rule reduced to `deny <token>` or `require <token>` form, so that the shorthand `rules:` list and the explicit `deny:`/`require:` sub-blocks compare equal. **[implemented]** Statuses are per member and per policy: `ok`, `drift` (with sorted `missing` and `extra` lists), `missing` when the member does not declare the policy at all, `contract_missing`, and `synced`. The report schema is `nornyx.workspace_report.v0.1`; exit is `0` for pass or synced, `1` on drift, `2` on a manifest error.
+<span class="ix" data-ix="workspace manifest">`nornyx workspace-check`</span> reads a `nornyx.workspace.yaml` manifest that declares canonical policies once and lists member contracts. For each member it compares the named policy against the canonical rule set — not textually, but as a *normalized set*, with every rule reduced to `deny <token>` or `require <token>` form, so that the shorthand `rules:` list and the explicit `deny:`/`require:` sub-blocks compare equal. **[implemented]** Statuses are per member and per policy: `ok`, `drift` (with sorted `missing` and `extra` lists), `missing` when the member does not declare the policy at all, `contract_missing`, and `synced`. The report schema is `nornyx.workspace_report.v0.1`; exit is `0` for pass or synced, `1` on drift, `2` on a manifest error.
 
 Running it across two member repositories where one has lost a rule produces the diagnosis directly:
 

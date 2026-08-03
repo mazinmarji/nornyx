@@ -34,7 +34,7 @@ The hazard has three distinct failure modes, and separating them matters because
 
 > **Key idea.** The remedy for all three modes is the same and it is not a cache: exactly one component performs interpretation, and every other component receives the *result* through an interface that offers no way to re-derive it. Consumers become readers of an authoritative interpretation rather than interpreters in their own right.
 
-This is Parnas's information-hiding criterion applied to governance [@parnas-criteria]. The interpretive pipeline is the design decision most likely to change and most damaging to duplicate, so it belongs behind one module boundary. It is also the classical authorization architecture: the AAA framework and the XACML model both place a single context handler between the requesters and the policy, precisely so that requesters cannot assemble their own view of the policy context [@rfc2904; @xacml].
+This is Parnas's information-hiding criterion applied to governance [@parnas-criteria]: the interpretive pipeline is the design decision most likely to change and most damaging to duplicate, so it belongs behind one module boundary. It is also the classical authorization architecture — the AAA framework and the XACML model both place a single context handler between requesters and policy, precisely so that requesters cannot assemble their own view of the policy context [@rfc2904; @xacml].
 
 ## 19.2 What the interface must promise, and how it may change
 
@@ -42,7 +42,7 @@ An <span class="ix" data-ix="authorization interface">authorization interface</s
 
 The fourth obligation implies a fifth that authors of governance libraries often discover late: the interface itself is a versioned artifact with a compatibility policy, because adapters and enterprise integrations are compiled against it. Widening it is cheap; narrowing it breaks deployments that had every reason to trust the surface.
 
-Nornyx's agentic <span class="ix" data-ix="service provider interface (SPI)">service provider interface</span> (SPI) — the Python surface exported by the `nornyx.agentic` package — versions independently of the distribution that ships it, and its three published versions illustrate the discipline. **[implemented]**
+Nornyx's agentic <span class="ix" data-ix="service provider interface (SPI)">service provider interface</span> (SPI) — the Python surface exported by the `nornyx.agentic` package — versions independently of the distribution that ships it, and the three published versions in Table 19.1 illustrate the discipline. **[implemented]**
 
 | SPI | Nornyx release | What it added |
 |---|---|---|
@@ -83,9 +83,9 @@ That refusal is the honest half of an assurance claim. Forbidding direct constru
 
 SPI 1.2's `AuthorizerState` answers a question that arises the moment a single authoritative interpretation exists: how does a consumer *read* it without being tempted to rebuild it?
 
-The state object exposes five members. Three are views — the validated `document`, the effective `composition`, and the verified `lock_payload` — and two are the digests the authorizer computed at construction: `contract_digest` and `network_lock_digest`. Two properties make the views safe to hand out.
+The state object exposes five members: three views — the validated `document`, the effective `composition`, and the verified `lock_payload` — and the two digests the authorizer computed at construction, `contract_digest` and `network_lock_digest`. Two properties make the views safe to hand out.
 
-They are <span class="ix" data-ix="detached view">detached</span>: each access returns a new copy in ordinary Python containers, so a consumer receives a plain `dict`/`list` graph it may traverse, serialize, or mutate at will. And the graph the authorizer *retains* is recursively frozen — mappings become read-only, sequences immutable — so the copy is made from a source no one can edit. The consequence, which is the whole point, is that mutating a view cannot reach the authorizer, cannot reach a later view, and cannot change a decision or a digest. Listing 19.1 demonstrates it.
+They are <span class="ix" data-ix="detached view">detached</span>: each access returns a new copy in ordinary Python containers, so a consumer receives a plain `dict`/`list` graph it may traverse, serialize, or mutate at will. And the graph the authorizer *retains* is recursively frozen — mappings read-only, sequences immutable — so the copy is made from a source no one can edit. The consequence is the whole point: mutating a view cannot reach the authorizer, cannot reach a later view, and cannot change a decision or a digest. Listing 19.1 demonstrates it.
 
 ```python
 from nornyx.agentic import CapabilityRequest, EvaluationContext, load_authorizer
@@ -109,7 +109,7 @@ print("decision unchanged :", d.effect.value, d.code.value)
 
 **Listing 19.1 — Mutating a state view cannot change a decision.** Run against the bundled example `examples/agentic_network_support/support_network.nyx` with a lock built by `nornyx agentic-network lock`. The observed output is `state is stable    : True` and `decision unchanged : deny CAPABILITY_DENIED`, and a freshly requested `a.state.document` does not contain the forged capability.
 
-Three details in that output are load-bearing. `a.state is a.state` is `True` because the state is the single construction snapshot, not a fresh computation per access. The decision is unchanged because the engine's indexes were derived from the frozen snapshot at construction, not from the view. And the *next* view is clean, which tells us the copy was made from the frozen source rather than from a shared mutable intermediate.
+Three details there are load-bearing. `a.state is a.state` is `True` because the state is the single construction snapshot, not a fresh computation per access. The decision is unchanged because the engine's indexes were derived from that frozen snapshot, not from the view. And the *next* view is clean, which tells us each copy is made from the frozen source rather than from a shared mutable intermediate.
 
 The interface is also explicit about what state access does *not* do. It "performs no file read, governance composition, lock verification, network access, or framework import," and "changing or deleting the source files after `load_authorizer` returns cannot change the state" (`docs/agentic-network/12_AUTHORIZATION_SPI.md`). **[implemented]** For a consumer this collapses a family of hard questions — is the state fresh? did reading it touch the disk? could a deployment have swapped the file underneath us? — into one easy one: when was the authorizer loaded?
 
@@ -203,7 +203,7 @@ reason   : Identity 'identity.escalation_agent' neither holds nor validly receiv
 
 **Listing 19.3 — The observed output of Listing 19.2.** The denial's reason names the temporal qualifier explicitly — *at `decision_at`* — because the same request could be allowed at a different instant if a delegation were valid then. Note also that the allowed decision's basis says `membership`: the escalation agent holds this capability directly. Had it arrived through a delegation, the basis kind would be `delegation` and the delegation's identifier would be stamped into the `capability_allowed` intent, so the evidence record would name the authority path rather than merely the outcome.
 
-`resolve_identity` in that listing sits deliberately outside the decision surface. <span class="ix" data-ix="identity resolution">Identity resolution</span> maps a framework's own key — a CrewAI agent role, a LangGraph node key — to a declared identity, and it raises `IdentityResolutionError` with `IDENTITY_UNKNOWN` or `IDENTITY_AMBIGUOUS` rather than returning a decision, because failing to recognize a caller is a configuration error, not a policy judgment. Conflating the two would let a misconfiguration be logged as a denial, and denials are exactly the records an audit reads as evidence that policy worked.
+`resolve_identity` sits deliberately outside the decision surface. <span class="ix" data-ix="identity resolution">Identity resolution</span> maps a framework's own key — a CrewAI agent role, a LangGraph node key — to a declared identity, and raises `IdentityResolutionError` with `IDENTITY_UNKNOWN` or `IDENTITY_AMBIGUOUS` rather than returning a decision, because failing to recognize a caller is a configuration error, not a policy judgment. Conflating the two would let a misconfiguration be logged as a denial — and denials are exactly the records an audit reads as evidence that policy worked.
 
 ## 19.6 The approval engine's ordering
 
@@ -253,7 +253,7 @@ The repository contains a small but unusually clean study in compatibility engin
 
 The older layer here is a `GovernanceKernel` from an earlier reference-integration design, with its own method names (`check_capability`, `require_human_approval`, `record_zone_crossing`, `events_payload`) and its own diagnostic strings. It was rebuilt, at the repository's current head, as "a deprecated <span class="ix" data-ix="compatibility facade">compatibility facade</span> over the supported Nornyx agentic SPI" (`integrations/nornyx_reference_adapters/governance_kernel.py`). **[implemented but unpackaged]** The rebuild is instructive on four counts.
 
-**It has one source of authority.** One `Authorizer` is constructed, and its public `Authorizer.state` "is the only source for every legacy compatibility projection this shim exposes. The shim never reads Authorizer private attributes, never retains caller-supplied contract/composition/lock structures as a second source of truth, and never re-reads, re-composes, re-authorizes, or re-verifies policy after the Authorizer has been constructed." This is Section 19.1's principle stated as an implementation constraint, and it is why SPI 1.2 exists: without a public state accessor the facade's only options were private attribute access or a second copy, and both are split brains.
+**It has one source of authority.** One `Authorizer` is constructed, and its public `Authorizer.state` "is the only source for every legacy compatibility projection this shim exposes. The shim never reads Authorizer private attributes, never retains caller-supplied contract/composition/lock structures as a second source of truth, and never re-reads, re-composes, re-authorizes, or re-verifies policy after the Authorizer has been constructed." That is Section 19.1's principle as an implementation constraint, and it is why SPI 1.2 exists: without a public state accessor the facade's only options were private attribute access or a second copy, and both are split brains.
 
 **Its legacy surfaces are demoted, not preserved.** The old `document`, `composition`, `lock_payload`, and `network` attributes still exist for source compatibility, but they are documented as "**non-authoritative read-only projections**" derived from the authorizer's state on each access, unassignable, and unable to reach the authorizer when mutated. The old *names* survive; the old *authority* does not. That distinction is the whole art of a compatibility facade.
 
@@ -289,7 +289,7 @@ Several components needing one interpretation of governance is the ordinary case
 
 1. Using the repository at the book's snapshot, build a lock for `examples/agentic_network_support/support_network.nyx`, then reproduce Listing 19.2. Now edit one character of the contract without rebuilding the lock and re-run. Record the exception type, the load code, and the message, and explain which of the four load stages produced it.
 2. Write a small consumer that takes an `Authorizer` and answers "which capabilities does identity X hold?" using only `Authorizer.state`. Then write a second version that re-reads the contract file itself. Enumerate the concrete divergences the second version can exhibit that the first cannot, and state which of Section 19.1's three modes each belongs to.
-3. Design a compatibility facade for a legacy interface of your own choosing over a modern engine. Specify: which single object is the source of authority; which legacy names survive and which legacy semantics are demoted to projections; the mapping from modern codes to legacy strings; and the sentence you would put in the facade's documentation about what a consumer may claim.
+3. Design a compatibility facade over a modern engine for a legacy interface of your choosing. Specify: which single object is the source of authority; which legacy names survive and which legacy semantics are demoted to projections; the code mapping; and the sentence you would put in its documentation about what a consumer may claim.
 
 ## Further reading
 
