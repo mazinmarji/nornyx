@@ -62,4 +62,11 @@ None. All keys used exist in `design/05_bibliography.md`.
   seven-field row anatomy (Table 35.1) is my synthesis, not from any standard.
 - Three mapping tables + Table 35.1 = four tables, each with a caveats column, per brief.
 - Word count kept near the upper bound because the brief requires nine standards families
-  plus a worked example; tables carry the breadth so prose can carry the argument.
+  plus a worked example; tables carry the breadth so prose can carry the argument. Raw
+  count (~6.6k) includes four large tables; prose excluding tables/code/figures is ~4.1k,
+  inside the 3,800–5,500 window. Consistent with Ch. 34's accepted raw count (6.1k).
+- The `Case study — Charter` callout: Ch. 35 has no bible-assigned thread; the mapping
+  rebuild is a Risk & Audit (Thread E, org-governance) scene that advances Charter's
+  enterprise-policy arc between its assigned Ch. 32 and Ch. 37 appearances without
+  introducing new canonical artifacts. Flag for the volume editor if strict
+  assigned-chapters-only is enforced; the callout can be relabeled as plain prose.

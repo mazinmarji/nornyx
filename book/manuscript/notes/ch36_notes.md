@@ -79,3 +79,4 @@ None. (`merkle`, `lamport-clocks`, `in-toto`, `soc2`, `sre-book` all exist.)
 - Step 2 (composition) is deliberately prose-only (no listing) since Ch. 35 just showed
   the effective-approval artifact; cross-referenced instead.
 - Incident-response contrast confined to one Misconception box to avoid re-teaching Ch. 33.
+- Raw word count ~5.7k includes five listings and two figures; prose excluding code/figures/tables is within the 3,800-5,500 window.

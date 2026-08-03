@@ -135,7 +135,33 @@ This book's final telecom visit is about adoption itself, because the telecommun
 
 Operators did not adopt the IP Multimedia Subsystem by installing it. The architecture was specified in layers with defined interfaces [@3gpp-ims], but what made multi-operator deployment real was three adoption instruments layered on top of the specification. **<span class="ix" data-ix="interoperability profile">Interoperability profiles</span>** — most famously the industry profile for voice-over-LTE — cut the specification's option space down to a named, testable subset that two operators could both implement and expect to interwork [@gsma-volte]; the profile, not the specification, was the unit of adoption. **<span class="ix" data-ix="conformance regime">Conformance regimes</span>** — accredited test suites, interoperability events, certification against the profile — made "we implement the profile" a checkable claim rather than a press release, which is exactly the move this book makes with conformance suites (Chapter 25) and claim registers. And **<span class="ix" data-ix="staged migration">staged migration</span>** — circuit-switched fallback, dual-stack operation, interworking gateways at the boundary between old and new — meant no operator was ever asked to jump; every stage ran the old and new worlds side by side with an explicit gateway between them, precisely as Table 37.1's ladder keeps ungoverned and governed workflows side by side with the coverage inventory as the declared boundary.
 
-The mapping to governance adoption is direct: the discipline of Parts II–III is the specification; a domain profile plus a module set (Chapter 18) is the interoperability profile — a named, reduced, testable subset that an organization actually deploys; conformance suites and drift gates are the certification regime; and the maturity ladder is staged migration with interworking, not a cutover.
+The mapping to governance adoption is direct, and Figure 37.2 draws it as two parallel pipelines: the discipline of Parts II–III is the specification; a domain profile plus a module set (Chapter 18) is the interoperability profile — a named, reduced, testable subset that an organization actually deploys; conformance suites and drift gates are the certification regime; and the maturity ladder is staged migration with interworking, not a cutover.
+
+<figure class="nx-fig" id="fig-37-2">
+  <div class="fig-body">
+    <div class="flow-col">
+      <div class="flow">
+        <div class="node">Layered specification<br/>(IMS)</div>
+        <div class="arr">→</div>
+        <div class="node authority">Interoperability profile<br/>(VoLTE)</div>
+        <div class="arr">→</div>
+        <div class="node">Conformance regime<br/>test suites · certification</div>
+        <div class="arr">→</div>
+        <div class="node">Staged migration<br/>fallback · interworking gateways</div>
+      </div>
+      <div class="flow">
+        <div class="node">Governance discipline<br/>(Parts II–III)</div>
+        <div class="arr">→</div>
+        <div class="node authority">Domain profile + modules<br/>(a deployable subset)</div>
+        <div class="arr">→</div>
+        <div class="node">Conformance suites<br/>drift gates · claim registers</div>
+        <div class="arr">→</div>
+        <div class="node">Maturity ladder<br/>governed and ungoverned side by side</div>
+      </div>
+    </div>
+  </div>
+  <figcaption><b>Figure 37.2 — The telecom adoption instruments and their governance counterparts.</b> Double borders mark the unit of adoption in each row: operators deployed the profile, not the specification, and organizations deploy a profile-plus-modules subset, not the discipline. The teaching purpose is the fourth column pair — both migrations run old and new side by side with an explicit, declared boundary between them — and the standing limit stated in the text: the top row's endpoints behave deterministically once conformant, and the bottom row's workloads do not.</figcaption>
+</figure>
 
 The analogy stops where it always stops, and one further place that matters specifically here. Telecom signaling is deterministic: an endpoint that implements the profile behaves within it, so conformance testing of the endpoint bounds the behavior of the deployed system. An agent workload is not such an endpoint — its planner is probabilistic, so conformance of the *governance layer* bounds only the decisions and records, never the workload's behavior between decision points; media interworking has no analogue of model inference; and telecom's adoption was propelled by an economic force governance lacks — interconnection revenue made conformance profitable, whereas governance conformance is (today) a cost with unquantified return, a gap Chapter 38 lists among the discipline's open problems. The precedent proves that layered, profile-driven, conformance-tested, staged adoption can carry an entire industry. It does not prove that anyone will pay for it here.
 

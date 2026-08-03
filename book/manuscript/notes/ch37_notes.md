@@ -71,3 +71,4 @@ None.
   the chapter's instruments are honestly labeled a Tier 1-ish cooperative control.
 - Build/buy/platform is decided per Figure 16.2 layer rather than re-drawing a new
   figure; Figure 37.1 is the chapter's platform-responsibility figure per the brief.
+- Raw word count ~5.6k includes the ladder table, one listing, and two figures; prose-only count is within the 3,800-5,500 window.

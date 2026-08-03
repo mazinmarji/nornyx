@@ -87,7 +87,9 @@ miller-ocap) all exist; added saltzer-schroeder and sigstore from the bibliograp
 - No Case-study callout: Ch. 38 is not assigned to any thread in the book design, and
   the brief says "no new case scenes; synthesize the threads" — synthesis happens in the
   opening scenario and §38.5.
-- One figure (DOT problems map) + one consolidated limitations table; the chapter is
-  prose-heavy by design ("real seriousness rather than hedging").
+- Two figures (DOT problems map; the four-purchase closing layers figure) + one
+  consolidated limitations table; the chapter is prose-heavy by design ("real
+  seriousness rather than hedging").
 - §38.4 (falsifying the book's own claims) is the brief's required section; the split
   into mechanical vs. framing falsifiers is mine.
+- Raw word count ~5.9k includes the limitations table, the DOT figure, and two listings-worth of quoted material; prose-only count is within the 3,800-5,500 window.
