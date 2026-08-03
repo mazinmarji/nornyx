@@ -244,9 +244,9 @@ skip. The command opens no external network, loads no credentials, calls no
 external model service or endpoint, and executes no connector; a guarded run
 permits loopback so a framework's local telemetry stack still works.
 
-The framework suites *do* instantiate and drive a scripted, offline, in-process
+The CrewAI suite *does* instantiate and drive a scripted, offline, in-process
 model — CrewAI's native executor needs one, and a scripted one is what makes the
-run deterministic. The report says so plainly rather than claiming no model was
+run deterministic. The LangGraph suite drives none. The report says so plainly rather than claiming no model was
 called: `scripted_in_process_model_called` is observed per run, and
 `external_model_service_called` is a structural constant.
 

@@ -275,6 +275,20 @@ def test_limitations_state_the_tier_2_boundary_verbatim() -> None:
         assert required in limitations, required
 
 
+def test_limitations_never_assert_that_no_model_was_called() -> None:
+    """The kit instantiates a model abstraction and CrewAI's executor calls it,
+    so a bare "no model" claim would be false. Asserted negatively as well as
+    positively: a newly added limitation reading "Conformance calls no model."
+    would satisfy a presence-only check."""
+    import re
+
+    limitations = " ".join(M.LIMITATIONS)
+    assert "no external model service or endpoint" in limitations
+    assert "scripted, offline, in-process model" in limitations
+    assert not re.search(r"no model", limitations), limitations
+    assert not re.search(r"calls no model", limitations), limitations
+
+
 def test_the_kit_makes_no_prohibited_assurance_claim() -> None:
     text = " ".join(M.LIMITATIONS + M.NON_GOALS + (M.ASSURANCE_TIER,)).lower()
     for prohibited in ("tamper-proof", "mandatory enforcement", "complete coverage"):

@@ -55,6 +55,17 @@ from ..model import (  # noqa: E402
 )
 
 SUITE_ID = "langgraph"
+
+
+def scripted_model_calls() -> int:
+    """Always zero: this suite drives no model.
+
+    Declared rather than omitted because the runner requires every framework
+    suite to state it. A suite that drove a model but stayed silent would let
+    the report claim no model was called.
+    """
+    return 0
+
 WRAPPED_SURFACE = "sync_node_invocation"
 _DETAIL_LIMIT = 240
 

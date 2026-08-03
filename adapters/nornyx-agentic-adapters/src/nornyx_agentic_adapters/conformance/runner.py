@@ -101,7 +101,6 @@ def run_conformance(
     # resolution at import time; guarding the import would misreport an
     # ordinary import as an outbound network attempt.
     loaded: list[tuple[str, Any]] = []
-    scripted_model_calls = 0
     for framework in sorted(_FRAMEWORK_SUITES):
         if framework not in selected:
             continue
@@ -141,10 +140,17 @@ def run_conformance(
             executed_frameworks.append(framework)
             guarded.append(framework)
             # Observed, not assumed: only a suite that actually drives a
-            # scripted in-process model reports any calls.
+            # scripted in-process model reports any calls. Required rather than
+            # optional, so a future suite that drives a model but forgets the
+            # export fails loudly instead of reporting `false` — the report
+            # would otherwise carry a false claim with nothing to catch it.
             counter = getattr(module, "scripted_model_calls", None)
-            if callable(counter):
-                scripted_model_calls += counter()
+            if not callable(counter):
+                raise ValueError(
+                    f"the {framework!r} suite must expose scripted_model_calls() "
+                    "so the report can observe whether it drove a model"
+                )
+            scripted_model_calls += counter()
 
     suites.sort(key=lambda suite: suite.suite_id)
     _validate_case_ids_unique(suites)

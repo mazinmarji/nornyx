@@ -79,8 +79,8 @@ The conformance kit is bound by ADR-0040 Tier 2 and states so in every report:
   as a path that was "prevented".
 - Conformance never implies whole-application coverage.
 - Conformance enables no live connector, no external network, no external
-  model service or endpoint, and no external execution. The framework suites
-  do drive a scripted, offline, in-process model — a model abstraction really
+  model service or endpoint, and no external execution. The CrewAI suite does
+  drive a scripted, offline, in-process model (the LangGraph suite drives none) — a model abstraction really
   is instantiated and called, and the report says so rather than claiming no
   model was called. A guarded run permits loopback; see the accepted
   limitations below.
@@ -122,8 +122,8 @@ Entry point: `python -m nornyx_agentic_adapters.conformance`. Exit codes are
 `0` (every required case conformed), `1` (observed nonconformance), `2`
 (invalid configuration or usage). The command opens no external network, loads
 no credentials, calls no external model service or endpoint, and executes no
-connector; the framework suites drive a scripted, offline, in-process model,
-and a guarded run permits loopback (see the accepted limitations).
+connector; the CrewAI suite drives a scripted, offline, in-process model, and
+a guarded run permits loopback (see the accepted limitations).
 
 A run fails when a case fails, when a required framework is unavailable, when
 the selection produced no case at all — it verified nothing — or when the run's

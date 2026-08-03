@@ -306,6 +306,29 @@ def test_framework_suite_reports_are_byte_identical_across_runs(framework_suite)
     assert first == second
 
 
+def test_the_scripted_model_counter_tracks_real_calls(crewai_suite) -> None:
+    """Falsifiable in BOTH directions.
+
+    The report-level test contrasts a crewai run with a base run that never
+    loads the crewai module, so it distinguishes "suite selected" from "not
+    selected" — a counter stuck at a constant true would survive it. This one
+    drives the scripted model directly and watches the counter move from zero.
+    """
+    from nornyx_agentic_adapters.conformance.suites import crewai_suite as suite
+
+    before = suite._SCRIPTED_MODEL_CALLS
+    try:
+        suite._SCRIPTED_MODEL_CALLS = 0
+        assert suite.scripted_model_calls() == 0
+        model = suite._DeterministicLLM("governed_reader", "done")
+        model.call([])
+        assert suite.scripted_model_calls() == 1
+        model.call([])
+        assert suite.scripted_model_calls() == 2
+    finally:
+        suite._SCRIPTED_MODEL_CALLS = before
+
+
 def test_report_distinguishes_the_scripted_model_from_an_external_one(
     crewai_suite,
 ) -> None:
@@ -330,13 +353,6 @@ def test_report_distinguishes_the_scripted_model_from_an_external_one(
 
     base = run_conformance(frameworks=["distribution", "enforcement_boundary"])
     assert base.as_dict()["safety"]["scripted_in_process_model_called"] is False
-
-
-def test_limitations_never_claim_that_no_model_was_called(crewai_suite) -> None:
-    report, _suite = crewai_suite
-    limitations = " ".join(report.as_dict()["limitations"])
-    assert "no external model service or endpoint" in limitations
-    assert "scripted, offline, in-process model" in limitations
 
 
 def test_report_never_carries_a_raw_occurrence_identifier(langgraph_suite) -> None:

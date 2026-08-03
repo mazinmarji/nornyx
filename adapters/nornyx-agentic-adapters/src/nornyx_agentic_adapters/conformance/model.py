@@ -41,10 +41,11 @@ LIMITATIONS: tuple[str, ...] = (
     "coverage, never as a prevented path.",
     "Conformance does not imply whole-application coverage.",
     "Conformance enables no live connector, no external network, no external "
-    "model service or endpoint, and no external execution. The framework "
-    "suites do drive a scripted, offline, in-process model, which is what "
-    "makes a native run deterministic; nothing leaves the machine. A guarded "
-    "run permits loopback so a framework's local telemetry stack still works.",
+    "model service or endpoint, and no external execution. The CrewAI suite "
+    "does drive a scripted, offline, in-process model, which is what makes a "
+    "native run deterministic; see scripted_in_process_model_called for what "
+    "this particular run did. Nothing leaves the machine. A guarded run "
+    "permits loopback so a framework's local telemetry stack still works.",
     "Conformance establishes no Tier 3 independent runtime assurance.",
 )
 
@@ -350,7 +351,9 @@ class RunSafety:
     #: be false under the ordinary reading of the word.
     scripted_in_process_model_called: bool = False
     #: Structural property of the kit's design, not a measurement: it holds no
-    #: client for any external model service or endpoint.
+    #: client for any external model service or endpoint. Note the outbound
+    #: guard permits loopback, so this constant — not the guard — is what
+    #: stands behind the claim for a hypothetical local model endpoint.
     external_model_service_called: bool = False
     #: Structural properties of the kit's design, not measurements: it executes
     #: no connector and loads no credentials.

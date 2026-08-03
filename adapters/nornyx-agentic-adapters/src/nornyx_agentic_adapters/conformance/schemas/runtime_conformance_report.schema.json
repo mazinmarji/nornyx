@@ -69,7 +69,7 @@
           "type": "boolean"
         },
         "external_model_service_called": {
-          "description": "Structural property of the kit's design, not a measurement: it holds no client for any external model service or endpoint, so no request ever leaves the machine.",
+          "description": "Structural property of the kit's design, not a measurement: it holds no client for any external model service or endpoint. The outbound guard permits loopback, so this constant rather than the guard is what stands behind the claim for a hypothetical local model endpoint.",
           "const": false
         },
         "external_connectors_used": {

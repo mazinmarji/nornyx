@@ -33,7 +33,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "deterministic JSON report. Cooperative Tier 2, declared wrapped "
             "surfaces only. Opens no external network, loads no credentials, "
             "calls no external model service or endpoint, and executes no "
-            "connector; the framework suites drive a scripted, offline, "
+            "connector; the CrewAI suite drives a scripted, offline, "
             "in-process model, and a guarded run permits loopback so a "
             "framework's local telemetry still works."
         ),
