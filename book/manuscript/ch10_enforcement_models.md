@@ -52,7 +52,7 @@ Enforcement points can be positioned at six broadly different distances from the
 
 **<span class="ix" data-ix="enforcement model!sandbox">Sandbox or isolated execution environment</span>.** The agent runs inside a container, virtual machine, or restricted interpreter whose kernel or hypervisor denies operations outside a declared set: no filesystem outside a directory, no network except through a proxy, no process spawning. Here the enforcement is implemented by a component the agent genuinely cannot bypass from inside, which is the strongest general property available. The vocabulary, however, is the operating system's, so a sandbox can forbid "write outside /work" but not "share customer data with a partner."
 
-**<span class="ix" data-ix="enforcement model!IAM boundary">Identity and access management boundary</span>.** The downstream service enforces, because the credential the agent presents simply does not carry the permission. This is the oldest and most robust model in enterprise practice, and it is genuinely mandatory: the payment API refuses the call regardless of what the agent intended. Its limitation is granularity and timing. Credentials are provisioned per process or per service account, ahead of time, so they express "this component may call this endpoint," not "this action, on this subject, at this moment, given this approval."
+**<span class="ix" data-ix="enforcement model!IAM boundary">Identity and access management (IAM) boundary</span>.** The downstream service enforces, because the credential the agent presents simply does not carry the permission. This is the oldest and most widely deployed model in enterprise practice, and it is genuinely mandatory: the payment API refuses the call regardless of what the agent intended. Its limitation is granularity and timing. Credentials are provisioned per process or per service account, ahead of time, so they express "this component may call this endpoint," not "this action, on this subject, at this moment, given this approval."
 
 **<span class="ix" data-ix="enforcement model!service mesh">Service mesh</span>.** Enforcement is delegated to sidecars or node proxies that mediate service-to-service traffic, authenticate peers with mutual transport-layer security, and apply authorization policy per connection or per request [@istio]. A mesh gives uniform, platform-operated enforcement without changing application code, and it fits the broader zero-trust posture in which every request is authenticated and authorized regardless of network location [@nist-zta; @beyondcorp]. It governs traffic between meshed workloads; it does not govern what a workload does inside itself.
 
@@ -246,7 +246,7 @@ Deciding and enforcing are separate jobs, and the assurance a governance system 
 ## Further reading
 
 - [@xacml] — the reference decomposition of decision, enforcement, information, and administration points.
-- [@rfc2904] — the same separation from the AAA tradition, with the sequences by which decisions reach enforcers.
+- [@rfc2904] — the same separation from the authentication, authorization, and accounting (AAA) tradition, with the sequences by which decisions reach enforcers.
 - [@envoy] — the external authorization pattern that makes a proxy into a policy enforcement point.
 - [@nist-zta] — why per-request authorization at enforcement points, rather than network position, is the modern baseline.
 - [@schneider-enforceable] — the formal question of which policies a runtime mechanism can enforce at all, and why observability bounds enforcement.

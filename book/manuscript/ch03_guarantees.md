@@ -175,13 +175,13 @@ Two properties of this list are deliberate. First, questions 5, 6, and 8 have no
 
 Frames are learned by use, so we apply all eight to a single claim, end to end. Take the claim the supplier's package most plausibly supports:
 
-> *Every refund above the approval threshold executed by the refund agent during the recorded week was authorized by a policy decision under contract revision `9f3c1a7`, and each such execution carries an approval record naming a human in the `TreasuryOfficer` role bound to that revision.*
+> *Every refund above the approval threshold executed by the refund agent during the recorded week was authorized by a policy decision under contract revision `7a41c9e`, and each such execution carries an approval record naming a human in the `TreasuryOfficer` role bound to that revision.*
 
 **1. What exactly is guaranteed?** Something narrower than it first appears. The claim is about executions *that appear in the event stream*, not about executions. It asserts a property of records, and the leap to a property of the world is exactly the leap the remaining questions probe.
 
 **2. Which component enforces it?** The authorization component consulted by the framework adapter before each tool call, together with the recording component that emits the events. Note that this is already two components with different failure modes, and that the claim's phrasing hides the join.
 
-**3. What evidence supports it?** The event stream, produced by `adapter-1`, bound to contract revision `9f3c1a7` by a digest carried in every event, validated against the contract and against ordering and referential rules. The approval records are separate artifacts referenced by identifier and bound to the same revision.
+**3. What evidence supports it?** The event stream, produced by `adapter-1`, bound to contract revision `7a41c9e` by a digest carried in every event, validated against the contract and against ordering and referential rules. The approval records are separate artifacts referenced by identifier and bound to the same revision.
 
 **4. What assumptions are required?** That the adapter is the only path by which the refund tool can be invoked; that the adapter was not modified; that the producer recorded every invocation it observed; that the approval records were created by the humans they name; that the framework version in production is the version the adapter was tested against; and that the clock used for expiry evaluation is the one whose timestamps appear in the stream.
 
@@ -193,7 +193,7 @@ Frames are learned by use, so we apply all eight to a single claim, end to end. 
 
 **8. What remains unproven?** That the recorded executions are all the executions. That the producer's reports are true. That the approving humans were informed, or were the humans the identifiers name. That the contract in force during the week was the contract supplied for review — unless something independent binds deployment to revision.
 
-Having done this, we can restate the claim in a form that survives scrutiny: *within the surfaces routed through the governed adapter, and assuming a non-adversarial producer, every recorded refund above the threshold was allowed by a deterministic decision under revision `9f3c1a7` and carries a human approval bound to that revision; the stream establishes nothing about actions taken outside those surfaces.* The sentence is longer, and it is the one a professional can sign.
+Having done this, we can restate the claim in a form that survives scrutiny: *within the surfaces routed through the governed adapter, and assuming a non-adversarial producer, every recorded refund above the threshold was allowed by a deterministic decision under revision `7a41c9e` and carries a human approval bound to that revision; the stream establishes nothing about actions taken outside those surfaces.* The sentence is longer, and it is the one a professional can sign.
 
 > **Misconception.** *"Applying the eight questions to our own system will make our claims look weak."* It makes them look *bounded*, which is different, and it is the difference between an assurance statement and a marketing statement. In practice the exercise usually strengthens the engineering: question 5 generates a work item, question 6 finds a fail-open path nobody had considered, and question 8 turns an unexamined assumption into a documented dependency that a consumer of the system can decide about. The alternative is not a stronger claim; it is the same weak claim, undiscovered until it fails.
 

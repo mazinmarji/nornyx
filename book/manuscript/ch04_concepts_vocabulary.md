@@ -68,9 +68,9 @@ Listing 4.1 makes the *described request* concrete, because it is the object the
   "capability": "repo.merge",
   "target": {"repository": "northstar/payments-api", "branch": "main"},
   "context": {"origin": "pull_request_body", "authority_rank": "untrusted"},
-  "mission_id": "m-2026-06-12-004",
-  "sequence": 17,
-  "policy_revision": "9f3c1a7"
+  "mission_id": "m-2026-06-18-002",
+  "sequence": 4,
+  "policy_revision": "c81d2f4"
 }
 ```
 
@@ -84,10 +84,10 @@ Figure 4.2 shows the sequence in the arrangement this book uses throughout.
       <div class="seq-cols" data-cols="Agent|Enforcement point|Decision point|Evidence|Tool"></div>
       <div class="msg" data-from="1" data-to="2" data-kind="call">proposed action (actor, capability, target, context)</div>
       <div class="msg" data-from="2" data-to="3" data-kind="call">described request + policy version</div>
-      <div class="msg" data-from="3" data-to="2" data-kind="return">verdict: allow | deny | approval required</div>
+      <div class="msg" data-from="3" data-to="2" data-kind="return">verdict: allow | deny | approval-required</div>
       <div class="msg" data-from="2" data-to="4" data-kind="call">record decision, bound to revision</div>
       <div class="msg" data-from="2" data-to="5" data-kind="call">execute (only on allow)</div>
-      <div class="msg" data-from="2" data-to="1" data-kind="deny">refuse (on deny or approval required)</div>
+      <div class="msg" data-from="2" data-to="1" data-kind="deny">refuse (on deny or approval-required)</div>
     </div>
   </div>
   <figcaption><b>Figure 4.2 — Evaluate, record, execute.</b> The ordering is deliberate: the decision is recorded before the action runs, so that a crash between recording and execution leaves a decision without an action rather than an action without a decision. The teaching purpose is that the enforcement point owns the ordering guarantee, and that this ordering is a design commitment rather than an implementation convenience.</figcaption>
@@ -132,7 +132,7 @@ Tables 4.1 and 4.2 are descriptive, not competitive. Every family in them does i
 | Family | Problem it addresses | Unit of abstraction | Enforcement point | Evidence produced | Determinism | Maturity |
 |---|---|---|---|---|---|---|
 | Identity and access management (IAM) | Who is this principal, and what may it access? | Principal, role, resource | Resource-side, at credential use | Authentication and access logs | Deterministic policy evaluation | Very high |
-| RBAC / ABAC models [@rbac-nist; @abac-nist] | Structuring authorization decisions | Role; attribute of subject, object, environment | Model, not a component | None inherently | Deterministic by construction | Very high |
+| Role-based / attribute-based access control (RBAC / ABAC) models [@rbac-nist; @abac-nist] | Structuring authorization decisions | Role; attribute of subject, object, environment | Model, not a component | None inherently | Deterministic by construction | Very high |
 | Policy engines: OPA, Cedar, XACML [@opa; @cedar; @xacml] | Evaluating authorization rules as code | Described request → verdict | None; a PDP is embedded by a host | Decision logs, if the host records them | Deterministic; analyzable in Cedar's case | High |
 | API gateways | Mediating and controlling service traffic | HTTP request/response | In the network path, mandatory for traffic that routes through it | Access logs, rate-limit events | Deterministic rule matching | Very high |
 | Service meshes [@istio; @envoy] | Service-to-service identity, encryption, and authorization | Workload identity, connection | Sidecar or node proxy in the data path | Connection-level telemetry and authorization logs | Deterministic | High |
