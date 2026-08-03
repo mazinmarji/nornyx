@@ -80,7 +80,8 @@ The conformance kit is bound by ADR-0040 Tier 2 and states so in every report:
 - Conformance never implies whole-application coverage.
 - Conformance enables no live connector, no external network, no external
   model service or endpoint, and no external execution. The CrewAI suite does
-  drive a scripted, offline, in-process model (the LangGraph suite drives none) — a model abstraction really
+  drive a scripted, offline, in-process model (the LangGraph suite drives
+  none) — a model abstraction really
   is instantiated and called, and the report says so rather than claiming no
   model was called. A guarded run permits loopback; see the accepted
   limitations below.
@@ -238,9 +239,10 @@ than fixed, because fixing them would cost more than the risk they carry:
   Framework suite *modules* are also imported before the guard is installed, so
   a framework's own import-time behavior is outside the guarded window; only
   its case execution is covered.
-- **A model abstraction is instantiated and called.** The framework suites
-  drive a scripted, offline, in-process model, because CrewAI's native
-  executor needs one and a scripted one is what makes the run deterministic.
+- **A model abstraction is instantiated and called.** The CrewAI suite drives
+  a scripted, offline, in-process model, because CrewAI's native executor
+  needs one and a scripted one is what makes the run deterministic. The
+  LangGraph suite drives none.
   The report therefore carries two separate fields rather than one broad
   `models_called`: `scripted_in_process_model_called`, observed per run, and
   `external_model_service_called`, a structural constant. A single

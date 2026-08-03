@@ -291,6 +291,32 @@ def test_a_hostile_str_subclass_cannot_suppress_the_unmatched_id_error(
         )
 
 
+def test_a_framework_suite_must_expose_the_model_counter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The guard-rail that makes the counter mandatory must itself be
+    falsifiable: reverting it to an optional lookup restored the exact defect
+    it was added to close — a suite that drove a model but forgot the export
+    reporting `false` with nothing failing."""
+    langgraph_suite = pytest.importorskip(
+        "nornyx_agentic_adapters.conformance.suites.langgraph_suite"
+    )
+    monkeypatch.delattr(langgraph_suite, "scripted_model_calls")
+    with pytest.raises(ValueError, match="must expose scripted_model_calls"):
+        run_conformance(frameworks=["langgraph"], require=["langgraph"])
+
+
+def test_a_langgraph_only_run_reports_no_scripted_model() -> None:
+    """LangGraph drives no model, and the wiring that reports so is pinned:
+    otherwise the suite's constant zero could drift into a false claim if that
+    suite ever instantiated one."""
+    pytest.importorskip("langgraph")
+    report = run_conformance(frameworks=["langgraph"], require=["langgraph"])
+    safety = report.as_dict()["safety"]
+    assert safety["scripted_in_process_model_called"] is False
+    assert safety["external_model_service_called"] is False
+
+
 def test_unknown_suite_and_unknown_required_framework_are_rejected() -> None:
     with pytest.raises(ValueError, match="unknown suite"):
         run_conformance(frameworks=["not_a_suite"])

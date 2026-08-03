@@ -373,8 +373,8 @@ jobs:
           assert payload["assurance_tier"] == "tier_2_cooperative"
           assert payload["safety"]["blocked_outbound_attempts"] == 0
           assert payload["safety"]["blocked_process_attempts"] == 0
-          # The native suites drive a scripted in-process model; the report must
-          # say so rather than claim no model was called.
+          # The CrewAI suite drives a scripted in-process model (LangGraph drives
+          # none); the report must say so rather than claim no model was called.
           assert payload["safety"]["scripted_in_process_model_called"] is True
           assert payload["safety"]["external_model_service_called"] is False
           assert set(payload["safety"]["guarded_suites"]) >= {"crewai", "langgraph"}

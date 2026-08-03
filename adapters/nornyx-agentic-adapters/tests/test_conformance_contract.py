@@ -285,8 +285,9 @@ def test_limitations_never_assert_that_no_model_was_called() -> None:
     limitations = " ".join(M.LIMITATIONS)
     assert "no external model service or endpoint" in limitations
     assert "scripted, offline, in-process model" in limitations
-    assert not re.search(r"no model", limitations), limitations
-    assert not re.search(r"calls no model", limitations), limitations
+    # Case-insensitive and singular/plural: "No model is called." and
+    # "No models are called." must fail this too, not only the one bigram.
+    assert not re.search(r"no\s+models?", limitations, re.IGNORECASE), limitations
 
 
 def test_the_kit_makes_no_prohibited_assurance_claim() -> None:
