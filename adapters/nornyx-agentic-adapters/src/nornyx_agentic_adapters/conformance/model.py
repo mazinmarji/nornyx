@@ -40,8 +40,10 @@ LIMITATIONS: tuple[str, ...] = (
     "enforcement; bypass is reported as a negative control outside declared "
     "coverage, never as a prevented path.",
     "Conformance does not imply whole-application coverage.",
-    "Conformance enables no live connector, network, model, or external "
-    "execution.",
+    "Conformance enables no live connector, no external network, no model, "
+    "and no external execution. A guarded run permits loopback so a "
+    "framework's local telemetry stack still works; nothing leaves the "
+    "machine.",
     "Conformance establishes no Tier 3 independent runtime assurance.",
 )
 

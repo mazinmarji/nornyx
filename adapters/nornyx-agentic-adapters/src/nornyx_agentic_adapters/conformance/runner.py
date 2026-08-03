@@ -84,7 +84,15 @@ def run_conformance(
             f"required framework(s) not selected to run: {sorted(not_selected)}"
         )
 
-    wanted = frozenset(case_ids) if case_ids is not None else None
+    # Normalize to exact str at the boundary: a subclass redefining __eq__ and
+    # __hash__ could otherwise collide with a real case id and be treated as
+    # matched, which is the same failure the exemption check guards against
+    # reached through a different dunder.
+    wanted = (
+        frozenset(str.__str__(case_id) for case_id in case_ids)
+        if case_ids is not None
+        else None
+    )
     suites: list[SuiteResult] = []
     executed_frameworks: list[str] = []
 

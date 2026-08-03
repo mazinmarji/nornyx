@@ -121,6 +121,7 @@ assert payload["assurance_tier"] == "tier_2_cooperative"
 # count. A blocked attempt means the network was not reached, so the report
 # deliberately carries no "network was used" flag to invert.
 assert payload["safety"]["blocked_outbound_attempts"] == 0
+assert payload["safety"]["blocked_process_attempts"] == 0
 assert "enforcement_boundary" in payload["safety"]["guarded_suites"]
 assert "network_used" not in payload["safety"]
 

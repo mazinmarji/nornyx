@@ -193,18 +193,49 @@ def test_a_blocked_local_process_spawn_is_not_called_an_outbound_attempt(
 
 def test_loopback_is_permitted_on_every_path_that_can_express_it() -> None:
     """CrewAI's telemetry stack reaches loopback through more than one API; a
-    guard that blocked some of them would fail a run for a local call."""
+    guard that blocked some of them would fail a run for a local call.
+
+    Each of the three paths is exercised in the PERMITTED direction against a
+    real listener. Asserting only the blocked direction would pass just as well
+    if every loopback branch were reverted to blanket blocking.
+    """
     import socket
 
     from nornyx_agentic_adapters.conformance.harness import NetworkGuard
 
-    guard = NetworkGuard()
-    with guard.active():
-        socket.getaddrinfo("127.0.0.1", 80)
-        with pytest.raises(AssertionError):
-            socket.getaddrinfo("example.invalid", 80)
-        with pytest.raises(AssertionError):
-            socket.create_connection(("example.invalid", 80))
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    listener.settimeout(5)
+    port = listener.getsockname()[1]
+    accepted = []
+    try:
+        guard = NetworkGuard()
+        with guard.active():
+            # 1. getaddrinfo
+            assert socket.getaddrinfo("127.0.0.1", port)
+            # 2. create_connection
+            with socket.create_connection(("127.0.0.1", port), timeout=5):
+                accepted.append(listener.accept()[0])
+            # 3. socket.connect
+            raw = socket.socket()
+            try:
+                raw.settimeout(5)
+                raw.connect(("127.0.0.1", port))
+                accepted.append(listener.accept()[0])
+            finally:
+                raw.close()
+            assert guard.outbound_attempts == 0, "loopback must not count as outbound"
+
+            with pytest.raises(AssertionError):
+                socket.getaddrinfo("example.invalid", 80)
+            with pytest.raises(AssertionError):
+                socket.create_connection(("example.invalid", 80))
+    finally:
+        for connection in accepted:
+            connection.close()
+        listener.close()
+
     assert guard.outbound_attempts == 2
     assert guard.process_attempts == 0
 
@@ -380,6 +411,31 @@ def test_cli_summary_states_the_tier_2_boundary(capsys) -> None:
     assert "declared wrapped surfaces only" in out
     assert "does not authenticate agents or approvers" in out
     assert "prevent bypass" in out
+
+
+def test_cli_notes_a_selected_case_that_did_not_run(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """A case id whose suite is unavailable is exempt from the hard error, so
+    the note is the only thing that tells an operator it never ran."""
+    from nornyx_agentic_adapters.conformance import cli as cli_module
+    from nornyx_agentic_adapters.conformance import runner
+
+    monkeypatch.setattr(
+        runner,
+        "_load_framework_suite",
+        lambda framework: (_ for _ in ()).throw(ImportError("absent")),
+    )
+    monkeypatch.setattr(cli_module, "run_conformance", runner.run_conformance)
+    assert main(["--suite", "crewai", "--case", "crewai.native.allow"]) == EXIT_NONCONFORMANT
+    err = capsys.readouterr().err
+    assert "crewai.native.allow" in err
+    assert "was not run" in err
+
+
+def test_cli_does_not_note_a_case_that_did_run(capsys) -> None:
+    assert main(["--suite", "enforcement_boundary", "--case", "neutral.enforce.allow"]) == EXIT_OK
+    assert "was not run" not in capsys.readouterr().err
 
 
 def test_cli_returns_usage_exit_for_an_unknown_suite(capsys) -> None:

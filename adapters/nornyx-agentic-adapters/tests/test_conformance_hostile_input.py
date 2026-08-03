@@ -103,18 +103,30 @@ def test_a_returned_report_dict_is_independent_of_later_mutation() -> None:
     assert "forged" not in report.as_dict()["suites"][0]["cases"][0]["decision_events"]
 
 
-def test_hostile_str_subclass_selection_cannot_produce_a_quiet_empty_report() -> None:
-    """A subclass whose ``__eq__`` always returns True and whose ``__hash__``
-    is constant cannot match by set membership, so it selects nothing.
+def test_a_hostile_str_subclass_is_normalized_not_trusted() -> None:
+    """A subclass whose ``__eq__`` always returns True and whose ``__str__``
+    lies is normalized to its exact underlying value at the selection boundary.
 
-    The failure mode that matters is not the non-match — it is what happens
-    next. Selecting nothing must be rejected, not turned into a zero-case
-    report that validates and reports ``pass``.
+    So it resolves to the case it actually names — not to whatever its
+    overrides would have claimed — and its lying rendering never reaches the
+    report.
     """
     HostileStr.calls = 0
     hostile = HostileStr("neutral.enforce.allow")
+    report = run_conformance(frameworks=["enforcement_boundary"], case_ids=[hostile])
+    selected = [case.case_id for suite in report.suites for case in suite.cases]
+    assert selected == ["neutral.enforce.allow"]
+    assert all(type(case_id) is str for case_id in selected)
+    assert "innocent" not in serialize(report)
+
+
+def test_a_hostile_str_subclass_naming_nothing_is_still_rejected() -> None:
+    """Normalization must not become a way to smuggle an unmatched id past the
+    check: the exact underlying value still has to name a real case."""
     with pytest.raises(ValueError, match="no conformance case matches"):
-        run_conformance(frameworks=["enforcement_boundary"], case_ids=[hostile])
+        run_conformance(
+            frameworks=["enforcement_boundary"], case_ids=[HostileStr("no.such.case")]
+        )
 
 
 def test_a_plain_case_id_still_selects_normally() -> None:
@@ -126,6 +138,25 @@ def test_a_plain_case_id_still_selects_normally() -> None:
     assert selected == ["neutral.enforce.allow"]
     assert all(type(case_id) is str for case_id in selected)
     assert "innocent" not in serialize(report)
+
+
+def test_a_hash_colliding_subclass_cannot_pass_as_a_real_case_id() -> None:
+    """Selection membership is set arithmetic, so a subclass that collides on
+    hash and always compares equal would otherwise be treated as matched — the
+    same failure the exemption check guards against, reached through a
+    different pair of dunders. Ids are normalized to exact ``str`` first."""
+
+    class EqSneaky(str):
+        def __eq__(self, other: object) -> bool:  # noqa: D105
+            return True
+
+        def __hash__(self) -> int:  # noqa: D105
+            return hash("neutral.enforce.allow")
+
+    with pytest.raises(ValueError, match="no conformance case matches"):
+        run_conformance(
+            frameworks=["enforcement_boundary"], case_ids=[EqSneaky("bogus")]
+        )
 
 
 def test_unknown_suite_selection_is_rejected_rather_than_silently_empty() -> None:

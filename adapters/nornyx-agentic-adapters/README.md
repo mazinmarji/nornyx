@@ -240,8 +240,9 @@ failing case, a required framework unavailable, a run that produced no case, or
 an outbound connection or process spawn the run's guard blocked — and `2`
 invalid configuration or an internal error.
 `--require` exists so a missing extra fails CI instead of passing as a silent
-skip. The command opens no network, loads no credentials, calls no external
-model, and executes no connector.
+skip. The command opens no external network, loads no credentials, calls no
+external model, and executes no connector; a guarded run permits loopback so a
+framework's local telemetry stack still works.
 
 Programmatic use mirrors the command:
 

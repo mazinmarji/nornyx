@@ -231,6 +231,13 @@ than fixed, because fixing them would cost more than the risk they carry:
   Framework suite *modules* are also imported before the guard is installed, so
   a framework's own import-time behavior is outside the guarded window; only
   its case execution is covered.
+- **The guard permits loopback.** `connect`, `create_connection` and
+  `getaddrinfo` all allow `127.0.0.1`/`::1`/`localhost`, because a framework's
+  local telemetry stack reaches loopback through more than one of them and
+  blocking it would fail a run for something that never leaves the machine. A
+  guarded run can therefore reach a service already listening on loopback. The
+  `connect` check still applies after resolution, so a `localhost` that
+  resolved to an external address is blocked.
 - **`OccurrenceSummary.collided` detects one specific shape**: two *different*
   logical operations recorded under one occurrence id. The per-case
   `distinct_occurrences` assertions cover the concrete collision scenarios; the
