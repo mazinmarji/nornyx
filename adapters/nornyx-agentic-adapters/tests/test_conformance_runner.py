@@ -204,12 +204,12 @@ def test_loopback_is_permitted_on_every_path_that_can_express_it() -> None:
     from nornyx_agentic_adapters.conformance.harness import NetworkGuard
 
     listener = socket.socket()
-    listener.bind(("127.0.0.1", 0))
-    listener.listen(8)
-    listener.settimeout(5)
-    port = listener.getsockname()[1]
-    accepted = []
+    accepted: list[socket.socket] = []
     try:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(8)
+        listener.settimeout(5)
+        port = listener.getsockname()[1]
         guard = NetworkGuard()
         with guard.active():
             # 1. getaddrinfo

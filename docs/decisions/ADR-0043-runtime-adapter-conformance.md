@@ -78,7 +78,9 @@ The conformance kit is bound by ADR-0040 Tier 2 and states so in every report:
   as an explicit negative control that is *outside* declared coverage — never
   as a path that was "prevented".
 - Conformance never implies whole-application coverage.
-- Conformance enables no live connector, network, model, or external execution.
+- Conformance enables no live connector, no external network, no model, and
+  no external execution. A guarded run permits loopback; see the accepted
+  limitations below.
 - Conformance establishes no Tier 3 assurance.
 
 A conformance result can never convert an `unsupported` or `unwrapped` surface
@@ -115,8 +117,9 @@ closed enums for every status, and required version fields.
 
 Entry point: `python -m nornyx_agentic_adapters.conformance`. Exit codes are
 `0` (every required case conformed), `1` (observed nonconformance), `2`
-(invalid configuration or usage). The command opens no network, loads no
-credentials, calls no external model, and executes no connector.
+(invalid configuration or usage). The command opens no external network, loads
+no credentials, calls no external model, and executes no connector; a guarded
+run permits loopback (see the accepted limitations).
 
 A run fails when a case fails, when a required framework is unavailable, when
 the selection produced no case at all — it verified nothing — or when the run's
@@ -235,9 +238,11 @@ than fixed, because fixing them would cost more than the risk they carry:
   `getaddrinfo` all allow `127.0.0.1`/`::1`/`localhost`, because a framework's
   local telemetry stack reaches loopback through more than one of them and
   blocking it would fail a run for something that never leaves the machine. A
-  guarded run can therefore reach a service already listening on loopback. The
-  `connect` check still applies after resolution, so a `localhost` that
-  resolved to an external address is blocked.
+  guarded run can therefore reach a service already listening on loopback. On
+  the `create_connection` path the `connect` check still applies after
+  resolution, so a `localhost` that resolved to an external address is blocked
+  there; a raw `socket.connect("localhost", ...)` is resolved inside the OS
+  call and gets no second Python-level check.
 - **`OccurrenceSummary.collided` detects one specific shape**: two *different*
   logical operations recorded under one occurrence id. The per-case
   `distinct_occurrences` assertions cover the concrete collision scenarios; the

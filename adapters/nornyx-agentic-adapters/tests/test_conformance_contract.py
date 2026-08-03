@@ -262,6 +262,9 @@ def test_limitations_state_the_tier_2_boundary_verbatim() -> None:
         "does not prevent bypass",
         "does not imply whole-application coverage",
         "establishes no Tier 3",
+        # The guard permits loopback, which is a real widening of "no network";
+        # deleting that disclosure must fail a test, not pass quietly.
+        "permits loopback",
     ):
         assert required in limitations, required
 

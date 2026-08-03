@@ -31,8 +31,9 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Run the Nornyx runtime adapter-conformance suites and emit a "
             "deterministic JSON report. Cooperative Tier 2, declared wrapped "
-            "surfaces only. Opens no network, loads no credentials, calls no "
-            "external model, and executes no connector."
+            "surfaces only. Opens no external network, loads no credentials, "
+            "calls no external model, and executes no connector; a guarded run "
+            "permits loopback so a framework's local telemetry still works."
         ),
     )
     parser.add_argument(
