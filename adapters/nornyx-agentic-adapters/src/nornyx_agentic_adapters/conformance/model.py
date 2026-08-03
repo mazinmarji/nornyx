@@ -40,10 +40,11 @@ LIMITATIONS: tuple[str, ...] = (
     "enforcement; bypass is reported as a negative control outside declared "
     "coverage, never as a prevented path.",
     "Conformance does not imply whole-application coverage.",
-    "Conformance enables no live connector, no external network, no model, "
-    "and no external execution. A guarded run permits loopback so a "
-    "framework's local telemetry stack still works; nothing leaves the "
-    "machine.",
+    "Conformance enables no live connector, no external network, no external "
+    "model service or endpoint, and no external execution. The framework "
+    "suites do drive a scripted, offline, in-process model, which is what "
+    "makes a native run deterministic; nothing leaves the machine. A guarded "
+    "run permits loopback so a framework's local telemetry stack still works.",
     "Conformance establishes no Tier 3 independent runtime assurance.",
 )
 
@@ -341,10 +342,16 @@ class RunSafety:
     #: Blocked ``subprocess``/``os.system`` calls, which are local and involve
     #: no network.
     blocked_process_attempts: int = 0
-    #: No *external* model is called. The framework suites do drive a scripted,
-    #: offline, in-process LLM, which is what makes a native run deterministic;
-    #: nothing leaves the process.
-    models_called: bool = False
+    #: Observed: whether a scripted, offline, in-process model was actually
+    #: driven this run. True for a native CrewAI run, false for a base-suite
+    #: run that instantiates no model at all. Stated as its own field rather
+    #: than folded into a broad ``models_called``, because a model abstraction
+    #: really is instantiated and called and a report saying otherwise would
+    #: be false under the ordinary reading of the word.
+    scripted_in_process_model_called: bool = False
+    #: Structural property of the kit's design, not a measurement: it holds no
+    #: client for any external model service or endpoint.
+    external_model_service_called: bool = False
     #: Structural properties of the kit's design, not measurements: it executes
     #: no connector and loads no credentials.
     external_connectors_used: bool = False
@@ -357,7 +364,8 @@ class RunSafety:
             "guarded_suites": list(self.guarded_suites),
             "blocked_outbound_attempts": self.blocked_outbound_attempts,
             "blocked_process_attempts": self.blocked_process_attempts,
-            "models_called": self.models_called,
+            "scripted_in_process_model_called": self.scripted_in_process_model_called,
+            "external_model_service_called": self.external_model_service_called,
             "external_connectors_used": self.external_connectors_used,
             "credentials_loaded": self.credentials_loaded,
         }

@@ -122,6 +122,9 @@ assert payload["assurance_tier"] == "tier_2_cooperative"
 # deliberately carries no "network was used" flag to invert.
 assert payload["safety"]["blocked_outbound_attempts"] == 0
 assert payload["safety"]["blocked_process_attempts"] == 0
+# No framework suite runs in this selection, so no model is instantiated.
+assert payload["safety"]["scripted_in_process_model_called"] is False
+assert payload["safety"]["external_model_service_called"] is False
 assert "enforcement_boundary" in payload["safety"]["guarded_suites"]
 assert "network_used" not in payload["safety"]
 

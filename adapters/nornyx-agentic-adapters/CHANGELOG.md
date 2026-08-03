@@ -99,6 +99,19 @@ client" while it ships a scripted offline LLM to drive CrewAI's executor; the
 defensible claim, and the one made everywhere else, is that no *external*
 model is called.
 
+Final review then rejected the compromise reached above: the description had
+been narrowed to "no external model" while the machine field kept the broad
+name `models_called: false`, and the shipped limitations still asserted "no
+model". That is false on the ordinary reading — the kit instantiates a model
+abstraction and CrewAI's executor calls it. The report now carries two fields:
+`scripted_in_process_model_called`, **observed** per run (true for a native
+CrewAI run, false for a base-suite run that instantiates no model), and
+`external_model_service_called`, a structural constant. Every "no model"
+assertion now reads "no external model service or endpoint", and a regression
+test proves the report distinguishes the two. Corrected before
+`nornyx.agentic_runtime_conformance.v1` has any consumer, so the schema
+identity and version 1.0 are unchanged.
+
 ### Known limitations
 
 - On the CrewAI tool surface, a denied call retried by CrewAI's own executor

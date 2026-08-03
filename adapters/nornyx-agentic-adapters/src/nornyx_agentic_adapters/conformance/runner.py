@@ -101,6 +101,7 @@ def run_conformance(
     # resolution at import time; guarding the import would misreport an
     # ordinary import as an outbound network attempt.
     loaded: list[tuple[str, Any]] = []
+    scripted_model_calls = 0
     for framework in sorted(_FRAMEWORK_SUITES):
         if framework not in selected:
             continue
@@ -134,10 +135,16 @@ def run_conformance(
         if neutral.SUITE_ID in selected:
             suites.append(neutral.run(wanted))
             guarded.append(neutral.SUITE_ID)
+        scripted_model_calls = 0
         for framework, module in loaded:
             suites.append(module.run(wanted))
             executed_frameworks.append(framework)
             guarded.append(framework)
+            # Observed, not assumed: only a suite that actually drives a
+            # scripted in-process model reports any calls.
+            counter = getattr(module, "scripted_model_calls", None)
+            if callable(counter):
+                scripted_model_calls += counter()
 
     suites.sort(key=lambda suite: suite.suite_id)
     _validate_case_ids_unique(suites)
@@ -201,6 +208,7 @@ def run_conformance(
             adapter_actions_executed=True,
             frameworks_executed=tuple(sorted(executed_frameworks)),
             guarded_suites=tuple(guarded),
+            scripted_in_process_model_called=scripted_model_calls > 0,
             blocked_outbound_attempts=guard.outbound_attempts,
             blocked_process_attempts=guard.process_attempts,
         ),

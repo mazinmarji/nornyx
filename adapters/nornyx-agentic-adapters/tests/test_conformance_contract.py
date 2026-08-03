@@ -118,7 +118,8 @@ def valid_report() -> dict:
             "guarded_suites": ["enforcement_boundary"],
             "blocked_outbound_attempts": 0,
             "blocked_process_attempts": 0,
-            "models_called": False,
+            "scripted_in_process_model_called": False,
+            "external_model_service_called": False,
             "external_connectors_used": False,
             "credentials_loaded": False,
         },
@@ -265,6 +266,11 @@ def test_limitations_state_the_tier_2_boundary_verbatim() -> None:
         # The guard permits loopback, which is a real widening of "no network";
         # deleting that disclosure must fail a test, not pass quietly.
         "permits loopback",
+        # The kit really does instantiate and drive a model abstraction. The
+        # limitation must say "no external model service or endpoint", never a
+        # bare "no model", which would be false on its ordinary reading.
+        "no external model service or endpoint",
+        "scripted, offline, in-process model",
     ):
         assert required in limitations, required
 

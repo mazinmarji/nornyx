@@ -40,7 +40,8 @@
         "guarded_suites",
         "blocked_outbound_attempts",
         "blocked_process_attempts",
-        "models_called",
+        "scripted_in_process_model_called",
+        "external_model_service_called",
         "external_connectors_used",
         "credentials_loaded"
       ],
@@ -63,8 +64,12 @@
           "type": "integer",
           "minimum": 0
         },
-        "models_called": {
-          "description": "No external model is called. The framework suites drive a scripted, offline, in-process LLM to keep a native run deterministic; nothing leaves the process.",
+        "scripted_in_process_model_called": {
+          "description": "Observed: whether a scripted, offline, in-process model was actually driven this run. True for a native CrewAI run. Reported as its own field because a model abstraction really is instantiated and called, and a single 'models_called: false' would be false under the ordinary reading of the word.",
+          "type": "boolean"
+        },
+        "external_model_service_called": {
+          "description": "Structural property of the kit's design, not a measurement: it holds no client for any external model service or endpoint, so no request ever leaves the machine.",
           "const": false
         },
         "external_connectors_used": {

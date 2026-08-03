@@ -241,8 +241,14 @@ an outbound connection or process spawn the run's guard blocked — and `2`
 invalid configuration or an internal error.
 `--require` exists so a missing extra fails CI instead of passing as a silent
 skip. The command opens no external network, loads no credentials, calls no
-external model, and executes no connector; a guarded run permits loopback so a
-framework's local telemetry stack still works.
+external model service or endpoint, and executes no connector; a guarded run
+permits loopback so a framework's local telemetry stack still works.
+
+The framework suites *do* instantiate and drive a scripted, offline, in-process
+model — CrewAI's native executor needs one, and a scripted one is what makes the
+run deterministic. The report says so plainly rather than claiming no model was
+called: `scripted_in_process_model_called` is observed per run, and
+`external_model_service_called` is a structural constant.
 
 Programmatic use mirrors the command:
 

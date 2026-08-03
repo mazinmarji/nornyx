@@ -109,7 +109,14 @@ def test_report_safety_block_is_the_kits_own_not_the_validators(base_report) -> 
     # together would misdescribe whichever one actually happened.
     assert safety["blocked_process_attempts"] == 0
     assert "network_used" not in safety
-    assert safety["models_called"] is False
+    # No model is instantiated by the base suites, so this is observed false
+    # here — and observed true on a native run (covered separately).
+    assert safety["scripted_in_process_model_called"] is False
+    assert safety["external_model_service_called"] is False
+    assert "models_called" not in safety, (
+        "a single broad models_called would be false on its ordinary reading: "
+        "the kit really does instantiate and drive a model abstraction"
+    )
     assert "tools_executed" not in safety
 
 

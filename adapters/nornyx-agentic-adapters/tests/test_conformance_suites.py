@@ -306,6 +306,39 @@ def test_framework_suite_reports_are_byte_identical_across_runs(framework_suite)
     assert first == second
 
 
+def test_report_distinguishes_the_scripted_model_from_an_external_one(
+    crewai_suite,
+) -> None:
+    """The kit instantiates a real model abstraction and CrewAI's executor
+    calls it. A report claiming ``models_called: false`` would be false on the
+    ordinary reading of the word, so the two facts are reported separately and
+    the in-process one is observed, not declared.
+    """
+    report, _suite = crewai_suite
+    safety = report.as_dict()["safety"]
+
+    # Observed true: a native CrewAI run drives the scripted model.
+    assert safety["scripted_in_process_model_called"] is True
+    # Structural: no client for an external model service exists at all.
+    assert safety["external_model_service_called"] is False
+    # The broad field that conflated the two must not come back.
+    assert "models_called" not in safety
+
+    # And it is genuinely observed, not a constant: a run of the suites that
+    # instantiate no model at all reports false.
+    from nornyx_agentic_adapters.conformance import run_conformance
+
+    base = run_conformance(frameworks=["distribution", "enforcement_boundary"])
+    assert base.as_dict()["safety"]["scripted_in_process_model_called"] is False
+
+
+def test_limitations_never_claim_that_no_model_was_called(crewai_suite) -> None:
+    report, _suite = crewai_suite
+    limitations = " ".join(report.as_dict()["limitations"])
+    assert "no external model service or endpoint" in limitations
+    assert "scripted, offline, in-process model" in limitations
+
+
 def test_report_never_carries_a_raw_occurrence_identifier(langgraph_suite) -> None:
     """LangGraph mints a fresh task id per process, so a report carrying one
     could not be reproduced."""

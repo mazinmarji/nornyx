@@ -6,8 +6,10 @@ ReAct executor through ``Crew.kickoff()`` and prove they did so, because a case
 that quietly calls the wrapper directly would substantiate nothing about the
 framework path it names.
 
-Everything runs offline against a scripted local LLM. No API key, no network,
-no external model.
+Everything runs offline against a scripted local model. No API key, no network,
+and no external model service or endpoint — but a model abstraction really is
+instantiated and driven, which is what makes a native run deterministic. The
+report says so rather than claiming no model was called at all.
 """
 
 from __future__ import annotations
@@ -65,6 +67,17 @@ from ..model import (  # noqa: E402
 )
 
 SUITE_ID = "crewai"
+
+#: Calls made to the scripted, offline, in-process model during the last
+#: :func:`run`. Read by the runner so the report's
+#: ``scripted_in_process_model_called`` is observed rather than declared.
+_SCRIPTED_MODEL_CALLS = 0
+
+
+def scripted_model_calls() -> int:
+    """How many times this suite's scripted in-process model was driven."""
+    return _SCRIPTED_MODEL_CALLS
+
 WRAPPED_SURFACE = "tool_invocation"
 _DETAIL_LIMIT = 240
 
@@ -106,6 +119,8 @@ class _DeterministicLLM(BaseLLM):
         available_functions: Any = None,
         **kwargs: Any,
     ) -> str:
+        global _SCRIPTED_MODEL_CALLS
+        _SCRIPTED_MODEL_CALLS += 1
         self.calls += 1
         if self._tool_name is not None and self.calls == 1:
             return (
@@ -698,6 +713,8 @@ _CASES: tuple[Callable[[], CaseResult], ...] = (
 
 
 def run(case_ids: frozenset[str] | None = None) -> SuiteResult:
+    global _SCRIPTED_MODEL_CALLS
+    _SCRIPTED_MODEL_CALLS = 0
     cases: list[CaseResult] = []
     for factory in _CASES:
         result = factory()

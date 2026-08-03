@@ -78,8 +78,11 @@ The conformance kit is bound by ADR-0040 Tier 2 and states so in every report:
   as an explicit negative control that is *outside* declared coverage — never
   as a path that was "prevented".
 - Conformance never implies whole-application coverage.
-- Conformance enables no live connector, no external network, no model, and
-  no external execution. A guarded run permits loopback; see the accepted
+- Conformance enables no live connector, no external network, no external
+  model service or endpoint, and no external execution. The framework suites
+  do drive a scripted, offline, in-process model — a model abstraction really
+  is instantiated and called, and the report says so rather than claiming no
+  model was called. A guarded run permits loopback; see the accepted
   limitations below.
 - Conformance establishes no Tier 3 assurance.
 
@@ -118,8 +121,9 @@ closed enums for every status, and required version fields.
 Entry point: `python -m nornyx_agentic_adapters.conformance`. Exit codes are
 `0` (every required case conformed), `1` (observed nonconformance), `2`
 (invalid configuration or usage). The command opens no external network, loads
-no credentials, calls no external model, and executes no connector; a guarded
-run permits loopback (see the accepted limitations).
+no credentials, calls no external model service or endpoint, and executes no
+connector; the framework suites drive a scripted, offline, in-process model,
+and a guarded run permits loopback (see the accepted limitations).
 
 A run fails when a case fails, when a required framework is unavailable, when
 the selection produced no case at all — it verified nothing — or when the run's
@@ -234,6 +238,14 @@ than fixed, because fixing them would cost more than the risk they carry:
   Framework suite *modules* are also imported before the guard is installed, so
   a framework's own import-time behavior is outside the guarded window; only
   its case execution is covered.
+- **A model abstraction is instantiated and called.** The framework suites
+  drive a scripted, offline, in-process model, because CrewAI's native
+  executor needs one and a scripted one is what makes the run deterministic.
+  The report therefore carries two separate fields rather than one broad
+  `models_called`: `scripted_in_process_model_called`, observed per run, and
+  `external_model_service_called`, a structural constant. A single
+  `models_called: false` would have been false on the ordinary reading of the
+  word.
 - **The guard permits loopback.** `connect`, `create_connection` and
   `getaddrinfo` all allow `127.0.0.1`/`::1`/`localhost`, because a framework's
   local telemetry stack reaches loopback through more than one of them and
