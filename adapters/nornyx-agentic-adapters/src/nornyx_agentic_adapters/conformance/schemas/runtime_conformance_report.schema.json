@@ -39,6 +39,7 @@
         "frameworks_executed",
         "guarded_suites",
         "blocked_outbound_attempts",
+        "blocked_process_attempts",
         "models_called",
         "external_connectors_used",
         "credentials_loaded"
@@ -53,7 +54,12 @@
           "items": {"type": "string", "minLength": 1}
         },
         "blocked_outbound_attempts": {
-          "description": "Observed count of outbound calls the guard blocked. A blocked attempt means the network was not reached; this is deliberately not restated as a 'network was used' flag, which would invert its meaning.",
+          "description": "Blocked calls that named a non-loopback host. A blocked attempt means the network was not reached; this is deliberately not restated as a 'network was used' flag, which would invert its meaning.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_process_attempts": {
+          "description": "Blocked subprocess/os.system calls, which are local and involve no network. Counted separately so neither count misdescribes the other.",
           "type": "integer",
           "minimum": 0
         },

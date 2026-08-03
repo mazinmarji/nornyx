@@ -18,12 +18,7 @@ from typing import Sequence, TextIO
 
 from .model import RunOutcome
 from .report import serialize, validate_report, write_report
-from .runner import (
-    available_suites,
-    missing_required,
-    run_conformance,
-    unresolved_case_ids,
-)
+from .runner import available_suites, missing_required, run_conformance
 
 EXIT_OK = 0
 EXIT_NONCONFORMANT = 1
@@ -156,25 +151,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return EXIT_NONCONFORMANT
 
-    for case_id in unresolved_case_ids():
-        print(
-            f"note: {case_id!r} was not run; its suite is unavailable in this "
-            "environment",
-            file=sys.stderr,
-        )
+    # Derived here rather than stashed in module state by the runner: a
+    # selected id that produced no case was not run, and saying so keeps the
+    # same argument from quietly meaning two different things depending on
+    # which extras happen to be installed.
+    if args.cases:
+        ran = {case.case_id for case in report.cases()}
+        for case_id in sorted(set(args.cases) - ran):
+            print(
+                f"note: {case_id!r} was not run; its suite is unavailable in "
+                "this environment",
+                file=sys.stderr,
+            )
 
     failures = report.failures()
     if failures or report.outcome is RunOutcome.FAIL:
         for case in failures:
             print(f"nonconformant: {case.case_id}: {case.detail}", file=sys.stderr)
-        blocked = report.safety.blocked_outbound_attempts
-        if blocked:
+        outbound = report.safety.blocked_outbound_attempts
+        processes = report.safety.blocked_process_attempts
+        if outbound:
             print(
-                f"nonconformant: {blocked} outbound operation(s) were blocked "
-                "during the run; conformance runs offline",
+                f"nonconformant: {outbound} outbound connection(s) to a "
+                "non-loopback host were blocked; conformance runs offline",
                 file=sys.stderr,
             )
-        if not failures and not blocked:
+        if processes:
+            print(
+                f"nonconformant: {processes} process-execution attempt(s) were "
+                "blocked; a guarded suite must not spawn a process",
+                file=sys.stderr,
+            )
+        if not failures and not outbound and not processes:
             # A zero-case run fails; without this it would exit 1 in silence.
             print(
                 "nonconformant: the run produced no conformance case, so "

@@ -195,30 +195,51 @@ class ExecutionCounter:
 
 
 class NetworkGuard:
-    """Blocks outbound operations for the duration of a guarded run.
+    """Blocks outbound and process-spawning operations during a guarded run.
 
-    ``socket.socket.connect`` permits loopback, because CrewAI's own telemetry
-    stack may touch it; every other guarded entry point
-    (``create_connection``, ``getaddrinfo``, ``subprocess``, ``os.system``)
-    is blocked unconditionally. A blocked call raises into the case that made
-    it, so an attempt fails that case rather than passing quietly.
+    Loopback is permitted on every path that can express it —
+    ``socket.socket.connect``, ``socket.create_connection`` and
+    ``socket.getaddrinfo`` — because CrewAI's telemetry stack may touch it and
+    reaches it through more than one of them. Anything naming a non-loopback
+    host is blocked.
 
-    ``attempts`` counts blocked calls. It is reported as exactly that — a count
-    of blocked attempts — and never as "the network was used": a blocked
-    attempt means the network was *not* reached, so deriving a "used" flag from
-    it would invert the meaning.
+    Two counters, kept separate because they mean different things and a single
+    number would misdescribe one of them:
+
+    * ``outbound_attempts`` — blocked calls that named a non-loopback host.
+    * ``process_attempts`` — blocked ``subprocess``/``os.system`` calls, which
+      are local and involve no network at all.
+
+    Both are disallowed during a conformance run and either fails it, but the
+    report and the operator message say which actually happened.
 
     Not re-entrant across threads: two threads entering :meth:`active`
     concurrently would leak a patched module attribute. One guard per run.
     """
 
+    _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self.attempts = 0
+        self.outbound_attempts = 0
+        self.process_attempts = 0
 
-    def _record(self) -> None:
+    @property
+    def attempts(self) -> int:
+        """Every blocked call, of either kind."""
+        return self.outbound_attempts + self.process_attempts
+
+    def _record_outbound(self) -> None:
         with self._lock:
-            self.attempts += 1
+            self.outbound_attempts += 1
+
+    def _record_process(self) -> None:
+        with self._lock:
+            self.process_attempts += 1
+
+    @classmethod
+    def _is_loopback(cls, host: object) -> bool:
+        return isinstance(host, str) and host in cls._LOOPBACK
 
     @contextlib.contextmanager
     def active(self) -> Iterator[NetworkGuard]:
@@ -230,24 +251,37 @@ class NetworkGuard:
 
         def loopback_only(sock: socket.socket, address: Any) -> Any:
             host = address[0] if isinstance(address, tuple) else address
-            if isinstance(host, str) and host in ("127.0.0.1", "::1", "localhost"):
+            if self._is_loopback(host):
                 return real_connect(sock, address)
-            self._record()
+            self._record_outbound()
             raise AssertionError(f"external connection attempted: {address!r}")
 
-        def forbidden(*_a: Any, **_k: Any) -> Any:
-            self._record()
-            raise AssertionError("external operation attempted during conformance")
+        def loopback_create(address: Any, *args: Any, **kwargs: Any) -> Any:
+            host = address[0] if isinstance(address, (tuple, list)) else address
+            if self._is_loopback(host):
+                return real_create(address, *args, **kwargs)
+            self._record_outbound()
+            raise AssertionError(f"external connection attempted: {address!r}")
+
+        def loopback_getaddrinfo(host: Any, *args: Any, **kwargs: Any) -> Any:
+            if self._is_loopback(host):
+                return real_getaddrinfo(host, *args, **kwargs)
+            self._record_outbound()
+            raise AssertionError(f"external name resolution attempted: {host!r}")
+
+        def no_subprocess(*_a: Any, **_k: Any) -> Any:
+            self._record_process()
+            raise AssertionError("process execution attempted during conformance")
 
         # No escape hatch: a permitted child process would be entirely
-        # unguarded, and a count of blocked attempts made in this process could
-        # then say nothing about what that child did.
+        # unguarded, and a count of attempts blocked in this process could then
+        # say nothing about what that child did.
         socket.socket.connect = loopback_only  # type: ignore[method-assign]
-        socket.create_connection = forbidden  # type: ignore[assignment]
-        socket.getaddrinfo = forbidden  # type: ignore[assignment]
-        subprocess.run = forbidden  # type: ignore[assignment]
-        subprocess.Popen = forbidden  # type: ignore[assignment]
-        os.system = forbidden  # type: ignore[assignment]
+        socket.create_connection = loopback_create  # type: ignore[assignment]
+        socket.getaddrinfo = loopback_getaddrinfo  # type: ignore[assignment]
+        subprocess.run = no_subprocess  # type: ignore[assignment]
+        subprocess.Popen = no_subprocess  # type: ignore[assignment]
+        os.system = no_subprocess  # type: ignore[assignment]
         try:
             yield self
         finally:

@@ -118,6 +118,15 @@ Entry point: `python -m nornyx_agentic_adapters.conformance`. Exit codes are
 (invalid configuration or usage). The command opens no network, loads no
 credentials, calls no external model, and executes no connector.
 
+A run fails when a case fails, when a required framework is unavailable, when
+the selection produced no case at all — it verified nothing — or when the run's
+guard blocked an outbound connection or a process spawn. The guard raises into
+the case that made the call, but that raise alone cannot be relied on: a
+framework executor may swallow it, and CrewAI's ReAct loop treats a tool error
+as recoverable. The two blocked counts are reported separately, because a
+blocked local process spawn is not an outbound attempt and one number would
+misdescribe whichever it was not.
+
 ### Determinism rules
 
 The report must be byte-identical across repeated runs on one platform and free

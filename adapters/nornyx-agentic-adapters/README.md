@@ -235,8 +235,10 @@ python -m nornyx_agentic_adapters.conformance \
   --require crewai --require langgraph --json conformance.json
 ```
 
-Exit codes: `0` every required case conformed, `1` observed nonconformance or a
-required framework unavailable, `2` invalid configuration or an internal error.
+Exit codes: `0` every required case conformed, `1` observed nonconformance — a
+failing case, a required framework unavailable, a run that produced no case, or
+an outbound connection or process spawn the run's guard blocked — and `2`
+invalid configuration or an internal error.
 `--require` exists so a missing extra fails CI instead of passing as a silent
 skip. The command opens no network, loads no credentials, calls no external
 model, and executes no connector.

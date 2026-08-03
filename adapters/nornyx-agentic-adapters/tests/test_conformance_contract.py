@@ -117,6 +117,7 @@ def valid_report() -> dict:
             "frameworks_executed": [],
             "guarded_suites": ["enforcement_boundary"],
             "blocked_outbound_attempts": 0,
+            "blocked_process_attempts": 0,
             "models_called": False,
             "external_connectors_used": False,
             "credentials_loaded": False,

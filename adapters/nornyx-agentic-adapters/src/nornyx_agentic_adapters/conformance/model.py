@@ -332,10 +332,13 @@ class RunSafety:
     #: Which suites actually ran under the outbound guard. Named rather than a
     #: bare boolean so a reader can tell exactly what was covered.
     guarded_suites: tuple[str, ...] = ()
-    #: Observed count of outbound calls the guard blocked. Reported as what it
-    #: is. A blocked attempt means the network was *not* reached, so this is
+    #: Blocked calls that named a non-loopback host. Reported as what it is: a
+    #: blocked attempt means the network was *not* reached, so it is
     #: deliberately not restated as a "network was used" flag.
     blocked_outbound_attempts: int = 0
+    #: Blocked ``subprocess``/``os.system`` calls, which are local and involve
+    #: no network.
+    blocked_process_attempts: int = 0
     #: No *external* model is called. The framework suites do drive a scripted,
     #: offline, in-process LLM, which is what makes a native run deterministic;
     #: nothing leaves the process.
@@ -351,6 +354,7 @@ class RunSafety:
             "frameworks_executed": list(self.frameworks_executed),
             "guarded_suites": list(self.guarded_suites),
             "blocked_outbound_attempts": self.blocked_outbound_attempts,
+            "blocked_process_attempts": self.blocked_process_attempts,
             "models_called": self.models_called,
             "external_connectors_used": self.external_connectors_used,
             "credentials_loaded": self.credentials_loaded,

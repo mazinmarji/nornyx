@@ -105,6 +105,9 @@ def test_report_safety_block_is_the_kits_own_not_the_validators(base_report) -> 
     # flag would invert the meaning.
     assert safety["guarded_suites"] == ["enforcement_boundary"]
     assert safety["blocked_outbound_attempts"] == 0
+    # A blocked local process spawn is not an outbound attempt; counting them
+    # together would misdescribe whichever one actually happened.
+    assert safety["blocked_process_attempts"] == 0
     assert "network_used" not in safety
     assert safety["models_called"] is False
     assert "tools_executed" not in safety
@@ -134,21 +137,83 @@ def test_a_blocked_outbound_attempt_fails_the_run(monkeypatch: pytest.MonkeyPatc
     assert report.outcome is RunOutcome.FAIL
 
 
-def test_guarded_suites_names_only_suites_that_ran(base_report) -> None:
-    safety = base_report.as_dict()["safety"]
-    suite_ids = {suite.suite_id for suite in base_report.suites}
-    assert set(safety["guarded_suites"]) <= suite_ids
-    assert len(safety["guarded_suites"]) == len(set(safety["guarded_suites"]))
-    # The distribution suite spawns a clean interpreter on purpose and runs
-    # outside the guard, so it must not be claimed as covered.
-    assert "distribution" not in safety["guarded_suites"]
-
-
-def test_an_unmatched_case_id_in_an_unavailable_suite_is_surfaced(
+def test_guarded_suites_names_only_suites_that_ran(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The exemption must not make the same argument mean two different things
-    depending on which extras are installed."""
+    """Observes a framework suite that did NOT run, so the assertion is not
+    implied by the base fixture's exact-equality check elsewhere."""
+    from nornyx_agentic_adapters.conformance import runner
+
+    monkeypatch.setattr(
+        runner,
+        "_load_framework_suite",
+        lambda framework: (_ for _ in ()).throw(ImportError("absent")),
+    )
+    report = runner.run_conformance(
+        frameworks=["distribution", "enforcement_boundary", "crewai"]
+    )
+    safety = report.as_dict()["safety"]
+    guarded = safety["guarded_suites"]
+    assert len(guarded) == len(set(guarded))
+    assert set(guarded) <= {suite.suite_id for suite in report.suites}
+    # crewai was selected but unavailable, so it never ran and must not be
+    # claimed as guarded.
+    assert "crewai" not in guarded
+    # The distribution suite spawns a clean interpreter on purpose and runs
+    # outside the guard, so it must not be claimed as covered either.
+    assert "distribution" not in guarded
+    assert guarded == ["enforcement_boundary"]
+
+
+def test_a_blocked_local_process_spawn_is_not_called_an_outbound_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both are disallowed and either fails the run, but the report must say
+    which actually happened."""
+    import subprocess
+    import sys as _sys
+
+    from nornyx_agentic_adapters.conformance.suites import neutral
+
+    real = neutral.run
+
+    def spawning(case_ids=None):
+        try:
+            subprocess.run([_sys.executable, "-c", "pass"], check=False)
+        except Exception:  # noqa: BLE001
+            pass
+        return real(case_ids)
+
+    monkeypatch.setattr(neutral, "run", spawning)
+    report = run_conformance(frameworks=["enforcement_boundary"])
+    assert report.outcome is RunOutcome.FAIL
+    assert report.safety.blocked_process_attempts >= 1
+    assert report.safety.blocked_outbound_attempts == 0
+
+
+def test_loopback_is_permitted_on_every_path_that_can_express_it() -> None:
+    """CrewAI's telemetry stack reaches loopback through more than one API; a
+    guard that blocked some of them would fail a run for a local call."""
+    import socket
+
+    from nornyx_agentic_adapters.conformance.harness import NetworkGuard
+
+    guard = NetworkGuard()
+    with guard.active():
+        socket.getaddrinfo("127.0.0.1", 80)
+        with pytest.raises(AssertionError):
+            socket.getaddrinfo("example.invalid", 80)
+        with pytest.raises(AssertionError):
+            socket.create_connection(("example.invalid", 80))
+    assert guard.outbound_attempts == 2
+    assert guard.process_attempts == 0
+
+
+def test_an_unmatched_case_id_in_an_unavailable_suite_does_not_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exemption keeps a real case id from erroring just because its extra
+    is absent, but the run still verified nothing and cannot report pass."""
     from nornyx_agentic_adapters.conformance import runner
 
     monkeypatch.setattr(
@@ -160,7 +225,32 @@ def test_an_unmatched_case_id_in_an_unavailable_suite_is_surfaced(
         frameworks=["crewai"], case_ids=["crewai.nonexistent.typo"]
     )
     assert report.outcome is RunOutcome.FAIL
-    assert runner.unresolved_case_ids() == ("crewai.nonexistent.typo",)
+    assert report.cases() == ()
+
+
+def test_a_hostile_str_subclass_cannot_suppress_the_unmatched_id_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exemption test uses a prefix comparison on caller-supplied input, so
+    it must not be reachable through an overridden __str__ or startswith."""
+    from nornyx_agentic_adapters.conformance import runner
+
+    class Sneaky(str):
+        def __str__(self) -> str:  # noqa: D105
+            return "crewai."
+
+        def startswith(self, *_args, **_kwargs) -> bool:  # noqa: D102
+            return True
+
+    monkeypatch.setattr(
+        runner,
+        "_load_framework_suite",
+        lambda framework: (_ for _ in ()).throw(ImportError("absent")),
+    )
+    with pytest.raises(ValueError, match="no conformance case matches"):
+        runner.run_conformance(
+            frameworks=["crewai"], case_ids=[Sneaky("totally-bogus-id")]
+        )
 
 
 def test_unknown_suite_and_unknown_required_framework_are_rejected() -> None:
