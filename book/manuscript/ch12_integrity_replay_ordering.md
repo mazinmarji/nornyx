@@ -139,7 +139,7 @@ Fields that carry <span class="ix" data-ix="transport field">*transport* identit
 
 Fields that carry *substantive* identity — the actor, the capability, the decision, the target, the zones, the digests — must be included, or genuinely different actions collapse into one fingerprint and the validator raises a false replay on legitimate work.
 
-And one field class is easy to overlook: *occurrence identity*, the subject of the next section. Including it is what makes the fingerprint able to distinguish "the same record twice" from "the same work, done again, on purpose."
+And one field class is easy to overlook: *occurrence identity*, the subject of the next section. Including it is what makes the fingerprint able to distinguish "the same record twice" from "the same work, done again, on purpose." Listing 12.2 makes the field assignment concrete with a pair of records the fingerprint must treat as one.
 
 ```json
 {"event_id": "GOAL-001-0002", "sequence": 2, "timestamp": "2026-07-17T10:00:00Z",
@@ -169,7 +169,7 @@ An <span class="ix" data-ix="operation">operation</span> is a stable governed su
 
 An <span class="ix" data-ix="occurrence">occurrence</span> is one scheduled execution of an operation: one visit to a loop body, one branch of a parallel fan-out, one invocation in a sequence. Occurrences are the level at which "the same work, deliberately, again" becomes representable. Without them, a loop that legitimately runs an operation twelve times is indistinguishable from a producer emitting one record twelve times.
 
-An <span class="ix" data-ix="attempt">attempt</span> is one try within an occurrence: the retry level. Attempts are numbered contiguously from one within their occurrence, and this is where the sharpest rule in the model lives — *a successful occurrence cannot be retried*. If an occurrence succeeded, another attempt at it is not a retry, because there is nothing left to retry; it is either a duplicate record or new work that deserves its own occurrence identifier. Making that a rule rather than a convention is what turns the opening scenario from an interpretation problem into a validation error.
+An <span class="ix" data-ix="attempt">attempt</span> is one try within an occurrence: the retry level. Attempts are numbered contiguously from one within their occurrence, and this is where the sharpest rule in the model lives — *a successful occurrence cannot be retried*. If an occurrence succeeded, another attempt at it is not a retry, because there is nothing left to retry; it is either a duplicate record or new work that deserves its own occurrence identifier. Making that a rule rather than a convention is what turns the opening scenario from an interpretation problem into a validation error. Figure 12.3 arranges the four levels on the opening scenario's records.
 
 <figure class="nx-fig" id="fig-12-3">
   <div class="fig-body">
@@ -243,7 +243,7 @@ Content addressing binds bytes to a short name and supports exactly one claim: t
 ## Review questions
 
 1. State the single claim a digest supports, and for each of the five claims it does not support, name a mechanism that would.
-2. A team hashes each of its six generated artifacts separately and checks all six in CI. What does a single lock binding all six, plus the source and the schema versions, add that six independent hashes do not?
+2. A team hashes each of its six generated artifacts separately and checks all six in continuous integration. What does a single lock binding all six, plus the source and the schema versions, add that six independent hashes do not?
 3. Two evidence streams from two services both validate cleanly. A reviewer orders their events by timestamp to reconstruct a causal chain. Explain the error, and describe the minimum change to the evidence model that would make the reconstruction sound.
 4. Why must a replay fingerprint exclude the record's own sequence number? Why is excluding the timestamp safe in an occurrence-aware model and unsafe without one?
 5. Classify each pair as duplicate, retry, invalid, or legitimate repeated work, and justify each from the identity fields alone: (a) same occurrence, same attempt, different event identifier; (b) same occurrence, attempt 2 following a successful attempt 1; (c) different occurrence, attempt 1 in both; (d) same occurrence, attempt 3 with no attempt 2 present.

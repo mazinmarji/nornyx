@@ -6,7 +6,7 @@ title: "Assurance Tiers"
 
 # Assurance Tiers
 
-> **Opening scenario.** Northstar's Risk & Audit chief is reading two documents. The first is a vendor proposal claiming that its platform "enforces your AI governance policy and provides full audit evidence." The second is Northstar's own platform team's internal write-up of the Atlas and Forge pilots, which claims that "policy is enforced and evidence is validated in CI." The two sentences are nearly identical. Behind them sit completely different mechanisms: one is a network gateway the agent cannot route around, the other is a library the agent's own process calls into and could, in principle, skip. Both teams believe they are being accurate. Neither sentence tells the reader which mechanism is in play, what happens if it is absent, or what remains unproven. The chief's problem is not that someone is lying. It is that the English language gives "enforce" one word for three very different guarantees, and procurement, audit, and engineering all need to tell them apart. This chapter supplies the vocabulary.
+> **Opening scenario.** Northstar's Risk & Audit chief is reading two documents. The first is a vendor proposal claiming that its platform "enforces your AI governance policy and provides full audit evidence." The second is Northstar's own platform team's internal write-up of the Atlas and Forge pilots, which claims that "policy is enforced and evidence is validated in continuous integration (CI)." The two sentences are nearly identical. Behind them sit completely different mechanisms: one is a network gateway the agent cannot route around, the other is a library the agent's own process calls into and could, in principle, skip. Both teams believe they are being accurate. Neither sentence tells the reader which mechanism is in play, what happens if it is absent, or what remains unproven. The chief's problem is not that someone is lying. It is that the English language gives "enforce" one word for three very different guarantees, and procurement, audit, and engineering all need to tell them apart. This chapter supplies the vocabulary.
 
 > **Learning objectives.**
 > - State the three assurance tiers and the property that distinguishes each from the one below it.
@@ -31,6 +31,8 @@ The difficulty is that strength varies enormously while the wording does not. Co
 
 **<span class="ix" data-ix="assurance tier!tier 3">Tier 3 — independent enforcement with independent attestation</span>.** The claim rests on a component the governed system cannot bypass, producing evidence the governed system cannot forge or suppress. Defeated by: compromising the enforcement system itself, which is a much harder proposition than the tiers below.
 
+Figure 13.1 sets the three tiers side by side, each with the evidence it rests on and the bypass that defeats it.
+
 <figure class="nx-fig" id="fig-13-1">
   <div class="fig-body">
     <div class="tiers">
@@ -54,7 +56,7 @@ The difficulty is that strength varies enormously while the wording does not. Co
           <li>Bypassed by: calling the surface without the wrapper</li>
         </ul>
       </div>
-      <div class="tier" data-name="Tier 3 — Independent">
+      <div class="tier" data-name="Tier 3 — Independent enforcement">
         <ul>
           <li>Everything in Tier 1 for the same revision, plus:</li>
           <li>Enforcement the subject cannot route around</li>
@@ -107,15 +109,15 @@ Two clarifications matter for architecture. First, Tier 3 does not require Tier 
 
 Table 13.1 is the chapter's core: each tier worked systematically through the eight questions.
 
-| Question | Tier 1 — Design-time | Tier 2 — Cooperative runtime | Tier 3 — Independent |
+| Question | Tier 1 — Design-time | Tier 2 — Cooperative runtime | Tier 3 — Independent enforcement |
 |---|---|---|---|
-| **What is guaranteed?** | Declarations are valid, composed, unchanged since review, and approved against an exact revision | Calls on wrapped surfaces are evaluated against that contract; denials stop the call | Actions on covered surfaces cannot proceed without evaluation, and evidence of that is independently produced |
+| **What exactly is guaranteed?** | Declarations are valid, composed, unchanged since review, and approved against an exact revision | Calls on wrapped surfaces are evaluated against that contract; denials stop the call | Actions on covered surfaces cannot proceed without evaluation, and evidence of that is independently produced |
 | **Which component enforces it?** | Nothing at runtime; the checker, composer, and lock verifier constrain artifacts only | The in-path decision component, invoked by the executing system | An external gateway, sandbox, identity boundary, or mesh authorization point the subject cannot route around |
-| **What evidence proves it?** | Deterministic diagnostics, content digests, lock verification, bound approval records | Allow and deny outcomes on wrapped surfaces; runtime records bound to the revision; coverage inventory | The above plus authenticated producer identity, verified attestation, protected capture, independent logging, demonstrated coverage |
+| **What evidence supports it?** | Deterministic diagnostics, content digests, lock verification, bound approval records | Allow and deny outcomes on wrapped surfaces; runtime records bound to the revision; coverage inventory | The above plus authenticated producer identity, verified attestation, protected capture, independent logging, demonstrated coverage |
 | **What assumptions are required?** | Reviewers read what they approved; the canonicalizer is stable; the repository is controlled | Every consequential surface is wrapped; the wrapper is actually invoked; the producer is honest | The enforcement point is unbypassable in the deployed topology; the attestation keys are protected; the producer is genuinely independent |
-| **How is it bypassed?** | Run something other than what was declared; regenerate the lock around weakened inputs | Call the underlying surface directly; act through an unwrapped or undeclared surface | Compromise the enforcement point, its keys, or the network path; find a surface outside its coverage |
-| **What if the enforcing component fails?** | Artifacts stop being verifiable; the pipeline gate fails closed, and nothing at runtime changes | Depends on design: fail-closed denies the call, fail-open silently permits it. Availability of the decision component becomes an availability property of the workload | Traffic is blocked or routed around, depending on topology; a fail-open bypass at this tier is a full loss of the claim |
-| **Which claims does it support?** | "Declared, reviewed, approved, unchanged"; contract-level statements about intent | "Evaluated and enforced on these named surfaces, cooperatively" | "Enforced independently on these surfaces, with independently produced evidence" |
+| **How can it be bypassed?** | Run something other than what was declared; regenerate the lock around weakened inputs | Call the underlying surface directly; act through an unwrapped or undeclared surface | Compromise the enforcement point, its keys, or the network path; find a surface outside its coverage |
+| **What happens when the enforcing component fails?** | Artifacts stop being verifiable; the pipeline gate fails closed, and nothing at runtime changes | Depends on design: fail-closed denies the call, fail-open silently permits it. Availability of the decision component becomes an availability property of the workload | Traffic is blocked or routed around, depending on topology; a fail-open bypass at this tier is a full loss of the claim |
+| **What level of independence does the claim rest on?** | None at runtime — nothing depends on the governed system's cooperation, because nothing runs; the claim supports only "declared, reviewed, approved, unchanged" statements | The governed system's cooperation: the claim holds where execution routes through the wrapper — "evaluated and enforced on these named surfaces, cooperatively" | Independence of both enforcement and evidence production from the governed system — "enforced independently on these surfaces, with independently produced evidence" |
 | **What remains unproven?** | All runtime behavior; the completeness of what was declared | That no undeclared surface exists; that no bypass occurred; that the records are complete or true | That coverage is total; that the external system's own controls hold; that the policy deployed matches the approved revision unless separately bound |
 
 **Table 13.1 — The eight questions applied to each tier.** The teaching purpose is the bottom row. Every tier has a non-empty "unproven" cell, and the discipline of this book is that the cell is published alongside the claim rather than discovered during an incident. Reading across any row shows what buying the next tier actually purchases; reading down the last column shows what no tier removes.
@@ -152,6 +154,8 @@ Table 13.2 works the two variables across the book's case studies.
 
 **<span class="ix" data-ix="tier inflation!evidence inflation">Evidence inflation</span>** presents supplied evidence as though it were observed: "verified," "attested," "proven." A validation report saying `pass` becomes "independently verified" somewhere between the pipeline and the executive summary. Chapter 11's supplied/observed distinction is the antidote, and the practical rule is that the word "independent" requires naming the independent party.
 
+Listing 13.1 shows one claim written at three levels of honesty, which is the fastest way to see what the tier vocabulary buys.
+
 ```text
 Inflated:      "Nornyx enforces Northstar's AI governance policy and provides
                 full audit evidence."
@@ -160,7 +164,7 @@ Hedged:        "We use a governance layer to help enforce policy, with
                 comprehensive logging."
 
 Tier-accurate: "Tier 1: the support-network contract is validated, locked, and
-                approved against revision git:9f3c1a7. Tier 2 (cooperative,
+                approved against revision git:feedfacefeed…. Tier 2 (cooperative,
                 declared surfaces only): the three tool surfaces listed in the
                 coverage inventory are evaluated in-path; allow and deny paths
                 are exercised in CI; runtime events bind to that revision.

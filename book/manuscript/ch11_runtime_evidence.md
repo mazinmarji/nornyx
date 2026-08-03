@@ -6,7 +6,7 @@ title: "Runtime Evidence as an Engineering Artifact"
 
 # Runtime Evidence as an Engineering Artifact
 
-> **Opening scenario.** Six weeks after Northstar Services deploys its research assistant, Atlas, a compliance reviewer asks a narrow question: *on 14 March, did Atlas attempt to publish a client briefing to an external site, and what stopped it?* The platform team is confident the answer is yes-and-a-denial, because they remember the incident. Retrieving proof turns out to be harder. The application log has the string `tool call rejected` with a request identifier and no policy context. The distributed trace shows a span that ended in an error, sampled at ten percent and retained for seven days — and 14 March was nine days ago. The security information system has an alert that fired, was acknowledged, and carries no link to the agent's identity or to the policy version in force. Three systems recorded *something*. None recorded what the reviewer needs: which subject, under which policy revision, requested which capability, what was decided, by what, and against what declared authority. This chapter is about designing that missing artifact deliberately instead of hoping it falls out of the logging stack.
+> **Opening scenario.** Six weeks after Northstar Services deploys its research assistant, Atlas, a compliance reviewer asks a narrow question: *on 14 March, did Atlas attempt to publish a client briefing to an external site, and what stopped it?* The platform team is confident the answer is yes-and-a-denial, because they remember the incident. Retrieving the evidence turns out to be harder. The application log has the string `tool call rejected` with a request identifier and no policy context. The distributed trace shows a span that ended in an error, sampled at ten percent and retained for seven days — and 14 March was nine days ago. The security information system has an alert that fired, was acknowledged, and carries no link to the agent's identity or to the policy version in force. Three systems recorded *something*. None recorded what the reviewer needs: which subject, under which policy revision, requested which capability, what was decided, by what, and against what declared authority. This chapter is about designing that missing artifact deliberately instead of hoping it falls out of the logging stack.
 
 > **Learning objectives.**
 > - Distinguish evidence from logs and telemetry by purpose, audience, binding, retention, and admissibility.
@@ -125,7 +125,7 @@ The Atlas denial makes this concrete. Table 11.2 writes the evidence contract fo
 
 ## 11.4 Supplied versus observed evidence
 
-We now reach the distinction this book treats as its central honesty requirement.
+We now reach the distinction this book treats as its central honesty requirement. Chapter 3's worked example established it in miniature — a signature moves authenticity and leaves completeness and truthfulness untouched; this section gives the same boundary its operational form for whole record streams.
 
 <span class="ix" data-ix="observed evidence">Observed evidence</span> is produced by a component that independently witnessed the fact it records and that the subject of the record could not control. A network appliance recording a connection it terminated has observed something; a hypervisor recording a system call has observed something. Observation costs something structural: the observer must sit somewhere the observed cannot reach.
 
