@@ -49,6 +49,7 @@
         "guarded_suites": {
           "description": "Which suites actually ran under the outbound guard. Named rather than a bare boolean so a reader can tell exactly what was covered.",
           "type": "array",
+          "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         },
         "blocked_outbound_attempts": {
@@ -57,7 +58,7 @@
           "minimum": 0
         },
         "models_called": {
-          "description": "Structural property of the kit's design, not a measurement: it contains no model client.",
+          "description": "No external model is called. The framework suites drive a scripted, offline, in-process LLM to keep a native run deterministic; nothing leaves the process.",
           "const": false
         },
         "external_connectors_used": {

@@ -28,6 +28,15 @@ _FRAMEWORK_SUITES: dict[str, str] = {"crewai": "crewai_suite", "langgraph": "lan
 
 ADAPTER_NAME = "nornyx-agentic-adapters"
 
+#: Case ids the last run could not resolve because their suite was
+#: unavailable. Surfaced by the CLI so the same argument does not silently
+#: mean two different things depending on which extras are installed.
+_UNRESOLVED_CASE_IDS: list[str] = []
+
+
+def unresolved_case_ids() -> tuple[str, ...]:
+    return tuple(_UNRESOLVED_CASE_IDS)
+
 
 def available_suites() -> tuple[str, ...]:
     """Every suite id this build can run, in deterministic order."""
@@ -135,6 +144,7 @@ def run_conformance(
     _validate_case_ids_unique(suites)
 
     produced = {case.case_id for suite in suites for case in suite.cases}
+    unresolved: list[str] = []
     if wanted is not None:
         # An unmatched case id must not yield a zero-case report that validates
         # and exits 0 — a typo would read as a passing run of that case. Ids
@@ -148,10 +158,16 @@ def run_conformance(
         unmatched = sorted(
             case_id
             for case_id in wanted - produced
-            if not case_id.startswith(absent)
+            # str() first: a hostile str subclass overriding startswith could
+            # otherwise suppress this check.
+            if not str(case_id).startswith(absent)
         )
         if unmatched:
             raise ValueError(f"no conformance case matches: {unmatched}")
+        # Ids exempted because their suite is unavailable are not silently
+        # dropped: they are surfaced so the same argument cannot mean two
+        # different things depending on which extras happen to be installed.
+        unresolved.extend(sorted(str(c) for c in wanted - produced))
 
     failed_cases = any(
         case.outcome is CaseOutcome.FAIL for suite in suites for case in suite.cases
@@ -164,11 +180,23 @@ def run_conformance(
     # A run that produced no case verified nothing, so it cannot be a pass.
     # Otherwise selecting a framework whose extra is absent would report
     # `pass` with zero evidence behind it.
+    #
+    # A blocked outbound attempt fails the run outright. The guard raises into
+    # the case that made the call, but a framework executor may swallow that
+    # exception (CrewAI's ReAct loop treats a tool error as recoverable), so
+    # the raise alone cannot be relied on to surface it. Reporting the count
+    # without acting on it would make the observation decorative.
     outcome = (
         RunOutcome.FAIL
-        if (failed_cases or missing_required or not produced)
+        if (failed_cases or missing_required or not produced or guard.attempts)
         else RunOutcome.PASS
     )
+
+    if unresolved:
+        _UNRESOLVED_CASE_IDS.clear()
+        _UNRESOLVED_CASE_IDS.extend(unresolved)
+    else:
+        _UNRESOLVED_CASE_IDS.clear()
 
     return ConformanceReport(
         adapter_name=ADAPTER_NAME,
@@ -200,6 +228,10 @@ def _validate_case_ids_unique(suites: Iterable[SuiteResult]) -> None:
         raise ValueError(f"duplicate conformance case id(s): {sorted(duplicates)}")
 
 
+def blocked_outbound_attempts(report: ConformanceReport) -> int:
+    return report.safety.blocked_outbound_attempts
+
+
 def missing_required(report: ConformanceReport, require: Iterable[str]) -> tuple[str, ...]:
     required = set(require)
     return tuple(
@@ -211,4 +243,11 @@ def missing_required(report: ConformanceReport, require: Iterable[str]) -> tuple
     )
 
 
-__all__ = ["ADAPTER_NAME", "available_suites", "missing_required", "run_conformance"]
+__all__ = [
+    "ADAPTER_NAME",
+    "available_suites",
+    "blocked_outbound_attempts",
+    "missing_required",
+    "run_conformance",
+    "unresolved_case_ids",
+]

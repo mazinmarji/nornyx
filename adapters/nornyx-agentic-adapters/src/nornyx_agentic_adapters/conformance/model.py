@@ -336,9 +336,12 @@ class RunSafety:
     #: is. A blocked attempt means the network was *not* reached, so this is
     #: deliberately not restated as a "network was used" flag.
     blocked_outbound_attempts: int = 0
-    #: Structural properties of the kit's design, not measurements: it contains
-    #: no model client, no connector, and no credential loading.
+    #: No *external* model is called. The framework suites do drive a scripted,
+    #: offline, in-process LLM, which is what makes a native run deterministic;
+    #: nothing leaves the process.
     models_called: bool = False
+    #: Structural properties of the kit's design, not measurements: it executes
+    #: no connector and loads no credentials.
     external_connectors_used: bool = False
     credentials_loaded: bool = False
 

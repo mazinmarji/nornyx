@@ -68,7 +68,10 @@ kit, all fixed before this entry:
   in the schema, and now absent rather than `true` when no observation exists.
 
 Also: requiring a framework that was not selected, and selecting a case id that
-matches nothing, are now errors rather than silent no-ops that could exit `0`;
+matches nothing, are now errors rather than silent no-ops that could exit `0`
+(a case id whose suite is unavailable is exempt from the error, since the case
+exists and only its extra does not, and is reported on stderr so the same
+argument cannot quietly mean two different things);
 a run that produced no case at all reports `fail`, because it verified nothing;
 an empty stream reports `not_applicable` rather than a validation `pass`; the
 interrupt/resume case counts the executions it actually performed; and the
@@ -83,6 +86,18 @@ counters where the run-level report could not see them. The escape is removed
 — the distribution suite, which deliberately spawns a clean interpreter, now
 runs outside the guard instead — and the nested guards are gone, leaving one
 observer per run.
+
+A third round caught that removing those nested guards had restored
+*visibility* but dropped *enforcement*: the per-case checks that failed a case
+on a blocked call went with them, so a blocked outbound attempt was reported
+and otherwise ignored. A blocked attempt now fails the run. The guard does
+raise into the case that made the call, but a framework executor may swallow
+that exception — CrewAI's ReAct loop treats a tool error as recoverable — so
+the raise alone cannot be relied on to surface it. That round also corrected
+the `models_called` description, which claimed the kit "contains no model
+client" while it ships a scripted offline LLM to drive CrewAI's executor; the
+defensible claim, and the one made everywhere else, is that no *external*
+model is called.
 
 ### Known limitations
 

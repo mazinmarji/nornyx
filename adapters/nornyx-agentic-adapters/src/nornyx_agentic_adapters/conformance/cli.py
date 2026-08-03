@@ -18,7 +18,12 @@ from typing import Sequence, TextIO
 
 from .model import RunOutcome
 from .report import serialize, validate_report, write_report
-from .runner import available_suites, missing_required, run_conformance
+from .runner import (
+    available_suites,
+    missing_required,
+    run_conformance,
+    unresolved_case_ids,
+)
 
 EXIT_OK = 0
 EXIT_NONCONFORMANT = 1
@@ -151,10 +156,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return EXIT_NONCONFORMANT
 
+    for case_id in unresolved_case_ids():
+        print(
+            f"note: {case_id!r} was not run; its suite is unavailable in this "
+            "environment",
+            file=sys.stderr,
+        )
+
     failures = report.failures()
     if failures or report.outcome is RunOutcome.FAIL:
         for case in failures:
             print(f"nonconformant: {case.case_id}: {case.detail}", file=sys.stderr)
+        blocked = report.safety.blocked_outbound_attempts
+        if blocked:
+            print(
+                f"nonconformant: {blocked} outbound operation(s) were blocked "
+                "during the run; conformance runs offline",
+                file=sys.stderr,
+            )
+        if not failures and not blocked:
+            # A zero-case run fails; without this it would exit 1 in silence.
+            print(
+                "nonconformant: the run produced no conformance case, so "
+                "nothing was verified",
+                file=sys.stderr,
+            )
         return EXIT_NONCONFORMANT
     return EXIT_OK
 

@@ -110,6 +110,59 @@ def test_report_safety_block_is_the_kits_own_not_the_validators(base_report) -> 
     assert "tools_executed" not in safety
 
 
+def test_a_blocked_outbound_attempt_fails_the_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The guard raises into the case that made the call, but a framework
+    executor may swallow that exception — CrewAI's ReAct loop treats a tool
+    error as recoverable — so the raise alone cannot be relied on. The run
+    must fail on the observed count, or reporting it would be decorative."""
+    import socket
+
+    from nornyx_agentic_adapters.conformance.suites import neutral
+
+    real = neutral.run
+
+    def leaky(case_ids=None):
+        try:
+            socket.getaddrinfo("example.invalid", 80)
+        except Exception:  # noqa: BLE001 - swallowed on purpose, as an executor would
+            pass
+        return real(case_ids)
+
+    monkeypatch.setattr(neutral, "run", leaky)
+    report = run_conformance(frameworks=["enforcement_boundary"])
+    assert report.safety.blocked_outbound_attempts >= 1
+    assert report.outcome is RunOutcome.FAIL
+
+
+def test_guarded_suites_names_only_suites_that_ran(base_report) -> None:
+    safety = base_report.as_dict()["safety"]
+    suite_ids = {suite.suite_id for suite in base_report.suites}
+    assert set(safety["guarded_suites"]) <= suite_ids
+    assert len(safety["guarded_suites"]) == len(set(safety["guarded_suites"]))
+    # The distribution suite spawns a clean interpreter on purpose and runs
+    # outside the guard, so it must not be claimed as covered.
+    assert "distribution" not in safety["guarded_suites"]
+
+
+def test_an_unmatched_case_id_in_an_unavailable_suite_is_surfaced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exemption must not make the same argument mean two different things
+    depending on which extras are installed."""
+    from nornyx_agentic_adapters.conformance import runner
+
+    monkeypatch.setattr(
+        runner,
+        "_load_framework_suite",
+        lambda framework: (_ for _ in ()).throw(ImportError("absent")),
+    )
+    report = runner.run_conformance(
+        frameworks=["crewai"], case_ids=["crewai.nonexistent.typo"]
+    )
+    assert report.outcome is RunOutcome.FAIL
+    assert runner.unresolved_case_ids() == ("crewai.nonexistent.typo",)
+
+
 def test_unknown_suite_and_unknown_required_framework_are_rejected() -> None:
     with pytest.raises(ValueError, match="unknown suite"):
         run_conformance(frameworks=["not_a_suite"])

@@ -219,6 +219,9 @@ than fixed, because fixing them would cost more than the risk they carry:
   has imported nothing. Giving the guard an escape hatch for that child would
   have handed out a fully unguarded process, so the suite is excluded instead
   and `safety.guarded_suites` names exactly which suites were covered.
+  Framework suite *modules* are also imported before the guard is installed, so
+  a framework's own import-time behavior is outside the guarded window; only
+  its case execution is covered.
 - **`OccurrenceSummary.collided` detects one specific shape**: two *different*
   logical operations recorded under one occurrence id. The per-case
   `distinct_occurrences` assertions cover the concrete collision scenarios; the
