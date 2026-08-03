@@ -298,9 +298,12 @@ def test_a_framework_suite_must_expose_the_model_counter(
     falsifiable: reverting it to an optional lookup restored the exact defect
     it was added to close — a suite that drove a model but forgot the export
     reporting `false` with nothing failing."""
-    langgraph_suite = pytest.importorskip(
-        "nornyx_agentic_adapters.conformance.suites.langgraph_suite"
-    )
+    # Gate on the framework itself: importing the suite module without the
+    # extra raises MissingOptionalDependencyError, which importorskip surfaces
+    # rather than skipping on.
+    pytest.importorskip("langgraph")
+    from nornyx_agentic_adapters.conformance.suites import langgraph_suite
+
     monkeypatch.delattr(langgraph_suite, "scripted_model_calls")
     with pytest.raises(ValueError, match="must expose scripted_model_calls"):
         run_conformance(frameworks=["langgraph"], require=["langgraph"])
