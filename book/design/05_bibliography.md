@@ -1,0 +1,55 @@
+# Canonical Bibliography (writers cite ONLY these keys with [@key])
+
+Citation style: numbered references, rendered as "[n]" in text; entries below follow a
+chicago-like technical style. Primary sources preferred. Access date for web resources: 2026-08-03.
+
+- **nornyx-repo** — Marji, M., and Nornyx Contributors. *Nornyx* (source repository), version 1.11.0, revision `70d2b40ad792`. https://github.com/mazinmarji/nornyx, 2026.
+- **nist-ai-rmf** — National Institute of Standards and Technology. *Artificial Intelligence Risk Management Framework (AI RMF 1.0)*. NIST AI 100-1, January 2023.
+- **nist-ai-600-1** — National Institute of Standards and Technology. *AI RMF: Generative Artificial Intelligence Profile*. NIST AI 600-1, July 2024.
+- **nist-ssdf** — Souppaya, M., K. Scarfone, and D. Dodson. *Secure Software Development Framework (SSDF) Version 1.1*. NIST SP 800-218, February 2022.
+- **nist-zta** — Rose, S., O. Borchert, S. Mitchell, and S. Connelly. *Zero Trust Architecture*. NIST SP 800-207, August 2020.
+- **iso-42001** — ISO/IEC. *Information technology — Artificial intelligence — Management system*. ISO/IEC 42001:2023.
+- **iso-23894** — ISO/IEC. *Information technology — Artificial intelligence — Guidance on risk management*. ISO/IEC 23894:2023.
+- **iso-27001** — ISO/IEC. *Information security, cybersecurity and privacy protection — Information security management systems — Requirements*. ISO/IEC 27001:2022.
+- **eu-ai-act** — European Parliament and Council. *Regulation (EU) 2024/1689 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act)*. Official Journal of the European Union, 12 July 2024.
+- **owasp-llm** — OWASP Foundation. *OWASP Top 10 for Large Language Model Applications*, version 2025. https://owasp.org/www-project-top-10-for-large-language-model-applications/.
+- **owasp-agentic** — OWASP Foundation, Agentic Security Initiative. *Agentic AI — Threats and Mitigations*, 2025. https://owasp.org.
+- **slsa** — OpenSSF. *SLSA: Supply-chain Levels for Software Artifacts*, specification v1.0, 2023. https://slsa.dev/spec/v1.0/.
+- **in-toto** — Torres-Arias, S., et al. "in-toto: Providing farm-to-table guarantees for bits and bytes." *Proceedings of the 28th USENIX Security Symposium*, 2019.
+- **sigstore** — Sigstore Project. *Sigstore documentation*. https://docs.sigstore.dev/, accessed 2026.
+- **reproducible-builds** — Reproducible Builds Project. *Definitions and documentation*. https://reproducible-builds.org/, accessed 2026.
+- **otel** — OpenTelemetry Authors. *OpenTelemetry Specification*. https://opentelemetry.io/docs/specs/, accessed 2026.
+- **opa** — Open Policy Agent Project. *Open Policy Agent documentation* (Rego policy language). https://www.openpolicyagent.org/docs/, accessed 2026.
+- **cedar** — Cutler, J., et al. "Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorization." *Proc. ACM Program. Lang. (OOPSLA)*, 2024. See also https://www.cedarpolicy.com/.
+- **xacml** — OASIS. *eXtensible Access Control Markup Language (XACML) Version 3.0*. OASIS Standard, January 2013.
+- **rfc2904** — Vollbrecht, J., et al. *AAA Authorization Framework*. IETF RFC 2904, August 2000.
+- **saltzer-schroeder** — Saltzer, J. H., and M. D. Schroeder. "The Protection of Information in Computer Systems." *Proceedings of the IEEE* 63, no. 9 (1975): 1278–1308.
+- **lampson-protection** — Lampson, B. W. "Protection." *ACM SIGOPS Operating Systems Review* 8, no. 1 (1974): 18–24.
+- **hardy-confused-deputy** — Hardy, N. "The Confused Deputy (or why capabilities might have been invented)." *ACM SIGOPS Operating Systems Review* 22, no. 4 (1988): 36–38.
+- **miller-ocap** — Miller, M. S. *Robust Composition: Towards a Unified Approach to Access Control and Concurrency Control*. PhD dissertation, Johns Hopkins University, 2006.
+- **clark-wilson** — Clark, D. D., and D. R. Wilson. "A Comparison of Commercial and Military Computer Security Policies." *IEEE Symposium on Security and Privacy*, 1987.
+- **rbac-nist** — Ferraiolo, D. F., R. Sandhu, S. Gavrila, D. R. Kuhn, and R. Chandramouli. "Proposed NIST Standard for Role-Based Access Control." *ACM TISSEC* 4, no. 3 (2001): 224–274.
+- **abac-nist** — Hu, V. C., et al. *Guide to Attribute Based Access Control (ABAC) Definition and Considerations*. NIST SP 800-162, 2014.
+- **greshake-injection** — Greshake, K., S. Abdelnabi, S. Mishra, C. Endres, T. Holz, and M. Fritz. "Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection." *Proceedings of AISec '23*, 2023.
+- **willison-injection** — Willison, S. "Prompt injection" (series). https://simonwillison.net/series/prompt-injection/, 2022–2025.
+- **react** — Yao, S., J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao. "ReAct: Synergizing Reasoning and Acting in Language Models." *ICLR*, 2023.
+- **anthropic-agents** — Anthropic. "Building effective agents." Engineering blog, December 2024. https://www.anthropic.com/engineering/building-effective-agents.
+- **langgraph-docs** — LangChain, Inc. *LangGraph documentation*. https://langchain-ai.github.io/langgraph/, accessed 2026.
+- **crewai-docs** — CrewAI, Inc. *CrewAI documentation*. https://docs.crewai.com/, accessed 2026.
+- **mcp-spec** — Anthropic and contributors. *Model Context Protocol Specification*. https://modelcontextprotocol.io/specification, accessed 2026.
+- **a2a-spec** — Google and contributors. *Agent2Agent (A2A) Protocol Specification*. https://a2a-protocol.org/, 2025.
+- **istio** — Istio Authors. *Istio documentation: Security concepts*. https://istio.io/latest/docs/concepts/security/, accessed 2026.
+- **envoy** — Envoy Project. *Envoy proxy documentation: External authorization*. https://www.envoyproxy.io/docs/, accessed 2026.
+- **kernighan-pike** *(optional craft ref)* — Kernighan, B. W., and R. Pike. *The Practice of Programming*. Addison-Wesley, 1999.
+- **parnas-criteria** — Parnas, D. L. "On the Criteria To Be Used in Decomposing Systems into Modules." *Communications of the ACM* 15, no. 12 (1972): 1053–1058.
+- **3gpp-ims** — 3GPP. *IP Multimedia Subsystem (IMS); Stage 2*. 3GPP TS 23.228.
+- **gsma-volte** — GSMA. *VoLTE Service Description and Implementation Guidelines*, version 1.1, 2014. GSMA FCM.01.
+- **c4model** — Brown, S. *The C4 model for visualising software architecture*. https://c4model.com/, accessed 2026.
+- **swebok-testing** *(testing framing)* — Bourque, P., and R. E. Fairley, eds. *Guide to the Software Engineering Body of Knowledge (SWEBOK)*, v4.0. IEEE Computer Society, 2024.
+- **beyondcorp** — Ward, R., and B. Beyer. "BeyondCorp: A New Approach to Enterprise Security." *;login:* 39, no. 6 (2014): 6–11.
+- **sre-book** — Beyer, B., C. Jones, J. Petoff, and N. R. Murphy, eds. *Site Reliability Engineering: How Google Runs Production Systems*. O'Reilly, 2016.
+- **schneider-enforceable** — Schneider, F. B. "Enforceable Security Policies." *ACM Transactions on Information and System Security* 3, no. 1 (2000): 30–50.
+- **lamport-clocks** — Lamport, L. "Time, Clocks, and the Ordering of Events in a Distributed System." *Communications of the ACM* 21, no. 7 (1978): 558–565.
+- **merkle** — Merkle, R. C. "A Digital Signature Based on a Conventional Encryption Function." *CRYPTO '87*, 1988.
+- **nist-scrm** — Boyens, J., et al. *Cybersecurity Supply Chain Risk Management Practices for Systems and Organizations*. NIST SP 800-161r1, 2022.
+- **soc2** — AICPA. *Trust Services Criteria*. AICPA & CIMA, 2017 (rev. 2022).
