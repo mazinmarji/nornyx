@@ -76,10 +76,10 @@ module contributes a closed block schema for that block does the interior become
 appends the module's own diagnostics instead.
 
 This is the single most important structural fact about the language. Reading a passing `nornyx
-check` as "everything in this file is validated" is a mistake. What is validated is: the presence
-of required blocks, the shape of recognised blocks, the required `name` (or `id`) on each entry,
-cross-references between blocks, graph relation typing, goal completeness, and whatever closed
-schemas the resolved profile and modules contribute.
+check` as "everything in this file is validated" is a mistake. What is validated is the presence of
+required blocks, the shape of recognised blocks, the required `name` (or `id`) per entry,
+cross-references, graph relation typing, goal completeness, and whatever closed schemas the
+resolved profile and modules contribute.
 
 Two parser-level rules apply before any of that. Duplicate mapping keys are rejected at every
 nesting level, so a second `policies:` key cannot silently shadow the first. And YAML's implicit
@@ -107,7 +107,7 @@ and `evidence` are mappings; `nornyx` and `project` are the required scalars/map
 | `traces` | named list | What is captured and under which telemetry standard | `name`, `standard`, `capture` |
 | `evals` | named list | Threshold assertions over evaluation results | `name`, `metrics`, `datasets`, `integrity` |
 | `evidence` | mapping | The evidence contract for the document | `required` |
-| `approvals` | named list | Human approval requirements | `name`, `required_for`, plus the governed-approval fields of A.9 |
+| `approvals` | named list | Human approval requirements | `name`, `required_for`, plus the governed-approval fields Chapter 9 develops (`required_roles`, `eligible_roles`, `denied_actor_types`, `required_evidence`, `timing`, `accountable_authority`, `revision_binding`, `invalidation_conditions`, `expires_at`) |
 | `budgets` | named list | Bounded token, cost, and time limits | `name`, `max_tokens`, `max_cost_usd`, `max_runtime_minutes` |
 | `goals` | list keyed by `id` | Bounded work units with stop rules | see A.8 |
 
@@ -187,14 +187,13 @@ Eleven further block names are recognised by the checker as deferred extension s
 `connectors`, `guardrails`, `capabilities`, `incidents`, `containment`, and `supply_chain`. The
 language specification is explicit that "these blocks do not define stable v0.1 runtime behavior".
 
-Their status varies and should not be flattened. `graph` and `contracts` are fully checked
-(A.10). `governed_package` is validated by the governed-package profile and its own schema.
-`capabilities` and `guardrails` are read by the local policy-decision runtime (A.7) and, under the
-agentic-network module, `capabilities` gains a closed schema (A.11). `adapters` and `connectors`
-are validated as declarations only, with `execution_mode: contract_only` and
-`live_connector_execution: false` enforced as schema constants. `experimental`, `incidents`,
-`containment`, and `supply_chain` are tolerated placeholders; the requirements matrix classifies
-incident response, containment, and supply chain as planned rather than implemented.
+Their status varies and should not be flattened. `graph` and `contracts` are fully checked (A.9).
+`governed_package` is validated by the governed-package profile and its own schema. `capabilities`
+and `guardrails` are read by the local policy-decision runtime (A.6), and under the agentic-network
+module `capabilities` gains a closed schema (A.10). `adapters` and `connectors` are validated as
+declarations only, with `execution_mode: contract_only` and `live_connector_execution: false`
+enforced as schema constants. `experimental`, `incidents`, `containment`, and `supply_chain` are
+tolerated placeholders; the requirements matrix classifies the last three as planned.
 
 ## A.5 Context trust: taint channels and authority
 

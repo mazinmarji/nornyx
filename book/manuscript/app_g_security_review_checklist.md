@@ -9,13 +9,11 @@ This appendix is a working checklist for reviewing a governed agentic system. It
 around the threat material of Chapters 14 and 34 and closes with the eight questions introduced in
 Chapter 3, restated as a claims review.
 
-It is deliberately not a compliance instrument. Nothing here maps to a certification, and passing
-every item establishes no legal or regulatory sufficiency. What it does establish is that a
-reviewer has looked at each place where a governance claim is commonly weaker than it appears.
-
-Each section names the chapters that develop its material, so that a reviewer who cannot answer an
-item knows where to read. Items marked **(residual)** are conditions you should expect to accept
-and document rather than eliminate; a review that reports them as resolved is wrong.
+It is deliberately not a compliance instrument: nothing here maps to a certification, and passing
+every item establishes no legal or regulatory sufficiency. What it establishes is that a reviewer
+has looked at each place where a governance claim is commonly weaker than it appears. Each section
+names the chapters that develop its material. Items marked **(residual)** are conditions to accept
+and document rather than eliminate; a review reporting them as resolved is wrong.
 
 ## G.1 Contract hygiene
 

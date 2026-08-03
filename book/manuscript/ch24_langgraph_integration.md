@@ -42,7 +42,7 @@ One structural detail surprises readers auditing the package: the LangGraph path
 
 ## 24.3 Deriving identity from public execution information
 
-Chapter 12 defined the four-level hierarchy in the abstract: a <span class="ix" data-ix="mission">mission</span> is the complete governed run, an <span class="ix" data-ix="operation">operation</span> is the stable governed surface, an <span class="ix" data-ix="occurrence">occurrence</span> is one scheduled execution of that operation, and an <span class="ix" data-ix="attempt">attempt</span> is one try within an occurrence. The adapter's whole contribution is a mapping from LangGraph's public vocabulary onto those four levels, and the mapping is small enough to state in four lines.
+Chapter 12 defined the four-level hierarchy in the abstract: a <span class="ix" data-ix="mission">mission</span> is the complete governed run, an <span class="ix" data-ix="operation">operation</span> is the stable governed surface, an <span class="ix" data-ix="occurrence">occurrence</span> is one scheduled execution of that operation, and an <span class="ix" data-ix="attempt">attempt</span> is one try within an occurrence. The adapter's whole contribution is a mapping from LangGraph's public vocabulary onto those four levels — small enough to state in four lines, and summarized with its ownership structure in Figure 24.1.
 
 The mission comes from the integrator, who passes one mission identifier when constructing the governed node and reuses it for the whole graph run and every resume. The operation is the binding's declared `surface` string — adapter-owned static configuration, never derived from node arguments or graph state. The occurrence is the framework's `task_id` verbatim. And the attempt is the framework's `node_attempt` offset by a base, computed as shown in Listing 24.1.
 
@@ -116,7 +116,7 @@ The loop row is the reason occurrence exists as a level. Each loop visit is a ne
 
 ## 24.5 Interrupts are control flow, not failure
 
-The single most consequential design decision in this adapter occupies eight lines of code. LangGraph signals suspension by raising an exception from a dedicated bubble-up hierarchy: `interrupt()` raises one, and so do parent-directed commands. Syntactically, an interrupt reaches the adapter's `except` clause the same way a genuine node crash does. Semantically they are opposites, and the adapter distinguishes them.
+The single most consequential design decision in this adapter occupies eight lines of code. LangGraph signals suspension by raising an exception from a dedicated bubble-up hierarchy: `interrupt()` raises one, and so do parent-directed commands. Syntactically, an interrupt reaches the adapter's `except` clause the same way a genuine node crash does. Semantically they are opposites, and Listing 24.2 shows how the adapter distinguishes them.
 
 ```python
         try:
