@@ -280,7 +280,22 @@ An auditor-facing package is the evidence package plus two documents that exist 
 
 **Table 36.1 — The audit worksheet, one row shown.** The full <span class="ix" data-ix="audit worksheet">worksheet</span> has one row per clause of the audit question — the Atlas audit produced eleven — and the last column is mandatory for every row. The worksheet is the auditor's working artifact and the package's best reading guide: a reviewer who disputes the conclusion can locate the exact row, artifact, and check they dispute.
 
-The package contents, in the order a reader should meet them: a <span class="ix" data-ix="reading guide">*reading guide*</span> (one page: the question, the revision, the chain, where each step's artifacts live, and the order to read them); the <span class="ix" data-ix="claim register!in audit packages">*claim register*</span> for the claims the audit tested — claim, tier, surfaces, evidence, "not claimed" list, in Chapter 13's format; the *worksheet* (Table 36.1, all rows); then the artifacts themselves — contract, lock, composition output, approvals, streams, referenced payloads, validation reports — each named by digest; and finally the signed conclusion of Section 36.4. The reference pipeline's generated `audit-package/` directory with its manifest is the mechanical skeleton of this **[implemented]**; the reading guide, worksheet, register, and conclusion are the human flesh on it, and no tool emits them.
+Figure 36.2 shows the package as the reader should traverse it — orientation documents first, artifacts by digest second, the signed conclusion last, so that a reviewer meets the claims and their boundaries before any artifact and can locate every artifact from the worksheet rather than by browsing.
+
+<figure class="nx-fig" id="fig-36-2">
+  <div class="fig-body">
+    <div class="layers">
+      <div class="layer" data-note="one page: question, revision, chain, artifact locations, reading order">Reading guide</div>
+      <div class="layer authority" data-note="claims with tiers, surfaces, evidence, and the mandatory not-claimed lists">Claim register</div>
+      <div class="layer" data-note="one row per question clause; last column: what this does not establish">Audit worksheet</div>
+      <div class="layer" data-note="contract · lock · composition output · approvals · event streams · payloads · validation reports — each named by digest">Artifacts</div>
+      <div class="layer authority" data-note="findings citing chain steps; scope and evidence boundary inside the result">Signed conclusion</div>
+    </div>
+  </div>
+  <figcaption><b>Figure 36.2 — The auditor-facing package, in reading order.</b> Double borders mark the two documents that carry claims — the register going in and the conclusion coming out — and the teaching purpose is their symmetry: the conclusion may not exceed the register any more than a finding may exceed its worksheet rows. The mechanical skeleton (the artifacts band and a manifest) is what the reference pipeline assembles; every other band is human-authored.</figcaption>
+</figure>
+
+The package contents, then, in that order: a <span class="ix" data-ix="reading guide">*reading guide*</span> (one page: the question, the revision, the chain, where each step's artifacts live, and the order to read them); the <span class="ix" data-ix="claim register!in audit packages">*claim register*</span> for the claims the audit tested — claim, tier, surfaces, evidence, "not claimed" list, in Chapter 13's format; the *worksheet* (Table 36.1, all rows); then the artifacts themselves — contract, lock, composition output, approvals, streams, referenced payloads, validation reports — each named by digest; and finally the signed conclusion of Section 36.4. The reference pipeline's generated `audit-package/` directory with its manifest is the mechanical skeleton of this **[implemented]**; the reading guide, worksheet, register, and conclusion are the human flesh on it, and no tool emits them.
 
 Three <span class="ix" data-ix="auditor anti-pattern">anti-patterns</span> account for most worthless packages.
 

@@ -267,7 +267,7 @@ Chapter 14 developed coverage as a general interface obligation; this chapter ad
 
 ## 22.7 Design trade-offs, and what an adapter must refuse to do
 
-Everything above constrains the adapter's semantics. Four dimensions remain open, and a design that does not consciously choose on each will choose by accident.
+Everything above constrains the adapter's semantics. Table 22.2 lays out the four dimensions that remain open; a design that does not consciously choose on each will choose by accident.
 
 | Dimension | Choice | What it buys | What it costs |
 |---|---|---|---|

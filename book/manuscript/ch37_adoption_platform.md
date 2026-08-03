@@ -35,6 +35,27 @@ Table 37.1 gives the ladder. Each stage names entry conditions implicitly (the p
 
 **Table 37.1 — The adoption maturity ladder.** The teaching purpose is the fourth column, which is cumulative: each stage's forbidden claim becomes the next stage's exit criterion in disguise. Note that stage 5's forbidden claim never becomes permitted — the ladder converges on precise claims, not on unlimited ones — and that the ladder is per-workflow, not per-organization: Northstar's Forge thread reached stage 3 while Customer Operations was at stage 0, and a single organizational stage number would have been a coverage inflation.
 
+A stage assessment is a written artifact, not a meeting outcome, and its useful form is short enough to be kept current. Listing 37.1 shows the shape Northstar settled on — one entry per workflow, with the forbidden claim quoted back in the organization's own words.
+
+```text
+WORKFLOW: payments-api delivery agent (Thread B, "Forge")
+STAGE: 3 — cooperatively enforced
+EVIDENCE FOR STAGE: contract + lock verified in CI (30+ days green);
+  coverage inventory published; allow + deny controls exercised per
+  wrapped surface; bypass demonstrated and registered (owner: AppSec,
+  review 2026-11-01); evidence packages preserved per policy EV-7.
+UNMET EXIT CRITERIA (stage 4): ownership map has 2 disputed cells
+  (org charter deny rules; CI workflow paths); no fatigue metrics yet.
+FORBIDDEN CLAIM AT THIS STAGE: "Forge cannot merge ungoverned code."
+  Currently violated in: platform newsletter, 2026-09 issue, p.2.
+CLAIM WE MAY MAKE: "Merges via the governed lane are evaluated and
+  recorded against revision git:9f3c1a7…; branch protection independently
+  blocks the ungoverned lane" — Tier 2 (cooperative, declared surfaces
+  only) plus one named Tier 3 control.
+```
+
+**Listing 37.1 — A stage assessment entry.** Illustrative — the form, not the content, is the point: stage with evidence, unmet exits with owners, the forbidden claim with a citation to where it is currently being violated, and the claim the organization may actually make, tier-qualified. The "currently violated in" line is the one that changes behavior.
+
 Two properties of the ladder deserve emphasis. It is *non-monotonic in practice*: a framework upgrade that invalidates an adapter pin, a reorganization that orphans a policy, or a lapsed approval drops a workflow a stage, and a program that cannot detect its own regressions is at stage 0 with extra artifacts. And it is *claim-scoped, not tool-scoped*: installing the toolchain moves nobody anywhere. Chapter 35's tool-implies-conformity fallacy has an adoption twin — tool-implies-stage — and the exit criteria are written to be facts about the organization's behavior, not about its dependency list.
 
 ## 37.2 Organizational friction, honestly
@@ -72,7 +93,7 @@ The build-versus-buy conversation goes wrong when it is held about "governance" 
 
 The platform half of that composition deserves its own architecture, because it is where the tier model meets what cloud providers actually sell.
 
-Hyperscalers offer three families of native <span class="ix" data-ix="enforcement point!platform-native">enforcement points</span> that matter to governed agents. **Identity boundaries** — workload identity, role assumption, scoped short-lived credentials — enforce *who can call what* at the platform's own control plane, which the workload cannot route around from inside its execution context [@nist-zta; @beyondcorp]. **Egress control** — virtual-network service endpoints, egress proxies, DNS-layer allowlists — enforces *where bytes may go*, which for an agent is the difference between "may not publish externally" as a declaration and as a physical property. **Platform policy engines** — organization-policy layers, admission controllers, externalized authorization services and their open-source counterparts [@opa; @cedar; @istio; @envoy] — evaluate rules at deployment or request time in a component the tenant workload does not control. All three are Tier 3 *positions*; none of them natively speaks the vocabulary a governance contract cares about (occurrences, approvals bound to revisions, never-share categories), which is why they need a projection from the contract rather than a replacement of it.
+Figure 37.1 assigns the responsibilities; the enforcement band at its heart deserves unpacking first. Hyperscalers offer three families of native <span class="ix" data-ix="enforcement point!platform-native">enforcement points</span> that matter to governed agents. **Identity boundaries** — workload identity, role assumption, scoped short-lived credentials — enforce *who can call what* at the platform's own control plane, which the workload cannot route around from inside its execution context [@nist-zta; @beyondcorp]. **Egress control** — virtual-network service endpoints, egress proxies, DNS-layer allowlists — enforces *where bytes may go*, which for an agent is the difference between "may not publish externally" as a declaration and as a physical property. **Platform policy engines** — organization-policy layers, admission controllers, externalized authorization services and their open-source counterparts [@opa; @cedar; @istio; @envoy] — evaluate rules at deployment or request time in a component the tenant workload does not control. All three are Tier 3 *positions*; none of them natively speaks the vocabulary a governance contract cares about (occurrences, approvals bound to revisions, never-share categories), which is why they need a projection from the contract rather than a replacement of it.
 
 <figure class="nx-fig" id="fig-37-1">
   <div class="fig-body">
