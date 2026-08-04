@@ -186,7 +186,7 @@ The reference form is `<path>#<PolicyName>`, and the path may be a local `.nyx` 
 
 Resolution happens at load time and offline: the referenced rules are compiled into inline `rules` and the `ref` key is dropped, "so every downstream consumer — checker, generator, drift gate — sees a normal policy." Running `nornyx generate` on the referencing contract confirms it; the emitted `policy.yaml` contains the four inlined baseline rules alongside the contract's own policy, with no trace of the reference.
 
-Resolution is fail-closed, and the failure modes are worth memorizing because they are all *errors*, not fallbacks: declaring both `ref` and `rules` on one policy; a malformed reference; a remote or device-backed source path; a missing source file; an unparseable or non-mapping source; and a named policy absent from the source. Two real transcripts make the behavior concrete:
+Resolution is fail-closed, and the failure modes are worth memorizing because they are all *errors*, not fallbacks: declaring both `ref` and `rules` on one policy; a malformed reference; a remote or device-backed source path; a missing source file; an unparseable or non-mapping source; and a named policy absent from the source. Two real transcripts, collected in Listing 17.4, make the behavior concrete:
 
 ```text
 $ nornyx check atlas_ref_remote.nyx
@@ -239,7 +239,7 @@ $ nornyx check atlas_broken.nyx
 exit=1
 ```
 
-**Listing 17.5 — Three defects, three severities of consequence.** Real output from Nornyx 1.11.0 on a copy of Northstar's Atlas contract with the agent's policy renamed, the harness's eval renamed, and an invented `monitoring:` block appended. The two dangling references are errors because they make the document self-inconsistent; the unknown block is a warning because forward compatibility matters more than strictness at the top level. The run exits 1 — a CI gate on this contract fails, and the report tells the author precisely which two names to fix.
+**Listing 17.5 — Three defects, three severities of consequence.** Real output from Nornyx 1.11.0 on a copy of Northstar's Atlas contract with the agent's policy renamed, the harness's eval renamed, and an invented `monitoring:` block appended. The two dangling references are errors because they make the document self-inconsistent; the unknown block is a warning because forward compatibility matters more than strictness at the top level. The run exits 1 — a continuous-integration (CI) gate on this contract fails, and the report tells the author precisely which two names to fix.
 
 The typed graph relations deserve their own demonstration, because they are the mechanism by which a contract's identity and capability structure becomes checkable rather than merely drawn. Figure 17.2 is Atlas's relation graph, and every edge in it is an edge the checker validates.
 
@@ -252,7 +252,7 @@ digraph G {
   atlas [label="agent\nAtlas"];
   skill [label="skill\nApprovedSearch"];
   ctx [label="context\nResearchInternal"];
-  approval [label="approval\nPartnerShareApproval", peripheries=2];
+  approval [label="approval\npartner_disclosure_approval", peripheries=2];
   evidence [label="evidence\nResearchEvidence"];
   budget [label="budget\nResearchBudget"];
   policy -> atlas [label="governs"];
@@ -340,7 +340,7 @@ evidence:
   required: [retrieved_sources.json, brief.md, source_allowlist_report.json, approval_log.json]
 
 approvals:
-  - name: PartnerShareApproval
+  - name: partner_disclosure_approval
     required_for: [external_share, policy_change]
 
 budgets:
@@ -374,9 +374,9 @@ Second, the denial. The case-study bible's signature scene is Atlas being asked 
 
 That last sentence is the chapter's most important lesson, so it is worth stating as a general principle rather than a Nornyx fact. When a governance tool returns a decision, ask what the decision was actually computed *from*. Here the answer is: from five hardcoded keyword families applied to concatenated step text. That is a real, deterministic, reviewable computation, and it is far weaker than the natural-language reading of `deny production_write_without_approval` suggests. Both readings can be true of the same green report, and only one of them is a claim you may put in front of an auditor.
 
-> **Assurance boundary.** Applying the eight questions to Listing 17.7: *what is guaranteed* — that a declared flow step whose text matches a declared deny category is reported as blocked in a local planning manifest; *which component enforces it* — none, in the sense of prevention; the report is advisory output consumed by CI or a human; *what evidence proves it* — the report file, deterministic given the contract; *what assumptions are required* — that the actual agent's actions correspond to the declared flow steps, which nothing verifies; *how it can be bypassed* — by taking an action the flow never declared, which is the normal case for a probabilistic planner; *what happens on failure* — the tool exits nonzero or writes a report, and blocks nothing itself; *which tier* — Tier 1; *what remains unproven* — everything about what the agent actually did. Chapters 19, 20, and 22–25 are where a subset of these answers improves.
+> **Assurance boundary.** Applying the eight questions to Listing 17.7: *what is guaranteed* — that a declared flow step whose text matches a declared deny category is reported as blocked in a local planning manifest; *which component enforces it* — none, in the sense of prevention; the report is advisory output consumed by CI or a human; *what evidence supports it* — the report file, deterministic given the contract; *what assumptions are required* — that the actual agent's actions correspond to the declared flow steps, which nothing verifies; *how it can be bypassed* — by taking an action the flow never declared, which is the normal case for a probabilistic planner; *what happens on failure* — the tool exits nonzero or writes a report, and blocks nothing itself; *which tier* — Tier 1; *what remains unproven* — everything about what the agent actually did. Chapters 19, 20, and 22–25 are where a subset of these answers improves.
 
-> **Case study — Atlas.** Atlas's charter is now one file, and three things changed the moment it became one. The retrieval allowlist stopped being a Python constant and became a context whose patterns a reviewer can diff. The partner-share requirement stopped being an email thread and became `PartnerShareApproval`, `required_for: [external_share, policy_change]` — still only a declaration at this layer, but a declaration with a name that other artifacts can reference and that Chapter 18's governance modules can promote into a revision-bound, expiring record. And the evidence expectation stopped being something the auditor remembered to ask for and became four named artifacts that the harness's final step must pack. What has *not* changed is the enforcement position: nothing here prevents Atlas from doing anything. Chapter 20 records what it did; Chapter 36 reconstructs the partner-share decision from that record.
+> **Case study — Atlas.** Atlas's charter is now one file, and three things changed the moment it became one. The retrieval allowlist stopped being a Python constant and became a context whose patterns a reviewer can diff. The partner-share requirement stopped being an email thread and became `partner_disclosure_approval`, `required_for: [external_share, policy_change]` — still only a declaration at this layer, but a declaration with a name that other artifacts can reference and that Chapter 18's governance modules can promote into a revision-bound, expiring record. And the evidence expectation stopped being something the auditor remembered to ask for and became four named artifacts that the harness's final step must pack. What has *not* changed is the enforcement position: nothing here prevents Atlas from doing anything. Chapter 20 records what it did; Chapter 36 reconstructs the partner-share decision from that record.
 
 ## Summary
 

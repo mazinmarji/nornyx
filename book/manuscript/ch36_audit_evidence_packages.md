@@ -28,7 +28,7 @@ A usable <span class="ix" data-ix="audit question">audit question</span> has fou
 
 The whiteboard sentence from the opening scenario has all four:
 
-> Under contract revision `git:9f3c1a7…` of the Atlas research network, was the external share of summary `brief-2026-03-14` to the partner zone authorized; if so, under which approval, granted by which role of which actor type, bound to which revision, valid at which instant; and what evidence supports each clause?
+> Under contract revision `git:4e7d21a…` of the Atlas research network, was the external share of summary `brief-2026-03-14` to the partner zone authorized; if so, under which approval, granted by which role of which actor type, bound to which revision, valid at which instant; and what evidence supports each clause?
 
 This is answerable, and — just as important — *refusable*: for each clause there is a specific artifact whose absence or failure makes the honest answer "cannot be established from the available evidence," which is a finding, not a failure of the audit.
 
@@ -74,11 +74,11 @@ One structural fact makes the chain workable at all: every artifact in steps 3 t
 
 Thread A's signature review is the partner-share decision, and we now perform it end to end. The setting, fixed by the case bible and Chapters 7, 9, 11, and 17: Atlas may search, summarize, and file internally without a gate; the one-off share of a summary with an external partner required a human approval bound to the contract revision. The audit question is the whiteboard sentence of Section 36.1. All artifacts below are illustrative — built for this book, for a fictional enterprise — but their *shapes* are real: every field name is taken from the repository's schemas at the pinned snapshot, and each caption names the schema that fixes the shape.
 
-**Step 1 — Contract.** The auditor obtains the contract at the revision named in the question, from repository history — not from anyone's working copy. The governing declarations are the approval requirement and the two trust zones:
+**Step 1 — Contract.** The auditor obtains the contract at the revision named in the question, from repository history — not from anyone's working copy. The governing declarations are the approval requirement and the two trust zones, shown in Listing 36.1:
 
 ```yaml
 approvals:
-  - name: partner_share_authority
+  - name: partner_disclosure_approval
     required_roles: [research_lead]
     eligible_roles: [research_lead, security_reviewer]
     denied_actor_types: [ai_tool, execution_surface, autonomous_agent, model, connector, generated_output]
@@ -88,7 +88,7 @@ approvals:
     accountable_authority: research_lead
     revision_binding:
       kind: git
-      revision: git:9f3c1a7d0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b
+      revision: git:4e7d21ad0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b
       exact: true
     invalidation_conditions: [revision_change, identity_change, capability_change, trust_zone_change]
     expires_at: "2026-03-21T00:00:00Z"
@@ -119,7 +119,7 @@ The auditor's step 1 checks are that the contract at this revision parses, passe
 
 **Step 2 — Composition.** The contract alone is not the governance in force; profiles and modules compose into it, and composed denial lists include categories no document can remove. The auditor runs the read-only inspection command against the same revision and the same evaluation instant and reads the effective approval — the equivalent of Chapter 35's Listing 35.2 — confirming three things: `external_share` is in the actions requiring approval, the denied actor types include the full intrinsic non-human core unioned back regardless of declarations **[implemented]**, and the composition's source hashes allow the envelope to be replayed rather than trusted. Step 2 is where an entire class of audit error dies quietly: auditing the document instead of the composition misses every control a module added and every weakening a composition would have refused.
 
-**Step 3 — Lock.** The lock ties the reviewed bytes together. The auditor obtains the lock file preserved with the evidence package and verifies it against the step 1 contract:
+**Step 3 — Lock.** The lock ties the reviewed bytes together. The auditor obtains the lock file preserved with the evidence package and verifies it against the step 1 contract (Listing 36.2):
 
 ```json
 {
@@ -127,12 +127,12 @@ The auditor's step 1 checks are that the contract at this revision parses, passe
   "lock_format_version": "1.0",
   "generation_format_version": "1.0",
   "network_id": "network.northstar_research",
-  "subject_revision": "git:9f3c1a7d0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b",
+  "subject_revision": "git:4e7d21ad0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b",
   "source_contract_digest": "sha256:c41d8aa2…",
   "runtime_events_schema": {"id": "nornyx.agentic_runtime_events.v1", "version": "1.1"},
   "structural_checks": ["agentic_network_delegation.v1", "agentic_network_foundation.v1",
                         "evidence_integrity.v1", "human_approval.v1"],
-  "approval_requirements": ["governance_authority", "partner_share_authority"],
+  "approval_requirements": ["governance_authority", "partner_disclosure_approval"],
   "records": {
     "agent_identities": [{"id": "identity.atlas", "digest": "sha256:7be2…"}],
     "trust_zones": [{"id": "zone.partner_channel", "digest": "sha256:20fa…"},
@@ -146,17 +146,17 @@ The auditor's step 1 checks are that the contract at this revision parses, passe
 
 The check is mechanical — `lock-check` compares field by field and exits nonzero on any mismatch, with distinct codes for a stale source, a mismatched record digest, an artifact whose hash changed, an artifact missing, and an artifact present but not in the lock **[implemented]**. From this point on, "the policy" means these bytes, not anyone's memory of them.
 
-**Step 4 — Approval.** The approval is the heart of this particular question. The preserved package contains the assertion that was presented at decision time, in the shape the authorization interface defines:
+**Step 4 — Approval.** The approval is the heart of this particular question. The preserved package contains the assertion that was presented at decision time, in the shape the authorization interface defines (Listing 36.3):
 
 ```json
 {
-  "approval_ref": "partner_share_authority",
+  "approval_ref": "partner_disclosure_approval",
   "claimed_approver_ref": "user:priya.n",
   "claimed_actor_type": "human",
   "role": "research_lead",
   "granted": true,
   "action_ref": "external_share",
-  "subject_revision": "git:9f3c1a7d0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b",
+  "subject_revision": "git:4e7d21ad0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b",
   "issued_at": "2026-03-14T09:12:00Z",
   "expires_at": "2026-03-15T09:12:00Z",
   "evidence_refs": ["approval_record", "partner_share_review"]
@@ -167,29 +167,29 @@ The check is mechanical — `lock-check` compares field by field and exits nonze
 
 Against this record the auditor replays the engine's own checking order, documented in Chapter 9 and enforced in code **[implemented]**: the assertion's `subject_revision` equals the contract revision and the declared binding revision (else `APPROVAL_REVISION_MISMATCH`); `action_ref` is in scope (else `APPROVAL_ACTION_MISMATCH`); the actor type is human and not in the denied set (else `APPROVAL_NON_HUMAN` — "AI systems, tools, models, and execution surfaces cannot approve"); the role is eligible (else `APPROVAL_ROLE_INVALID`); the required evidence references are present (else `APPROVAL_EVIDENCE_MISSING`); the approval was temporally valid *at the decision instant* — not at audit time — (else `APPROVAL_STALE`); and `granted` is true. Every clause of the audit question's middle section is now discharged by a field.
 
-**Step 5 — Events.** The preserved stream for mission `GOAL-RESEARCH-014` contains eight events; the four that carry the decision are:
+**Step 5 — Events.** The preserved stream for mission `GOAL-RESEARCH-014` contains eight events; the four that carry the decision appear in Listing 36.4:
 
 ```json
 {"event_id": "GOAL-RESEARCH-014-0003", "event_type": "approval_requested",
  "mission_id": "GOAL-RESEARCH-014", "sequence": 3,
  "timestamp": "2026-03-14T09:11:42Z",
- "actor_ref": "identity.atlas", "approval_ref": "partner_share_authority",
+ "actor_ref": "identity.atlas", "approval_ref": "partner_disclosure_approval",
  "network_id": "network.northstar_research",
  "contract_digest": "sha256:c41d8aa2…", "network_lock_digest": "sha256:88f0b3…",
- "subject_revision": "git:9f3c1a7d0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b",
+ "subject_revision": "git:4e7d21ad0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b",
  "producer": {"type": "framework_adapter", "id": "crewai-adapter", "version": "0.2.0"},
  "occurrence": {"operation_id": "tool.partner_share", "occurrence_id": "task.14", "attempt": 1}}
 
 {"event_id": "GOAL-RESEARCH-014-0004", "event_type": "approval_granted",
  "sequence": 4, "timestamp": "2026-03-14T09:12:03Z",
- "actor_ref": "identity.atlas", "approval_ref": "partner_share_authority",
+ "actor_ref": "identity.atlas", "approval_ref": "partner_disclosure_approval",
  "approver": {"role": "research_lead", "actor_type": "human"}, "...": "…"}
 
 {"event_id": "GOAL-RESEARCH-014-0005", "event_type": "trust_zone_crossed",
  "sequence": 5, "timestamp": "2026-03-14T09:12:04Z",
  "actor_ref": "identity.atlas",
  "source_zone_ref": "zone.research_internal", "target_zone_ref": "zone.partner_channel",
- "approval_ref": "partner_share_authority", "...": "…"}
+ "approval_ref": "partner_disclosure_approval", "...": "…"}
 
 {"event_id": "GOAL-RESEARCH-014-0006", "event_type": "data_shared",
  "sequence": 6, "timestamp": "2026-03-14T09:12:05Z",
@@ -214,12 +214,12 @@ Here is the <span class="ix" data-ix="defensible conclusion">conclusion</span> o
 ```text
 CONCLUSION — Atlas partner share of 2026-03-14 (mission GOAL-RESEARCH-014)
 
-Under contract revision git:9f3c1a7…, as composed with the governance packs
+Under contract revision git:4e7d21a…, as composed with the governance packs
 named in lock sha256:88f0b3… (verified against the source at that revision):
 
 1. The external share of brief-2026-03-14 (sha256:e3b58a1c…) to
    zone.partner_channel was subject to approval requirement
-   partner_share_authority for action class external_share.  [steps 1–3]
+   partner_disclosure_approval for action class external_share.  [steps 1–3]
 2. The supplied evidence stream, which validates with zero diagnostics
    against that exact lock, records an approval asserted for role
    research_lead, actor type human, bound to that exact revision, in scope
@@ -305,7 +305,7 @@ Three <span class="ix" data-ix="auditor anti-pattern">anti-patterns</span> accou
 
 **<span class="ix" data-ix="producer assumptions!outrun by conclusions">The conclusion that outruns its producer assumptions</span>.** The subtlest and the most damaging: a package whose artifacts are impeccable and whose summary sentence claims what the producers cannot support — "the evidence shows no unauthorized shares occurred," resting on records supplied by the very runtime under question. Every artifact is genuine; the inference is not. This is Chapter 34's overclaiming vulnerability in its final habitat, and the defense is mechanical: every concluding sentence must trace to worksheet rows, and no sentence may exceed the weakest "does not establish" cell among the rows it cites.
 
-> **Assurance boundary.** The eight questions, applied to the audit itself. *What is guaranteed*: that the conclusions of Section 36.4 follow from artifacts that validate against the exact reviewed revision. *Which component enforces it*: none — an audit is an argument; the validator and lock-checker enforce only the premises. *What evidence proves it*: the package, whose every artifact is digest-named. *Assumptions*: honest producers, controlled repository history, preserved packages. *Bypass*: act outside the wrapped surfaces, and the audit never sees you. *On failure*: a broken chain step downgrades every dependent finding to "cannot be established" — visibly, not silently. *Tier*: the audit's findings inherit the tiers of the mechanisms beneath them, never exceed them. *Unproven*: completeness, producer identity, and everything off-inventory — which is why those three sentences are printed inside the conclusion.
+> **Assurance boundary.** The eight questions, applied to the audit itself. *What is guaranteed*: that the conclusions of Section 36.4 follow from artifacts that validate against the exact reviewed revision. *Which component enforces it*: none — an audit is an argument; the validator and lock-checker enforce only the premises. *What evidence supports it*: the package, whose every artifact is digest-named. *Assumptions*: honest producers, controlled repository history, preserved packages. *Bypass*: act outside the wrapped surfaces, and the audit never sees you. *On failure*: a broken chain step downgrades every dependent finding to "cannot be established" — visibly, not silently. *Tier*: the audit's findings inherit the tiers of the mechanisms beneath them, never exceed them. *Unproven*: completeness, producer identity, and everything off-inventory — which is why those three sentences are printed inside the conclusion.
 
 ## Summary
 

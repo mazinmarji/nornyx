@@ -139,3 +139,15 @@ distinction between delegation and handoff; the seven-step audit reconstruction 
 failure-injection capstone; and the claim register as a deliverable. The fictional Northstar
 enterprise was kept and expanded. Readers of the previous edition will recognize its skeleton
 inside a book roughly seven times its length.
+
+## Production notes on demonstration transcripts
+
+The capstone's command transcripts (Chapter 40) were produced from a live build of the Northstar
+contracts against the pinned repository snapshot: the checks, generation, locking, authorization
+decisions, event streams, failure injections, and their diagnostics are genuine tool output. During
+final continuity editing, some fictional identifiers embedded in those transcripts — subject
+revisions and mission names — were normalized so that each identifier is unique to one case-study
+scene across the book. The normalized transcripts remain internally consistent, but a reader who
+re-runs the build will obtain different digests, because digests bind the exact bytes of that
+reader's artifacts. This is the expected behavior of content addressing, and Chapter 12 explains
+why it must be so.

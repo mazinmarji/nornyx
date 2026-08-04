@@ -89,7 +89,7 @@ The <span class="ix" data-ix="ecosystem positioning">ecosystem</span> question f
       </div>
       <div class="tier" data-name="Enforce (action path)">
         <ul>
-          <li>API gateways, service meshes, sandboxes, IAM boundaries</li>
+          <li>API gateways, service meshes, sandboxes, identity and access management (IAM) boundaries</li>
           <li>Framework adapters (cooperative only)</li>
           <li>Answers: <em>what physically stops the action?</em></li>
         </ul>
@@ -116,7 +116,7 @@ Nornyx does not have "a version." It has several <span class="ix" data-ix="versi
 |---|---|---|---|
 | Package (distribution) | `1.11.0` | any release of the Python package | `pyproject.toml`, `nornyx/__init__.py`, `manifest.json` |
 | Language / schema | `1.0` | the `.nyx` language or its schema targets change | `manifest.json` `language_version`; `nornyx schema --version` |
-| Agentic integration SPI | `1.2` | the in-process authorization interface changes | `nornyx.agentic.SPI_VERSION` |
+| Agentic integration SPI (service provider interface) | `1.2` | the in-process authorization interface changes | `nornyx.agentic.SPI_VERSION` |
 | Runtime-events schema | `1.1` (1.0 retained) | the validated evidence event schema changes | `RUNTIME_EVENTS_SCHEMA_VERSION` |
 | Network lock format | `1.0` | the lock byte format changes | `LOCK_FORMAT_VERSION` |
 | Generation format | `1.0` | the generated-artifact layout changes | `GENERATION_FORMAT_VERSION` |

@@ -16,7 +16,7 @@ title: "Operations, Observability, and Incident Response"
 > - Reconstruct an incident from contract, lock, approvals, and events, and know where reconstruction stops.
 > - Design degraded modes and runbooks for governance failures, including change freezes and emergency exceptions handled accountably.
 
-> **Prerequisites.** Chapter 11 (evidence versus logs versus telemetry, retention tension), Chapter 12 (ordering, replay, occurrence identity), Chapter 13 (assurance tiers), Chapter 20 (the evidence architecture and validation pipeline), Chapter 21 (drift gates and workspace checks), Chapter 29 (governance in CI), and Chapters 31–32 for the Ledger and Charter threads this chapter operates. Chapter 36 develops the full audit method previewed in Section 33.5.
+> **Prerequisites.** Chapter 11 (evidence versus logs versus telemetry, retention tension), Chapter 12 (ordering, replay, occurrence identity), Chapter 13 (assurance tiers), Chapter 20 (the evidence architecture and validation pipeline), Chapter 21 (drift gates and workspace checks), Chapter 29 (governance in continuous integration (CI)), and Chapters 31–32 for the Ledger and Charter threads this chapter operates. Chapter 36 develops the full audit method previewed in Section 33.5.
 
 ## 33.1 The governance layer is production
 

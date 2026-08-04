@@ -16,7 +16,7 @@ title: "Capstone: Designing the Complete Northstar System"
 > - Design the approval structure (roles, maker–checker, escalation) and the evidence structure (what is recorded where, and for how long).
 > - Deliver a claim register as a first-class artifact, and isolate the extension machinery so the implemented parts stand on their own.
 
-> **Prerequisites.** This chapter assumes all of Parts I–VII and cites rather than re-teaches. It leans hardest on Chapter 13 (tier selection), Chapter 14 (coverage and bypass), Chapters 17–21 (the contract language, locks, the authorization SPI, evidence), Chapters 22–25 (adapters), Chapters 30–32 (the Forge, Ledger, and Charter threads in depth), and Chapter 36 (audit reconstruction).
+> **Prerequisites.** This chapter assumes all of Parts I–VII and cites rather than re-teaches. It leans hardest on Chapter 13 (tier selection), Chapter 14 (coverage and bypass), Chapters 17–21 (the contract language, locks, the authorization service provider interface (SPI), evidence), Chapters 22–25 (adapters), Chapters 30–32 (the Forge, Ledger, and Charter threads in depth), and Chapter 36 (audit reconstruction).
 
 ## 39.1 The commission, and the method
 
@@ -28,7 +28,7 @@ One discipline governs the whole chapter: the design uses implemented Nornyx mac
 
 ## 39.2 System context
 
-Figure 39.1 is the capstone's system-context diagram, in the C4 style of Chapter 16 [@c4model]. It is deliberately busier than Figure 16.1 because it now must carry all five threads, but the same two reading rules apply: the governance toolchain touches only local files and CI exit codes, and every component that performs real-world work is connected by edges the toolchain neither invokes nor observes.
+Figure 39.1 is the capstone's system-context diagram, in the C4 style of Chapter 16 [@c4model]. It is deliberately busier than Figure 16.1 because it now must carry all five threads, but the same two reading rules apply: the governance toolchain touches only local files and continuous-integration (CI) exit codes, and every component that performs real-world work is connected by edges the toolchain neither invokes nor observes.
 
 ```dot
 // fig=39-1 title="Northstar system context — all five threads"
@@ -141,7 +141,7 @@ A capstone-scale system needs its authority nouns in one <span class="ix" data-i
 
 **Table 39.1 — Consolidated identity and capability inventory.** Ledger rows are verbatim from the capstone contract built in Chapter 40; capability names and namespaces are the canonical Northstar forms. Two absences are the table's teaching content: no identity holds `payment.submit` — the capability is declared in the contract's vocabulary so that a request for it can be *evaluated and denied* rather than being unrepresentable, but no membership grants it — and no identity anywhere can approve, because in the identity schema `authority` is the constant `non_human` and `can_approve` the constant `false` **[implemented]** (`schemas/agent_identities_v1.schema.json`).
 
-The zone inventory follows the same consolidation. Atlas contributes `research-internal` and the untrusted `public-web` source zone with never-share categories `customer_data`, `credentials`, `strategy_docs`. Ledger contributes `treasury-plan`, the read-only `treasury-data`, the gated `payment-exec`, and the append-only `audit-store`. In the built network contract, the three in-network Ledger zones are encoded as ids `zone.treasury_plan`, `zone.treasury_data`, and `zone.payment_exec`; `audit-store` is realized not as a network trust zone but as the evidence store itself, whose append-only property is a storage control **[guidance]** rather than a schema fact. Every declared zone must carry a non-empty `never_share` list — the schema makes a zone without one unrepresentable **[implemented]** — and the capstone extends the four universal sensitive categories with Ledger's own <span class="ix" data-ix="never-share!capstone categories">never-share</span> additions: `account_credentials` and `full_pan`. Figure 39.2 draws the map.
+The zone inventory follows the same consolidation. Atlas contributes `research-internal` and the untrusted `public-web` source zone with never-share categories `customer_data`, `credentials`, `strategy_docs`. Ledger contributes `treasury-plan`, the read-only `treasury-data`, the gated `payment-exec`, and the append-only `audit-store`. In the built network contract, the three in-network Ledger zones are encoded as ids `zone.treasury_plan`, `zone.treasury_data`, and `zone.payment_exec`; `audit-store` is realized not as a network trust zone but as the evidence store itself, whose append-only property is a storage control **[guidance]** rather than a schema fact. Every declared zone must carry a non-empty `never_share` list — the schema makes a zone without one unrepresentable **[implemented]** — and beyond the four universal sensitive categories, which the toolchain denies at every boundary regardless of zone declarations **[implemented]**, `treasury-data` declares Ledger's own <span class="ix" data-ix="never-share!capstone categories">never-share</span> list: `account_credentials` and `full_pan`. Figure 39.2 draws the map.
 
 <figure class="nx-fig" id="fig-39-2">
   <div class="fig-body">
@@ -158,7 +158,7 @@ The zone inventory follows the same consolidation. Atlas contributes `research-i
         <div class="node">executor</div>
         <div class="node">approval_liaison</div>
       </div>
-      <div class="zone" data-name="treasury-data — never-share incl. account_credentials, full_pan">
+      <div class="zone" data-name="treasury-data — never-share: account_credentials, full_pan">
         <div class="node">analyst (read-only)</div>
       </div>
       <div class="zone untrusted" data-name="payment-exec — external_contract_only; ingress gate ⛔">
@@ -182,7 +182,7 @@ The chapter's central deliverable is Table 39.2, the <span class="ix" data-ix="t
 | Atlas: publish externally / share with partner | High; irrecoverable once public | Prompt injection; accident | 2 today, 3 target | Deny by non-declaration + revision-bound human approval **[implemented]**; network egress gateway **[extension]** |
 | Forge: read repo, propose on branch, run tests, open PR | Low; humans review | Accident | 1 + 2 | Contract + CI gates **[implemented]**; wrapped tool surface where the agent framework permits |
 | Forge: merge to protected branch | High; alters production software | Accident and a compromised agent | 3 | GitHub branch protection — an existing independent enforcement point — with approval-to-revision binding at Tier 1/2 **[guidance]** |
-| Forge: production deploy, release, secrets access, destructive change | Severe | Insider; supply-chain compromise | 3 | Deployment gateway / platform IAM boundary **[extension]**; until then the lane is blocked by fail-closed CI and named-role approval |
+| Forge: production deploy, release, secrets access, destructive change | Severe | Insider; supply-chain compromise | 3 | Deployment gateway / platform identity-and-access-management (IAM) boundary **[extension]**; until then the lane is blocked by fail-closed CI and named-role approval |
 | Ledger: read case, plan, assemble package | Low | Accident | 2 | Wrapped LangGraph sync node surface **[implemented]** |
 | Ledger: `analyze.exposure` (delegated) | Medium | Accident; over-delegation | 2 | Authorization SPI delegation evaluation, depth-bounded, expiring **[implemented]** |
 | Ledger: `payment.draft` | High | Accident; confused deputy | 2 | Gate-guarded capability on the wrapped surface **[implemented]** |
@@ -246,7 +246,7 @@ The <span class="ix" data-ix="claim register!capstone">claim register</span> is 
 | NS-FORGE-002 | An approval does not survive the revision it was granted against | All approval-gated actions | Engine `APPROVAL_REVISION_MISMATCH` denials; static `AN_REVISION_MISMATCH` | 2 | The revision must actually change when content changes — content-addressed revisions **[implemented]** |
 | NS-LEDGER-001 | No agent identity can hold or exercise approval authority | All identities, all networks | Schema constants; static, engine, and evidence checks | 1 + 2 | Humans misusing their own authority are out of scope; four enforcement layers, one assumption |
 | NS-LEDGER-002 | The executor cannot submit a payment on any governed surface | Wrapped LangGraph nodes; declared capabilities | `CAPABILITY_DENIED` decisions + denial events | 2 | A direct bank-API call under the wrapper is unevaluated — the register's most consequential bypass; motivates the gateway |
-| NS-LEDGER-003 | Sensitive categories (incl. `account_credentials`, `full_pan`) are never shared across zone boundaries on evaluated paths | Declared share and crossing requests | `SENSITIVE_SHARING` denials; static + evidence checks | 2 | "Evaluated paths" is load-bearing: unevaluated exfiltration channels are outside scope |
+| NS-LEDGER-003 | Sensitive categories (incl. `account_credentials`, `full_pan`) are never shared across zone boundaries on evaluated paths | Declared share and crossing requests | `SENSITIVE_SHARING` and `SHARE_NOT_ALLOWED` denials; static + evidence checks | 2 | "Evaluated paths" is load-bearing: unevaluated exfiltration channels are outside scope |
 | NS-PKG-001 | No third-party tool bundle is installed without inventory, risk surface, and human approval | All bundles entering agent environments | `package scan` reports + approval gate | 1 | The scan never claims the package safe; the gate is process, and the scanner sees only what is in the bundle |
 
 **Table 39.3 — The Northstar claim register at design signoff.** Every row's tier is defensible from Table 39.2, every producer is a component in Figure 39.1, and every residual dependency is a sentence an auditor can test. The teaching purpose is the last column: a register whose residual column is empty has not been finished, it has been inflated.
@@ -259,7 +259,7 @@ claim: "The Ledger executor cannot submit a payment adjustment."
 tier: 2                        # cooperative, declared surfaces only
 surfaces_in_scope: [wrapped LangGraph sync nodes, declared capability requests]
 evidence: [network lock, CAPABILITY_DENIED decision records,
-           capability_denied events bound to revision git:9f3c1a7...,
+           capability_denied events bound to revision git:b5e91c4...,
            validation report status pass]
 assumptions: ["payment submission is reachable only through governed surfaces",
               "the event producer neither omits nor fabricates records"]

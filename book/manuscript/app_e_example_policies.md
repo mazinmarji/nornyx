@@ -297,7 +297,7 @@ policies:
       - require human_approval_before_external_share
 
 approvals:
-  - name: PartnerShareApproval
+  - name: partner_disclosure_approval
     required_for:
       - external_share
       - publish_external
@@ -374,8 +374,8 @@ capabilities, one gate, and one bounded delegation.
 ```yaml
 agentic_network:
   schema: nornyx.agentic_network.v1
-  id: network.ledger_exceptions
-  subject_revision: git:9f3c1a70000000000000000000000000deadbeef
+  id: network.treasury_exceptions
+  subject_revision: git:3b7a9d10000000000000000000000000deadbeef
   trust_zones:
     - id: treasury-data
       classification: internal

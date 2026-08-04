@@ -293,7 +293,7 @@ Threat modeling a governed agentic system requires an asset list extending past 
 ## Further reading
 
 - [@owasp-agentic] — a maintained catalogue of agentic threats and mitigations; the closest published counterpart to this chapter's attacker models, and a useful cross-check that your own list is not idiosyncratic.
-- [@owasp-llm] — LLM application risks including prompt injection and excessive agency; read alongside Section 34.5 to see why injection is a delivery mechanism rather than an objective.
+- [@owasp-llm] — large-language-model (LLM) application risks including prompt injection and excessive agency; read alongside Section 34.5 to see why injection is a delivery mechanism rather than an objective.
 - [@nist-scrm] — supply-chain risk management practices; the framework within which the tool-package threats of Section 34.5 sit, and the source of the acquisition-time controls this chapter's scanner complements rather than replaces.
 - [@greshake-injection] — the empirical demonstration of indirect prompt injection against deployed applications; the evidence base for treating retrieved content as an attacker-controlled channel.
 - [@in-toto] — supply-chain attestation with verifiable layout enforcement; a concrete example of the independent-observer architecture that Sections 34.4 and 34.6 mark as an extension.

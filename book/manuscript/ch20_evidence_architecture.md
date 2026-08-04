@@ -92,7 +92,7 @@ Figure 20.1 shows the resulting shape of one operation's history.
 <figure class="nx-fig" id="fig-20-1">
   <div class="fig-body">
     <div class="seq">
-      <div class="seq-cols" data-cols="Graph node|Adapter (PEP)|Authorizer|Recorder|Tool"></div>
+      <div class="seq-cols" data-cols="Graph node|Adapter (enforcement point)|Authorizer|Recorder|Tool"></div>
       <div class="msg" data-from="1" data-to="2" data-kind="call">visit 1 (task.1), framework attempt 1</div>
       <div class="msg" data-from="2" data-to="3" data-kind="call">evaluate — occurrence (node.escalate, task.1, 1)</div>
       <div class="msg" data-from="3" data-to="2" data-kind="return">allow</div>
@@ -244,7 +244,7 @@ Finally, the sentence this whole chapter has been building toward. Every report 
 
 **[implemented]** The engineering decision worth studying is not the wording but the *placement*. These sentences are not in a README that an auditor may never open, or in a footnote of a marketing page. They are fields of the artifact, travelling with every <span class="ix" data-ix="validation report">validation report</span> into every evidence package, unremovable without editing the report. The documentation states the same <span class="ix" data-ix="proof boundary">proof boundary</span> at greater length — "A runtime can omit or fabricate events; validation proves conformance of what was supplied against the exact contract revision, nothing more" — but the embedded version is the one that arrives with the evidence.
 
-> **Misconception.** *"A passing validation report is proof the agent behaved."* It is proof of four narrower things: the supplied records conform to the schema and mode, they bind to this exact contract, lock, network, and revision, their internal ordering and occurrence structure are consistent, and every referenced artifact hashes as claimed. Omission is invisible, fabrication is structurally checkable but not detectable, the producer is self-declared, and no signature is verified — the repository claims none. The distance from that list to "the agent behaved" is the distance from Tier 2 to Tier 3, and it is bridged by an independent observer, not by a better report.
+> **Misconception.** *"A passing validation report is proof the agent behaved."* It establishes four narrower things: the supplied records conform to the schema and mode, they bind to this exact contract, lock, network, and revision, their internal ordering and occurrence structure are consistent, and every referenced artifact hashes as claimed. Omission is invisible, fabrication is structurally checkable but not detectable, the producer is self-declared, and no signature is verified — the repository claims none. The distance from that list to "the agent behaved" is the distance from Tier 2 to Tier 3, and it is bridged by an independent observer, not by a better report.
 
 ## Summary
 

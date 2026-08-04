@@ -93,3 +93,18 @@ expiry and approver).
   than re-introducing it (one-sentence recap allowed).
 - Capstone (Part VIII) composes all five; do not resolve Thread E's [extension] machinery as if
   it shipped.
+
+## Post-editorial canonical identifiers (binding for future editions)
+
+Decided during the final editorial passes; each identifier is unique to one scene:
+- `9f3c1a7` — Forge stale-approval scene ONLY (Thread B).
+- `4e7d21a` (full `4e7d21ad0b2e4f6a8c1d3e5f7a9b1c3d5e7f9a0b`) — Atlas contract revision (ch11, ch36).
+- `b5e91c4…` — capstone Ledger subject revision (ch39–41).
+- `task-3c88a1e` — the LangGraph task identifier in ch24.
+- `3b7a9d1…deadbeef` — Appendix E Ledger fragment revision.
+- `git:feedfacefeed…` — support-network revision (ch09, ch12, ch13, ch35).
+- Thread C network id: `network.treasury_exceptions` everywhere.
+- Atlas approval name: `partner_disclosure_approval`. Ledger submission capability: `payment.submit`.
+- Above €50,000 Ledger requires treasury officer AND risk officer; the capstone demonstration
+  records a single `network_governance_owner` assertion and carries the dual-control gap as a
+  register residual (ch40 states this explicitly).

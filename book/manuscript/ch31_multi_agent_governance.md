@@ -38,11 +38,11 @@ The Northstar Treasury workflow, "Ledger," is the case study this chapter carrie
 
 **<span class="ix" data-ix="agent identity">Agent identities</span>** answer *who*. Each of the five non-human participants gets a governance identity with a namespace, a subject, an actor class, a validity interval, framework bindings, and a status — and, constitutionally, an `authority` of `non_human` and `can_approve` of `false` **[implemented]**. The treasury officer is not an agent identity at all; humans participate through approval records and roles, never as declared agents. This asymmetry is not a modelling accident. If a human were representable as an agent identity, then an agent identity would be representable as a human, and the approval boundary would be a naming convention.
 
-**<span class="ix" data-ix="capability!in multi-agent networks">Capabilities</span>** answer *what kinds of action exist*. In Ledger there are seven: `case.decompose`, `analyze.exposure`, `payment.draft`, `payment.approve`, `approval.assemble`, `evidence.record`, and `bank.submit`. Each carries actions, a risk level, a scope expressed as a declared context, whether it may be delegated, and any gates, approvals, and evidence it requires.
+**<span class="ix" data-ix="capability!in multi-agent networks">Capabilities</span>** answer *what kinds of action exist*. In Ledger there are seven: `case.decompose`, `analyze.exposure`, `payment.draft`, `payment.approve`, `approval.assemble`, `evidence.record`, and `payment.submit`. Each carries actions, a risk level, a scope expressed as a declared context, whether it may be delegated, and any gates, approvals, and evidence it requires.
 
 **<span class="ix" data-ix="membership">Memberships</span>** answer *where each identity may act, and with which capabilities there*. Membership is what makes a capability zone-relative: the `analyst` holds `analyze.exposure` inside `treasury-data` and holds nothing at all inside `payment-exec`.
 
-**<span class="ix" data-ix="trust zone!in multi-agent networks">Trust zones</span>** answer *what may flow across which boundary*. Every Ledger zone declares a non-empty never-share list, and the four categories that are always denied — `secrets`, `credentials`, `tokens`, `private_memory` **[implemented]** — appear in every one of them, alongside Treasury's own `account_credentials` and `full_pan`.
+**<span class="ix" data-ix="trust zone!in multi-agent networks">Trust zones</span>** answer *what may flow across which boundary*. Every Ledger zone declares a non-empty never-share list — `treasury-data`'s is exactly `[account_credentials, full_pan]` — and the four sensitive categories that are always denied — `secrets`, `credentials`, `tokens`, `private_memory` — are enforced by the toolchain across every boundary regardless of what any zone declares **[implemented]**, so they never need to be restated in a zone's list.
 
 **<span class="ix" data-ix="network gate">Network gates</span>** answer *what conditions attach to a class of action crossing a boundary*: which policies must be satisfied, which approvals must exist, which evidence must be present.
 
@@ -53,11 +53,11 @@ Figure 31.1 shows the zone-and-membership layout with the capability held in eac
 <figure class="nx-fig" id="fig-31-1">
   <div class="fig-body">
     <div class="zones">
-      <div class="zone" data-name="treasury-plan — never-share: secrets, credentials, tokens, private_memory">
+      <div class="zone" data-name="treasury-plan — never-share declared (four sensitive categories toolchain-denied everywhere)">
         <div class="node">planner<br/>case.decompose</div>
         <div class="node">approval-liaison<br/>approval.assemble</div>
       </div>
-      <div class="zone" data-name="treasury-data — read-only; never-share: + account_credentials, full_pan">
+      <div class="zone" data-name="treasury-data — read-only; never-share: account_credentials, full_pan">
         <div class="node">analyst<br/>analyze.exposure</div>
       </div>
       <div class="zone" data-name="payment-exec — ✋ ingress gate: approved package + human approval">
@@ -72,7 +72,7 @@ Figure 31.1 shows the zone-and-membership layout with the capability held in eac
   <figcaption><b>Figure 31.1 — Ledger's zones and the capabilities held in each.</b> Membership binds an identity to one zone together with the capabilities exercisable there, so the diagram is readable as an authority map rather than a deployment map. Two facts carry most of the chapter's weight and are visible here: no box contains both <code>payment.draft</code> and <code>payment.approve</code> (the approve capability is held by no agent at all), and the dashed box is inside the zone but outside the governed surface — the subject of Section 31.7.</figcaption>
 </figure>
 
-> **Case study — Ledger.** Treasury now writes the workflow down. The five identities live in `northstar.treasury`; the seven capabilities carry risk levels from `low` (`evidence.record`) to `critical` (`bank.submit`); memberships place each identity in exactly one zone; the four zones each declare never-share categories; three gates guard the boundaries `treasury-plan → payment-exec`, `treasury-data → treasury-plan`, and every write into `audit-store`. What the exercise costs is two days of argument about who may do what. What it buys is that the four questions in the opening scenario are now answerable by reading one document, and answerable the same way by the team, by Risk & Audit, and by a checker.
+> **Case study — Ledger.** Treasury now writes the workflow down. The five identities live in `northstar.treasury`; the seven capabilities carry risk levels from `low` (`evidence.record`) to `critical` (`payment.submit`); memberships place each identity in exactly one zone; the four zones each declare never-share categories; three gates guard the boundaries `treasury-plan → payment-exec`, `treasury-data → treasury-plan`, and every write into `audit-store`. What the exercise costs is two days of argument about who may do what. What it buys is that the four questions in the opening scenario are now answerable by reading one document, and answerable the same way by the team, by Risk & Audit, and by a checker.
 
 ## 31.3 Separation of duties across agents
 
@@ -93,7 +93,7 @@ In Ledger the constraint is satisfied in the strongest available way: `payment.a
 | Under €10,000 | `payment.draft.standard` | `gate.payment_draft` | none | exposure report, draft record | declaration layer |
 | €10,000–€50,000 | `payment.draft.elevated` | `gate.payment_review` | one treasury officer, before action, revision-bound | + approval package | declaration layer, human approver |
 | Above €50,000 | `payment.draft.material` | `gate.payment_review` | treasury officer **and** risk officer, before action, revision-bound, expiring | + independent exposure re-computation | declaration layer, two human approvers |
-| Any amount, submitted to the bank | `bank.submit` | `gate.payment_submit` | as above, plus the approved package as ingress condition | + submission receipt | **outside the declaration layer** (Section 31.7) |
+| Any amount, submitted to the bank | `payment.submit` | `gate.payment_submit` | as above, plus the approved package as ingress condition | + submission receipt | **outside the declaration layer** (Section 31.7) |
 
 **Table 31.1 — Ledger's approval escalation by consequence band.** Illustrative for Northstar, using record shapes that exist in the language. The final column is the one to read carefully: a declaration layer can decide which requirements attach to a *named* capability, but nothing in the contract compares a number to a threshold. The band is selected before the authorization request is made, which relocates a piece of trust into the adapter — and that relocation is itself a governance fact, not an implementation detail.
 
@@ -240,10 +240,10 @@ Figure 31.3 shows the Ledger chain for one case above the material threshold.
       <div class="msg" data-from="3" data-to="4" data-kind="call">approval_requested — package assembled, draft attached</div>
       <div class="msg" data-from="4" data-to="5" data-kind="call">approval_requested — human decision, revision-bound</div>
       <div class="msg" data-from="5" data-to="4" data-kind="return">approval_granted — actor_type: human, role: treasury_officer</div>
-      <div class="msg" data-from="4" data-to="3" data-kind="deny">bank.submit — capability_denied: not held by any agent identity</div>
+      <div class="msg" data-from="4" data-to="3" data-kind="deny">payment.submit — capability_denied: not held by any agent identity</div>
     </div>
   </div>
-  <figcaption><b>Figure 31.3 — One mission, five participants, one evidence chain.</b> Illustrative for Ledger; the event types and their required fields are the real closed set. The teaching purpose is the last row: the chain ends in a denial rather than a submission, because no agent identity holds <code>bank.submit</code>. Every earlier row is a governed decision with a recorded basis — <em>delegation</em> for the analyst, <em>membership</em> for the executor — so an auditor can answer "under what authority" for each step without inferring anything.</figcaption>
+  <figcaption><b>Figure 31.3 — One mission, five participants, one evidence chain.</b> Illustrative for Ledger; the event types and their required fields are the real closed set. The teaching purpose is the last row: the chain ends in a denial rather than a submission, because no agent identity holds <code>payment.submit</code>. Every earlier row is a governed decision with a recorded basis — <em>delegation</em> for the analyst, <em>membership</em> for the executor — so an auditor can answer "under what authority" for each step without inferring anything.</figcaption>
 </figure>
 
 Listing 31.3 is a validated stream of exactly this shape, produced from the bundled example rather than from Ledger, so that the transcript is real.
@@ -292,7 +292,7 @@ Table 31.3 sets the options against each other.
 | Response | What it changes | Strongest claim it supports | Residual |
 |---|---|---|---|
 | Do nothing; document the risk | Nothing technical; the risk register gains an owner | Tier 1/2 for governed paths; explicit statement that submission is ungoverned | Full — an unwrapped call succeeds |
-| Coverage inventory + negative tests | The uncovered surface is enumerated and tested for, in CI | Same claims, now with a maintained boundary and detection of new uncovered surfaces (Chapter 14) | An unwrapped call still succeeds; you learn about the class, not the instance |
+| Coverage inventory + negative tests | The uncovered surface is enumerated and tested for, in continuous integration (CI) | Same claims, now with a maintained boundary and detection of new uncovered surfaces (Chapter 14) | An unwrapped call still succeeds; you learn about the class, not the instance |
 | Network egress restriction from `payment-exec` | The zone becomes a real network boundary as well as a declared one | The agent cannot reach the interface at all except through an allowed path | Anything reachable through the allowed path |
 | Mandatory gateway in front of the bank interface | Every submission traverses an enforcement point the agent cannot decline | **Tier 3** for submission: the decision is enforced independently of the calling code | Gateway availability and correctness; the gateway's own policy source |
 | Credential separation: the executor never holds submission credentials | Submission requires an actor the executor is not | Tier 3 by construction for the credential-bearing step | Whatever holds the credential becomes the thing to protect |
@@ -301,7 +301,7 @@ Table 31.3 sets the options against each other.
 
 The fourth and fifth rows are what Chapter 26 develops in detail, and both require machinery the repository does not supply. Projecting a Nornyx contract into a gateway's policy language, keeping the two in sync, and proving the gateway consulted the projection are all architectural extensions beyond the current repository **[extension]**. What the contract does contribute to that architecture is not nothing: it supplies a reviewed, versioned, content-addressed statement of the intended decision, which is exactly what a gateway needs as an input and exactly what most gateway deployments lack. A mandatory enforcement point configured from an unreviewable rule set is stronger than a cooperative one on exactly one axis and weaker on several others.
 
-> **Case study — Ledger.** Treasury takes rows two, three, and five. The coverage inventory names the bank interface as an unsupported surface, and a negative test asserts that a direct call from within `payment-exec` is detected by the network policy rather than by the agent's good behaviour. Egress from `payment-exec` is restricted to one host. And the submission credential is moved out of the executor entirely: the approved package is written to a queue, and a separate, non-agentic service — holding the credential, reading only approved packages, and running no model — performs the submission. The `bank.submit` capability remains declared and remains held by no agent identity, which is now a true statement about the deployment rather than an aspiration. The residual risk is written down with an owner: whoever compromises the submission service compromises the payment, and no governance artifact changes that. Chapter 34 threat-models the rest.
+> **Case study — Ledger.** Treasury takes rows two, three, and five. The coverage inventory names the bank interface as an unsupported surface, and a negative test asserts that a direct call from within `payment-exec` is detected by the network policy rather than by the agent's good behaviour. Egress from `payment-exec` is restricted to one host. And the submission credential is moved out of the executor entirely: the approved package is written to a queue, and a separate, non-agentic service — holding the credential, reading only approved packages, and running no model — performs the submission. The `payment.submit` capability remains declared and remains held by no agent identity, which is now a true statement about the deployment rather than an aspiration. The residual risk is written down with an owner: whoever compromises the submission service compromises the payment, and no governance artifact changes that. Chapter 34 threat-models the rest.
 
 ## Summary
 

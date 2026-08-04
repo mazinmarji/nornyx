@@ -16,7 +16,7 @@ title: "Enterprise Governance Hierarchies"
 > - Specify what a full hierarchy engine would additionally require — conflict semantics, weakening reports, exception registries — and identify which of those the project has ruled out on purpose.
 > - Use the roaming analogy from mobile networks to reason about layered policy across administrative domains, and say where the analogy stops.
 
-> **Prerequisites.** Chapter 8 (composition operations, silent weakening, provenance, canonicalization, deterministic composition), Chapter 9 (approvals and exception records), Chapter 16 (status badges, version axes), Chapter 18 (profiles, modules, locks, digests), and Chapter 29 (governance in CI). Chapter 2's telecommunications analogy is extended here for the fourth of its five appearances.
+> **Prerequisites.** Chapter 8 (composition operations, silent weakening, provenance, canonicalization, deterministic composition), Chapter 9 (approvals and exception records), Chapter 16 (status badges, version axes), Chapter 18 (profiles, modules, locks, digests), and Chapter 29 (governance in continuous integration (CI)). Chapter 2's telecommunications analogy is extended here for the fourth of its five appearances.
 
 ## 32.1 Five levels, five owners, five cadences
 
@@ -114,7 +114,7 @@ policies:
 
 **Listing 32.1 — A policy reference resolved from an organizational manifest.** Real transcript, package 1.11.0, run against a two-directory workspace created for this chapter. The reference is written once in the Treasury contract; the rules appear in the generated artifact because resolution compiles them inline. The Treasury repository therefore contains no copy of the organizational rules to drift, and its generated `policy.yaml` still renders them in full for review.
 
-The mechanism is fail-closed in seven distinct ways, and one of them is worth seeing because it is the failure a reorganization actually produces. Renaming the canonical policy in the manifest — or pointing a member at a policy that never existed — does not degrade to an empty rule set:
+The mechanism is fail-closed in seven distinct ways, and one of them is worth seeing because it is the failure a reorganization actually produces. Renaming the canonical policy in the manifest — or pointing a member at a policy that never existed — does not degrade to an empty rule set; Listing 32.2 shows the refusal:
 
 ```text
 $ nornyx check treasury/nornyx.nyx

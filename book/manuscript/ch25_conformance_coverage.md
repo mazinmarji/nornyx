@@ -131,7 +131,7 @@ def _check_langgraph_version(installed: str) -> None:
 _check_langgraph_version(_installed_langgraph_version())
 ```
 
-**Listing 25.3 — An exact pin enforced at module import.** Verbatim from `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/langgraph.py:61-69`; the module-level call on the last line is what makes the check unavoidable. Three cases are distinguished and each gets a precise diagnostic: the distribution is absent, and `require_extra` raises `MissingOptionalDependencyError` naming the install command (`_compat.py:37-54`); the distribution is present at some other version, or its metadata is missing or malformed, and `AdapterConfigurationError` names both the installed and the required version; or the version matches and the module imports. The package's SPI major version is checked the same way, at package import, raising `UnsupportedSPIVersionError` on a major it was not built for (`__init__.py:34`; `_compat.py:16-34`).
+**Listing 25.3 — An exact pin enforced at module import.** Verbatim from `adapters/nornyx-agentic-adapters/src/nornyx_agentic_adapters/langgraph.py:61-69`; the module-level call on the last line is what makes the check unavoidable. Three cases are distinguished and each gets a precise diagnostic: the distribution is absent, and `require_extra` raises `MissingOptionalDependencyError` naming the install command (`_compat.py:37-54`); the distribution is present at some other version, or its metadata is missing or malformed, and `AdapterConfigurationError` names both the installed and the required version; or the version matches and the module imports. The package's service-provider-interface (SPI) major version is checked the same way, at package import, raising `UnsupportedSPIVersionError` on a major it was not built for (`__init__.py:34`; `_compat.py:16-34`).
 
 The reaction this provokes in practice is that an exact pin is an operational inconvenience, and so it is. It is also the only mechanism available to a cooperative in-process component for converting silent claim decay into a loud, early, attributable failure. The compatibility documentation states the reasoning without hedging: the pins "name the *exact, only tested version* of each framework, not a range… A wider range is not claimed until new test evidence justifies it — widening a pin without new tests would be a compatibility regression risk, not a convenience" (`docs/COMPATIBILITY.md:38-43`).
 
@@ -229,7 +229,7 @@ Thread D's whole purpose is a comparison, and it can now be completed. Northstar
 
 | | 1. Framework-native, ungoverned | 2. Wrapped cooperative | 3. Bypass under the wrapper | 4. External enforcement |
 |---|---|---|---|---|
-| What sits on the action path | nothing | the governed tool or node, in process | nothing — the call goes around it | a mandatory gateway or sandbox PEP |
+| What sits on the action path | nothing | the governed tool or node, in process | nothing — the call goes around it | a mandatory gateway or sandbox policy enforcement point (PEP) |
 | Coverage | none | the declared wrapped surface only | none, by construction | every call that must traverse the enforcement point |
 | Decision recorded | no | yes, before the action | no | yes, at the enforcement point |
 | Evidence produced | application logs, if any | validating runtime-events stream bound to the locked revision | none — and no record that none exists | enforcement-point records, independent of the agent process |

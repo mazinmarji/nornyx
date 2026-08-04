@@ -34,7 +34,7 @@ The hazard has three distinct failure modes, and separating them matters because
 
 > **Key idea.** The remedy for all three modes is the same and it is not a cache: exactly one component performs interpretation, and every other component receives the *result* through an interface that offers no way to re-derive it. Consumers become readers of an authoritative interpretation rather than interpreters in their own right.
 
-This is Parnas's information-hiding criterion applied to governance [@parnas-criteria]: the interpretive pipeline is the design decision most likely to change and most damaging to duplicate, so it belongs behind one module boundary. It is also the classical authorization architecture — the AAA framework and the XACML model both place a single context handler between requesters and policy, precisely so that requesters cannot assemble their own view of the policy context [@rfc2904; @xacml].
+This is Parnas's information-hiding criterion applied to governance [@parnas-criteria]: the interpretive pipeline is the design decision most likely to change and most damaging to duplicate, so it belongs behind one module boundary. It is also the classical authorization architecture — the AAA (authentication, authorization, and accounting) framework and the XACML model both place a single context handler between requesters and policy, precisely so that requesters cannot assemble their own view of the policy context [@rfc2904; @xacml].
 
 ## 19.2 What the interface must promise, and how it may change
 

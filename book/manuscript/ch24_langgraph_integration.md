@@ -152,7 +152,7 @@ Figure 24.2 traces the full suspend-and-resume path, because the interaction bet
   <div class="fig-body">
     <div class="seq">
       <div class="seq-cols" data-cols="Graph|Governed node|Authorizer|Recorder|Node action"></div>
-      <div class="msg" data-from="1" data-to="2" data-kind="call">invoke task-9f3c1a7, node_attempt = 1</div>
+      <div class="msg" data-from="1" data-to="2" data-kind="call">invoke task-3c88a1e, node_attempt = 1</div>
       <div class="msg" data-from="2" data-to="4" data-kind="call">max_recorded_attempt(...) → 0, so attempt = 1</div>
       <div class="msg" data-from="2" data-to="3" data-kind="call">evaluate(CapabilityRequest)</div>
       <div class="msg" data-from="3" data-to="2" data-kind="return">ALLOW</div>
@@ -160,7 +160,7 @@ Figure 24.2 traces the full suspend-and-resume path, because the interaction bet
       <div class="msg" data-from="2" data-to="5" data-kind="call">action(state)</div>
       <div class="msg" data-from="5" data-to="2" data-kind="deny">GraphBubbleUp (interrupt: awaiting officer)</div>
       <div class="msg" data-from="2" data-to="1" data-kind="deny">re-raise — no record, cached base dropped</div>
-      <div class="msg" data-from="1" data-to="2" data-kind="call">resume: same task-9f3c1a7, node_attempt reset to 1</div>
+      <div class="msg" data-from="1" data-to="2" data-kind="call">resume: same task-3c88a1e, node_attempt reset to 1</div>
       <div class="msg" data-from="2" data-to="4" data-kind="call">max_recorded_attempt(...) → 1, so attempt = 2</div>
       <div class="msg" data-from="2" data-to="3" data-kind="call">evaluate(CapabilityRequest) — authorized again</div>
       <div class="msg" data-from="2" data-to="4" data-kind="call">record_occurrence_decision @ attempt 2</div>
@@ -168,7 +168,7 @@ Figure 24.2 traces the full suspend-and-resume path, because the interaction bet
       <div class="msg" data-from="2" data-to="4" data-kind="call">record_occurrence_observation agent_invoked @ attempt 2</div>
     </div>
   </div>
-  <figcaption><b>Figure 24.2 — Interrupt and resume across one occurrence.</b> The teaching purpose is the two calls to <code>max_recorded_attempt</code>: the same framework input — <code>node_attempt = 1</code> on task <code>task-9f3c1a7</code> — yields Nornyx attempt 1 the first time and attempt 2 the second, because the recorder's own validated prefix differs. Note also that the resumed segment is authorized again rather than inheriting the pre-interrupt decision, which is what makes an approval that expired during the suspension take effect.</figcaption>
+  <figcaption><b>Figure 24.2 — Interrupt and resume across one occurrence.</b> The teaching purpose is the two calls to <code>max_recorded_attempt</code>: the same framework input — <code>node_attempt = 1</code> on task <code>task-3c88a1e</code> — yields Nornyx attempt 1 the first time and attempt 2 the second, because the recorder's own validated prefix differs. Note also that the resumed segment is authorized again rather than inheriting the pre-interrupt decision, which is what makes an approval that expired during the suspension take effect.</figcaption>
 </figure>
 
 Resume across a *process* boundary needs one more step, and it is the integrator's. Nothing in the adapter persists evidence. To continue a run in a new process the integrator persists the cumulative stream alongside the framework checkpoint and rebuilds the recorder with `EvidenceRecorder.resume(...)` before invoking the graph again **[implemented]**. That factory revalidates and deeply detaches the complete prior stream, requires the producer identity, schema version, and occurrence mode to match, refuses a resumed decision instant preceding any prior event timestamp, and restores the per-mission sequence counters, so what the recorder then emits is <span class="ix" data-ix="cumulative evidence">cumulative evidence</span> — the whole run, not a fragment (`nornyx/agentic/authz.py:1305-1396`). Differential chunks and multi-producer merging are not supported, which is a boundary rather than an omission: a merged stream would need distributed causality, and Chapter 12 established that a single-producer ordering model does not supply it.
@@ -235,18 +235,18 @@ Now run the graph over a case with two counterparties, where the first computati
 ```json
 {"sequence": 1, "event_type": "capability_requested", "actor_ref": "identity.ledger.analyst",
  "capability_ref": "analyze.exposure",
- "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-9f3c1a7", "attempt": 1}}
+ "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-3c88a1e", "attempt": 1}}
 {"sequence": 2, "event_type": "capability_allowed", "policy_decision": "allow",
  "delegation_ref": "delegation.planner_to_analyst",
- "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-9f3c1a7", "attempt": 1}}
+ "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-3c88a1e", "attempt": 1}}
 {"sequence": 3, "event_type": "runtime_failed",
- "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-9f3c1a7", "attempt": 1}}
+ "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-3c88a1e", "attempt": 1}}
 {"sequence": 4, "event_type": "capability_requested",
- "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-9f3c1a7", "attempt": 2}}
+ "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-3c88a1e", "attempt": 2}}
 {"sequence": 5, "event_type": "capability_allowed", "policy_decision": "allow",
- "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-9f3c1a7", "attempt": 2}}
+ "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-3c88a1e", "attempt": 2}}
 {"sequence": 6, "event_type": "agent_invoked",
- "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-9f3c1a7", "attempt": 2}}
+ "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-3c88a1e", "attempt": 2}}
 {"sequence": 7, "event_type": "capability_requested",
  "occurrence": {"operation_id": "node.compute_exposure", "occurrence_id": "task-4b8e2d0", "attempt": 1}}
 {"sequence": 8, "event_type": "capability_allowed", "policy_decision": "allow", "...": "same occurrence"}
