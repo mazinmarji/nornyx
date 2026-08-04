@@ -6,6 +6,8 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-04
+
 ### Added
 
 - ADR-0043 M2-E: `nornyx_agentic_adapters.conformance`, an executable runtime
@@ -30,6 +32,10 @@ package versions independently of the `nornyx` core package — see
 
 ### Changed
 
+- The adapter distribution advances to 0.3.0 for this additive conformance-kit
+  release. It retains the `nornyx>=1.10,<2` floor, SPI major 1, and the exact
+  `crewai==1.15.4` / `langgraph==1.2.2` pins; the core `nornyx` package version
+  is unchanged by this release.
 - `crewai_adapter.make_governed_tool` records a `runtime_failed` observation
   exactly once when an authorized action raises, before re-raising. Previously
   that path recorded nothing, while the LangGraph adapter recorded

@@ -84,8 +84,8 @@ def _compile_single(node, *, retry_policy=None, checkpointer=None):
 
 def test_metadata_and_coverage_are_closed() -> None:
     assert FRAMEWORK == "langgraph"
-    assert METADATA.adapter_version == "0.2.0"
-    # docs/COMPATIBILITY.md declares adapter 0.2.x compatible with SPI *major* 1,
+    assert METADATA.adapter_version == "0.3.0"
+    # docs/COMPATIBILITY.md declares adapter 0.3.x compatible with SPI *major* 1,
     # not with one exact minor: every additive SPI minor is compatible under
     # ADR-0039's minor-compatibility rule. Pinning an exact minor here would
     # contradict that matrix and fail on a core minor the adapter does support.

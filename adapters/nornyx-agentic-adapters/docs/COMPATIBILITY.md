@@ -4,6 +4,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 0.1.x | `>=1.8,<2` | 1.0 | `==1.15.4` | Not implemented | 3.10–3.13 |
 | 0.2.x | `>=1.10,<2` | 1.x (tested with 1.1 and 1.2) | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
+| 0.3.x | `>=1.10,<2` | 1.x (tested with 1.1 and 1.2) | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
 
 ## Report schemas produced by this distribution
 
@@ -136,5 +137,5 @@ read-only capability within the supported SPI major: compatibility shims and
 evidence validators can consume detached views of the already loaded contract,
 effective governance composition, and verified lock without private attributes
 or a second filesystem read. It changes no request, decision, recorder,
-runtime-events schema, occurrence, or replay behavior. Adapter 0.2.x continues
-to accept SPI major 1.
+runtime-events schema, occurrence, or replay behavior. Adapter 0.2.x and 0.3.x
+continue to accept SPI major 1.

@@ -173,6 +173,7 @@ immediately, rather than failing later with a confusing error.
 | --- | --- | --- | --- | --- | --- |
 | 0.1.x | >=1.8,<2 | 1.0 | 1.15.4 | Not implemented | 3.10–3.13 |
 | 0.2.x | >=1.10,<2 | 1.x (tested with 1.1 and 1.2) | 1.15.4 (only tested version) | 1.2.2 (only tested version) | 3.10–3.13 |
+| 0.3.x | >=1.10,<2 | 1.x (tested with 1.1 and 1.2) | 1.15.4 (only tested version) | 1.2.2 (only tested version) | 3.10–3.13 |
 
 The SPI column names the *major* version this package supports, matching
 [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md): every additive SPI minor is

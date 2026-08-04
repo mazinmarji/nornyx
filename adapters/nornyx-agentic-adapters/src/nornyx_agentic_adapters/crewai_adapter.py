@@ -108,7 +108,7 @@ FRAMEWORK = "crewai"
 
 METADATA = AdapterMetadata(
     adapter_name="nornyx-agentic-adapters-crewai",
-    adapter_version="0.2.0",
+    adapter_version="0.3.0",
     spi_version=SPI_VERSION,
     framework_name=FRAMEWORK,
     framework_version_range=f"=={_REQUIRED_CREWAI_VERSION}",

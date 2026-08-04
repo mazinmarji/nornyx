@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nornyx-agentic-adapters"
-version = "0.2.0"
+version = "0.3.0"
 description = "Framework adapters (CrewAI, LangGraph) for the Nornyx nornyx.agentic authorization SPI."
 readme = "README.md"
 requires-python = ">=3.10"
