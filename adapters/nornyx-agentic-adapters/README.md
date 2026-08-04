@@ -172,14 +172,19 @@ immediately, rather than failing later with a confusing error.
 | This package | `nornyx` | SPI | CrewAI | LangGraph | Python |
 | --- | --- | --- | --- | --- | --- |
 | 0.1.x | >=1.8,<2 | 1.0 | 1.15.4 | Not implemented | 3.10–3.13 |
-| 0.2.x | >=1.10,<2 | 1.1 | 1.15.4 (only tested version) | 1.2.2 (only tested version) | 3.10–3.13 |
+| 0.2.x | >=1.10,<2 | 1.x (tested with 1.1 and 1.2) | 1.15.4 (only tested version) | 1.2.2 (only tested version) | 3.10–3.13 |
+
+The SPI column names the *major* version this package supports, matching
+[`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md): every additive SPI minor is
+compatible under ADR-0039's minor-compatibility rule, and the import-time check
+asserts the major only.
 
 Framework version pins are intentionally narrow: they name the only version
 of each framework this package has been tested against. A wider range is not
-claimed until new test evidence supports it. The CrewAI pin is **enforced at
-import time**, not merely declared. Importing
-Both framework submodules enforce their exact installed distribution version.
-For example, `nornyx_agentic_adapters.crewai_adapter` distinguishes three cases:
+claimed until new test evidence supports it. Framework pins are **enforced at
+import time**, not merely declared: both framework submodules check their exact
+installed distribution version. For example,
+`nornyx_agentic_adapters.crewai_adapter` distinguishes three cases:
 
 - **CrewAI missing** — raises `MissingOptionalDependencyError` naming the
   `pip install nornyx-agentic-adapters[crewai]` remedy.
@@ -211,6 +216,91 @@ For example, `nornyx_agentic_adapters.crewai_adapter` distinguishes three cases:
   adapter-owned declarative mapping.
 - `langgraph.make_governed_node(...)` — occurrence-aware synchronous node
   enforcement using public LangGraph execution metadata only.
+- `conformance` — the runtime adapter-conformance kit (see below).
+
+## Runtime conformance (ADR-0043)
+
+A `CoverageInventory` is a declaration. The conformance kit executes the real
+supported adapter paths under the exact declared framework versions and reports
+what actually happened, so a declared `wrapped` surface cannot drift from the
+adapter's behavior without the drift being visible.
+
+```bash
+pip install "nornyx-agentic-adapters[crewai,langgraph]"
+python -m nornyx_agentic_adapters.conformance --summary
+```
+
+```bash
+python -m nornyx_agentic_adapters.conformance \
+  --require crewai --require langgraph --json conformance.json
+```
+
+Exit codes: `0` every required case conformed, `1` observed nonconformance — a
+failing case, a required framework unavailable, a run that produced no case, or
+an outbound connection or process spawn the run's guard blocked — and `2`
+invalid configuration or an internal error.
+`--require` exists so a missing extra fails CI instead of passing as a silent
+skip. The command opens no external network, loads no credentials, calls no
+external model service or endpoint, and executes no connector; a guarded run
+permits loopback so a framework's local telemetry stack still works.
+
+The CrewAI suite *does* instantiate and drive a scripted, offline, in-process
+model — CrewAI's native executor needs one, and a scripted one is what makes
+the run deterministic. The LangGraph suite drives none. The report says so plainly rather than claiming no model was
+called: `scripted_in_process_model_called` is observed per run, and
+`external_model_service_called` is a structural constant.
+
+Programmatic use mirrors the command:
+
+```python
+from nornyx_agentic_adapters.conformance import run_conformance, validate_report
+
+report = run_conformance(require=["crewai"])
+assert validate_report(report.as_dict()) == ()
+```
+
+The report is deterministic JSON identified by `nornyx.agentic_runtime_conformance.v1`
+and validated against a schema bundled in this distribution. It records the
+exact adapter, framework, Nornyx, SPI, and Python versions; each adapter's
+declared coverage verbatim alongside the observed cases; whether each case ran
+through the framework's own executor or the wrapper directly; authorization and
+execution counts; recorded decision and observation events; and whether the
+runtime evidence validated.
+
+Two report conventions exist because measurement forced them. Raw LangGraph
+occurrence ids never appear, since LangGraph mints a fresh task id per process;
+only derived facts (how many occurrences, which attempts, whether any collided)
+are recorded. And where a framework executor rather than the adapter controls
+repetition, a count is reported as `at_least` with a stated reason instead of a
+number that will not reproduce.
+
+### Two limitations you will see in the report
+
+These are observed and reported rather than hidden, so they are worth knowing
+before you read a result:
+
+- **`crewai.native.deny` reports `evidence_validation: fail`.** CrewAI's own
+  executor retries a denied tool call, and legacy-mode runtime events carry no
+  occurrence identity, so the repeated identical decision batches are flagged
+  `AN_EVT_REPLAY`. The fail-closed guarantee is unaffected — the wrapped action
+  executes zero times — and the case asserts that exact diagnostic code, so an
+  unrelated evidence regression cannot hide behind it.
+- **`crewai.unsupported.approval_required` is `not_representable`.** The
+  governed tool issues a capability request, and an approval-required effect is
+  reachable in this core only through a zone-crossing request, so no CrewAI
+  path can produce one. The case cross-references the framework-neutral case
+  that does prove the behavior.
+
+See [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the full statement.
+
+**Cooperative Tier 2, declared wrapped surfaces only.** Conformance does not
+authenticate agents or approvers, does not prove a recorded runtime event is
+true, does not prevent bypass, does not create whole-application coverage, does
+not enable live connectors, and does not establish Tier 3 assurance. Bypass is
+reported as an explicit negative control that is *outside* declared coverage —
+never as a path that was prevented. This is distinct from the static
+`nornyx.adapter_conformance.v0.7` report, which validates declared contract
+shape with execution disabled.
 
 See [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the full compatibility
 matrix and [`docs/MIGRATION.md`](docs/MIGRATION.md) for the completed legacy

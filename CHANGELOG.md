@@ -6,6 +6,15 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Added
+
+- ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
+  `adapter-conformance` CI job that installs both framework extras at their
+  exact pins, requires both suites so a missing extra cannot pass as a silent
+  skip, and uploads the emitted report as a build artifact. The kit itself
+  ships in `nornyx-agentic-adapters`; the `nornyx` core package, its public
+  API, and the static `nornyx.adapter_conformance.v0.7` report are unchanged.
+
 ### Changed
 
 - ADR-0039 M2-D converts the unpackaged

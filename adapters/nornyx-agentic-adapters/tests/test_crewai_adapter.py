@@ -527,6 +527,70 @@ def test_bypass_calling_the_raw_action_directly_skips_enforcement_entirely(
     assert calls == [1]
 
 
+def test_action_failure_records_runtime_failed_once_and_never_tool_invoked(
+    authorizer: Authorizer,
+) -> None:
+    """An authorized action that raises records a runtime failure.
+
+    Before ADR-0043 this path recorded nothing at all, while the LangGraph
+    adapter recorded `runtime_failed` on the equivalent path. `enforce()` calls
+    the action only on ALLOW, so a denial can never produce this event.
+    """
+    recorder = _recorder(authorizer)
+    calls: list[Any] = []
+
+    def action() -> str:
+        calls.append(1)
+        raise RuntimeError("action failed")
+
+    tool = make_governed_tool(
+        name="governed_reader",
+        description="Read governed context.",
+        binding=SurfaceBinding(
+            surface="tool:governed_reader",
+            identity_ref="identity.researcher.local",
+            capability_ref="read_governed_context",
+        ),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=action,
+    )
+    with pytest.raises(RuntimeError, match="action failed"):
+        tool._run()
+
+    assert calls == [1]
+    event_types = [event["event_type"] for event in recorder.stream()["events"]]
+    assert event_types == ["capability_requested", "capability_allowed", "runtime_failed"]
+    assert "tool_invoked" not in event_types
+    assert recorder.validate()["status"] == "pass"
+
+
+def test_denial_never_records_runtime_failed(authorizer: Authorizer) -> None:
+    """The failure observation is reachable only after an ALLOW."""
+    recorder = _recorder(authorizer)
+    tool = make_governed_tool(
+        name="proposer",
+        description="Propose a research finding.",
+        binding=SurfaceBinding(
+            surface="tool:proposer",
+            identity_ref="identity.reviewer.local",
+            capability_ref="propose_research_finding",
+        ),
+        authorizer=authorizer,
+        context=_context(),
+        recorder=recorder,
+        mission_id=MISSION_ID,
+        action=lambda: (_ for _ in ()).throw(RuntimeError("never reached")),
+    )
+    with pytest.raises(AdapterDenied):
+        tool._run()
+    event_types = [event["event_type"] for event in recorder.stream()["events"]]
+    assert "runtime_failed" not in event_types
+    assert "tool_invoked" not in event_types
+
+
 # --------------------------------------------------------------- full Crew.kickoff() lifecycle
 def test_native_crew_kickoff_allowed_capability_end_to_end(
     authorizer: Authorizer, monkeypatch: pytest.MonkeyPatch

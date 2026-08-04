@@ -5,6 +5,39 @@
 | 0.1.x | `>=1.8,<2` | 1.0 | `==1.15.4` | Not implemented | 3.10–3.13 |
 | 0.2.x | `>=1.10,<2` | 1.x (tested with 1.1 and 1.2) | `==1.15.4` | `==1.2.2` | 3.10–3.13 |
 
+## Report schemas produced by this distribution
+
+| Schema id | Version | Produced by | Meaning |
+| --- | --- | --- | --- |
+| `nornyx.agentic_runtime_conformance.v1` | 1.0 | `nornyx_agentic_adapters.conformance` | Observed runtime behavior of the installed adapter against the exact framework versions named in the report (ADR-0043). |
+
+Schema ids are permanent. A breaking change mints a new id rather than
+rewriting this one, so a stored report always means what it meant when it was
+produced. The report format is versioned independently of this package's
+distribution version.
+
+This is **not** the core's `nornyx.adapter_conformance.v0.7` report, which
+validates declared adapter/connector contract shape with execution explicitly
+disabled and is produced by `nornyx.connector_runtime`. The two answer
+different questions and neither substitutes for the other.
+
+A conformance report is bounded by ADR-0040 Tier 2: cooperative, declared
+wrapped surfaces only. It does not authenticate agents or approvers, prove a
+recorded runtime event is true, prevent bypass, imply whole-application
+coverage, or establish Tier 3 assurance.
+
+### Observed limitation: CrewAI denial evidence under executor retry
+
+On the CrewAI tool surface, a denied call may be retried by CrewAI's own ReAct
+executor. Legacy-mode runtime events carry no occurrence identity, so the
+repeated identical decision batches are flagged `AN_EVT_REPLAY` and the stream
+does not validate. The fail-closed guarantee is unaffected — the wrapped action
+executes zero times, and requested/denied events pair up exactly — but the
+conformance report records `evidence_validation: fail` for that case rather
+than claiming a validating stream. Occurrence-aware recording for CrewAI would
+require a public per-invocation identity the framework does not currently
+expose; it is not part of ADR-0043.
+
 ## Deprecated repository shim
 
 ADR-0039 M2-D converts the unpackaged

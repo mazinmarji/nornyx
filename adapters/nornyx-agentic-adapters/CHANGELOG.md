@@ -6,6 +6,126 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+### Added
+
+- ADR-0043 M2-E: `nornyx_agentic_adapters.conformance`, an executable runtime
+  adapter-conformance kit. Runs the real supported adapter paths under the
+  exact declared framework versions and emits a deterministic report
+  identified by `nornyx.agentic_runtime_conformance.v1` (format version 1.0),
+  validated against a schema bundled in this distribution. Public surface:
+  `run_conformance`, `available_suites`, `validate_report`,
+  `load_report_schema`, `serialize`, `write_report`, and the typed result
+  model. Entry point: `python -m nornyx_agentic_adapters.conformance`, exiting
+  `0` conformant, `1` nonconformant or a required framework unavailable, `2`
+  invalid configuration or internal error.
+- First-party suites for the framework-neutral `enforce()` boundary, the
+  CrewAI synchronous tool surface driven through native `Crew.kickoff()`, the
+  LangGraph synchronous node surface driven through native `graph.invoke()`
+  (retry, loop, parallel, interrupt, checkpoint resume), the
+  distribution/import boundary, coverage-inventory integrity, evidence
+  validity, and bypass negative controls.
+- The distribution now ships package data: the report schema and a governance
+  contract fixture, resolved through `importlib.resources`, so conformance
+  runs from an installed wheel outside every source root.
+
+### Changed
+
+- `crewai_adapter.make_governed_tool` records a `runtime_failed` observation
+  exactly once when an authorized action raises, before re-raising. Previously
+  that path recorded nothing, while the LangGraph adapter recorded
+  `runtime_failed` on the equivalent path. `enforce()` invokes the action only
+  on ALLOW, so a denial can never produce this event.
+- `jsonschema>=4.21` is now a direct dependency: the conformance kit imports it
+  to validate its own report. It was already guaranteed transitively by
+  `nornyx`, and the `nornyx>=1.10,<2` floor is unchanged.
+- Documentation: the README's SPI column now reads `1.x (tested with 1.1 and
+  1.2)`, matching `docs/COMPATIBILITY.md` and the import-time check, which
+  asserts the SPI *major* only. A truncated sentence about import-time pin
+  enforcement is repaired.
+
+### Assurance remediations
+
+Independent review of the candidate found three claim-integrity defects in the
+kit, all fixed before this entry:
+
+- The CrewAI denial case asserted only that evidence validation *failed*, while
+  its reported detail named a specific cause it never observed. Any unrelated
+  evidence regression on that path would have produced the same reassuring
+  prose. Cases now record the validator's actual diagnostic codes, and that
+  case pins `AN_EVT_REPLAY` exactly.
+- `safety.network_used` was a dataclass default pinned to `false` by the
+  schema — unfalsifiable, despite a docstring claiming it was observed. The
+  block now reports what can actually be observed: `guarded_suites` names the
+  suites that ran under the outbound guard, and `blocked_outbound_attempts` is
+  its real count. It is deliberately *not* restated as a "network was used"
+  flag: a blocked attempt means the network was **not** reached, so such a flag
+  would invert the meaning. `models_called`, `external_connectors_used`, and
+  `credentials_loaded` remain constants and now say in the schema that they are
+  structural properties of the kit's design rather than measurements.
+- `decision_precedes_action` named a stronger property than it measured (it
+  compares recorded events, not the action) and was vacuously `true` for cases
+  that recorded nothing. Renamed to `decision_precedes_observation`, documented
+  in the schema, and now absent rather than `true` when no observation exists.
+
+Also: requiring a framework that was not selected, and selecting a case id that
+matches nothing, are now errors rather than silent no-ops that could exit `0`
+(a case id whose suite is unavailable is exempt from the error, since the case
+exists and only its extra does not, and is reported on stderr so the same
+argument cannot quietly mean two different things);
+a run that produced no case at all reports `fail`, because it verified nothing;
+an empty stream reports `not_applicable` rather than a validation `pass`; the
+interrupt/resume case counts the executions it actually performed; and the
+CrewAI bypass control now bypasses a real governed tool rather than a bare
+counter.
+
+A second review round found that the first `network_used` fix was itself
+unsound and it was redesigned as above. It also found that the guard's
+`sys.executable` escape handed out a fully unguarded child process, and that
+per-case guards nested inside the run-level guard recorded into their own
+counters where the run-level report could not see them. The escape is removed
+— the distribution suite, which deliberately spawns a clean interpreter, now
+runs outside the guard instead — and the nested guards are gone, leaving one
+observer per run.
+
+A third round caught that removing those nested guards had restored
+*visibility* but dropped *enforcement*: the per-case checks that failed a case
+on a blocked call went with them, so a blocked outbound attempt was reported
+and otherwise ignored. A blocked attempt now fails the run. The guard does
+raise into the case that made the call, but a framework executor may swallow
+that exception — CrewAI's ReAct loop treats a tool error as recoverable — so
+the raise alone cannot be relied on to surface it. That round also corrected
+the `models_called` description, which claimed the kit "contains no model
+client" while it ships a scripted offline LLM to drive CrewAI's executor; the
+defensible claim, and the one made everywhere else, is that no *external*
+model is called.
+
+Final review then rejected the compromise reached above: the description had
+been narrowed to "no external model" while the machine field kept the broad
+name `models_called: false`, and the shipped limitations still asserted "no
+model". That is false on the ordinary reading — the kit instantiates a model
+abstraction and CrewAI's executor calls it. The report now carries two fields:
+`scripted_in_process_model_called`, **observed** per run (true for a native
+CrewAI run, false for a base-suite run that instantiates no model), and
+`external_model_service_called`, a structural constant. Every "no model"
+assertion now reads "no external model service or endpoint", and a regression
+test proves the report distinguishes the two. Corrected before
+`nornyx.agentic_runtime_conformance.v1` has any consumer, so the schema
+identity and version 1.0 are unchanged.
+
+### Known limitations
+
+- On the CrewAI tool surface, a denied call retried by CrewAI's own executor
+  produces repeated identical decision batches that the evidence validator
+  flags as replay, because legacy-mode events carry no occurrence identity.
+  Fail-closed behavior is unaffected (zero executions); the conformance report
+  states `evidence_validation: fail` for that case rather than claiming a
+  validating stream. See `docs/COMPATIBILITY.md`.
+- `APPROVAL_REQUIRED` is not representable on the CrewAI tool surface: the
+  governed tool issues a `CapabilityRequest`, and that effect is reachable in
+  this core only via a zone-crossing request. The report records the case as
+  `not_representable` and cross-references the framework-neutral case that
+  does prove the behavior.
+
 ## [0.2.0] - 2026-07-30
 
 ### Added
