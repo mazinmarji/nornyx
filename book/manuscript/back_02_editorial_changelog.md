@@ -116,9 +116,9 @@ Promotional residue was removed, including the closing slogan page and callouts 
 product virtues instead of arguing them. Repetition was eliminated: the proof-boundary statement,
 restated in five chapters of the previous edition, is now established once in Chapter 3, formalized
 in Chapter 20, and thereafter used rather than repeated. Terminology was fixed to a canonical list.
-Abbreviations are expanded at first use per chapter. The telecom analogy, which appeared
-incidentally before, is now used in exactly five places with an explicit statement of where it
-stops being valid.
+Abbreviations are expanded at first use per chapter. The previous edition's extended
+cross-domain analogy was removed entirely: this edition relies on no extended analogy, and
+each remaining local analogy states where it stops being valid.
 
 ## Figures
 

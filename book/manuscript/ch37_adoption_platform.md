@@ -16,7 +16,7 @@ title: "Enterprise Adoption and Platform Strategy"
 > - Explain where hyperscaler-native enforcement points fit, what multi-tenant isolation requires, and why a governance language benefits from platform neutrality while enforcement is necessarily platform-specific.
 > - Interrogate a vendor claiming "governed agents" with questions derived from the eight assurance questions.
 
-> **Prerequisites.** Chapter 13 (tiers and claim scoping), Chapter 14 (coverage), Chapter 16 (what the toolchain is and is not), Chapter 28 (the authoring workflow), Chapter 29 (governance in CI/CD), Chapter 32 (enterprise hierarchies, Thread E), and Chapter 35 (procurement's standards context). Status badges follow Chapter 16. This chapter contains the book's fifth and final use of the telecom analogy.
+> **Prerequisites.** Chapter 13 (tiers and claim scoping), Chapter 14 (coverage), Chapter 16 (what the toolchain is and is not), Chapter 28 (the authoring workflow), Chapter 29 (governance in CI/CD), Chapter 32 (enterprise hierarchies, Thread E), and Chapter 35 (procurement's standards context). Status badges follow Chapter 16.
 
 ## 37.1 The adoption maturity ladder
 
@@ -129,47 +129,13 @@ Every vendor in this market now says "governed," and procurement's job is to dis
 
 Two supplementary probes come from Chapter 16 rather than the eight questions: ask for the release history's worst moment ("has an independent reviewer ever told you no, and can we read the findings?"), and ask for the version tuple a claim binds to — a vendor that cannot pin its own claim to a version of its own product will not be able to support your audit in two years.
 
-## 37.6 The telecom precedent, and its limits
-
-This book's final telecom visit is about adoption itself, because the telecommunications industry performed — over roughly a decade — the largest migration from ad hoc integration to a layered, contract-governed architecture that any industry has completed, and the mechanics are instructive.
-
-Operators did not adopt the IP Multimedia Subsystem by installing it. The architecture was specified in layers with defined interfaces [@3gpp-ims], but what made multi-operator deployment real was three adoption instruments layered on top of the specification. **<span class="ix" data-ix="interoperability profile">Interoperability profiles</span>** — most famously the industry profile for voice-over-LTE — cut the specification's option space down to a named, testable subset that two operators could both implement and expect to interwork [@gsma-volte]; the profile, not the specification, was the unit of adoption. **<span class="ix" data-ix="conformance regime">Conformance regimes</span>** — accredited test suites, interoperability events, certification against the profile — made "we implement the profile" a checkable claim rather than a press release, which is exactly the move this book makes with conformance suites (Chapter 25) and claim registers. And **<span class="ix" data-ix="staged migration">staged migration</span>** — circuit-switched fallback, dual-stack operation, interworking gateways at the boundary between old and new — meant no operator was ever asked to jump; every stage ran the old and new worlds side by side with an explicit gateway between them, precisely as Table 37.1's ladder keeps ungoverned and governed workflows side by side with the coverage inventory as the declared boundary.
-
-The mapping to governance adoption is direct, and Figure 37.2 draws it as two parallel pipelines: the discipline of Parts II–III is the specification; a domain profile plus a module set (Chapter 18) is the interoperability profile — a named, reduced, testable subset that an organization actually deploys; conformance suites and drift gates are the certification regime; and the maturity ladder is staged migration with interworking, not a cutover.
-
-<figure class="nx-fig" id="fig-37-2">
-  <div class="fig-body">
-    <div class="flow-col">
-      <div class="flow">
-        <div class="node">Layered specification<br/>(IMS)</div>
-        <div class="arr">→</div>
-        <div class="node authority">Interoperability profile<br/>(VoLTE)</div>
-        <div class="arr">→</div>
-        <div class="node">Conformance regime<br/>test suites · certification</div>
-        <div class="arr">→</div>
-        <div class="node">Staged migration<br/>fallback · interworking gateways</div>
-      </div>
-      <div class="flow">
-        <div class="node">Governance discipline<br/>(Parts II–III)</div>
-        <div class="arr">→</div>
-        <div class="node authority">Domain profile + modules<br/>(a deployable subset)</div>
-        <div class="arr">→</div>
-        <div class="node">Conformance suites<br/>drift gates · claim registers</div>
-        <div class="arr">→</div>
-        <div class="node">Maturity ladder<br/>governed and ungoverned side by side</div>
-      </div>
-    </div>
-  </div>
-  <figcaption><b>Figure 37.2 — The telecom adoption instruments and their governance counterparts.</b> Double borders mark the unit of adoption in each row: operators deployed the profile, not the specification, and organizations deploy a profile-plus-modules subset, not the discipline. The teaching purpose is the fourth column pair — both migrations run old and new side by side with an explicit, declared boundary between them — and the standing limit stated in the text: the top row's endpoints behave deterministically once conformant, and the bottom row's workloads do not.</figcaption>
-</figure>
-
-The analogy stops where it always stops, and one further place that matters specifically here. Telecom signaling is deterministic: an endpoint that implements the profile behaves within it, so conformance testing of the endpoint bounds the behavior of the deployed system. An agent workload is not such an endpoint — its planner is probabilistic, so conformance of the *governance layer* bounds only the decisions and records, never the workload's behavior between decision points; media interworking has no analogue of model inference; and telecom's adoption was propelled by an economic force governance lacks — interconnection revenue made conformance profitable, whereas governance conformance is (today) a cost with unquantified return, a gap Chapter 38 lists among the discipline's open problems. The precedent proves that layered, profile-driven, conformance-tested, staged adoption can carry an entire industry. It does not prove that anyone will pay for it here.
+One closing observation ties this chapter's instruments together. A specification alone does not produce interoperable adoption; industries that have carried large migrations pair the specification with three instruments, and a governance program needs the same three. An **<span class="ix" data-ix="interoperability profile">interoperability profile</span>** — here, a domain profile plus a module set (Chapter 18) — cuts the option space down to a named, reduced, testable subset that an organization actually deploys, so the unit of adoption is the profile rather than the whole discipline. A **<span class="ix" data-ix="conformance regime">conformance regime</span>** — conformance suites, drift gates, and claim registers (Chapter 25) — makes "we implement the profile" a checkable claim rather than a press release. And a **<span class="ix" data-ix="staged migration">staged migration</span>** path — Table 37.1's maturity ladder — runs governed and ungoverned workflows side by side with the coverage inventory as the explicit, declared boundary between them, so no team is ever asked to jump.
 
 > **Assurance boundary.** Nothing in this chapter changes any technical claim from Parts IV–VI. The maturity ladder, the ownership maps, the cost ledger, the platform bindings, and the procurement questionnaire are organizational instruments; run the eight questions against them and the answers are humbling: what is guaranteed is nothing — these instruments *describe* rather than enforce; the enforcing component for "stage 3" is a review process; the evidence is registers and metrics that an organization can neglect; the bypass is to reorganize, defund, or simply stop updating them. An adoption program is itself a cooperative control, at approximately Tier 1, and inherits every limitation this book has attached to that tier. The instruments earn their place not by enforcing anything but by making the organization's governance claims *falsifiable by its own staff* — which is, at organizational scale, the same wager the whole discipline makes at technical scale.
 
 ## Summary
 
-Adoption is claim discipline applied to an organization. The maturity ladder runs from ad hoc controls through declared, locked-and-approved, cooperatively enforced, program-scale, and selectively independent stages — with exit criteria that are facts about behavior, a forbidden claim per stage, per-workflow rather than per-organization scoring, and a top stage whose forbidden claim never becomes permitted. Friction is met structurally: ownership disputes with single-owner maps and change classes, review latency with blast-radius classes and semantic diffs, approval fatigue with thresholds, expiry, and time-to-approve monitoring, developer resistance with a published cost ledger and claims that never exceed their tier. The cost ledger has four permanent lines: authoring, pinned-version maintenance, expertise, and latency. Build-versus-buy-versus-platform is decided per layer — build thin adapters, buy or adopt the language and decision machinery, bind platform enforcement points the organization already owns. Hyperscaler identity boundaries, egress control, and policy engines are Tier 3 positions that speak no governance vocabulary, which is why the language stays platform-neutral while projections are platform-specific and individually verified; multi-tenant isolation makes the contract the unit of tenancy. Procurement converts the eight questions into a questionnaire whose sharpest instruments are the "not claimed" column, the deny-path evidence request, and the bypass demonstration. And the telecom industry's profile-driven, conformance-tested, staged migration is the proof that such adoptions can succeed — offered with the standing caveat that agent behavior is not deterministic signaling, and with the economic question left honestly open.
+Adoption is claim discipline applied to an organization. The maturity ladder runs from ad hoc controls through declared, locked-and-approved, cooperatively enforced, program-scale, and selectively independent stages — with exit criteria that are facts about behavior, a forbidden claim per stage, per-workflow rather than per-organization scoring, and a top stage whose forbidden claim never becomes permitted. Friction is met structurally: ownership disputes with single-owner maps and change classes, review latency with blast-radius classes and semantic diffs, approval fatigue with thresholds, expiry, and time-to-approve monitoring, developer resistance with a published cost ledger and claims that never exceed their tier. The cost ledger has four permanent lines: authoring, pinned-version maintenance, expertise, and latency. Build-versus-buy-versus-platform is decided per layer — build thin adapters, buy or adopt the language and decision machinery, bind platform enforcement points the organization already owns. Hyperscaler identity boundaries, egress control, and policy engines are Tier 3 positions that speak no governance vocabulary, which is why the language stays platform-neutral while projections are platform-specific and individually verified; multi-tenant isolation makes the contract the unit of tenancy. Procurement converts the eight questions into a questionnaire whose sharpest instruments are the "not claimed" column, the deny-path evidence request, and the bypass demonstration. And a specification alone does not produce interoperable adoption: a program needs a deployable profile, a conformance regime that makes claims checkable, and a staged migration path that keeps governed and ungoverned workflows side by side behind a declared boundary — with the standing caveat that conformance of the governance layer bounds decisions and records, never the workload's behavior between decision points.
 
 - Each maturity stage is defined as much by its forbidden claim as by its capabilities.
 - Approval fatigue converts human-judgment controls into rubber stamps with audit trails; monitor time-to-approve, not approval counts.
@@ -185,7 +151,7 @@ Adoption is claim discipline applied to an organization. The maturity ladder run
 3. A steering committee proposes fixing approval fatigue by "streamlining approvals to one click." Using Section 37.2, explain what this optimizes, what it destroys, and what the structurally correct interventions are.
 4. Why does the governance *language* benefit from platform neutrality while enforcement is necessarily platform-specific? State the cost of violating each half: encoding policy in a platform dialect, and building a "neutral" enforcement layer.
 5. Take the eight procurement questions and simulate a vendor at honest Tier 2: write their best truthful answer to questions 3, 5, and 8. Then write the inflated versions and mark the exact words that changed.
-6. The telecom analogy names three adoption instruments — profiles, conformance regimes, staged migration. For each, name its governance-program counterpart and the specific point where the analogy's determinism assumption breaks it.
+6. A specification alone does not produce interoperable adoption. Name the three instruments a governance program must pair with its specification, identify the concrete artifact from this book that plays each role, and explain what an organization loses if the conformance instrument is the one it skips.
 
 ## Exercises
 
@@ -197,6 +163,5 @@ Adoption is claim discipline applied to an organization. The maturity ladder run
 
 - [@nist-zta] — the architectural case for enforcement points the subject cannot route around; the reference frame for every platform binding in Section 37.4.
 - [@beyondcorp] — the canonical account of moving an enterprise from perimeter trust to identity-boundary enforcement; the closest published precedent for a staged, claim-disciplined security migration.
-- [@gsma-volte; @3gpp-ims] — the interoperability profile and the layered specification beneath it; read the profile's option-cutting to see what a governance domain profile is for.
 - [@opa; @cedar] — the two general policy engines most likely to appear in your projection layer; understanding their evaluation models is prerequisite to verifying any projection onto them.
 - [@soc2] — what your customers' auditors will ask of your platform's controls; useful for designing the multi-tenant evidence story before it is demanded.

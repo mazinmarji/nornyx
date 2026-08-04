@@ -11,8 +11,8 @@
 - No marketing adjectives (revolutionary, powerful, seamless, robust-as-praise, future-proof,
   cutting-edge, best-in-class). No em-dash-heavy fragment style. Expand every abbreviation at
   first use per chapter (PDP, PEP, SPI, MCP, A2A, RBAC, ABAC, IAM, CI/CD, SBOM...).
-- Analogies: only the sanctioned telecom (IMS/VoLTE) analogy in its five assigned chapters, plus
-  small local analogies where they genuinely clarify; every analogy states where it breaks.
+- Analogies: no extended cross-domain analogy (the telecom analogy was removed in final review);
+  small local analogies where they genuinely clarify, and every analogy states where it breaks.
 - Difficulty ramps: never introduce a Nornyx-specific term before the general problem it solves.
 
 ## Terminology (canonical; do not vary)

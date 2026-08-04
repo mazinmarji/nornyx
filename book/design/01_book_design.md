@@ -47,13 +47,14 @@ Introduced in Ch. 3, used throughout: What exactly is guaranteed? Which componen
 What evidence proves it? What assumptions are required? How can it be bypassed? What happens when
 the enforcing component fails? Which assurance tier does the claim support? What remains unproven?
 
-## Recurring analogy (bounded)
+## Recurring analogy — REMOVED (post-review decision)
 
-The telecom evolution from standalone VoIP boxes to layered IMS/VoLTE architectures — used only
-to illuminate functional decomposition, control/user-plane separation, trust boundaries between
-operators, interworking gateways, and assurance/lawful-accountability obligations. Each use states
-where the analogy stops (telecom signaling is deterministic; agent behavior is not; media ≠
-model inference). Appears in Ch. 2, 10, 26, 32, 37 only.
+An earlier draft carried a bounded telecom analogy (VoIP → IMS/VoLTE layering) in Ch. 2, 10, 26,
+32, 37. It was removed in final review: it required niche background knowledge, and every lesson
+it carried (functional decomposition, decision/enforcement separation, mandatory boundary
+elements, layered policy, conformance-driven adoption) is taught directly with primary sources
+from the field itself. The book now uses no extended cross-domain analogy; small local analogies
+remain where they genuinely clarify.
 
 ## Part and chapter structure
 
