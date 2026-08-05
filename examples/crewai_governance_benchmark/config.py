@@ -258,7 +258,7 @@ def capture_environment() -> dict[str, object]:
         "adapters_install_kind": _install_kind(nornyx_agentic_adapters),
         "adapters_package_published_on_pypi": True,
         "adapters_install_source": (
-            "installed distribution (0.2.0 is published; actual location is "
+            "installed distribution (0.3.0 is published; actual location is "
             "reported by adapters_install_kind)"
         ),
         "crewai_version": crewai_version,
