@@ -1,6 +1,6 @@
 # ADR-0043 — M2-E runtime adapter conformance
 
-- Status: Accepted (implementation candidate; release remains owner-controlled)
+- Status: Accepted and implemented (released in nornyx-agentic-adapters 0.3.0; release authority remains owner-controlled)
 - Date: 2026-08-03
 - Decision owner: human repository owner
 - Relates to: ADR-0036, ADR-0039, ADR-0040, ADR-0041, ADR-0042
