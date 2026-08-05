@@ -451,6 +451,18 @@ jobs:
           for label, origin in {**audit["import_origins"], **audit["resource_origins"]}.items():
               assert origin.startswith(site), (label, origin, site)
 
+          # Provenance: which file, from which host, of which type, which hash.
+          # Version metadata alone cannot establish any of these.
+          prov = audit["provenance"]
+          assert prov["from_pypi"] is True, prov
+          assert prov["host"] in {"pypi.org", "files.pythonhosted.org"}, prov
+          assert prov["is_wheel"] is True, prov
+          assert prov["artifact_type"] == "wheel", prov
+          assert prov["filename"].endswith(".whl"), prov
+          assert prov["version"] == audit["distribution"]["version"], prov
+          assert isinstance(prov["sha256"], str) and len(prov["sha256"]) == 64, prov
+          assert audit["index_url"] == "https://pypi.org/simple", audit["index_url"]
+
           # Both bundled resources really resolved from the installed wheel.
           assert set(audit["resource_origins"]) == {"report_schema", "contract_fixture"}
 
@@ -475,8 +487,17 @@ jobs:
           assert calls["scripted_in_process_model_called"]["value"] is False
 
           print("pip-only audit OK:", conformance["cases"], "cases from",
-                audit["distribution"]["version"])
+                audit["distribution"]["version"], "|", prov["filename"],
+                "sha256:" + prov["sha256"][:16] + "...")
           PY
+      - name: Standalone run from outside the checkout
+        # The step above proves the code works; it does not prove the "runs
+        # without cloning nornyx" claim, because the launcher itself came from
+        # the checkout. This copies only the example package to a directory
+        # outside every checkout, strips the repository from the child's import
+        # path, runs it there, and then proves no repository path appears
+        # anywhere in the emitted record.
+        run: python scripts/run_pip_only_example_standalone.py
       - name: Upload the audit record
         if: always()
         uses: actions/upload-artifact@v4

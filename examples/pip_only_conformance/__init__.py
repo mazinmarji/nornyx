@@ -23,10 +23,18 @@ claim.
 from __future__ import annotations
 
 from .failures import DISTRIBUTION_FAILURE_CLASSES, FailureClass, PipOnlyExampleError
+from .provenance import (
+    PYPI_HOSTS,
+    PYPI_INDEX_URL,
+    ArtifactProvenance,
+    parse_install_report,
+    provenance_violations,
+)
 from .runner import (
     DEFAULT_VERSION,
     DISTRIBUTION_NAME,
     ExampleResult,
+    check_process_consistency,
     parse_envelope,
     raise_for_envelope,
     repository_roots,
@@ -37,10 +45,16 @@ __all__ = [
     "DEFAULT_VERSION",
     "DISTRIBUTION_FAILURE_CLASSES",
     "DISTRIBUTION_NAME",
+    "PYPI_HOSTS",
+    "PYPI_INDEX_URL",
+    "ArtifactProvenance",
     "ExampleResult",
     "FailureClass",
     "PipOnlyExampleError",
+    "check_process_consistency",
     "parse_envelope",
+    "parse_install_report",
+    "provenance_violations",
     "raise_for_envelope",
     "repository_roots",
     "run_example",

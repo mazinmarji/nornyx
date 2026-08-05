@@ -8,8 +8,12 @@ first is our defect, the second is theirs.
 Each class answers one question and no other:
 
 ``REGISTRY_INSTALL_FAILED``
-    The named version could not be installed from the index, or installed but
-    is not importable. The published artifact is unusable.
+    The named version could not be obtained from PyPI as a published wheel --
+    the install failed, timed out, could not be launched, produced no
+    installation report, or produced one whose provenance does not hold up
+    (wrong host, an sdist rather than a wheel, wrong version, no hash) -- or it
+    installed and is not importable. The published artifact is unusable or is
+    not the artifact it claims to be.
 ``INSTALLED_VERSION_MISMATCH``
     Something installed, but the resolved distribution version is not the one
     requested. A version constraint, a cached wheel, or a shadowing install.
@@ -28,10 +32,20 @@ Each class answers one question and no other:
     healthy.
 ``CONFORMANCE_EXECUTION_FAILED``
     The kit ran from the installed distribution and did not reach a conformant
-    result, or its emitted report failed validation against the bundled schema.
+    result, its emitted report failed validation against the bundled schema, or
+    the probe process and its own report disagree -- it timed out, could not be
+    launched, produced no envelope, or exited inconsistently with the status it
+    printed.
 ``EXAMPLE_INPUT_INVALID``
-    The example itself was invoked wrongly. Never a statement about the
-    published package.
+    The fault is local to the caller: the example was invoked wrongly, or its
+    environment could not be prepared (a virtual environment that will not
+    build, an interpreter that is not where it should be). Never a statement
+    about the published package.
+
+    The scope is deliberately "caller-side fault", not merely "bad arguments".
+    Attribution is the load-bearing property of this taxonomy, and blaming the
+    published distribution for a local machine's inability to create a venv
+    would be a false accusation -- so anything demonstrably local lands here.
 """
 
 from __future__ import annotations

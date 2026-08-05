@@ -1,8 +1,16 @@
 """Orchestration: build a clean environment, install the published adapter from
-the index, and run the probe against it.
+PyPI, and run the probe against it.
 
-Nothing here touches the repository except to locate the probe source and to
-compute the repository roots the probe must prove it did *not* import from.
+Three properties this module is responsible for, none of which the probe can
+establish about itself:
+
+* **Isolation.** The child environment must not inherit ambient pip
+  configuration, alternate indexes, or repository import paths, or the run
+  proves nothing about the published artifact.
+* **Provenance.** Which file, from which host, of which type, with which hash.
+  Version metadata alone cannot answer that.
+* **Process truth.** A report is only believable if the process that produced it
+  also exited consistently with it.
 """
 
 from __future__ import annotations
@@ -20,6 +28,12 @@ import venv
 
 from .failures import FailureClass, PipOnlyExampleError
 from .probe import RESULT_SENTINEL
+from .provenance import (
+    PYPI_INDEX_URL,
+    ArtifactProvenance,
+    parse_install_report,
+    provenance_violations,
+)
 
 #: The published version this example verifies.
 #:
@@ -33,6 +47,16 @@ from .probe import RESULT_SENTINEL
 DEFAULT_VERSION = "0.3.0"
 
 DISTRIBUTION_NAME = "nornyx-agentic-adapters"
+
+#: Files whose presence together identify a Nornyx checkout. Used instead of a
+#: fixed number of parent directories so the example still behaves correctly
+#: when its package is copied somewhere with no repository above it -- in which
+#: case there is genuinely no checkout to leak from, and inventing one would
+#: forbid an unrelated directory (such as the one holding the clean venv).
+_CHECKOUT_MARKERS = (
+    Path("adapters") / "nornyx-agentic-adapters" / "pyproject.toml",
+    Path("nornyx") / "agentic" / "__init__.py",
+)
 
 #: Loose PEP 440 release shape. The example only ever names an exact released
 #: version, so a range or an unpinned name is a caller error, not a package fault.
@@ -51,15 +75,30 @@ class ExampleResult:
         return {"status": "pass", "version": self.version, "audit": self.audit}
 
 
-def repository_roots() -> list[str]:
-    """Roots the probe must prove nothing resolved from.
+def _looks_like_checkout(candidate: Path) -> bool:
+    return all((candidate / marker).exists() for marker in _CHECKOUT_MARKERS)
 
-    ``parents[2]`` is the repository root: this file sits at
-    ``<repo>/examples/pip_only_conformance/runner.py``. The current working
-    directory is included as well, because a consumer may run the example from
-    a checkout that is not this one.
+
+def _ascend_to_checkout(start: Path) -> str | None:
+    for candidate in (start, *start.parents):
+        if _looks_like_checkout(candidate):
+            return str(candidate)
+    return None
+
+
+def repository_roots() -> list[str]:
+    """Checkout roots the probe must prove nothing resolved from.
+
+    Detected by marker files rather than by a fixed parent depth. When the
+    example package has been copied out of the repository -- the standalone,
+    no-clone path -- this correctly returns nothing rather than blaming an
+    arbitrary ancestor directory.
     """
-    roots = {str(Path(__file__).resolve().parents[2]), str(Path.cwd().resolve())}
+    roots: set[str] = set()
+    for start in (Path(__file__).resolve().parent, Path.cwd().resolve()):
+        found = _ascend_to_checkout(start)
+        if found is not None:
+            roots.add(found)
     return sorted(roots)
 
 
@@ -68,33 +107,66 @@ def _venv_python(root: Path) -> Path:
 
 
 def _clean_env() -> dict[str, str]:
-    """Environment with repository leakage vectors removed.
+    """Environment with every inheritance vector this run must not trust.
 
-    ``PYTHONPATH`` is the obvious one: it would place a checkout on the clean
-    interpreter's ``sys.path`` and silently invalidate the entire run.
-    ``PYTHONHOME`` and ``PYTHONSTARTUP`` are removed for the same reason.
+    ``PYTHONPATH`` would place a checkout on the clean interpreter's
+    ``sys.path``. Every ``PIP_*`` variable is dropped rather than filtered,
+    because ``PIP_INDEX_URL`` and ``PIP_EXTRA_INDEX_URL`` can silently redirect
+    resolution to a mirror or a private index -- which would make the phrase
+    "installed from PyPI" false while everything still appeared to work.
+    ``PIP_CONFIG_FILE`` is pointed at the null device for the same reason: a
+    user-level or site-level ``pip.conf`` can carry the same redirection.
     """
-    env = dict(os.environ)
-    for name in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP"):
-        env.pop(name, None)
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("PIP_")
+        and name not in {"PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP"}
+    }
+    env["PIP_CONFIG_FILE"] = os.devnull
     env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
     return env
 
 
-def _run(
-    command: list[str],
-    *,
-    cwd: Path,
-    timeout: int,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        cwd=cwd,
-        env=_clean_env(),
-        check=False,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
+@dataclass(frozen=True)
+class _Completed:
+    """Subprocess outcome, including the cases where it never really ran."""
+
+    returncode: int
+    stdout: str
+    stderr: str
+    timed_out: bool = False
+    launch_error: str | None = None
+
+
+def _run(command: list[str], *, cwd: Path, timeout: int) -> _Completed:
+    """Run a subprocess, converting every non-completion into data.
+
+    A ``TimeoutExpired`` or an ``OSError`` from the launch itself must not
+    escape as a raw exception: the caller's contract is that every failure
+    arrives as one of the seven classes.
+    """
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            env=_clean_env(),
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as expired:
+        return _Completed(
+            returncode=-1,
+            stdout=(expired.stdout or "") if isinstance(expired.stdout, str) else "",
+            stderr=(expired.stderr or "") if isinstance(expired.stderr, str) else "",
+            timed_out=True,
+        )
+    except OSError as exc:
+        return _Completed(returncode=-1, stdout="", stderr=str(exc), launch_error=str(exc))
+    return _Completed(
+        returncode=completed.returncode, stdout=completed.stdout, stderr=completed.stderr
     )
 
 
@@ -146,6 +218,41 @@ def parse_envelope(stdout: str) -> dict[str, object]:
     )
 
 
+def check_process_consistency(envelope: dict[str, object], *, returncode: int) -> None:
+    """Bind the report to the exit status of the process that produced it.
+
+    An envelope is a claim; the exit code is the operating system's account of
+    the same run. When they disagree, neither can be trusted, and accepting the
+    envelope alone would let a probe that crashed after printing ``pass`` be
+    read as a passing run.
+    """
+    status = envelope.get("status")
+    if status == "pass" and returncode != 0:
+        raise PipOnlyExampleError(
+            FailureClass.CONFORMANCE_EXECUTION_FAILED,
+            (
+                f"the probe reported success but exited {returncode}; the report "
+                "and the process disagree, so neither is evidence"
+            ),
+            evidence={"returncode": returncode, "envelope": envelope},
+        )
+    if status == "fail" and returncode == 0:
+        raise PipOnlyExampleError(
+            FailureClass.CONFORMANCE_EXECUTION_FAILED,
+            (
+                "the probe reported a failure but exited 0; a failing run that "
+                "exits successfully would pass any exit-code-based gate"
+            ),
+            evidence={"returncode": returncode, "envelope": envelope},
+        )
+    if status not in {"pass", "fail"}:
+        raise PipOnlyExampleError(
+            FailureClass.CONFORMANCE_EXECUTION_FAILED,
+            f"the probe reported an unknown status {status!r}",
+            evidence={"returncode": returncode, "envelope": envelope},
+        )
+
+
 def raise_for_envelope(envelope: dict[str, object]) -> dict[str, object]:
     """Turn a failing envelope into the classified error it describes."""
     if envelope.get("status") == "pass":
@@ -174,6 +281,109 @@ def raise_for_envelope(envelope: dict[str, object]) -> dict[str, object]:
     )
 
 
+def _create_environment(venv_root: Path) -> Path:
+    """Build the clean venv. A failure here is local, never the package's fault."""
+    try:
+        venv.EnvBuilder(with_pip=True, clear=True).create(venv_root)
+    except Exception as exc:  # noqa: BLE001 - re-raised as a classified failure
+        raise PipOnlyExampleError(
+            FailureClass.EXAMPLE_INPUT_INVALID,
+            (
+                f"could not create a clean virtual environment: {exc!r}. This is a "
+                "local environment problem and says nothing about the published "
+                "distribution."
+            ),
+            evidence={"venv_root": str(venv_root)},
+        ) from exc
+    python = _venv_python(venv_root)
+    if not python.exists():
+        raise PipOnlyExampleError(
+            FailureClass.EXAMPLE_INPUT_INVALID,
+            f"the created virtual environment has no interpreter at {python}",
+        )
+    return python
+
+
+def _install_from_pypi(
+    python: Path, *, root: Path, version: str, timeout: int
+) -> tuple[ArtifactProvenance, str]:
+    """Install the exact published version, bound to PyPI, as a wheel."""
+    requirement = f"{DISTRIBUTION_NAME}=={version}"
+    report_path = root / "install-report.json"
+    result = _run(
+        [
+            str(python),
+            "-m",
+            "pip",
+            "install",
+            "--no-cache-dir",
+            "--no-input",
+            # Bind resolution to PyPI explicitly. Combined with the PIP_* scrub
+            # and the null config file, "from PyPI" becomes a checked fact.
+            "--index-url",
+            PYPI_INDEX_URL,
+            # The subject is the *published wheel*. Allowing an sdist would let
+            # a local build stand in for the artifact consumers receive.
+            "--only-binary",
+            DISTRIBUTION_NAME,
+            "--report",
+            str(report_path),
+            requirement,
+        ],
+        cwd=root,
+        timeout=timeout,
+    )
+    if result.timed_out:
+        raise PipOnlyExampleError(
+            FailureClass.REGISTRY_INSTALL_FAILED,
+            f"installing {requirement} timed out after {timeout}s",
+            evidence={"timeout_seconds": timeout, "stderr": result.stderr[-2000:]},
+        )
+    if result.launch_error is not None:
+        raise PipOnlyExampleError(
+            FailureClass.REGISTRY_INSTALL_FAILED,
+            f"pip could not be launched: {result.launch_error}",
+            evidence={"launch_error": result.launch_error},
+        )
+    if result.returncode != 0:
+        raise PipOnlyExampleError(
+            FailureClass.REGISTRY_INSTALL_FAILED,
+            f"pip could not install {requirement} from the index",
+            evidence={
+                "returncode": result.returncode,
+                "stderr": result.stderr[-4000:],
+                "stdout": result.stdout[-2000:],
+            },
+        )
+
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PipOnlyExampleError(
+            FailureClass.REGISTRY_INSTALL_FAILED,
+            (
+                f"pip produced no readable installation report ({exc!r}), so the "
+                "artifact's origin cannot be established"
+            ),
+        ) from exc
+
+    provenance = parse_install_report(report, distribution=DISTRIBUTION_NAME)
+    problems = provenance_violations(
+        provenance, expected_version=version, distribution=DISTRIBUTION_NAME
+    )
+    if problems:
+        raise PipOnlyExampleError(
+            FailureClass.REGISTRY_INSTALL_FAILED,
+            "; ".join(problems),
+            evidence={
+                "provenance": provenance.as_dict() if provenance else None,
+                "index_url": PYPI_INDEX_URL,
+            },
+        )
+    assert provenance is not None  # provenance_violations covers None
+    return provenance, result.stdout
+
+
 def run_example(
     *,
     version: str = DEFAULT_VERSION,
@@ -198,53 +408,46 @@ def run_example(
     # system temp root, never inside the repository.
     with tempfile.TemporaryDirectory(prefix="nornyx-pip-only-") as raw_tmp:
         root = Path(raw_tmp).resolve()
-        venv_root = root / "venv"
-        venv.EnvBuilder(with_pip=True, clear=True).create(venv_root)
-        python = _venv_python(venv_root)
-
-        requirement = f"{DISTRIBUTION_NAME}=={resolved_version}"
-        install = _run(
-            [
-                str(python),
-                "-m",
-                "pip",
-                "install",
-                "--no-cache-dir",
-                "--no-input",
-                requirement,
-            ],
-            cwd=root,
-            timeout=timeout,
+        python = _create_environment(root / "venv")
+        provenance, install_log = _install_from_pypi(
+            python, root=root, version=resolved_version, timeout=timeout
         )
-        if install.returncode != 0:
-            raise PipOnlyExampleError(
-                FailureClass.REGISTRY_INSTALL_FAILED,
-                f"pip could not install {requirement} from the index",
-                evidence={
-                    "returncode": install.returncode,
-                    "stderr": install.stderr[-4000:],
-                    "stdout": install.stdout[-2000:],
-                },
-            )
 
         shutil.copyfile(probe_source, root / "probe.py")
-        command = [
-            str(python),
-            "probe.py",
-            "--expect-version",
-            resolved_version,
-        ]
+        command = [str(python), "probe.py", "--expect-version", resolved_version]
         for entry in forbidden:
             command += ["--forbidden-root", entry]
 
         probe = _run(command, cwd=root, timeout=timeout)
-        envelope = parse_envelope(probe.stdout)
+        if probe.timed_out:
+            raise PipOnlyExampleError(
+                FailureClass.CONFORMANCE_EXECUTION_FAILED,
+                f"the probe timed out after {timeout}s",
+                evidence={"timeout_seconds": timeout, "stderr": probe.stderr[-2000:]},
+            )
+        if probe.launch_error is not None:
+            raise PipOnlyExampleError(
+                FailureClass.CONFORMANCE_EXECUTION_FAILED,
+                f"the probe could not be launched: {probe.launch_error}",
+                evidence={"launch_error": probe.launch_error},
+            )
+
+        try:
+            envelope = parse_envelope(probe.stdout)
+        except PipOnlyExampleError as failure:
+            # A missing envelope is the one case where the process account is
+            # all the evidence there is, so it has to carry it.
+            failure.evidence.setdefault("returncode", probe.returncode)
+            failure.evidence.setdefault("stderr", probe.stderr[-4000:])
+            raise
+
+        check_process_consistency(envelope, returncode=probe.returncode)
         audit = raise_for_envelope(envelope)
+        audit["provenance"] = provenance.as_dict()
+        audit["index_url"] = PYPI_INDEX_URL
 
     return ExampleResult(
-        version=resolved_version,
-        audit=audit,
-        install_log=install.stdout[-2000:],
+        version=resolved_version, audit=audit, install_log=install_log[-2000:]
     )
 
 
@@ -279,7 +482,7 @@ def main(argv: list[str] | None = None) -> int:
             attribution = (
                 "the published distribution"
                 if failure.attributable_to_distribution
-                else "this example's invocation"
+                else "this example's invocation or local environment"
             )
             print(f"      attributed to: {attribution}", file=sys.stderr)
         return 1
@@ -290,9 +493,13 @@ def main(argv: list[str] | None = None) -> int:
 
     audit = result.audit
     distribution = audit.get("distribution", {})
+    provenance = audit.get("provenance", {})
     conformance = audit.get("conformance", {})
     model_calls = audit.get("model_calls", {})
-    print(f"PASS  {DISTRIBUTION_NAME} {distribution.get('version')} from the index")
+    print(f"PASS  {DISTRIBUTION_NAME} {distribution.get('version')} from PyPI")
+    print(f"      artifact       {provenance.get('filename')} ({provenance.get('artifact_type')})")
+    print(f"      served by      {provenance.get('host')}")
+    print(f"      sha256         {provenance.get('sha256')}")
     print(f"      installed at   {audit.get('environment', {}).get('site_packages')}")
     for label, origin in sorted(audit.get("resource_origins", {}).items()):
         print(f"      {label:<16} {origin}")

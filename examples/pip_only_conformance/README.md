@@ -34,11 +34,15 @@ So this run can fail for a genuine distribution defect, and it names which one.
 
 | Claim | How |
 | --- | --- |
-| The artifact came from the index | Fresh venv, `pip install nornyx-agentic-adapters==<version>`, `--no-cache-dir`, `PYTHONPATH` scrubbed |
+| The artifact came from PyPI | Fresh venv; every `PIP_*` variable dropped and `PIP_CONFIG_FILE` pointed at the null device; `--index-url https://pypi.org/simple` passed explicitly |
+| It was the published **wheel**, not a local build | `--only-binary nornyx-agentic-adapters`, plus the artifact type read back out of pip's installation report |
+| Which exact file was consumed | `pip install --report` parsed for URL, host, filename and SHA-256 |
 | The code executing is the installed code | Every import origin asserted under the environment's `site-packages` and outside every repository root |
 | Bundled resources exist | Resolved through `importlib.resources`, the same call path the kit itself uses |
 | Bundled resources are intact | Schema `$id` and closure checked; fixture composed, locked, and loaded as a real governance contract |
 | The kit reaches a conformant result | `run_conformance` over the base suites, report validated against the bundled schema, run twice for determinism |
+| The report is not merely self-reported | The probe's envelope is cross-checked against the process exit status |
+| It works without a clone | `scripts/run_pip_only_example_standalone.py` copies only this package outside every checkout and runs it there |
 
 ## Failure taxonomy
 
@@ -48,13 +52,20 @@ from a broken **invocation**.
 
 | Class | Means | Attributed to |
 | --- | --- | --- |
-| `REGISTRY_INSTALL_FAILED` | The named version could not be installed from the index, or installed but is not importable | the distribution |
+| `REGISTRY_INSTALL_FAILED` | The version could not be obtained from PyPI as a published wheel — install failed, timed out, could not launch, produced no report, or produced one whose provenance does not hold up — or it installed and is not importable | the distribution |
 | `INSTALLED_VERSION_MISMATCH` | Something installed, but the resolved version is not the one requested, or `__version__` disagrees with the metadata | the distribution |
 | `SOURCE_TREE_LEAKAGE_DETECTED` | Code or data resolved from outside `site-packages`, or from inside a repository root | the distribution |
 | `PACKAGED_RESOURCE_MISSING` | A bundled resource could not be resolved through `importlib.resources` | the distribution |
 | `PACKAGED_RESOURCE_INVALID` | A resource resolved, but its content failed semantic validation | the distribution |
-| `CONFORMANCE_EXECUTION_FAILED` | The kit ran and did not reach a conformant result, or its report failed schema validation | the distribution |
-| `EXAMPLE_INPUT_INVALID` | The example was invoked wrongly | the caller — **never** the package |
+| `CONFORMANCE_EXECUTION_FAILED` | The kit ran and did not reach a conformant result, its report failed schema validation, or the probe process and its own report disagree | the distribution |
+| `EXAMPLE_INPUT_INVALID` | The fault is local to the caller: bad arguments, or an environment that could not be prepared | the caller — **never** the package |
+
+Every one of the seven is forced through the public path by a fault-injection
+test, so the taxonomy is a set of reachable outcomes rather than a list of
+names. `EXAMPLE_INPUT_INVALID` covers *any* demonstrably local fault, not just
+bad arguments — blaming the published distribution because a machine could not
+create a virtual environment would be a false accusation, and attribution
+correctness is the load-bearing property here.
 
 ### `MISSING` and `INVALID` are deliberately separate
 
@@ -83,6 +94,62 @@ It is written this way on purpose. Confirming that no checkout is present would
 prove nothing about where an import actually resolved; an editable install or a
 stray `PYTHONPATH` can put repository paths on `sys.path` in ways an absence
 check would bless.
+
+## Provenance: which file, from where
+
+Version metadata proves what a distribution *calls itself*. It does not prove
+where the file came from, whether it was a wheel or an sdist built on the spot,
+or which bytes were consumed. Those are separate claims, so they are made
+separately.
+
+The evidence is pip's own installation report (`pip install --report`), which
+records the download URL and archive hash per resolved requirement. The audit
+record carries `provenance.host`, `filename`, `artifact_type`, `version`,
+`sha256`, plus the derived `from_pypi` and `is_wheel`.
+
+Three isolation measures make "from PyPI" a checked fact rather than an
+assumption:
+
+- **Every `PIP_*` variable is dropped**, not filtered. `PIP_INDEX_URL` and
+  `PIP_EXTRA_INDEX_URL` can silently redirect resolution to a mirror or a
+  private index — which would make "installed from PyPI" false while everything
+  still appeared to work.
+- **`PIP_CONFIG_FILE` is pointed at the null device**, because a user- or
+  site-level `pip.conf` carries the same redirection.
+- **`--index-url` is passed explicitly** rather than relying on the default.
+
+An sdist is rejected even when its version is correct: an sdist is built
+locally, so it is not the artifact consumers actually receive.
+
+## Process truth
+
+An envelope is a claim; the exit code is the operating system's account of the
+same run. The runner requires them to agree — `pass` with a nonzero exit, or
+`fail` with a zero exit, becomes `CONFORMANCE_EXECUTION_FAILED` rather than
+being taken at face value. A probe that crashed after printing `pass` must not
+read as a passing run, and a failing run that exits `0` would slip through any
+exit-code-based gate.
+
+Timeouts, launch failures, and environment-creation failures are converted into
+classified failures too; none of them escape as a raw exception.
+
+## Running without a clone
+
+The claim is that this works without cloning `nornyx`, and running it from the
+repository does not test that — the launcher itself came from the checkout.
+
+`scripts/run_pip_only_example_standalone.py` performs the acquisition the claim
+implies: it copies **only** this package to a directory outside every checkout,
+strips the repository from the child's import path, runs it there, and then
+proves from the emitted record that no path inside the repository appears
+anywhere in it.
+
+Checkout detection is marker-based rather than parent-depth based, for a
+concrete reason: a fixed-depth rule applied to a copied package would name an
+arbitrary ancestor directory as "the repository" — and since the clean venv is
+created under the system temp root, that could forbid the very directory the
+installation lives in. When there is genuinely no checkout above the package,
+the example correctly reports no repository roots.
 
 ## The audit record
 
