@@ -398,6 +398,117 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  pip-only-example:
+    # ADR-0039 item 5. Unlike every other adapter job, this one deliberately
+    # does NOT build the candidate from source: its subject is the artifact
+    # already published on PyPI, and building locally would defeat the point.
+    #
+    # Two consequences are intrinsic rather than accidental. It needs the index
+    # to be reachable, and it verifies the version pinned as DEFAULT_VERSION in
+    # the example — not the version this branch happens to declare. A release
+    # PR that bumps the adapter does not move this job; the constant is
+    # advanced deliberately after a publication.
+    #
+    # The repository is installed editable in this job's own environment on
+    # purpose: the example builds a separate clean venv, and its leakage check
+    # has to hold even when a checkout is importable in the parent process.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install repository tooling
+        run: python -m pip install -e ".[dev]"
+      - name: Lint the example
+        run: |
+          python -m ruff check examples/pip_only_conformance \
+            tests/test_pip_only_conformance_example.py
+      - name: Offline unit tests (taxonomy, containment, closure, envelopes)
+        run: |
+          python -m pytest tests/test_pip_only_conformance_example.py -q -rs \
+            --junitxml=pip-only-results.xml
+          # These are pure-logic tests; a skip means a guard silently removed
+          # coverage rather than the environment being unable to run them.
+          python -c "import xml.etree.ElementTree as ET, sys; s = ET.parse('pip-only-results.xml').getroot().findall('.//testsuite'); k = sum(int(x.get('skipped', 0)) for x in s); t = sum(int(x.get('tests', 0)) for x in s); print('pip-only unit tests', t, 'skipped', k); sys.exit(1 if (k or not t) else 0)"
+      - name: Registry-backed run against the published distribution
+        run: python -m examples.pip_only_conformance --json > pip-only-audit.json
+      - name: Assert the audit record is complete and correctly labelled
+        run: |
+          python - pip-only-audit.json <<'PY'
+          import json, sys
+
+          payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
+          assert payload["status"] == "pass", payload
+          audit = payload["audit"]
+
+          # Resolved from the index, not from this checkout.
+          site = audit["environment"]["site_packages"]
+          for label, origin in {**audit["import_origins"], **audit["resource_origins"]}.items():
+              assert origin.startswith(site), (label, origin, site)
+
+          # Provenance: which file, from which host, of which type, which hash.
+          # Version metadata alone cannot establish any of these.
+          prov = audit["provenance"]
+          assert prov["from_pypi"] is True, prov
+          assert prov["host"] in {"pypi.org", "files.pythonhosted.org"}, prov
+          assert prov["is_wheel"] is True, prov
+          assert prov["artifact_type"] == "wheel", prov
+          assert prov["filename"].endswith(".whl"), prov
+          assert prov["version"] == audit["distribution"]["version"], prov
+          assert isinstance(prov["sha256"], str) and len(prov["sha256"]) == 64, prov
+          assert audit["index_url"] == "https://pypi.org/simple", audit["index_url"]
+
+          # Both bundled resources really resolved from the installed wheel.
+          assert set(audit["resource_origins"]) == {"report_schema", "contract_fixture"}
+
+          content = audit["resource_content"]
+          assert content["schema_id"] == "nornyx.agentic_runtime_conformance.v1", content
+          # The fixture composed and locked, not merely read as bytes.
+          assert content["fixture_subject_revision"], content
+
+          conformance = audit["conformance"]
+          assert conformance["outcome"] == "pass", conformance
+          assert conformance["assurance_tier"] == "tier_2_cooperative", conformance
+          assert conformance["cases"] > 0, conformance
+
+          # The distinction this example exists to preserve: a structural
+          # constant and an observed measurement must stay separately labelled.
+          calls = audit["model_calls"]
+          assert calls["external_model_service_called"]["kind"] == "structural_constant"
+          assert calls["external_model_service_called"]["value"] is False
+          assert calls["scripted_in_process_model_called"]["kind"] == "observed"
+          # No framework extra is installed on this path, so nothing instantiates
+          # a model. False here is measured, not defaulted.
+          assert calls["scripted_in_process_model_called"]["value"] is False
+
+          print("pip-only audit OK:", conformance["cases"], "cases from",
+                audit["distribution"]["version"], "|", prov["filename"],
+                "sha256:" + prov["sha256"][:16] + "...")
+          PY
+      - name: Standalone run from outside the checkout
+        # The step above proves the code works; it does not prove the "runs
+        # without cloning nornyx" claim, because the launcher itself came from
+        # the checkout. This copies only the example package to a directory
+        # outside every checkout, strips the repository from the child's import
+        # path, runs it there, and then proves no repository path appears
+        # anywhere in the emitted record.
+        run: python scripts/run_pip_only_example_standalone.py
+      - name: Upload the audit record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-only-audit
+          path: |
+            pip-only-audit.json
+            pip-only-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
   crewai-governance-benchmark:
     # examples/crewai_governance_benchmark is an external-facing A/B benchmark
     # whose tests skip when crewai or the nornyx-agentic-adapters distribution is

@@ -533,7 +533,12 @@ The `nornyx.agentic` authorization engine does **not**:
    completed migration documentation and compatibility tests. Update AN-005/AN-006
    docs and `run_demo.py` to the new SPI; re-baseline example evidence fixtures
    affected by the stricter approval and observed-revision checks.
-5. Ship a pip-only example that runs without cloning `nornyx`.
+5. **Complete.** Ship a pip-only example that runs without cloning `nornyx`.
+   `examples/pip_only_conformance` installs a published
+   `nornyx-agentic-adapters` from the index into a clean environment and
+   verifies its bundled conformance resources from the installed wheel. It is a
+   distribution-conformance example rather than an installation smoke test: it
+   fails, and attributes the failure, for a real packaging defect.
 
 ## Execution checklist
 
@@ -547,7 +552,7 @@ The `nornyx.agentic` authorization engine does **not**:
 | M2-C supported LangGraph adapter / SPI 1.1 occurrence integration | Complete |
 | M2-D legacy-kernel shim migration (`AN_ADAPTER_*` ⇄ `DecisionCode`) | Complete |
 | M2-E runtime adapter conformance | Complete |
-| Pip-only example | Pending |
+| Pip-only example | Complete |
 | External pilot consumption | Pending |
 | Nornyx 1.10.0 publication | Complete |
 | Nornyx 1.11.0 publication (SPI 1.2 `Authorizer.state`) | Complete |
