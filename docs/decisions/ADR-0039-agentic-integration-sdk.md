@@ -546,11 +546,13 @@ The `nornyx.agentic` authorization engine does **not**:
 | M2-B supported CrewAI adapter | Complete |
 | M2-C supported LangGraph adapter / SPI 1.1 occurrence integration | Complete |
 | M2-D legacy-kernel shim migration (`AN_ADAPTER_*` ⇄ `DecisionCode`) | Complete |
+| M2-E runtime adapter conformance | Complete |
 | Pip-only example | Pending |
 | External pilot consumption | Pending |
 | Nornyx 1.10.0 publication | Complete |
 | Nornyx 1.11.0 publication (SPI 1.2 `Authorizer.state`) | Complete |
 | `nornyx-agentic-adapters` 0.2.0 publication | Complete |
+| `nornyx-agentic-adapters` 0.3.0 publication | Complete |
 
 The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C ship in
 published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`; the
