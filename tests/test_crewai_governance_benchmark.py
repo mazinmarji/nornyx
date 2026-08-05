@@ -572,7 +572,7 @@ def test_report_records_published_adapter_without_conflating_install_source(arti
     env = artifacts["json"]["environment"]
     assert env["adapters_package_published_on_pypi"] is True
     assert "**True**" in artifacts["markdown"]
-    assert "adapters 0.2.0 are published on pypi" in artifacts["html"].lower()
+    assert "adapters 0.3.0 are published on pypi" in artifacts["html"].lower()
     assert env["adapters_install_kind"]
 
 

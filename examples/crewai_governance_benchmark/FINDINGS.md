@@ -344,7 +344,7 @@ non-obvious and appears only under retry.
 ### O3 — Historical: the adapter package was not yet published
 
 **Current status:** resolved operationally. Nornyx 1.11.0 (SPI 1.2) and
-`nornyx-agentic-adapters` 0.2.0 are published on PyPI. The text below records
+`nornyx-agentic-adapters` 0.3.0 are published on PyPI. The text below records
 the environment in which this observation was originally made; it is not a
 current availability statement.
 

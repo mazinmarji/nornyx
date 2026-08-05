@@ -25,7 +25,7 @@ told you sooner?
 ### 2. Was installation straightforward?
 
 Specifically: did the Python version requirement (3.10–3.13, not 3.14) bite you?
-Was it clear whether you were testing published adapter 0.2.0 or the editable
+Was it clear whether you were testing published adapter 0.3.0 or the editable
 repository candidate? Did anything fail without telling you why?
 
 ### 3. Did the A/B comparison appear fair?

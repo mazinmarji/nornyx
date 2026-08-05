@@ -111,7 +111,7 @@ def test_core_vXYZ_tag_is_core_eligible_and_adapter_ineligible() -> None:
 
 
 def test_matching_adapters_tag_is_adapter_eligible_and_core_ineligible() -> None:
-    # Uses the real current package version (0.2.0) from the checked-out
+    # Uses the real current package version (0.3.0) from the checked-out
     # pyproject.toml, not a hardcoded assumption.
     pkg_version = re.search(
         r'(?m)^version\s*=\s*"([^"]+)"',
