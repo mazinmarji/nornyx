@@ -253,6 +253,23 @@ static, validation-first, and bounded by the existing safety model.
 - Non-goals: no large new features before adoption evidence, no speculative
   marketplace.
 - Promotion gate: at least one external adoption signal recorded as evidence.
+- **M5-A-1 — reproducible pilot package: complete.**
+  `examples/external_adoption_pilot` installs the published
+  `nornyx-agentic-adapters` with its CrewAI extra from PyPI into a clean
+  environment and runs one action three ways — ungoverned, governed and
+  authorized, governed and unauthorized — with a machine-readable adoption
+  record and a seven-class failure taxonomy. Verified on every push by the
+  `external-adoption-pilot` CI job through the standalone,
+  outside-the-checkout path. This also closes ADR-0039's *External pilot
+  consumption* checklist row, which is now recorded there as executed by
+  M5-A-1 rather than tracked independently.
+- **M5-A-2 — adoption prose: open.** The 5-minute path, external reviewer
+  quickstart, migration guide, feedback issue templates and success criteria
+  remain to be written, deliberately after the evidence-bearing artifact rather
+  than alongside it.
+- The promotion gate is unchanged and is **not** met by M5-A-1: first-party CI
+  cannot supply an external adoption signal, only the reproducible thing an
+  external adopter would run.
 
 ### M6 — Authoring and Human Approval UX
 
