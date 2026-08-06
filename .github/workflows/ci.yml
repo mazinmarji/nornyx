@@ -509,6 +509,118 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  external-adoption-pilot:
+    # M5-A-1. Installs the PUBLISHED adapter with its CrewAI extra and runs one
+    # action three ways: ungoverned, governed+authorized, governed+unauthorized.
+    #
+    # Only the standalone path is executed here, not both entry points. It is
+    # strictly stronger -- it proves the no-checkout claim as well as the
+    # behaviour -- and the CrewAI extra pulls a large dependency tree, so
+    # running the pilot twice would double that cost for no additional evidence.
+    #
+    # Like pip-only-example, this verifies the artifact on the index rather than
+    # this candidate, so it needs the index reachable and it tracks the pilot's
+    # own pinned versions rather than the versions this branch declares.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install repository tooling
+        run: python -m pip install -e ".[dev]"
+      - name: Lint the pilot
+        run: |
+          python -m ruff check examples/external_adoption_pilot \
+            tests/test_external_adoption_pilot.py \
+            scripts/run_external_pilot_standalone.py
+      - name: Offline unit tests (taxonomy, governance checks, envelopes)
+        run: |
+          python -m pytest tests/test_external_adoption_pilot.py -q -rs \
+            --junitxml=pilot-results.xml
+          python -c "import xml.etree.ElementTree as ET, sys; s = ET.parse('pilot-results.xml').getroot().findall('.//testsuite'); k = sum(int(x.get('skipped', 0)) for x in s); t = sum(int(x.get('tests', 0)) for x in s); print('pilot unit tests', t, 'skipped', k); sys.exit(1 if (k or not t) else 0)"
+      - name: Standalone pilot run from outside the checkout
+        env:
+          CREWAI_DISABLE_TELEMETRY: "true"
+          OTEL_SDK_DISABLED: "true"
+          CREWAI_TRACING_ENABLED: "false"
+        run: |
+          python scripts/run_external_pilot_standalone.py --out adoption-record.json
+      - name: Assert the adoption record demonstrates governed behaviour
+        run: |
+          python - adoption-record.json <<'PY'
+          import json, sys
+
+          payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
+          assert payload["status"] == "pass", payload
+          record = payload["record"]
+          variants = {v["id"]: v for v in record["variants"]}
+          assert set(variants) == {
+              "ungoverned", "governed_authorized", "governed_unauthorized"
+          }, sorted(variants)
+
+          # Everything resolved from the isolated environment, not a checkout.
+          site = record["environment"]["site_packages"]
+          for label, origin in record["import_origins"].items():
+              assert origin.startswith(site), (label, origin, site)
+          assert record["governance_contract"]["origin"].startswith(site)
+          assert record["governance_contract"]["subject_revision"]
+
+          # The baseline must really work, or a denial proves nothing.
+          assert variants["ungoverned"]["executions"] == 1, variants["ungoverned"]
+          assert variants["ungoverned"]["decision_events"] == []
+          assert variants["ungoverned"]["authorizations"] == 0
+
+          # Governance permits what is authorized...
+          allowed = variants["governed_authorized"]
+          assert allowed["executions"] == 1, allowed
+          assert "capability_allowed" in allowed["decision_events"], allowed
+
+          # ...and prevents what is not. The load-bearing assertion.
+          denied = variants["governed_unauthorized"]
+          assert denied["executions"] == 0, denied
+          assert "capability_denied" in denied["decision_events"], denied
+          assert denied["decision_events"].count("capability_requested") == \
+                 denied["decision_events"].count("capability_denied"), denied
+          assert denied["observation_events"] == [], denied
+
+          delta = record["governance_delta"]
+          assert delta["action_prevented_when_unauthorized"] is True
+          assert delta["evidence_absent_ungoverned"] is True
+          assert delta["evidence_present_when_governed"] is True
+
+          # Constant vs observed must stay separately labelled.
+          safety = record["safety"]
+          assert safety["external_model_service_called"]["kind"] == "structural_constant"
+          assert safety["external_model_service_called"]["value"] is False
+          assert safety["scripted_in_process_model_called"]["kind"] == "observed"
+          # CrewAI's executor really drove the scripted local model; a direct
+          # wrapper call would have left this false.
+          assert safety["scripted_in_process_model_called"]["value"] is True
+
+          print(
+              "adoption pilot OK:",
+              f"ungoverned={variants['ungoverned']['executions']}",
+              f"authorized={allowed['executions']}",
+              f"denied={denied['executions']}",
+              f"| adapter {payload['adapter_version']} + crewai {payload['crewai_version']}",
+          )
+          PY
+      - name: Upload the adoption record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-adoption-record
+          path: |
+            adoption-record.json
+            pilot-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
   crewai-governance-benchmark:
     # examples/crewai_governance_benchmark is an external-facing A/B benchmark
     # whose tests skip when crewai or the nornyx-agentic-adapters distribution is

@@ -553,11 +553,28 @@ The `nornyx.agentic` authorization engine does **not**:
 | M2-D legacy-kernel shim migration (`AN_ADAPTER_*` ⇄ `DecisionCode`) | Complete |
 | M2-E runtime adapter conformance | Complete |
 | Pip-only example | Complete |
-| External pilot consumption | Pending |
+| External pilot consumption | Complete (M5-A-1) |
 | Nornyx 1.10.0 publication | Complete |
 | Nornyx 1.11.0 publication (SPI 1.2 `Authorizer.state`) | Complete |
 | `nornyx-agentic-adapters` 0.2.0 publication | Complete |
 | `nornyx-agentic-adapters` 0.3.0 publication | Complete |
+
+**External pilot consumption is executed as M5-A-1**, not as an independent
+ADR-0039 work item. `examples/external_adoption_pilot` installs the published
+`nornyx-agentic-adapters` with its CrewAI extra from PyPI into a clean
+environment and runs one action three ways — ungoverned, governed and
+authorized, governed and unauthorized — proving that an external consumer can
+reproduce governed behaviour with no checkout. The `external-adoption-pilot` CI
+job verifies it on every push via the standalone, outside-the-checkout path.
+
+That row is therefore closed here rather than left to a second tracker: this
+ADR's checklist and the M3–M9 milestone sequence in
+[`../03_ROADMAP_TO_v1_AND_BEYOND.md`](../03_ROADMAP_TO_v1_AND_BEYOND.md) must
+not both carry the same open item, or one of them is always wrong. M5 remains
+open for the rest of its adoption scope — the reviewer-facing quickstart,
+migration guide, feedback templates and success criteria are M5-A-2 — and its
+promotion gate still requires an external adoption signal, which no amount of
+first-party CI can supply.
 
 The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C ship in
 published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`; the
