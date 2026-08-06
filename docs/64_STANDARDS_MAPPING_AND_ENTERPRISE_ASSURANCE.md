@@ -12,7 +12,16 @@ planning surface, not a duplicate tracker.
 Sequenced after M5's adoption work
 ([`66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md`](66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md)),
 so a mapping can reference observed adoption behavior rather than internal
-claims alone. Nothing in this document is implemented yet.
+claims alone.
+
+**First wave delivered:**
+[`68_STANDARDS_MAPPING_FIRST_WAVE.md`](68_STANDARDS_MAPPING_FIRST_WAVE.md) maps
+observable Nornyx control capabilities to control *themes* for the backlog's
+first-wave frameworks, with every row labelled by control surface and an
+explicit non-coverage table. It is theme-level: clause and version identifiers
+are recorded as non-coverage rather than invented, because standard text is not
+in this repository and must not be reproduced. Second-wave and future-wave
+frameworks in this document remain unimplemented.
 
 ## Objective
 
