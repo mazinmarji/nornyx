@@ -1,5 +1,14 @@
 # Nornyx 5-Minute Adoption
 
+This page is the **checkout-based** path: clone the repository and evaluate
+Nornyx core with its CLI.
+
+If you are an external reviewer who wants to see governance work **without
+cloning anything**, use the pip-install-only path instead —
+[`66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md`](66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md).
+It installs the published adapter from PyPI and runs one agent action three
+ways (ungoverned, authorized, unauthorized) against a real CrewAI executor.
+
 ## Install Locally
 
 ```bash

@@ -9,6 +9,11 @@ Proposed. Strategic priority **P1** under the post-v1.0 reweighting in
 document and `docs/backlog/nornyx-standards-mapping-roadmap.yaml` are the
 planning surface, not a duplicate tracker.
 
+Sequenced after M5's adoption work
+([`66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md`](66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md)),
+so a mapping can reference observed adoption behavior rather than internal
+claims alone. Nothing in this document is implemented yet.
+
 ## Objective
 
 Create a versioned, machine-checkable standards-mapping layer that maps

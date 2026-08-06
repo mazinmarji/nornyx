@@ -263,13 +263,21 @@ static, validation-first, and bounded by the existing safety model.
   outside-the-checkout path. This also closes ADR-0039's *External pilot
   consumption* checklist row, which is now recorded there as executed by
   M5-A-1 rather than tracked independently.
-- **M5-A-2 — adoption prose: open.** The 5-minute path, external reviewer
-  quickstart, migration guide, feedback issue templates and success criteria
-  remain to be written, deliberately after the evidence-bearing artifact rather
-  than alongside it.
-- The promotion gate is unchanged and is **not** met by M5-A-1: first-party CI
-  cannot supply an external adoption signal, only the reproducible thing an
-  external adopter would run.
+- **M5-A-2a — external solicitation pack: complete.**
+  [`66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md`](66_M5_A2_EXTERNAL_ADOPTION_SOLICITATION.md)
+  adds the five-minute external path, the reviewer quickstart, falsifiable
+  success criteria, and three issue templates
+  (`external-adoption-result`, `external-adoption-failure`,
+  `external-contract-pilot`). It creates the machinery for an external signal;
+  it does not constitute one.
+- **M5-A-2b — migration guide: open.** Mapping `AGENTS.md`, policy files, and
+  eval configuration onto `.nyx` remains to be written.
+- The promotion gate is unchanged and is **not** met by M5-A-1 or M5-A-2a.
+  First-party CI can supply the reproducible thing an external adopter would
+  run, and M5-A-2a can supply the machinery to report it, but neither can
+  supply the signal itself. The gate stays closed until at least one external
+  user reports a result from outside the maintainer flow. A gate this project
+  could satisfy by itself would measure its diligence, not its adoption.
 
 ### M6 — Authoring and Human Approval UX
 
