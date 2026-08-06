@@ -581,6 +581,56 @@ def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str,
             )
 
 
+def _check_policy_rule_vocabulary(diagnostics: list[Diagnostic], doc: dict[str, Any]) -> None:
+    """Warn when a `policies.deny` rule name is unknown to the policy matcher.
+
+    `deny` accepts free text. The matcher only ever considers names containing
+    one of `EVALUATED_DENY_RULE_NAME_TOKENS`, so a name outside that vocabulary
+    is stored, rendered, reviewed -- and evaluated by nothing. That reads as a
+    governed control while being inert, which is worse than an omission,
+    because an omission is visible.
+
+    This is a warning, not an error: existing contracts may already carry such
+    names, and failing them by default would be a breaking change. `nornyx
+    check --strict` promotes it.
+
+    Scope note: this diagnoses the rule *name* only. It deliberately says
+    nothing about whether an in-vocabulary rule matches any particular declared
+    flow -- that depends on the flow's step text and is not decided here.
+    """
+    from .policy_runtime import (
+        EVALUATED_DENY_RULE_NAME_TOKENS,
+        is_evaluated_deny_rule_name,
+        normalize_policy_rules,
+    )
+
+    known = ", ".join(sorted(set(EVALUATED_DENY_RULE_NAME_TOKENS)))
+    for policy in doc.get("policies", []) or []:
+        if not isinstance(policy, dict):
+            continue
+        name = policy.get("name") or "<unnamed>"
+        for rule in normalize_policy_rules(policy)["deny"]:
+            if is_evaluated_deny_rule_name(rule):
+                continue
+            diagnostics.append(
+                Diagnostic(
+                    "warning",
+                    "UNKNOWN_POLICY_RULE",
+                    (
+                        f"`{rule}` is outside the evaluated policy-rule vocabulary. "
+                        "It is accepted as text, but Nornyx does not evaluate this "
+                        "rule name under the current policy matcher."
+                    ),
+                    f"policies.{name}.deny",
+                    (
+                        f"Recognized rule-name tokens: {known}. If no evaluated rule "
+                        "fits, keep the instruction as guidance rather than encoding "
+                        "it here. Use `nornyx check --strict` to fail on unknown names."
+                    ),
+                )
+            )
+
+
 def check_document(doc: dict[str, Any]) -> list[Diagnostic]:
     diagnostics: list[Diagnostic] = []
 
@@ -643,6 +693,8 @@ def check_document(doc: dict[str, Any]) -> list[Diagnostic]:
 
     for block in NAMED_LIST_BLOCKS:
         _validate_named_entries(diagnostics, doc, block)
+
+    _check_policy_rule_vocabulary(diagnostics, doc)
 
     skill_names = _names(doc.get("skills"))
     policy_names = _names(doc.get("policies"))
