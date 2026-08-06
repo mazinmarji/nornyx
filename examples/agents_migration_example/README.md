@@ -36,7 +36,17 @@ Two files, both checked:
 
 ```bash
 python -m nornyx.cli check examples/agents_migration_example/agents_migration_example.nyx
+python -m nornyx.cli check examples/agents_migration_example/agents_migration_example.nyx --strict
 ```
+
+Both pass. `--strict` (M5-A-4) fails on a `policies.deny` name outside the
+evaluated rule-name vocabulary; this contract has none, which is the point.
+Without `--strict` such a name only warns (`UNKNOWN_POLICY_RULE`), so existing
+contracts are not broken.
+
+Being *in* the vocabulary means a rule is **eligible** for evaluation — not that
+it matches any particular declared flow. The diagnostic is about names, and
+says nothing about outcomes.
 
 Inspect the residual list:
 

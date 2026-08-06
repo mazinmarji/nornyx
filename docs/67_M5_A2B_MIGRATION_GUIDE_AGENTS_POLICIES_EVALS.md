@@ -68,6 +68,30 @@ prevention. A `production` rule is not deployment control. See
 match, the rule is decoration. Put the instruction in the
 [residual list](#residual-list-template) instead.
 
+### Nornyx now tells you (M5-A-4)
+
+Since M5-A-4 this warning is machine-visible rather than advisory:
+
+```bash
+nornyx check contract.nyx            # warns, exits 0 — non-breaking
+nornyx check contract.nyx --strict   # fails on unknown rule names
+```
+
+An unknown name produces an `UNKNOWN_POLICY_RULE` warning naming the rule.
+Default mode stays compatible so existing contracts are not broken; `--strict`
+is the opt-in control for CI. Making strict the default is deferred to a future
+version-policy decision.
+
+Note the precise claim. The diagnostic is about the **rule name vocabulary**:
+an unknown name is not evaluated by the matcher at all. A *known* name is only
+**eligible** — whether it matches still depends on the declared flow's step
+text, and the diagnostic deliberately says nothing about that.
+
+The recognized **rule-name** tokens are `production`, `secret`, `destructive`,
+`connector`, and `self_modification` (also spelled `self-modification`). The
+trigger words in the table above (`token`, `credential`, `delete`, `wipe`, and
+so on) are matched against *step text*, not against rule names.
+
 ---
 
 ## Two Different Enforcement Surfaces

@@ -206,6 +206,26 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(json.dumps(diag.to_dict(), indent=2))
     if has_errors(diagnostics):
         return 1
+    # Opt-in only. Warnings stay non-fatal by default so this cannot break an
+    # existing valid contract; --strict is what CI and reviewers reach for when
+    # a warning should stop the pipeline.
+    if getattr(args, "strict", False):
+        warnings = [item for item in diagnostics if item.level == "warning"]
+        if warnings:
+            print(
+                json.dumps(
+                    {
+                        "level": "error",
+                        "code": "STRICT_WARNINGS_PRESENT",
+                        "message": (
+                            f"--strict: {len(warnings)} warning-level diagnostic(s) present "
+                            f"({', '.join(sorted({item.code for item in warnings}))})."
+                        ),
+                    },
+                    indent=2,
+                )
+            )
+            return 1
     print("Nornyx check passed")
     return 0
 
@@ -1376,6 +1396,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("check", help="Validate a .nyx file")
     p.add_argument("file")
     p.add_argument("--as-of", help="Explicit offset timestamp for governance validation")
+    p.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Return non-zero when any warning-level diagnostic is present, "
+            "including unknown policy-rule names (UNKNOWN_POLICY_RULE)"
+        ),
+    )
     p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("examples", help="Copy bundled .nyx examples into a directory")

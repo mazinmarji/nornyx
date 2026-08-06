@@ -182,6 +182,40 @@ def _step_text(step: dict[str, Any], kind: str, ref: str | None) -> str:
     return " ".join(parts).lower()
 
 
+#: Substrings in a **deny rule name** that make the rule eligible for matching
+#: by :func:`_matches_deny_rule`.
+#:
+#: Deliberately the *name* side only. The matcher also inspects the declared
+#: step's text for trigger words (``token``, ``credential``, ``delete``,
+#: ``wipe``, and so on), but those never appear in a rule name and are not part
+#: of this vocabulary. A rule name outside this tuple is accepted as text and
+#: is never considered by the matcher.
+#:
+#: Being *in* this vocabulary makes a rule eligible, not effective: whether it
+#: matches still depends on the declared flow. See
+#: :func:`is_evaluated_deny_rule_name`.
+EVALUATED_DENY_RULE_NAME_TOKENS: tuple[str, ...] = (
+    "production",
+    "secret",
+    "destructive",
+    "connector",
+    "self_modification",
+    "self-modification",
+)
+
+
+def is_evaluated_deny_rule_name(rule: Any) -> bool:
+    """Is this deny rule name known to the current policy matcher?
+
+    ``True`` means the name is eligible for evaluation -- **not** that the rule
+    will match any particular declared flow. ``False`` means the matcher never
+    considers this name at all, so the rule is accepted as text and evaluated
+    by nothing.
+    """
+    lowered = str(rule).lower()
+    return any(token in lowered for token in EVALUATED_DENY_RULE_NAME_TOKENS)
+
+
 def _matches_deny_rule(rule: str, step: dict[str, Any], kind: str, ref: str | None) -> bool:
     lowered_rule = rule.lower()
     text = _step_text(step, kind, ref)
