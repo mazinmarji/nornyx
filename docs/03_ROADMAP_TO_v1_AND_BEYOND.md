@@ -148,8 +148,8 @@ Add:
 
 Current local v0.4 surface: `adapters:` is a static extension block;
 `schemas/adapter_contract.schema.json` defines contract-only adapter
-metadata; `examples/nornyx_v04_adapter_contracts.nyx` covers Mission Control
-OS, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops bridges; and tests
+metadata; `examples/nornyx_v04_adapter_contracts.nyx` covers governed delivery
+control plane, agentic development harness, governance adapter, telecom ops, and business ops bridges; and tests
 verify policy/eval/evidence bindings plus MCP/A2A connector conformance. This
 does not enable live connector execution.
 
