@@ -277,6 +277,16 @@ static, validation-first, and bounded by the existing safety model.
   outside `.nyx`. Both halves are tested — the residual list structurally, so
   CI cannot validate only the mapped controls. It is an evidence example, not
   a feature expansion, and claims no full `AGENTS.md` conversion.
+- **Issue #47 — standards mapping, first wave: complete.**
+  [`68_STANDARDS_MAPPING_FIRST_WAVE.md`](68_STANDARDS_MAPPING_FIRST_WAVE.md)
+  maps observable control capabilities to control themes for the backlog's
+  first-wave frameworks (NIST AI RMF, OWASP Top 10 for LLM Applications /
+  OWASP GenAI, ISO/IEC 42001). Every mapped row carries a control-surface label
+  and a qualified claim type, and the document ships an explicit non-coverage
+  table as part of the deliverable. It is theme-level by design; clause and
+  version identifiers are recorded as non-coverage rather than invented. It is
+  not a certification, attestation, or audit opinion, and it does not claim
+  external adoption. Second and future waves remain unimplemented.
 - **M5-A-4 — unknown policy-rule diagnostic: complete.** `nornyx check` now
   emits an `UNKNOWN_POLICY_RULE` warning for a `policies.deny` name outside the
   evaluated rule-name vocabulary, and `nornyx check --strict` fails on one.
