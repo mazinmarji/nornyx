@@ -1,0 +1,89 @@
+# Residual guidance NOT migrated to .nyx.
+#
+# This file is half of the evidence, not a footnote. The .nyx contract beside
+# it shows what became a governed decision; this shows what deliberately did
+# not, and why.
+#
+# A migration with no residual guidance is suspicious: it may have over-mapped
+# guidance into controls. Encoding an instruction as a policy rule that the
+# policy runtime never evaluates produces a contract that looks governed and
+# enforces nothing -- worse than an honest omission, because the omission is
+# visible and the inert rule is not.
+#
+# Every entry below is grounded in this repository's own root AGENTS.md or its
+# immediate project conventions. Each entry declares:
+#   source_instruction  - what the guidance says
+#   reason_not_migrated - why no honest .nyx equivalent exists
+#   where_it_remains    - the artifact that stays authoritative for it
+#   future_option       - a possible future home, or "none identified"
+#
+# Structure is tested by tests/test_agents_migration_example.py. Content is
+# intentionally not pinned: rows may be added or reworded as AGENTS.md
+# evolves, and a test asserting exact rows would be deleted the first time it
+# became inconvenient, taking the control with it.
+
+residual_guidance:
+  - source_instruction: Implement small, scoped patches
+    reason_not_migrated: >-
+      No governed size or scope concept exists. A `deny prefer_small_prs` rule
+      would be accepted by the checker and evaluated by nothing.
+    where_it_remains: AGENTS.md
+    future_option: possible future lint or PR-size check outside .nyx
+
+  - source_instruction: Write clear commit messages
+    reason_not_migrated: >-
+      No commit-message concept exists in the contract language.
+    where_it_remains: AGENTS.md
+    future_option: external commit-message policy or CI check
+
+  - source_instruction: Be concise in agent output
+    reason_not_migrated: >-
+      Style guidance, not a decision anything evaluates.
+    where_it_remains: AGENTS.md
+    future_option: none identified
+
+  - source_instruction: Follow project style and existing conventions
+    reason_not_migrated: >-
+      The .nyx contract can name AGENTS.md as authority context, but the style
+      rules themselves are not representable as governed decisions.
+    where_it_remains: AGENTS.md, plus linters and formatters
+    future_option: none identified — enforcement belongs to tooling, not the contract
+
+  - source_instruction: Keep Nornyx positioned as an AI engineering control-plane language first
+    reason_not_migrated: >-
+      Product direction, not a decision made at any governed boundary.
+    where_it_remains: AGENTS.md and the roadmap documents
+    future_option: none identified
+
+  - source_instruction: Do not expand v0.1 into a general-purpose language runtime
+    reason_not_migrated: >-
+      A scope prohibition on future design work. Declarable as a project
+      non_goal for documentation value, but nothing evaluates it as a rule.
+    where_it_remains: AGENTS.md and ADR scope sections
+    future_option: none identified
+
+  - source_instruction: Model routing and persona guidance
+    reason_not_migrated: >-
+      No target concept exists. The routing policy documents under docs/agent/
+      are prose and remain so.
+    where_it_remains: docs/agent/nornyx-model-routing-policy.md
+    future_option: none identified
+
+  - source_instruction: Prefer read-only inspection before mutating operations
+    reason_not_migrated: >-
+      No ordering or preference semantics exist. The nearest honest equivalent
+      is declaring capabilities narrowly, which expresses permission rather
+      than sequence.
+    where_it_remains: AGENTS.md
+    future_option: narrower capability declarations, which is a different claim
+
+  - source_instruction: >-
+      Free-text security intent outside the evaluated token families
+      (production, secret, destructive, connector, self_modification)
+    reason_not_migrated: >-
+      A rule name outside those families is accepted silently and matches
+      nothing. This is the inert-rule trap the migration guide leads with.
+    where_it_remains: AGENTS.md and the relevant security policy documents
+    future_option: >-
+      M5-A-4 inert-rule linter would surface such names; widening the evaluated
+      families is separate runtime work with its own review

@@ -1,0 +1,160 @@
+# Bounded migration example: a subset of this repository's root AGENTS.md
+# expressed as governed decisions.
+#
+# This is NOT a full conversion of AGENTS.md. It is the mapped half of a
+# deliberately bounded example. The unmapped half is in residual_guidance.yaml
+# and is part of the same evidence -- see README.md.
+#
+# Every policy rule name below sits inside a token family the policy runtime
+# actually evaluates (secret, production, destructive, self_modification).
+# Instructions with no evaluated equivalent are in the residual list, not here:
+# an accepted-but-inert rule would be governance theater.
+nornyx: "0.2"
+project:
+  name: AgentsMigrationExample
+  purpose: >-
+    Bounded example of migrating a subset of AGENTS.md into governed
+    decisions, paired with an explicit residual set.
+  non_goals:
+    - full AGENTS.md conversion
+    - enforcement of writing style or repository conventions
+    - runtime interception of secrets, deployments, or destructive operations
+    - external adoption evidence
+
+intents:
+  - name: GovernAssistedChange
+    goal: >-
+      Keep AI-assisted repository changes inside declared capability,
+      approval, and evidence boundaries.
+
+contexts:
+  - name: RepoContext
+    include:
+      - AGENTS.md
+      - README.md
+      - docs/**/*.md
+      - tests/**/*
+    exclude:
+      - .env
+      - secrets/**
+      - '**/__pycache__/**'
+    # AGENTS.md stays authoritative. Migration does not delete it; it records
+    # which document remains the source of the guidance that did not move.
+    authority:
+      - AGENTS.md
+      - docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md
+    budget:
+      max_tokens: 32000
+      reserve_output_tokens: 4000
+
+# AGENTS.md "Role guidance" headings, carried across as declared agents.
+# The prose under each heading does NOT come with them -- see the residual list.
+agents:
+  - name: Architect
+    role: Design bounded goals and acceptance criteria
+    policy: SafeRepoEdit
+  - name: Builder
+    role: Implement small scoped changes with tests
+    policy: SafeRepoEdit
+  - name: Reviewer
+    role: Review safety boundaries, evidence, and approval semantics
+    policy: SafeReview
+  - name: Security
+    role: Treat context poisoning, tool misuse, and self-modification as first-class
+    policy: SafeReview
+
+policies:
+  - name: SafeRepoEdit
+    # Each deny name below contains a token the policy runtime evaluates.
+    # These are declared-flow checks over declared harness steps -- not runtime
+    # DLP, not deployment control, not interception.
+    deny:
+      - secrets_to_llm
+      - production_write_without_approval
+      - destructive_repo_operation
+      - self_modification
+    require:
+      - tests_if_code_changed
+      - evidence_if_goal_completed
+  - name: SafeReview
+    require:
+      - risk_check
+      - evidence_check
+      - approval_before_merge
+
+harnesses:
+  - name: AssistedChangeHarness
+    context: RepoContext
+    flow:
+      - agent: Architect
+        action: plan
+      - agent: Builder
+        action: implement
+      - tool: tests
+        action: run
+      - agent: Reviewer
+        action: review
+      - tool: evidence
+        action: pack
+    gates:
+      - tests.pass
+      - policy.pass
+      - evidence.exists
+      - approval.before_merge
+
+# AGENTS.md: "Run pytest before completion" and "Run nornyx check after
+# language/checker changes" become a checkable reported metric, not execution.
+evals:
+  - name: AssistedChangeEval
+    metrics:
+      - tests_pass
+      - no_policy_regression
+      - evidence_complete
+
+# AGENTS.md "Output contract for AI-assisted patches" maps here directly:
+# changed files, test result, risk note, evidence note, approval.
+evidence:
+  required:
+    - changed_files.md
+    - test_report.json
+    - risk_note.md
+    - evidence_note.md
+    - approval_log.json
+
+# AGENTS.md: "Reject changes that weaken policy, evidence, or approval
+# semantics" -- the approval boundary is declarable; the reviewer judgement
+# behind it is not, and stays in AGENTS.md.
+approvals:
+  - name: HumanOwner
+    required_for:
+      - merge
+      - policy_change
+
+guardrails:
+  - name: NoSecretOutput
+    validate:
+      - no_secrets
+      - schema_valid
+
+goals:
+  - id: GOAL-001
+    title: Demonstrate a bounded AGENTS.md migration
+    phase: M5-A-3
+    goal: >-
+      Show which AGENTS.md instructions become governed decisions and which
+      remain guidance, without over-mapping either way.
+    scope:
+      - examples/agents_migration_example/
+    non_goals:
+      - full AGENTS.md conversion
+      - style, convention, or PR-practice enforcement
+      - inert policy rules
+    validation:
+      - nornyx check examples/agents_migration_example/agents_migration_example.nyx
+      - pytest -q tests/test_agents_migration_example.py
+    evidence: examples/agents_migration_example/residual_guidance.yaml
+    approval: required before merge
+    stop_rules:
+      - stop if an instruction has no evaluated .nyx equivalent and encode it in the residual list instead
+      - stop if the residual list becomes empty, which would indicate over-mapping
+      - stop if a policy rule name falls outside an evaluated token family

@@ -270,6 +270,17 @@ static, validation-first, and bounded by the existing safety model.
   (`external-adoption-result`, `external-adoption-failure`,
   `external-contract-pilot`). It creates the machinery for an external signal;
   it does not constitute one.
+- **M5-A-3 — checkable migration example: complete.**
+  `examples/agents_migration_example/` lands a bounded migration of a subset of
+  the root `AGENTS.md`: a `.nyx` contract that passes `nornyx check`, paired
+  with a machine-readable residual list of guidance that deliberately stays
+  outside `.nyx`. Both halves are tested — the residual list structurally, so
+  CI cannot validate only the mapped controls. It is an evidence example, not
+  a feature expansion, and claims no full `AGENTS.md` conversion.
+- **M5-A-4 — inert-rule linter: open.** An unknown-policy warning for
+  `policies.deny` names outside the evaluated token families remains a
+  follow-up. It would make the migration guide's central warning enforceable
+  rather than advisory.
 - **M5-A-2b — migration guide: complete.**
   [`67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`](67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md)
   documents how to separate governed decisions from guidance, context,
