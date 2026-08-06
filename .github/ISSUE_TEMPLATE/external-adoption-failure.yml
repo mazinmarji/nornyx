@@ -1,0 +1,134 @@
+name: External adoption failure
+description: Report a failed run of the external adoption pilot
+title: "[adoption] external pilot failure — "
+labels: ["external-adoption", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A failure report is as useful as a passing one, and six of the pilot's
+        seven failure classes point at this project rather than at you. Only
+        `PILOT_INPUT_INVALID` indicates something local.
+
+        **Do not include secrets, credentials, tokens, API keys, private prompts,
+        internal policy text, or proprietary contracts.** Replace absolute paths
+        that disclose internal structure with `<redacted>`.
+
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction
+      options:
+        - label: I have removed secrets, credentials, and anything proprietary.
+          required: true
+
+  - type: dropdown
+    id: failure-class
+    attributes:
+      label: Failure class
+      description: The pilot prints this. Copy it verbatim.
+      options:
+        - REGISTRY_INSTALL_FAILED
+        - INSTALLED_VERSION_MISMATCH
+        - FRAMEWORK_EXTRA_UNAVAILABLE
+        - SOURCE_TREE_LEAKAGE_DETECTED
+        - SCENARIO_EXECUTION_FAILED
+        - GOVERNANCE_EXPECTATION_UNMET
+        - PILOT_INPUT_INVALID
+        - "No class printed — it failed before classifying"
+    validations:
+      required: true
+
+  - type: textarea
+    id: remedy
+    attributes:
+      label: Remedy shown by the pilot
+      description: >-
+        The `next step:` line, or the `remedy` field in JSON output. If it was
+        unhelpful or wrong, say so — that is itself a defect.
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Command used
+      placeholder: "python -m external_adoption_pilot --json --out adoption-record.json"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, and the versions of any Nornyx packages that did install.
+      placeholder: |
+        OS: Ubuntu 24.04
+        Python: 3.12.7
+        nornyx-agentic-adapters: 0.3.0 (or "did not install")
+        nornyx: 1.11.0
+        crewai: 1.15.4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: checkout
+    attributes:
+      label: Was a Nornyx repository checkout present on the machine?
+      options:
+        - "No checkout present"
+        - "Checkout present, but not used to run the pilot"
+        - "Checkout present and used"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: leakage
+    attributes:
+      label: Did a local source tree appear in the reported import origins?
+      description: >-
+        Check `import_origins` in the output. Every path should sit under the
+        pilot's own temporary environment `site-packages`.
+      options:
+        - "No — all origins were under site-packages"
+        - "Yes — at least one origin was elsewhere"
+        - "No origins were reported"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: install-log
+    attributes:
+      label: Install log excerpt
+      description: >-
+        Only for REGISTRY_INSTALL_FAILED or FRAMEWORK_EXTRA_UNAVAILABLE. The last
+        30–50 lines of pip output are usually enough.
+      render: shell
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Pilot output
+      description: Everything the pilot printed, including the failure block.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: record
+    attributes:
+      label: Adoption record, if one was produced
+      description: >-
+        `--out` writes a record even on failure. Paste it if you have one;
+        leave blank if the run failed before writing.
+      render: json
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: >-
+        Optional. If the failure message did not tell you what to do next, that
+        is worth reporting — the taxonomy exists precisely so it should.

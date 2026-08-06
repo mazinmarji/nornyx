@@ -1,0 +1,172 @@
+name: External adoption result
+description: Report a completed run of the external adoption pilot
+title: "[adoption] external pilot result — "
+labels: ["external-adoption", "evidence"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for running this. A report from outside the maintainer flow is
+        the one signal this project cannot produce for itself.
+
+        **Do not include secrets, credentials, tokens, API keys, private prompts,
+        internal policy text, or proprietary contracts.** Replace absolute paths
+        that disclose internal structure with `<redacted>` — what matters is
+        whether a path was inside `site-packages` or inside a checkout, not what
+        the path was.
+
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction
+      options:
+        - label: I have removed secrets, credentials, and anything proprietary.
+          required: true
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What did the pilot report?
+      options:
+        - "Pass — governance behaved as documented"
+        - "Pass, but something looked wrong to me"
+        - "Governance finding — GOVERNANCE_EXPECTATION_UNMET"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. Ubuntu 24.04, Windows 11, macOS 15"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "e.g. 3.12.7"
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Command used
+      placeholder: "python -m external_adoption_pilot --json --out adoption-record.json"
+    validations:
+      required: true
+
+  - type: input
+    id: adapter-version
+    attributes:
+      label: nornyx-agentic-adapters version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: core-version
+    attributes:
+      label: nornyx (core) version resolved
+      description: The pilot records this; it is not pinned by the adapter.
+      placeholder: "e.g. 1.11.0"
+    validations:
+      required: true
+
+  - type: input
+    id: crewai-version
+    attributes:
+      label: CrewAI version
+      placeholder: "1.15.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: checkout
+    attributes:
+      label: Was a Nornyx repository checkout present on the machine?
+      description: >-
+        Either answer is fine and useful. The pilot asserts positively that
+        nothing resolved from a checkout, so a report from a machine that has
+        one is a stronger test, not a weaker one.
+      options:
+        - "No checkout present"
+        - "Checkout present, but not used to run the pilot"
+        - "Checkout present and used"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: ungoverned-executions
+    attributes:
+      label: "ungoverned — executions"
+      description: Expected 1. If 0, the baseline did not work and the comparison is void.
+      placeholder: "1"
+    validations:
+      required: true
+
+  - type: input
+    id: authorized-executions
+    attributes:
+      label: "governed_authorized — executions"
+      description: Expected 1. If 0, an authorized capability was blocked.
+      placeholder: "1"
+    validations:
+      required: true
+
+  - type: input
+    id: unauthorized-executions
+    attributes:
+      label: "governed_unauthorized — executions"
+      description: >-
+        Expected 0. Anything other than 0 is the most significant result this
+        pilot can produce — please say so prominently.
+      placeholder: "0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: decision-events
+    attributes:
+      label: Decision event counts
+      description: >-
+        From each variant's `decision_events`. CrewAI may retry a denied call, so
+        several paired request/deny cycles are expected and fine — what matters
+        is that they pair.
+      placeholder: |
+        ungoverned: []
+        governed_authorized: [capability_requested, capability_allowed]
+        governed_unauthorized: 3x capability_requested, 3x capability_denied
+    validations:
+      required: true
+
+  - type: dropdown
+    id: leakage
+    attributes:
+      label: Was SOURCE_TREE_LEAKAGE_DETECTED reported?
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true
+
+  - type: textarea
+    id: record
+    attributes:
+      label: Adoption record
+      description: Paste `adoption-record.json`, or attach the file by dragging it in.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything that surprised, confused, or annoyed you
+      description: >-
+        Optional, and genuinely wanted. If the output implied something it did
+        not demonstrate, that is a defect worth more than a passing run.
