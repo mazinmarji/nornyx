@@ -6,6 +6,14 @@ The Nornyx Authoring Assistant helps users create `.nyx` source without manually
 
 It is not the language core. It is an authoring layer over the language.
 
+## Strategic priority under the post-v1.0 reweighting
+
+Per `docs/03_ROADMAP_TO_v1_AND_BEYOND.md` (milestone M6), authoring work is
+weighted by adoption value: the LLM authoring pack, formatted preview, and
+repair loop lead (P1-P2); the CLI wizard follows (P2); the UI/portal wizard is
+adoption-gated (P3); and the specialized small model stays needs_review
+research. The checker and human approval remain authoritative throughout.
+
 ## Target experience
 
 ```text

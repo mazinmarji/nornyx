@@ -1,6 +1,6 @@
 {
   "generator_manifest": {
-    "artifact_count": 22,
+    "artifact_count": 29,
     "artifact_hashes": [
       {
         "path": "AGENTS.md",
@@ -20,11 +20,11 @@
       },
       {
         "path": "goal_ledger.md",
-        "sha256": "b41de0708a2ec9f209198aa4f76f10ccbcfe9862e28ee624614cd673fa71ce73"
+        "sha256": "af28fa964ed241489be7958434ea654a37bb2d11ffd000a1df921882826311e5"
       },
       {
         "path": "goals.yaml",
-        "sha256": "478b6b3b4a560890f8ef3561f8a10c111c88d605045958284672c6e24c710f56"
+        "sha256": "138d5f3193d91bd5d42cf9dc0e1dd7af751a968edf5401af3a6153097a250a09"
       },
       {
         "path": "harness.yaml",
@@ -87,6 +87,34 @@
         "sha256": "43b35ad6b5ace56b8d0d1a990f9fe788f738aa42a55117fc5b69cdb65bc75b47"
       },
       {
+        "path": "task_packets/GOAL-M3.md",
+        "sha256": "e17ff54e05eade8430d578ed9051e7e88dd27334cfee389cd4d77bfd7fa0f5dc"
+      },
+      {
+        "path": "task_packets/GOAL-M4.md",
+        "sha256": "8ed938e80e4e5a1ff682b525a25d1e18c6da53ff1b32feceb140c842a8b13cdf"
+      },
+      {
+        "path": "task_packets/GOAL-M5.md",
+        "sha256": "ee877c77811f34e1419cc41159937d1a5e1ef28ab1b87aa1b5fad6fa09f28cad"
+      },
+      {
+        "path": "task_packets/GOAL-M6.md",
+        "sha256": "f9abe37bdd65a53cc92f85019136613c0321ce130a12c640db9b38827415e8d4"
+      },
+      {
+        "path": "task_packets/GOAL-M7.md",
+        "sha256": "321883ebb751e81cab44474c8b7212de645c58a7c276438ec1253075c4573f17"
+      },
+      {
+        "path": "task_packets/GOAL-M8.md",
+        "sha256": "15ceb6d7bdcc57183360e98d525425df328cfc1e72785bd56be7ce4f55972522"
+      },
+      {
+        "path": "task_packets/GOAL-M9.md",
+        "sha256": "364f62da9eaadb2ff2bb9cad6092744f1d47274711e9cd85a7b8aae7a8e45b09"
+      },
+      {
         "path": "trace.yaml",
         "sha256": "ea58679b596e2e8e012baf45851b4dce027fd6c6addd8fc80d04151048ffebba"
       }
@@ -113,6 +141,13 @@
       "task_packets/GOAL-007.md",
       "task_packets/GOAL-008.md",
       "task_packets/GOAL-009.md",
+      "task_packets/GOAL-M3.md",
+      "task_packets/GOAL-M4.md",
+      "task_packets/GOAL-M5.md",
+      "task_packets/GOAL-M6.md",
+      "task_packets/GOAL-M7.md",
+      "task_packets/GOAL-M8.md",
+      "task_packets/GOAL-M9.md",
       "trace.yaml"
     ],
     "generated_by": "nornyx v0.1 scaffold",

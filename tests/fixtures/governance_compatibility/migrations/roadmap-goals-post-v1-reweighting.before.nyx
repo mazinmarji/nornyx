@@ -173,15 +173,6 @@ experimental:
     v0.4: "Adapters for Governed Delivery Control Plane, Agentic Development Harness, GovernanceAdapter, telecom ops, and business ops."
     v0.5-v0.9: "Reserved maturity bands for graph validation, profile conformance, adapter conformance, bounded execution readiness, and release-candidate stabilization."
     v1.0: "Stable generalized agentic contract language."
-    post_v1.0: "Strategic reweighting: protect and productize the durable governance/evidence core (P0), then adoption and enterprise assurance (P1), adoption helpers (P2); ecosystem tooling stays adoption-gated (P3) and runtime-shaped work stays needs_review."
-    post_v1.0_milestones:
-      M3: "Evidence and attestation productization (P0)."
-      M4: "Standards mapping and enterprise assurance (P1)."
-      M5: "External adoption and pilot validation (P1)."
-      M6: "Authoring and human approval UX (P2)."
-      M7: "Standards-based ecosystem interop (P2)."
-      M8: "Adoption-gated tooling and registry (P3; promotion requires adoption evidence)."
-      M9: "Reviewed future runtime research (needs_review; promotion requires new ADR, threat model, and human approval)."
 
 goals:
   - id: GOAL-000
@@ -284,73 +275,3 @@ goals:
     evidence: "docs/qa/evidence/GOAL-009/"
     approval: "mandatory release approval"
     stop_rules: ["stop if legal/name clearance unresolved", "stop if safety model incomplete"]
-  - id: GOAL-M3
-    phase: post_v1.0
-    title: Evidence and attestation productization
-    goal: "Make deterministic evidence, locks, drift detection, revision binding, runtime-event validation, and conformance reports the visible product center."
-    scope: [docs, examples]
-    non_goals: ["new framework adapters by default", "runtime-truth overclaim", "Tier 3 claim"]
-    validation: ["python -m pytest -q", "python -m nornyx.cli check examples/nornyx_roadmap_goals.nyx"]
-    evidence: "docs/qa/evidence/GOAL-M3/"
-    approval: "required before claim-boundary wording changes"
-    stop_rules: ["stop on any runtime-truth claim ambiguity"]
-  - id: GOAL-M4
-    phase: post_v1.0
-    title: Standards mapping and enterprise assurance
-    goal: "Build versioned, machine-checkable mappings from external standards to Nornyx controls, evidence, approvals, evals, and gaps."
-    scope: [docs, docs/backlog]
-    non_goals: ["certification", "legal advice", "copyrighted standard text reproduction", "compliance claims"]
-    validation: ["python -m pytest -q"]
-    evidence: "docs/qa/evidence/GOAL-M4/"
-    approval: "required before publishing any mapping"
-    stop_rules: ["stop if a mapping could read as a compliance claim"]
-  - id: GOAL-M5
-    phase: post_v1.0
-    title: External adoption and pilot validation
-    goal: "Prove external users can adopt Nornyx without maintainer hand-holding."
-    scope: [docs, examples]
-    non_goals: ["large new features before adoption evidence", "speculative marketplace"]
-    validation: ["python -m pytest -q"]
-    evidence: "docs/qa/evidence/GOAL-M5/"
-    approval: "recommended"
-    stop_rules: ["stop if adoption materials require unpublished features"]
-  - id: GOAL-M6
-    phase: post_v1.0
-    title: Authoring and human approval UX
-    goal: "Make .nyx easier to draft and review while keeping the checker and human approval authoritative."
-    scope: [docs, nornyx]
-    non_goals: ["automatic approval", "live LLM calls by default", "model hosting", "automatic repo writes"]
-    validation: ["python -m pytest -q", "python scripts/dev/check_authoring_assistant_roadmap.py"]
-    evidence: "docs/qa/evidence/GOAL-M6/"
-    approval: "required before any authoring capability promotion"
-    stop_rules: ["stop on checker-authority ambiguity"]
-  - id: GOAL-M7
-    phase: post_v1.0
-    title: Standards-based ecosystem interop
-    goal: "Prefer standard event formats, MCP/A2A contract conformance, and policy export mappings over bespoke adapter expansion."
-    scope: [docs, docs/decisions]
-    non_goals: ["broad connector runtime", "framework ownership", "whole-application coverage claim"]
-    validation: ["python -m pytest -q"]
-    evidence: "docs/qa/evidence/GOAL-M7/"
-    approval: "required for interop boundary decisions"
-    stop_rules: ["stop if interop work becomes runtime-shaped"]
-  - id: GOAL-M8
-    phase: post_v1.0
-    title: Adoption-gated tooling and registry
-    goal: "Promote LSP, Tree-sitter, registry, and marketplace work only after adoption creates evidence of need."
-    scope: [docs/tooling]
-    non_goals: ["IDE-first development", "speculative registry or marketplace build-out"]
-    validation: ["python -m pytest -q"]
-    evidence: "docs/qa/evidence/GOAL-M8/"
-    approval: "required; promotion gates include user demand and a maintenance owner"
-    stop_rules: ["stop if tooling is promoted without adoption evidence"]
-  - id: GOAL-M9
-    phase: post_v1.0
-    title: Reviewed future runtime research
-    goal: "Keep native execution, self-healing, and live connector runtime in research status unless separately approved."
-    scope: [docs/RFCs]
-    non_goals: ["runtime implementation", "live connector execution", "automatic approval"]
-    validation: ["python scripts/research/check_language_evolution.py --strict"]
-    evidence: "docs/qa/evidence/GOAL-M9/"
-    approval: "mandatory: new ADR, threat model, bounded execution proof, human approval"
-    stop_rules: ["stop on any unsupervised execution pathway"]

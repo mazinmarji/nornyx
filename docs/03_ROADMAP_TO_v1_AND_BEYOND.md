@@ -25,6 +25,52 @@ execution engine, or unrestricted connector runtime. It means Nornyx is stable
 enough to be used as a generalized agentic contract language across multiple
 agentic AI domains.
 
+## Strategic reweighting after v1.0 stabilization
+
+The next roadmap phase is not "complete every future proposal." The next phase
+is to protect and productize the durable governance/evidence core, then let
+adoption determine which ecosystem features graduate.
+
+Nornyx's durable value is where it provides independent, deterministic,
+evidence-bound governance for agentic systems: evidence and attestation, locks
+and drift detection, contract revision binding, approval integrity,
+runtime-event validation, and conformance schemas and reports. Lower-
+defensibility work — additional framework adapters, a full LSP, a registry, a
+marketplace, native execution, self-healing, a live connector runtime — is
+gated behind adoption evidence and explicit ADR approval rather than treated as
+a default obligation.
+
+Roadmap items are weighted by the following priority model. Existing roadmap,
+backlog, and tooling documents are reconciled against it; the normalized
+strategy note lives in
+[`docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md`](65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md).
+
+### Priority model
+
+- **P0 — Durable core (must continue):** evidence integrity, attestation,
+  deterministic locks, drift detection, contract revision binding, approval
+  integrity, runtime-event validation, conformance schemas/reports, honest
+  assurance-tier boundaries, exact package/provenance examples.
+- **P1 — Adoption and enterprise assurance:** standards mapping, external pilot
+  consumption, the 5-minute adoption path, conformance showcase examples,
+  published-distribution proof, a migration path from scattered
+  AGENTS.md/policies/evals to `.nyx`, reviewer quickstarts.
+- **P2 — Adoption helpers and focused profiles:** authoring assistant CLI, LLM
+  authoring pack, formatted approval preview, checker-driven repair loop,
+  handover model; telecom/PMO/business profiles only if contract-only and tied
+  to a concrete pilot or user demand.
+- **P3 — Adoption-gated ecosystem work:** full LSP, Tree-sitter grammar,
+  package/profile registry, extension marketplace, additional framework
+  adapters, broad connector integrations, richer editor tooling.
+- **needs_review / defer:** native execution, governed self-healing, live
+  connector runtime, automatic approval, autonomous production actions,
+  legal/contract execution claims — anything that would turn Nornyx into a
+  runtime competitor.
+
+Reweighting reclassifies; it does not erase. Existing roadmap history stays in
+place and lower-priority items are marked P3, candidate,
+future_proposal, needs_review, historical_only, or superseded as appropriate.
+
 ## Phase 0 — Concept freeze
 
 Deliverables:
@@ -165,19 +211,108 @@ readiness, and release-candidate evidence. It does not publish, tag, push,
 change package versions, deploy, enable live connectors, call models, grant
 automatic approvals, or promote regulated/enterprise extensions.
 
+## Post-v1.0 strategic milestone sequence
+
+After local v1.0 stabilization, the recommended strategic sequence weights the
+durable core and adoption ahead of ecosystem expansion. Each milestone is
+static, validation-first, and bounded by the existing safety model.
+
+### M3 — Evidence and Attestation Productization
+
+- Objective: make deterministic evidence, locks, drift detection, contract
+  revision binding, runtime-event validation, conformance reports, and
+  installed-artifact proof the visible product center.
+- Deliverables: evidence/attestation overview doc, conformance report examples,
+  pip-only distribution conformance showcase, exact-revision audit examples,
+  claim-boundary wording, deterministic report format guidance.
+- Non-goals: no new framework adapter by default, no runtime-truth overclaim,
+  no Tier 3 claim.
+- Promotion gate: deliverables validated locally with recorded evidence.
+
+### M4 — Standards Mapping and Enterprise Assurance
+
+- Objective: a versioned, machine-checkable standards-mapping layer that maps
+  external framework requirements to Nornyx controls, evidence, approvals,
+  evals, gaps, and assurance boundaries. See
+  [`docs/64_STANDARDS_MAPPING_AND_ENTERPRISE_ASSURANCE.md`](64_STANDARDS_MAPPING_AND_ENTERPRISE_ASSURANCE.md).
+- First wave: NIST AI RMF; OWASP Top 10 for LLM Applications / OWASP GenAI;
+  ISO/IEC 42001 using identifiers and original summaries only; a gap report.
+- Non-goals: no certification, no legal advice, no copyrighted standard text
+  reproduction, no claim of compliance.
+- Promotion gate: mappings cite framework version/source and name the Nornyx
+  control/evidence/eval/approval/gap; deterministic local validation only.
+
+### M5 — External Adoption and Pilot Validation
+
+- Objective: prove external users can adopt Nornyx without maintainer
+  hand-holding.
+- Deliverables: 5-minute adoption path, external reviewer quickstart, one
+  external repo pilot or reproducible pilot package, migration guide from
+  scattered governance artifacts to `.nyx`, issue templates for external
+  feedback, adoption success criteria.
+- Non-goals: no large new features before adoption evidence, no speculative
+  marketplace.
+- Promotion gate: at least one external adoption signal recorded as evidence.
+
+### M6 — Authoring and Human Approval UX
+
+- Objective: make `.nyx` easier to draft and review while keeping the checker
+  and human approval authoritative.
+- Deliverables: LLM authoring pack, templates, checker-driven repair protocol,
+  formatted approval preview, CLI wizard if diagnostics are stable enough.
+- Non-goals: no automatic approval, no live LLM calls by default, no model
+  hosting, no automatic repo writes.
+- Promotion gate: the authoring-assistant promotion gates in
+  `docs/backlog/nornyx-authoring-assistant-roadmap.yaml`.
+
+### M7 — Standards-Based Ecosystem Interop
+
+- Objective: prefer standard event formats, conformance boundaries, MCP/A2A
+  contract conformance, OPA/Cedar-style policy export or mapping, and thin
+  framework-neutral adapters over a bespoke adapter treadmill.
+- Deliverables: interop boundary ADR, compile-to-standard feasibility notes,
+  event-schema alignment, thin adapter guidelines.
+- Non-goals: no broad connector runtime, no framework ownership, no
+  whole-application coverage claim.
+- Promotion gate: standards conformance demonstrated before any runtime-shaped
+  interop work is considered.
+
+### M8 — Adoption-Gated Tooling and Registry
+
+- Objective: promote LSP, Tree-sitter, registry, package/profile ecosystem, and
+  marketplace work only after adoption creates evidence of need.
+- Promotion gates: repeated user requests; at least one external pilot blocked
+  by missing tooling; stable schema/formatter/checker; a maintenance owner
+  identified.
+
+### M9 — Reviewed Future Runtime Research
+
+- Objective: keep native execution, self-healing, and live connector runtime in
+  research status unless separately approved.
+- Promotion gates: new ADR, threat model, bounded execution proof,
+  approval/evidence design, failure-mode tests, human approval.
+
 ## Future proposals outside the completed governance program
 
 The following tracks are `future_proposal_outside_current_program`, not
-unfinished governance roadmap obligations:
+unfinished governance roadmap obligations. They are adoption-gated, not default
+commitments; each carries a strategic status and a graduation rule:
 
-- dedicated parser and LSP;
-- package/registry system;
-- MCP/A2A connector runtime;
-- governed self-healing;
-- eval-driven improvement loops;
-- extension marketplace;
-- optional native execution for selected domains;
-- broader programming constructs.
+- dedicated parser and LSP — P3; only after user adoption creates editor
+  friction;
+- package/registry system — P3; only after reusable profile/package demand
+  exists;
+- MCP/A2A connector runtime — needs_review; prefer standards conformance and
+  compile-to-standard before any runtime ownership;
+- governed self-healing — needs_review; requires an explicit safety ADR plus
+  approval/evidence gates;
+- eval-driven improvement loops — candidate; only if bounded, evidence-backed,
+  and human-approved;
+- extension marketplace — P3/future; requires ecosystem adoption first;
+- optional native execution for selected domains — needs_review/defer; risks
+  changing the Nornyx identity;
+- broader programming constructs — needs_review/defer; must not turn Nornyx
+  into a general-purpose language.
 
 GOAL-013 keeps these tracks in research status through
 `docs/RFCs/RFC-0003-full-language-evolution-research.md`; promotion requires a

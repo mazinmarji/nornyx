@@ -42,6 +42,17 @@ distribution version is independent of the Nornyx **language/schema** version
 - Complete the legacy-to-SPI method/error map, deprecation and minimum-retention
   criteria, occurrence-mode compatibility, unsupported-surface inventory, and
   published Nornyx 1.11.0 / adapter 0.2.0 baseline reconciliation.
+- Reweight the roadmap around the durable governance/evidence core and external
+  adoption: `docs/03_ROADMAP_TO_v1_AND_BEYOND.md` gains the post-v1.0 strategic
+  reweighting (P0-P3/needs_review priority model, M3-M9 milestone sequence, and
+  adoption-gated future proposals), mirrored machine-readably in
+  `examples/nornyx_roadmap_goals.nyx` and normalized in
+  `docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md`; standards mapping is
+  planned as P1 in `docs/64_STANDARDS_MAPPING_AND_ENTERPRISE_ASSURANCE.md` and
+  `docs/backlog/nornyx-standards-mapping-roadmap.yaml` (tracked by issue #47).
+  The intentional example change is recorded in the compatibility corpus as
+  `migration:roadmap-goals-post-v1-reweighting-v1`; no package version, runtime
+  behavior, public API, or schema changes.
 
 ### Distribution boundaries
 

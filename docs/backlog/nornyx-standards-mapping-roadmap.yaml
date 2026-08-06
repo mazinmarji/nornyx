@@ -1,0 +1,36 @@
+name: StandardsMappingAndEnterpriseAssurance
+status: proposed
+strategic_priority: P1
+tracking_issue: "https://github.com/mazinmarji/nornyx/issues/47"
+objective: >
+  Machine-checkable mappings from external standards and framework requirements
+  to Nornyx controls, evidence, approvals, evals, assurance tiers, and gaps.
+first_wave:
+  - NIST AI RMF
+  - OWASP Top 10 for LLM Applications / OWASP GenAI
+  - ISO/IEC 42001
+second_wave:
+  - ISO/IEC 23894
+  - NIST SSDF
+  - SLSA
+  - OpenTelemetry GenAI trace-conformance mapping
+future_wave:
+  - EU AI Act (subject to legal review)
+  - SOC 2 evidence-support mapping
+  - COBIT
+  - ITIL
+  - TOGAF
+non_goals:
+  - no certification
+  - no legal advice
+  - no audit opinion
+  - no claim that Nornyx proves runtime truth
+  - no copyrighted standard text reproduction
+  - no live network retrieval
+  - no automatic approval
+acceptance_criteria:
+  - every mapping has a framework version and source identifier
+  - every mapping names the Nornyx control, evidence, eval, approval, or gap
+  - partial coverage cannot be reported as full coverage
+  - reports say supports/maps/operationalizes, never certifies/complies/guarantees
+  - deterministic local validation only
