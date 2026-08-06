@@ -101,6 +101,23 @@ OperationsToBacklog
 | Support | known issues, escalation, FAQ |
 | Customer | release notes and behavior clarity |
 
+## Strategic priority under the post-v1.0 reweighting
+
+Under the reweighting in `docs/03_ROADMAP_TO_v1_AND_BEYOND.md`:
+
+- `handover` is the highest-leverage candidate (P2) because it connects
+  discovery, development, release, operations, and improvement;
+- `assumption`, `open_question`, and `decision_needed` are near-term design
+  candidates (P2) where they reduce LLM ambiguity and improve human approval;
+- `intake`, `prototype`, `operations`, `product_eval`, and `lifecycle_state`
+  remain future lifecycle extensions, not core language expansion.
+
+**Warning:** Nornyx must not become a PMO platform, a product-management
+system, an operations platform, or a general workflow tool. Lifecycle concepts
+stay out of the language core unless they directly improve Nornyx contract
+clarity. The focus remains contracts, evidence, approvals, evals, handover, and
+ambiguity control.
+
 ## Boundary rule
 
 Do not add lifecycle features unless they improve at least one:

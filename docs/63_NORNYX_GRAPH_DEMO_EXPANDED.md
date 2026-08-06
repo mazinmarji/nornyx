@@ -48,9 +48,9 @@ python -m pytest -q
 
 Expected result: no blocking diagnostics.
 
-## Mission Control / Agentic Development Harness Fit
+## External Control-Plane / Agentic Development Harness Fit
 
-The expanded graph is a static contract shape that Governed Delivery Control Plane or Agentic Development Harness can read as source-of-truth guidance. It can describe intent, context, agents, policies, evals, approvals, evidence, budgets, traces, goals, and artifacts without executing those concepts.
+The expanded graph is a static contract shape that an external control plane such as a Governed Delivery Control Plane or Agentic Development Harness can read as source-of-truth guidance. It can describe intent, context, agents, policies, evals, approvals, evidence, budgets, traces, goals, and artifacts without executing those concepts.
 
 ## Safety Boundary
 

@@ -100,7 +100,7 @@
       },
       {
         "path": "examples/nornyx_roadmap_goals.nyx",
-        "sha256": "db95637371e990887e6d906e089e2a659a9f39c7c192a1561d3100af8da346a9"
+        "sha256": "c2bd107594fcc3397fd5cb1455821905ae364996c4eee95f4221e32795e68a17"
       },
       {
         "path": "examples/nornyx_v04_adapter_contracts.nyx",
@@ -150,7 +150,7 @@
       },
       {
         "path": "tests/fixtures/generated_drift/nornyx_roadmap_goals.json",
-        "sha256": "b5830de2bc3aafb9f50940688efbaa8e8b78bddc46dc467888d3ede69085e2df"
+        "sha256": "91908f61bab0def3fbbb23e1919495fe1803ce1c71c1724c2f3e26c3e54f47fb"
       }
     ]
   },
@@ -383,6 +383,24 @@
       "old_hash": "sha256:e6b986207669c5c9cb4ed7991dab5c0db25ed4dd814305ce09e6cbe49199b1da",
       "new_hash": "sha256:14c05f4671e430bb0bcd386dcfe794b46638202444da59286a9242595404cd4a",
       "proof_hash": "sha256:d9ff66e5ee81ef83ca77c3d0e32743df4cada52432a4976a01cc10c2cbbbf3e2"
+    },
+    {
+      "id": "roadmap-goals-post-v1-reweighting-v1",
+      "target": "nyx_examples:examples/nornyx_roadmap_goals.nyx",
+      "sequence": 1,
+      "surface": "machine-readable strategic roadmap example",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_lf_text",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/roadmap-goals-post-v1-reweighting.before.nyx",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/roadmap-goals-post-v1-reweighting.after.nyx",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/roadmap-goals-post-v1-reweighting-v1.diff.json",
+      "reason": "Post-v1.0 strategic reweighting: mirror the docs/03 priority model and M3-M9 milestone sequence machine-readably via experimental.strategic_roadmap entries and goals GOAL-M3 through GOAL-M9; no core block, schema, or checker semantics change.",
+      "approval": "Explicit roadmap-reweighting documentation revision requested by the human repository owner on 2026-08-06; this records compatibility evidence and does not grant merge, release, runtime, autonomous, or governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:roadmap-goals-post-v1-reweighting-v1",
+      "old_hash": "sha256:db95637371e990887e6d906e089e2a659a9f39c7c192a1561d3100af8da346a9",
+      "new_hash": "sha256:c2bd107594fcc3397fd5cb1455821905ae364996c4eee95f4221e32795e68a17",
+      "proof_hash": "sha256:8a876d9c62eae418e3eadd90f3db16c53290429906c95f231f747882bfeab25f"
     }
   ]
 }

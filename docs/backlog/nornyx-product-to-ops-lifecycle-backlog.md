@@ -6,6 +6,12 @@ This backlog is intentionally deferred behind core language hardening.
 
 Do not implement these as core blocks until GOAL-001 and GOAL-002 are stable.
 
+Under the post-v1.0 reweighting in `docs/03_ROADMAP_TO_v1_AND_BEYOND.md`,
+LIFE-001 (handover) and LIFE-002 (assumption/open-question) are the P2
+candidates; LIFE-003 through LIFE-007 remain future lifecycle extensions and
+promote only if they improve LLM ambiguity control, handover quality,
+operations readiness, role-specific visibility, or evidence quality.
+
 ## Candidate backlog items
 
 ### LIFE-001 — Handover block design

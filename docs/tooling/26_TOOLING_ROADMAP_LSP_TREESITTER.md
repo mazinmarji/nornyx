@@ -6,6 +6,24 @@ A language without tooling is a file format.
 
 Nornyx needs enough tooling that humans and LLMs can work with it safely.
 
+## Strategic status under the post-v1.0 reweighting
+
+Per `docs/03_ROADMAP_TO_v1_AND_BEYOND.md`, tooling in this file splits into two
+tiers:
+
+- **Acceptable near-term tooling:** `fmt`, `check`, `explain`, `doctor`,
+  diagnostics, completion data, the editor manifest, and the local JSON
+  commands. These stay on the roadmap because they serve the CLI-first design
+  rule.
+- **Adoption-gated (P3):** the full LSP, the Tree-sitter grammar, the
+  package/profile registry, and any extension marketplace. The version-tagged
+  sections below are historical planning surface, not commitments; none of
+  these items proceeds until every promotion gate passes:
+  1. repeated user requests for the capability;
+  2. at least one external pilot blocked by the missing tooling;
+  3. a stable schema, formatter, and checker;
+  4. an identified owner and maintenance plan.
+
 ## v0.2 tooling
 
 - `nornyx fmt`
@@ -55,6 +73,8 @@ connector, model, or runtime execution.
 - generated context preview.
 
 ## v1.0 tooling
+
+Adoption-gated (P3) — see the strategic status section above:
 
 - stable LSP;
 - package/profile registry support;

@@ -3,41 +3,52 @@ status: roadmap
 name: "Nornyx Authoring Assistant Roadmap"
 purpose: "Make .nyx source easy to create through CLI/UI/LLM-assisted drafting while preserving checker and human approval authority."
 
+# strategic_priority follows the post-v1.0 reweighting model in
+# docs/03_ROADMAP_TO_v1_AND_BEYOND.md (P0 durable core, P1 adoption,
+# P2 adoption helpers, P3 adoption-gated, needs_review deferred).
+# It layers on top of the validator-checked priority field.
+
 capabilities:
   - id: cli_wizard
     status: roadmap
     description: "Interactive CLI flow that asks guided questions and drafts .nyx."
     priority: high
+    strategic_priority: P2
     safe_now: true
 
   - id: ui_authoring_portal
     status: roadmap
     description: "Local UI/portal flow for guided input, .nyx preview, explain/check/fmt, and approval."
     priority: medium
+    strategic_priority: P3
     safe_now: false
 
   - id: llm_authoring_pack
     status: roadmap
     description: "Mini-spec, examples, templates, and repair protocol for normal LLMs to draft .nyx."
     priority: high
+    strategic_priority: P1-P2
     safe_now: true
 
   - id: formatted_preview
     status: roadmap
     description: "Readable formatted display for normal users and developers to approve/reject/modify."
     priority: high
+    strategic_priority: P1-P2
     safe_now: true
 
   - id: repair_loop
     status: roadmap
     description: "Use nornyx check/fmt errors to repair invalid drafts."
     priority: high
+    strategic_priority: P1-P2
     safe_now: true
 
   - id: specialized_small_model
     status: research
     description: "Optional future small or fine-tuned model specialized for Nornyx drafting, repair, and explanation."
     priority: medium
+    strategic_priority: needs_review
     safe_now: false
 
 authority_rules:
@@ -76,3 +87,4 @@ next_focus:
   - "Keep this as roadmap/backlog."
   - "Do not interrupt GOAL-001 core spec freeze."
   - "Implement CLI authoring only after parser/checker are stable enough."
+  - "Follow the post-v1.0 reweighting: llm_authoring_pack, formatted_preview, and repair_loop lead (P1-P2); cli_wizard follows (P2); ui_authoring_portal is adoption-gated (P3); specialized_small_model stays needs_review research."
