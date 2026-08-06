@@ -373,9 +373,11 @@ Recorded, not committed to:
   recognized families would make this guide's central warning enforceable
   rather than advisory. This is the highest-value follow-on identified by the
   grounding pass.
-- A **checkable worked example** contract under `examples/`, validated by
-  `nornyx check` in CI, would turn the worked example above from illustration
-  into evidence.
+- ~~A **checkable worked example** contract under `examples/`~~ — **done in
+  M5-A-3**: [`examples/agents_migration_example/`](../examples/agents_migration_example/README.md)
+  ships a validated contract *and* a structurally tested residual list, so CI
+  checks both the mapped and the unmapped half. The worked example in this
+  guide remains illustrative; that directory is the evidence.
 - Widening recognized rule families, if real migrations show consistent
   demand — with tests, as runtime work.
 
