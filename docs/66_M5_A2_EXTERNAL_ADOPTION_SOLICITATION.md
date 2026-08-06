@@ -264,8 +264,11 @@ sensitive. A structural description is still a usable report.
 - **M5-A-2a — this document.** Creates the external solicitation and reporting
   machinery: the five-minute path, the reviewer quickstart, falsifiable success
   criteria, and three issue templates.
-- **M5-A-2b — not started.** The migration guide from `AGENTS.md`, policy files,
-  and eval configuration to `.nyx` is deliberately deferred.
+- **M5-A-2b — complete.**
+  [`67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`](67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md)
+  documents how to separate governed decisions from guidance, context, and
+  external evidence — and warns first about policy rules that are accepted but
+  never evaluated.
 - **M5 promotion — not met.** It remains unmet until at least one external user
   reports a result from outside the maintainer flow.
 

@@ -270,8 +270,15 @@ static, validation-first, and bounded by the existing safety model.
   (`external-adoption-result`, `external-adoption-failure`,
   `external-contract-pilot`). It creates the machinery for an external signal;
   it does not constitute one.
-- **M5-A-2b — migration guide: open.** Mapping `AGENTS.md`, policy files, and
-  eval configuration onto `.nyx` remains to be written.
+- **M5-A-2b — migration guide: complete.**
+  [`67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`](67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md)
+  documents how to separate governed decisions from guidance, context,
+  conventions, and external evidence. Framed by a read-only grounding pass
+  whose decisive finding was that `policies.deny` accepts free-text rule names
+  it never evaluates — so the guide leads with that silent-failure warning,
+  keeps the authorization SPI and harness policy evaluation separate
+  throughout, and requires a residual list. It does not claim `AGENTS.md` can
+  be replaced.
 - The promotion gate is unchanged and is **not** met by M5-A-1 or M5-A-2a.
   First-party CI can supply the reproducible thing an external adopter would
   run, and M5-A-2a can supply the machinery to report it, but neither can
