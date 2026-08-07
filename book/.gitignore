@@ -1,0 +1,6 @@
+# Build tooling and intermediates (regenerable)
+build/node_modules/
+build/package.json
+build/package-lock.json
+build/out/*.html
+build/out/*_paged.html
