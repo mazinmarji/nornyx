@@ -54,7 +54,7 @@ Snapshot basis: repository `/home/user/nornyx` at git HEAD `70d2b40`, distributi
   03 §8.2).
 - Adapters 0.2.0 / Alpha / exact pins — fact pack 03 §1.1.
 - Two-verb language: `normalize_policy_rules` recognizes only deny/require prefixes,
-  other rules bucketed into require; five deny substring families; require → 
+  other rules bucketed into require; five deny substring families; require →
   `pending_evidence`, never executed — `nornyx/policy_runtime.py:83-108, 185-203,
   271-274`; `docs/05_SECURITY_MODEL.md:41-42` (fact pack 01 §2.5; also personally
   verified for Ch. 7 per ch07_notes — I re-checked the fact-pack citations only).
