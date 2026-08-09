@@ -773,6 +773,81 @@ jobs:
       - name: Agentic-network reference CI demonstration
         run: python scripts/agentic_network_ci.py
 
+  book:
+    # Builds the textbook in book/ to HTML. The unit tests already run in the
+    # `test` matrix; this job exists because they exercise the builder against
+    # the manuscript's *current* content, and a chapter edit that breaks
+    # assembly -- a bad citation key, a duplicate chapter number, a malformed
+    # figure -- is a manuscript defect that no Python test would otherwise
+    # attribute to the prose change that caused it.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        if: github.event_name == 'pull_request'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+      - name: Build the book
+        run: python book/tools/build_book.py --out "$RUNNER_TEMP/book.html"
+      - name: Assert the built book is complete
+        # A build that silently emitted a fraction of the manuscript would still
+        # exit zero, so pin the structure rather than trusting the exit code.
+        run: |
+          python - "$RUNNER_TEMP/book.html" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          page = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+
+          checks = {
+              "part openers": (page.count('class="part-opener"'), 8),
+              "figures": (page.count('class="nx-fig"'), 66),
+              "bibliography entries": (len(re.findall(r'<li id="ref-', page)), 50),
+          }
+          problems = [
+              f"{label}: found {found}, expected {expected}"
+              for label, (found, expected) in checks.items()
+              if found != expected
+          ]
+
+          documents = len(re.findall(r'<section class="doc ', page))
+          if documents != 56:  # 54 manuscript documents + bibliography + index
+              problems.append(f"documents: found {documents}, expected 56")
+
+          # Every rendered reference must resolve, and no sequence figure may
+          # still carry the unexpanded delimited attribute.
+          targets = set(re.findall(r'<li id="ref-([A-Za-z0-9._-]+)"', page))
+          referenced = set(re.findall(r'<a class="cite" href="#ref-([A-Za-z0-9._-]+)"', page))
+          if referenced - targets:
+              problems.append(f"dangling references: {sorted(referenced - targets)}")
+          if "data-cols=" in page:
+              problems.append("a sequence figure was not expanded")
+
+          print(f"book: {documents} documents, {len(referenced)} distinct works cited")
+          for problem in problems:
+              print("PROBLEM:", problem)
+          sys.exit(1 if problems else 0)
+          PY
+      - name: Upload the built book
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: book-html
+          path: ${{ runner.temp }}/book.html
+          if-no-files-found: warn
+          retention-days: 14
+
   native-frameworks:
     runs-on: ubuntu-latest
     steps:

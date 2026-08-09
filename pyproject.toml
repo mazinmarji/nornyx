@@ -38,7 +38,12 @@ Issues = "https://github.com/mazinmarji/nornyx/issues"
 # Ruff is bounded to a single tested minor series (see [tool.ruff.lint] below):
 # an unbounded lower pin let a fresh install resolve a newer Ruff whose changed
 # default rule set failed CI non-reproducibly.
-dev = ["pytest>=8.0", "ruff>=0.16.0,<0.17"]
+#
+# mistune renders the textbook manuscript in book/tools/. It is dev-only -- the
+# nornyx distribution never imports it -- and it lives in `dev` rather than its
+# own extra so tests/test_book_build.py runs in the standard suite across the
+# whole supported Python matrix instead of in a single job.
+dev = ["pytest>=8.0", "ruff>=0.16.0,<0.17", "mistune>=3.0,<4"]
 
 [project.scripts]
 nornyx = "nornyx.cli:main"

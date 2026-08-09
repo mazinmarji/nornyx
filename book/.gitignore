@@ -1,6 +1,9 @@
-# Build tooling and intermediates (regenerable)
-build/node_modules/
-build/package.json
-build/package-lock.json
-build/out/*.html
-build/out/*_paged.html
+# Generated book output. The builder lives in tools/ and is tracked; only what
+# it produces is ignored.
+#
+# These rules previously named a `build/` directory, which the repository root
+# .gitignore already excluded at every depth via an unanchored `build/` pattern.
+# The result was that the original book pipeline was never committed at all --
+# git had been silently ignoring the whole directory, including its source. The
+# tooling now lives in `tools/` precisely so that cannot happen again.
+tools/out/
