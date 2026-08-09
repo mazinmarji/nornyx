@@ -67,11 +67,25 @@ _IX_SPAN = re.compile(r'<span class="ix" data-ix="([^"]*)"\s*>')
 _SEQ_COLS = re.compile(r'<div class="seq-cols" data-cols="([^"]*)"\s*>\s*</div>')
 _MSG = re.compile(r'<div class="msg"((?:\s+data-[a-z]+="[^"]*")+)\s*>')
 _ATTR = re.compile(r'data-([a-z]+)="([^"]*)"')
+_TABLE = re.compile(r"<table\b.*?</table>", re.S)
+
+# Renders markdown fragments (bibliography entries), as opposed to whole
+# documents. The `url` plugin turns the bare URLs several entries end in into
+# real links.
+_INLINE_MARKDOWN = mistune.create_markdown(
+    renderer=mistune.HTMLRenderer(escape=False), plugins=["url"]
+)
 
 # Rendered HTML regions whose contents are literal text: citation and index
 # processing must not descend into them, or a code listing that happens to
 # contain "[@" would be rewritten into a reference.
 _PROTECTED = re.compile(r"(<pre\b.*?</pre>|<code\b.*?</code>)", re.S)
+
+# Table wrapping guards block code only. _PROTECTED also splits on *inline*
+# <code>, and this manuscript's tables routinely contain it (`| `--flag` | ... |`),
+# which would cut a table across chunk boundaries so that neither half matched.
+# A table cannot occur inside <pre>, so the narrower guard is sufficient.
+_PRE_ONLY = re.compile(r"(<pre\b.*?</pre>)", re.S)
 
 
 class BuildError(Exception):
@@ -123,6 +137,18 @@ def split_frontmatter(text: str) -> tuple[dict, str]:
     return meta, text[match.end() :]
 
 
+def render_inline(text: str) -> str:
+    """Render a single line of markdown without the wrapping block paragraph.
+
+    Used for bibliography entries, which are markdown fragments rather than
+    documents: they italicise titles, mark revisions as code, and cite bare URLs.
+    """
+    rendered = _INLINE_MARKDOWN(text).strip()
+    if rendered.startswith("<p>") and rendered.endswith("</p>"):
+        rendered = rendered[len("<p>") : -len("</p>")]
+    return rendered.strip()
+
+
 def load_part_titles(design_dir: Path = DESIGN_DIR) -> dict[str, str]:
     """Parse Part titles from the design document rather than hardcoding them.
 
@@ -163,7 +189,10 @@ def load_bibliography(design_dir: Path = DESIGN_DIR) -> list[tuple[str, str]]:
             raise BuildError(f"duplicate bibliography key: {key}")
         seen.add(key)
         note = f' <span class="ref-note">({html.escape(qualifier)})</span>' if qualifier else ""
-        entries.append((key, f"{body}{note}"))
+        # Entries are markdown: nearly every one italicises a title and several
+        # carry bare URLs. Inserted raw they would render as literal asterisks
+        # and dead URL text, so the body goes through the inline renderer.
+        entries.append((key, f"{render_inline(body)}{note}"))
     return entries
 
 
@@ -307,6 +336,24 @@ def expand_sequences(markup: str) -> str:
     return _MSG.sub(place_message, markup)
 
 
+def wrap_tables(markup: str) -> str:
+    """Put each table in its own horizontal scroll container.
+
+    A wide table is the one thing in this manuscript that cannot be made to fit
+    a phone without either shrinking text to unreadability or dropping columns.
+    Left bare it widens the whole page, so the body scrolls sideways and every
+    line of prose runs off the screen. Wrapping confines the scroll to the table
+    itself. Code blocks already scroll inside their own ``<pre>``.
+    """
+    parts = _PRE_ONLY.split(markup)
+    return "".join(
+        part
+        if index % 2
+        else _TABLE.sub(lambda m: f'<div class="table-wrap">{m.group(0)}</div>', part)
+        for index, part in enumerate(parts)
+    )
+
+
 def link_citations(
     markup: str, bibliography: list[tuple[str, str]]
 ) -> tuple[str, set[str]]:
@@ -439,6 +486,7 @@ def build_book(
     for doc in documents:
         markup, headings = render_markdown(doc.body, doc.slug)
         markup = expand_sequences(markup)
+        markup = wrap_tables(markup)
         markup, doc_used = link_citations(markup, bibliography)
         markup, doc_index, counter = collect_index(markup, counter)
         used_keys |= doc_used

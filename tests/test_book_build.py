@@ -109,6 +109,26 @@ def test_bibliography_parses_every_declared_entry(builder) -> None:
     assert "swebok-testing" in parsed
 
 
+def test_bibliography_entries_render_their_markdown(builder, built) -> None:
+    """Regression: entries were inserted raw, so 48 of 50 showed literal ``*``.
+
+    The entries are markdown fragments -- they italicise titles, mark revisions
+    as code, and end in bare URLs -- so they must go through a renderer rather
+    than straight into the page.
+    """
+    page, _ = built
+    rendered = re.findall(r'<li id="ref-[^"]+">.*?</li>', page, re.S)
+    assert len(rendered) == 50
+    literal_emphasis = [entry for entry in rendered if re.search(r"(?<!\*)\*(?!\*)", entry)]
+    assert not literal_emphasis, f"{len(literal_emphasis)} entries still show raw markdown"
+    assert sum("<em>" in entry for entry in rendered) >= 45
+    assert sum("<a href" in entry for entry in rendered) >= 15
+
+
+def test_render_inline_drops_the_wrapping_paragraph(builder) -> None:
+    assert builder.render_inline("Plain *title* here.") == "Plain <em>title</em> here."
+
+
 def test_qualifier_is_preserved_in_the_rendered_entry(builder) -> None:
     entries = dict(builder.load_bibliography(DESIGN))
     assert "ref-note" in entries["swebok-testing"]
@@ -204,6 +224,31 @@ def test_real_sequence_figures_all_expand(built) -> None:
     page, _ = built
     assert 'data-cols=' not in page  # every one was rewritten
     assert page.count('class="seq-col"') > 0
+
+
+# --------------------------------------------------------------------------
+# Tables
+# --------------------------------------------------------------------------
+
+
+def test_every_table_scrolls_inside_its_own_container(built) -> None:
+    """Regression: bare tables made the whole page scroll sideways on a phone.
+
+    A table wider than the viewport widened the document itself, so at 375px
+    every line of prose ran off-screen. Confining the scroll to the table keeps
+    the body readable. Code blocks already scroll inside their own ``<pre>``.
+    """
+    page, _ = built
+    tables = page.count("<table")
+    assert tables > 0, "the book rendered no tables, so this would prove nothing"
+    assert page.count('<div class="table-wrap"><table') == tables
+
+
+def test_wrap_tables_leaves_code_alone(builder) -> None:
+    markup = "<p>x</p><table><tr><td>a</td></tr></table><pre><code>&lt;table&gt;</code></pre>"
+    out = builder.wrap_tables(markup)
+    assert out.count('class="table-wrap"') == 1
+    assert "<pre><code>&lt;table&gt;</code></pre>" in out
 
 
 # --------------------------------------------------------------------------
