@@ -151,7 +151,11 @@ pre code { background: none; padding: 0; font-size: inherit; }
 
 /* ---- Tables ------------------------------------------------------------ */
 
-table { border-collapse: collapse; width: 100%; margin: 1.4rem 0; font-size: .9rem; font-family: var(--sans); }
+/* Tables scroll inside their own container. Left bare, a wide table widens the
+ * whole page, which on a phone pushes every line of prose off-screen; the
+ * wrapper confines that scroll to the table. build_book.py adds .table-wrap. */
+.table-wrap { overflow-x: auto; max-width: 100%; margin: 1.4rem 0; }
+table { border-collapse: collapse; width: 100%; margin: 0; font-size: .9rem; font-family: var(--sans); }
 th, td { border: 1px solid var(--rule); padding: .45rem .6rem; text-align: left; vertical-align: top; }
 th { background: var(--band-deep); font-weight: 600; }
 
@@ -302,12 +306,14 @@ th { background: var(--band-deep); font-weight: 600; }
 .ix { font: inherit; color: inherit; }
 
 .refs { list-style: none; padding-left: 0; font-size: .9rem; font-family: var(--sans); }
-.refs li { margin: .5rem 0; padding-left: 2.6rem; text-indent: -2.6rem; }
+/* Several entries end in a long unbreakable URL. Without break-word those run
+ * past the hanging indent and widen the page on a narrow screen. */
+.refs li { margin: .5rem 0; padding-left: 2.6rem; text-indent: -2.6rem; overflow-wrap: break-word; }
 .ref-num { font-family: var(--mono); color: var(--ink-soft); margin-right: .4rem; }
 
 .index { font-family: var(--sans); font-size: .88rem; columns: 2; column-gap: 2rem; }
-.index dt { font-weight: 600; margin-top: .5rem; break-after: avoid; }
-.index dd { margin-left: 1rem; }
+.index dt { font-weight: 600; margin-top: .5rem; break-after: avoid; overflow-wrap: break-word; }
+.index dd { margin-left: 1rem; overflow-wrap: break-word; }
 .index .locs { font-weight: 400; color: var(--ink-soft); }
 .index .locs a { text-decoration: none; margin-right: .15rem; }
 
