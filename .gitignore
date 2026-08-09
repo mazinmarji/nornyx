@@ -7,6 +7,9 @@ dist/
 build/
 *.egg-info/
 generated/
+# GitHub Pages staging directory produced by .github/workflows/pages.yml; the
+# published book is built on every deploy and never committed.
+_site/
 .DS_Store
 .env
 .env.*
