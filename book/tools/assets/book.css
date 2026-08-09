@@ -303,6 +303,16 @@ th { background: var(--band-deep); font-weight: 600; }
 }
 .nx-fig figcaption b { color: var(--ink); }
 
+/* Graph figures: Graphviz output, recoloured onto currentColor by the build so
+ * one rendering serves both colour schemes and stays grayscale-safe for print.
+ * The SVG keeps its viewBox but loses its fixed pixel size, so it scales to the
+ * column; .fig-body supplies the horizontal pan when a graph is wider still. */
+.nx-graph .fig-body { color: var(--ink); text-align: center; }
+.nx-graph svg { width: 100%; height: auto; display: inline-block; vertical-align: top; }
+/* Graphviz omits fill on text when the colour is its default, and SVG's own
+ * default is black -- invisible against the dark scheme. State it explicitly. */
+.nx-graph text { font-family: var(--sans); fill: currentColor; }
+
 /* Shared node primitive: a labelled box used by flows, zones, and hierarchies.
  *
  * The fill matters. Nodes were previously --paper, identical to the page, so a

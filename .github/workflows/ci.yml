@@ -34,6 +34,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "${{ matrix.python-version }}"
+      - name: Install Graphviz
+        # The book's 25 graph figures are Graphviz sources; without `dot` the
+        # build fails closed rather than emitting them as literal text, so every
+        # job that builds or tests the book needs the binary.
+        run: sudo apt-get update && sudo apt-get install -y graphviz
       - name: Install package
         run: python -m pip install -e ".[dev]" build twine
       - name: Run tests
@@ -795,6 +800,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install Graphviz
+        # The book's 25 graph figures are Graphviz sources; without `dot` the
+        # build fails closed rather than emitting them as literal text, so every
+        # job that builds or tests the book needs the binary.
+        run: sudo apt-get update && sudo apt-get install -y graphviz
       - name: Install package
         run: python -m pip install -e ".[dev]"
       - name: Build the book
@@ -833,6 +843,10 @@ jobs:
               problems.append(f"dangling references: {sorted(referenced - targets)}")
           if "data-cols=" in page:
               problems.append("a sequence figure was not expanded")
+          if page.count("<svg") != 25:
+              problems.append(f"graph figures: found {page.count('<svg')} SVGs, expected 25")
+          if "digraph" in page:
+              problems.append("a graph figure emitted its DOT source as text")
 
           print(f"book: {documents} documents, {len(referenced)} distinct works cited")
           for problem in problems:
@@ -917,6 +931,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install Graphviz
+        # As above; the Windows job runs the same suite.
+        run: choco install graphviz --no-progress -y
       - name: Install package
         run: python -m pip install -e ".[dev]" build twine
       - name: Run tests

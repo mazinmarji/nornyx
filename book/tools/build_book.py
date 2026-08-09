@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import html
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -68,6 +69,15 @@ _SEQ_COLS = re.compile(r'<div class="seq-cols" data-cols="([^"]*)"\s*>\s*</div>'
 _MSG = re.compile(r'<div class="msg"((?:\s+data-[a-z]+="[^"]*")+)\s*>')
 _ATTR = re.compile(r'data-([a-z]+)="([^"]*)"')
 _TABLE = re.compile(r"<table\b.*?</table>", re.S)
+
+# Graph figures are authored as Graphviz sources in ```dot fences, each opening
+# with `// fig=<n>-<m> title="..."`. Rendered as code they printed their own
+# source as literal text where a diagram belonged.
+_DOT_BLOCK = re.compile(r"^```dot\n(.*?)\n```", re.M | re.S)
+_DOT_HEADER = re.compile(r'^//\s*fig=([0-9]+-[0-9]+)\s+title="([^"]*)"', re.M)
+# The caption already exists as the paragraph following the fence; it is moved
+# into the figure so graph figures match the hand-written HTML ones.
+_FIG_CAPTION_P = re.compile(r"\s*<p><strong>(Figure [^<]*?)</strong>(.*?)</p>", re.S)
 
 # Renders markdown fragments (bibliography entries), as opposed to whole
 # documents. The `url` plugin turns the bare URLs several entries end in into
@@ -371,6 +381,135 @@ def classify_callouts(markup: str) -> str:
     return _CALLOUT.sub(tag, markup)
 
 
+def _graphviz_version() -> str:
+    """Return the installed Graphviz version, or raise BuildError if absent."""
+    try:
+        result = subprocess.run(
+            ["dot", "-V"], capture_output=True, text=True, check=False
+        )
+    except FileNotFoundError as exc:
+        raise BuildError(
+            "Graphviz is required to render the book's 25 graph figures, and `dot` "
+            "was not found on PATH. Without it those figures would print their own "
+            "source as literal text, which is the defect this rendering exists to "
+            "fix, so the build stops instead. Install Graphviz "
+            "(https://graphviz.org/download/) and re-run."
+        ) from exc
+    return (result.stderr or result.stdout).strip()
+
+
+def _theme_svg(svg: str) -> str:
+    """Make a Graphviz SVG inherit the page's colours and scale to its column.
+
+    Graphviz emits absolute colours and a fixed pixel size. Left alone the
+    figures would be black-on-black in the dark scheme and would overflow a
+    narrow column. Mapping the palette onto ``currentColor`` lets one rendering
+    serve both colour schemes, which also keeps the figures grayscale-safe for
+    print, as the visual language requires.
+    """
+    svg = svg[svg.index("<svg") :]  # drop the XML prolog and DOCTYPE
+
+    # Replace the fixed pixel size with an intrinsic cap. Dropping width/height
+    # outright makes the SVG fill its column, which upscaled a 338pt graph to
+    # 895px and 1864px tall -- coarse, and mostly empty vertical space. Keeping
+    # the natural size as a maximum lets small graphs sit at their true size and
+    # large ones scale down. Graphviz emits points; CSS pixels are 4/3 of those.
+    size = re.search(r'<svg width="([0-9.]+)pt" height="([0-9.]+)pt"', svg)
+    natural_px = round(float(size.group(1)) * 4 / 3) if size else None
+    cap = f' style="max-width:{natural_px}px"' if natural_px else ""
+    svg = re.sub(r'<svg width="[^"]*" height="[^"]*"', f"<svg{cap}", svg, count=1)
+
+    # Graphviz writes the layout font onto every text node. The book's stack has
+    # to win for display, and an unquoted family containing spaces would in any
+    # case produce a malformed attribute, so the attribute goes and CSS decides.
+    svg = re.sub(r'\s*font-family="[^"]*"(?:[^\s>]*)?', "", svg)
+    # The opaque page-coloured backdrop Graphviz paints behind the graph.
+    svg = re.sub(r'<polygon fill="white"[^/]*/>', "", svg)
+    svg = re.sub(r'\bfill="white"', 'fill="none"', svg)
+    # Cluster bands: a fixed light grey becomes a tint of the current ink, so it
+    # reads as a band in either scheme instead of a white slab in the dark one.
+    svg = re.sub(r'\bfill="#f2f2f2"', 'fill="currentColor" fill-opacity="0.07"', svg, flags=re.I)
+    svg = re.sub(r'\b(fill|stroke)="black"', r'\1="currentColor"', svg)
+    svg = re.sub(r'\b(fill|stroke)="#000000"', r'\1="currentColor"', svg, flags=re.I)
+    return svg.strip()
+
+
+def render_dot_figures(body: str, renderer=None) -> tuple[str, dict[str, str]]:
+    """Replace ```dot fences with rendered figures, keyed by placeholder.
+
+    Substitution happens after the markdown pass rather than before it, so a
+    50KB SVG never travels through the markdown parser. The returned mapping is
+    from placeholder token to the finished ``<figure>``.
+    """
+    figures: dict[str, str] = {}
+    render = renderer if renderer is not None else _render_dot
+
+    def replace(match: re.Match[str]) -> str:
+        source = match.group(1)
+        header = _DOT_HEADER.search(source)
+        if not header:
+            raise BuildError(
+                "a ```dot block has no `// fig=<n>-<m> title=\"...\"` header, so the "
+                "figure cannot be numbered or given an accessible name"
+            )
+        fig_id, title = header.group(1), header.group(2)
+        token = f"NORNYXDOTFIGURE{len(figures)}TOKEN"
+        svg = _theme_svg(render(source))
+        figures[token] = (
+            f'<figure class="nx-fig nx-graph" id="fig-{fig_id}" role="img" '
+            f'aria-label="{html.escape(title)}">'
+            f'<div class="fig-body">{svg}</div>'
+            f"</figure>"
+        )
+        return f"\n\n{token}\n\n"
+
+    return _DOT_BLOCK.sub(replace, body), figures
+
+
+def _render_dot(source: str) -> str:
+    result = subprocess.run(
+        [
+            "dot",
+            "-Tsvg",
+            "-Gbgcolor=transparent",
+            # A single unquoted family, used for layout metrics only: the
+            # stylesheet supplies the display font. Arial is chosen because it
+            # is metrically close to the book's sans stack, so the box sizes
+            # Graphviz computes still fit the text the browser draws.
+            "-Gfontname=Arial",
+            "-Nfontname=Arial",
+            "-Efontname=Arial",
+            "-Nfontsize=11",
+            "-Efontsize=10",
+        ],
+        input=source,
+        capture_output=True,
+        text=True,
+        check=False,
+        encoding="utf-8",
+    )
+    if result.returncode != 0:
+        raise BuildError(f"graphviz failed to render a figure: {result.stderr.strip()}")
+    return result.stdout
+
+
+def place_dot_figures(markup: str, figures: dict[str, str]) -> str:
+    """Swap placeholders for their figures, absorbing the caption that follows."""
+    for token, figure in figures.items():
+        pattern = re.compile(rf"<p>\s*{token}\s*</p>|{token}")
+        match = pattern.search(markup)
+        if not match:
+            raise BuildError(f"figure placeholder {token} vanished during rendering")
+        rest = markup[match.end() :]
+        caption = _FIG_CAPTION_P.match(rest)
+        if caption:
+            body = f"<figcaption><b>{caption.group(1)}</b>{caption.group(2)}</figcaption>"
+            figure = figure.replace("</figure>", f"{body}</figure>")
+            rest = rest[caption.end() :]
+        markup = markup[: match.start()] + figure + rest
+    return markup
+
+
 def wrap_tables(markup: str) -> str:
     """Put each table in its own horizontal scroll container.
 
@@ -564,6 +703,7 @@ def build_book(
     assets_dir: Path = ASSETS_DIR,
 ) -> tuple[str, dict]:
     """Build the whole book, returning ``(html, stats)``."""
+    graphviz = _graphviz_version()
     part_titles = load_part_titles(design_dir)
     bibliography = load_bibliography(design_dir)
     documents = load_documents(manuscript_dir)
@@ -574,9 +714,13 @@ def build_book(
     used_keys: set[str] = set()
     counter = 0
     figure_count = 0
+    graph_count = 0
 
     for doc in documents:
-        markup, headings = render_markdown(doc.body, doc.slug)
+        body, dot_figures = render_dot_figures(doc.body)
+        markup, headings = render_markdown(body, doc.slug)
+        markup = place_dot_figures(markup, dot_figures)
+        graph_count += len(dot_figures)
         markup = expand_sequences(markup)
         markup = classify_callouts(markup)
         markup = wrap_tables(markup)
@@ -659,10 +803,12 @@ def build_book(
         "appendices": sum(1 for d in documents if d.kind == "appendix"),
         "parts": len({d.part for d in documents if d.kind == "chapter"}),
         "figures": figure_count,
+        "graph_figures": graph_count,
         "index_entries": len(index_entries),
         "bibliography_entries": len(bibliography),
         "citations_used": len(used_keys),
         "bytes": len(page.encode("utf-8")),
+        "graphviz": graphviz.replace("dot - ", ""),
     }
     return page, stats
 

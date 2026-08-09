@@ -41,6 +41,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install Graphviz
+        # The book's 25 graph figures are Graphviz sources; the build fails
+        # closed without `dot` rather than publishing them as literal text.
+        run: sudo apt-get update && sudo apt-get install -y graphviz
       - name: Install package
         run: python -m pip install -e ".[dev]"
       - name: Build the book as the site index
@@ -63,6 +67,10 @@ jobs:
               problems.append("not all eight part openers are present")
           if "data-cols=" in page:
               problems.append("a sequence figure was not expanded")
+          if page.count("<svg") != 25:
+              problems.append(f"graph figures: found {page.count('<svg')} SVGs, expected 25")
+          if "digraph" in page:
+              problems.append("a graph figure published its DOT source as text")
 
           print(f"publishing {documents} documents, {len(page)} chars")
           for problem in problems:
