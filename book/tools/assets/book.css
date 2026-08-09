@@ -19,7 +19,13 @@
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --measure: 34rem;
+  /* Prose keeps a comfortable line length; figures deliberately break out past
+   * it. Earlier both were pinned to the same 34rem, which squeezed a five-step
+   * pipeline into four wrapped rows on a 1425px screen -- the figure stopped
+   * reading as a diagram and read as a run of boxed words. */
+  --measure: 40rem;
+  --wide: 60rem;
+  --nav: 17.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,7 +53,97 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-main, .toc, .titlepage { max-width: var(--measure); margin: 0 auto; padding: 0 1.25rem; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* ---- Layout -----------------------------------------------------------
+ * A persistent index beside the text, and a content column that lets figures
+ * out to a wider measure than the prose. */
+
+.layout { display: grid; grid-template-columns: var(--nav) minmax(0, 1fr); }
+.book { min-width: 0; }
+.toc, .titlepage { max-width: var(--wide); margin: 0 auto; padding: 0 1.5rem; }
+main { max-width: none; }
+
+/* Each document is its own centred grid: prose in the middle track, figures,
+ * tables, and listings spanning out to the wide track. */
+.doc {
+  display: grid;
+  grid-template-columns:
+    [wide-start] minmax(1.5rem, 1fr)
+    [text-start] min(var(--measure), 100% - 3rem) [text-end]
+    minmax(1.5rem, 1fr) [wide-end];
+}
+.doc > * { grid-column: text; }
+.doc > .nx-fig,
+.doc > .table-wrap,
+.doc > pre { grid-column: wide; width: min(var(--wide), 100% - 3rem); margin-inline: auto; }
+
+/* Anchors land clear of the top of the viewport rather than flush against it. */
+.doc, .doc h2, .doc h3, .part-opener { scroll-margin-top: 1.5rem; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Persistent index -------------------------------------------------
+ * Sticky, independently scrolled, and script-free: parts are <details>, so a
+ * reader can collapse the book down to the section in hand. On narrow screens
+ * it becomes a normal block at the top with the parts closed, so it costs a
+ * screenful rather than owning one. */
+
+.booknav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem 1rem 3rem;
+  border-right: 1px solid var(--rule);
+  background: var(--band);
+  font-family: var(--sans);
+  font-size: .82rem;
+  line-height: 1.4;
+}
+.booknav-home {
+  display: block;
+  font-weight: 700;
+  font-size: .9rem;
+  text-decoration: none;
+  color: var(--ink);
+  padding-bottom: .6rem;
+  margin-bottom: .5rem;
+  border-bottom: 2px solid var(--rule-strong);
+}
+.booknav ul { list-style: none; margin: .25rem 0 .6rem; padding: 0 0 0 .2rem; }
+.booknav-loose { margin-bottom: .8rem; }
+.booknav li { margin: 0; }
+.booknav a { display: block; color: var(--ink-soft); text-decoration: none; padding: .22rem .4rem; border-radius: 3px; }
+.booknav a:hover { background: var(--band-deep); color: var(--accent); }
+.booknav a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.booknav summary {
+  cursor: pointer;
+  padding: .35rem .2rem;
+  font-weight: 600;
+  color: var(--ink);
+  border-top: 1px solid var(--rule);
+}
+.booknav summary::marker { color: var(--ink-soft); }
+.booknav .pnum { display: block; font-variant: small-caps; letter-spacing: .07em; color: var(--accent); font-size: .78rem; }
+.booknav .ptitle { display: block; font-weight: 500; font-size: .8rem; }
+.booknav .cnum {
+  display: inline-block; min-width: 1.5em; margin-right: .3rem;
+  font-family: var(--mono); font-size: .78em; color: var(--ink-soft);
+}
+
+@media (max-width: 1100px) {
+  .booknav {
+    position: static; height: auto; max-height: 45vh;
+    border-right: none; border-bottom: 2px solid var(--rule-strong);
+    margin-bottom: 1.5rem;
+  }
+}
 
 /* ---- Title page ------------------------------------------------------- */
 
@@ -127,6 +223,34 @@ blockquote > :last-child { margin-bottom: 0; }
 blockquote strong:first-child { font-family: var(--sans); font-size: .88em; letter-spacing: .02em; }
 blockquote ul, blockquote ol { margin: .5rem 0; }
 
+/* Callout kinds. build_book.py types each blockquote from its bolded lead.
+ *
+ * Undifferentiated, the nine recurring kinds read as one long grey block: a
+ * worked example, a warning about a common error, and a statement of scope all
+ * looked alike, so a reader skimming for the argument could not tell which
+ * blocks carried it. Distinctions are carried by border style and weight, with
+ * hue only reinforcing, so they survive the monochrome printing the visual
+ * language requires. */
+
+.callout-scenario { border-left-style: double; border-left-width: 6px; background: transparent; }
+.callout-scenario > p:first-child strong { font-variant: small-caps; letter-spacing: .06em; }
+
+.callout-objectives { border-left-style: dotted; border-left-width: 5px; }
+.callout-prerequisites { border-left-width: 2px; font-size: .92rem; background: transparent; }
+
+/* The load-bearing claims of a chapter. */
+.callout-key { border-left-width: 6px; border-left-color: var(--accent); background: var(--band-deep); }
+.callout-key > p:first-child strong { color: var(--accent); }
+
+/* A correction reads as a correction only if it looks unlike the surrounding
+ * explanation; the ruled box separates it from the prose it is contradicting. */
+.callout-misconception { border: 1px solid var(--rule-strong); border-left-width: 6px; }
+
+.callout-case { border-left-style: solid; border-left-color: var(--accent); background: transparent; border-left-width: 4px; }
+.callout-assurance { border-left-style: dashed; border-left-width: 5px; }
+.callout-practice { border-left-width: 4px; background: var(--band-deep); }
+.callout-checkpoint { border-left-style: groove; border-left-width: 6px; }
+
 /* ---- Code -------------------------------------------------------------- */
 
 code {
@@ -162,13 +286,16 @@ th { background: var(--band-deep); font-weight: 600; }
 /* ---- Figures ----------------------------------------------------------- */
 
 .nx-fig {
-  margin: 1.9rem 0;
-  padding: 1rem 1rem .8rem;
+  margin: 2.2rem 0;
+  padding: 1.25rem 1.25rem 1rem;
   border: 1px solid var(--rule);
+  border-top: 3px solid var(--rule-strong);
   background: var(--paper);
   break-inside: avoid;
 }
-.nx-fig .fig-body { font-family: var(--sans); font-size: .84rem; }
+/* Figures pan rather than reflow, at every width. Wrapping a pipeline across
+ * rows destroys the left-to-right reading the figure exists to convey. */
+.nx-fig .fig-body { font-family: var(--sans); font-size: .9rem; overflow-x: auto; padding-bottom: .2rem; }
 .nx-fig figcaption {
   margin-top: .9rem; padding-top: .6rem;
   border-top: 1px solid var(--rule);
@@ -176,13 +303,19 @@ th { background: var(--band-deep); font-weight: 600; }
 }
 .nx-fig figcaption b { color: var(--ink); }
 
-/* Shared node primitive: a labelled box used by flows, zones, and hierarchies. */
+/* Shared node primitive: a labelled box used by flows, zones, and hierarchies.
+ *
+ * The fill matters. Nodes were previously --paper, identical to the page, so a
+ * node on the page background was a hairline outline around small text and read
+ * as a word rather than a box. The three surfaces now step apart: page --paper,
+ * container --band, node --band-deep, in both colour schemes. */
 .node {
   border: 1px solid var(--rule-strong);
-  background: var(--paper);
-  padding: .35rem .55rem;
+  background: var(--band-deep);
+  padding: .45rem .7rem;
   text-align: center;
-  border-radius: 2px;
+  border-radius: 3px;
+  line-height: 1.3;
 }
 .node.authority, .authority { border-width: 3px; border-style: double; font-weight: 600; }
 .node.untrusted, .untrusted { border-style: dashed; color: var(--ink-soft); }
@@ -205,10 +338,16 @@ th { background: var(--band-deep); font-weight: 600; }
   margin-top: .15rem;
 }
 
-/* Flows: left-to-right pipelines. Arrow semantics are glyph-carried. */
-.flow { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
-.flow-col { display: flex; flex-direction: column; gap: .5rem; }
-.flow .arr { color: var(--ink-soft); font-size: 1.1em; padding: 0 .1rem; }
+/* Flows: left-to-right pipelines. Arrow semantics are glyph-carried.
+ *
+ * nowrap is load-bearing. With wrapping, 34 of this book's 42 flows broke onto
+ * two to four rows, so the arrows pointed right off the end of a line and the
+ * steps could be read in the wrong order. The enclosing .fig-body scrolls. */
+.flow { display: flex; align-items: stretch; gap: .35rem; flex-wrap: nowrap; }
+.flow > .node, .flow > .arr { flex: 0 0 auto; }
+.flow > .node { display: flex; align-items: center; justify-content: center; }
+.flow-col { display: flex; flex-direction: column; gap: .6rem; }
+.flow .arr { color: var(--accent); font-size: 1.25em; padding: 0 .15rem; align-self: center; font-weight: 700; }
 .flow .arr.deny::after { content: " ⛔"; }
 .flow .arr.dashed { opacity: .65; letter-spacing: -.1em; }
 
@@ -246,6 +385,17 @@ th { background: var(--band-deep); font-weight: 600; }
   text-align: center;
   font-size: .82em;
 }
+/* Roughly 7rem per participant, at every width, so message text stays readable
+ * rather than compressing into a column one word wide. The enclosing .fig-body
+ * scrolls when that exceeds the space available. */
+.seq:has(.seq-cols[data-count="2"]) { min-width: 14rem; }
+.seq:has(.seq-cols[data-count="3"]) { min-width: 21rem; }
+.seq:has(.seq-cols[data-count="4"]) { min-width: 28rem; }
+.seq:has(.seq-cols[data-count="5"]) { min-width: 35rem; }
+.seq:has(.seq-cols[data-count="6"]) { min-width: 42rem; }
+.seq:has(.seq-cols[data-count="7"]) { min-width: 49rem; }
+.seq:has(.seq-cols[data-count="8"]) { min-width: 56rem; }
+
 .seq:has(.seq-cols[data-count="2"]) { grid-template-columns: repeat(2, 1fr); }
 .seq:has(.seq-cols[data-count="3"]) { grid-template-columns: repeat(3, 1fr); }
 .seq:has(.seq-cols[data-count="4"]) { grid-template-columns: repeat(4, 1fr); }
@@ -320,10 +470,15 @@ th { background: var(--band-deep); font-weight: 600; }
 /* ---- Print ------------------------------------------------------------- */
 
 @media print {
-  :root { --paper: #fff; --ink: #000; --band: #f4f4f4; --accent: #000; }
+  :root { --paper: #fff; --ink: #000; --band: #f4f4f4; --band-deep: #ebebeb; --accent: #000; }
   body { font-size: 10.5pt; }
+  /* Screen navigation has no meaning on paper; the contents page carries it. */
+  .booknav { display: none; }
+  .layout { display: block; }
   .toc { break-after: page; }
   .nx-fig, blockquote, pre, table { break-inside: avoid; }
+  /* Panning is a screen affordance; on paper the content must simply be there. */
+  .nx-fig .fig-body, .table-wrap { overflow: visible; }
   a { color: inherit; text-decoration: none; }
   .index { columns: 2; }
 }
@@ -331,35 +486,8 @@ th { background: var(--band-deep); font-weight: 600; }
 @media (max-width: 640px) {
   body { font-size: 16px; }
   .index { columns: 1; }
-
-  /* Narrow screens pan the figure rather than dismantle it.
-   *
-   * An earlier rule here collapsed sequences to `display: block` and hid
-   * .seq-col outright, which removed every column label and left an unlabelled
-   * stack of sentences: the diagram stopped being a diagram and read as prose.
-   * A figure whose whole content is the relationship between columns cannot
-   * survive losing them. So the figure body scrolls, exactly as tables do, and
-   * the diagram keeps its structure at a legible size.
-   *
-   * Only the two horizontal forms need this. Layers and tiers are vertical
-   * stacks, hierarchies are nested lists, and zones wrap without losing the
-   * containment they exist to show -- all of them read correctly when narrow.
-   */
-  .nx-fig .fig-body { overflow-x: auto; }
-
-  /* Roughly 6rem per participant keeps message text readable rather than
-   * squeezing it into a column one word wide. */
-  .seq:has(.seq-cols[data-count="2"]) { min-width: 12rem; }
-  .seq:has(.seq-cols[data-count="3"]) { min-width: 18rem; }
-  .seq:has(.seq-cols[data-count="4"]) { min-width: 24rem; }
-  .seq:has(.seq-cols[data-count="5"]) { min-width: 30rem; }
-  .seq:has(.seq-cols[data-count="6"]) { min-width: 36rem; }
-  .seq:has(.seq-cols[data-count="7"]) { min-width: 42rem; }
-  .seq:has(.seq-cols[data-count="8"]) { min-width: 48rem; }
-
-  /* A pipeline read out of order is not a pipeline; keep it on one line. */
-  .flow { flex-wrap: nowrap; }
-  .flow > .node, .flow > .arr { flex: 0 0 auto; }
-
   .tiers { flex-direction: column; }
+  .titlepage { padding-top: 2.5rem; }
+  .titlepage h1 { font-size: 1.9rem; }
+  .nx-fig { padding: .9rem .9rem .8rem; }
 }

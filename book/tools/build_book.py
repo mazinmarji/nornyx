@@ -336,6 +336,41 @@ def expand_sequences(markup: str) -> str:
     return _MSG.sub(place_message, markup)
 
 
+# The manuscript expresses every callout as a blockquote whose first element is
+# a bolded lead. Nine of them recur across all 41 chapters, and undifferentiated
+# they read as one undifferentiated grey block: a worked example, a warning
+# about a common error, and a statement of scope all look alike. Typing them
+# here lets the stylesheet distinguish them without asking writers to add
+# classes by hand.
+CALLOUT_KINDS = {
+    "Opening scenario": "scenario",
+    "Learning objectives": "objectives",
+    "Prerequisites": "prerequisites",
+    "Key idea": "key",
+    "Misconception": "misconception",
+    "Case study": "case",
+    "Assurance boundary": "assurance",
+    "Nornyx in practice": "practice",
+    "Design checkpoint": "checkpoint",
+}
+_CALLOUT = re.compile(r"<blockquote>\s*<p><strong>([^<.—-]+)")
+
+
+def classify_callouts(markup: str) -> str:
+    """Tag each callout blockquote with the kind named in its bolded lead."""
+
+    def tag(match: re.Match[str]) -> str:
+        lead = match.group(1).strip().rstrip(".").strip()
+        kind = CALLOUT_KINDS.get(lead)
+        if kind is None:
+            return match.group(0)
+        return match.group(0).replace(
+            "<blockquote>", f'<blockquote class="callout callout-{kind}">', 1
+        )
+
+    return _CALLOUT.sub(tag, markup)
+
+
 def wrap_tables(markup: str) -> str:
     """Put each table in its own horizontal scroll container.
 
@@ -430,6 +465,63 @@ def build_index_html(entries: list[tuple[str, str]]) -> str:
     return '<dl class="index">\n' + "\n".join(rows) + "\n</dl>"
 
 
+def build_nav(documents: list[Document], part_titles: dict[str, str]) -> str:
+    """Render the persistent sidebar index.
+
+    A 41-chapter book read as one long page needs somewhere to stand: the
+    contents page at the top is only reachable by scrolling back to it. This nav
+    stays on screen so a reader can move between subjects at any point. Parts
+    are ``<details>`` so the list can be collapsed to the section in hand, which
+    keeps it navigable without any script.
+    """
+    lines = ['<nav class="booknav" aria-label="Book contents">']
+    lines.append('<a class="booknav-home" href="#top">Contents</a>')
+
+    front = [d for d in documents if d.kind == "front"]
+    if front:
+        lines.append('<ul class="booknav-loose">')
+        lines += [f'<li><a href="#{d.slug}">{html.escape(d.title)}</a></li>' for d in front]
+        lines.append("</ul>")
+
+    for roman in PART_ORDER:
+        chapters = [d for d in documents if d.kind == "chapter" and d.part == roman]
+        if not chapters:
+            continue
+        lines.append(
+            f"<details open><summary><span class=\"pnum\">Part {roman}</span>"
+            f'<span class="ptitle">{html.escape(part_titles[roman])}</span></summary><ul>'
+        )
+        for doc in chapters:
+            lines.append(
+                f'<li><a href="#{doc.slug}"><span class="cnum">{doc.chapter}</span>'
+                f"{html.escape(doc.title)}</a></li>"
+            )
+        lines.append("</ul></details>")
+
+    appendices = [d for d in documents if d.kind == "appendix"]
+    if appendices:
+        lines.append('<details><summary><span class="pnum">Appendices</span></summary><ul>')
+        for doc in appendices:
+            # The frontmatter title already reads "Appendix A - ...", so strip
+            # the redundant prefix and let the letter badge carry it.
+            short = re.sub(r"^Appendix\s+[A-Z]\s*[—-]\s*", "", doc.title)
+            lines.append(
+                f'<li><a href="#{doc.slug}"><span class="cnum">{doc.appendix}</span>'
+                f"{html.escape(short)}</a></li>"
+            )
+        lines.append("</ul></details>")
+
+    back = [d for d in documents if d.kind == "back"]
+    lines.append('<details><summary><span class="pnum">End matter</span></summary><ul>')
+    lines += [f'<li><a href="#{d.slug}">{html.escape(d.title)}</a></li>' for d in back]
+    lines.append('<li><a href="#bibliography">Bibliography</a></li>')
+    lines.append('<li><a href="#index">Index</a></li>')
+    lines.append("</ul></details>")
+
+    lines.append("</nav>")
+    return "\n".join(lines)
+
+
 def build_toc(documents: list[Document], part_titles: dict[str, str]) -> str:
     """Render the table of contents, grouping chapters under their parts."""
     lines = ['<nav class="toc" id="toc">', "<h1>Contents</h1>", "<ol class=\"toc-list\">"]
@@ -486,6 +578,7 @@ def build_book(
     for doc in documents:
         markup, headings = render_markdown(doc.body, doc.slug)
         markup = expand_sequences(markup)
+        markup = classify_callouts(markup)
         markup = wrap_tables(markup)
         markup, doc_used = link_citations(markup, bibliography)
         markup, doc_index, counter = collect_index(markup, counter)
@@ -528,6 +621,7 @@ def build_book(
 
     css = _read(assets_dir / "book.css")
     toc = build_toc(documents, part_titles)
+    nav = build_nav(documents, part_titles)
 
     page = f"""<!doctype html>
 <html lang="en">
@@ -539,7 +633,10 @@ def build_book(
 {css}
 </style>
 </head>
-<body>
+<body id="top">
+<div class="layout">
+{nav}
+<div class="book">
 <header class="titlepage">
 <h1>{html.escape(BOOK_TITLE)}</h1>
 <p class="subtitle">{html.escape(BOOK_SUBTITLE)}</p>
@@ -550,6 +647,8 @@ def build_book(
 {bibliography_html}
 {index_html}
 </main>
+</div>
+</div>
 </body>
 </html>
 """
