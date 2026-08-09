@@ -1,0 +1,80 @@
+name: Pages
+
+# Publishes the textbook to https://mazinmarji.github.io/nornyx/ so readers can
+# open it without a GitHub account. The CI `book` job already builds and gates
+# the same output on every pull request; this workflow only runs once a change
+# is on main, so it publishes what CI has already checked rather than acting as
+# a second, weaker gate.
+
+on:
+  push:
+    branches: [main]
+    # Only republish when something that changes the book changes. A code-only
+    # commit does not need a redeploy.
+    paths:
+      - "book/**"
+      - ".github/workflows/pages.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; queue instead of cancelling, so the page always
+# ends up matching the newest commit rather than whichever finished last.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+      - name: Build the book as the site index
+        run: python book/tools/build_book.py --out _site/index.html
+      - name: Assert the published page is the whole book
+        # Publishing is outward-facing: a truncated build must not reach a public
+        # URL. These are the same structural facts the CI `book` job pins.
+        run: |
+          python - _site/index.html <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          page = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          documents = len(re.findall(r'<section class="doc ', page))
+          problems = []
+          if documents != 56:  # 54 manuscript documents + bibliography + index
+              problems.append(f"documents: found {documents}, expected 56")
+          if page.count('class="part-opener"') != 8:
+              problems.append("not all eight part openers are present")
+          if "data-cols=" in page:
+              problems.append("a sequence figure was not expanded")
+
+          print(f"publishing {documents} documents, {len(page)} chars")
+          for problem in problems:
+              print("PROBLEM:", problem)
+          sys.exit(1 if problems else 0)
+          PY
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
