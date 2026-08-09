@@ -226,9 +226,59 @@ def test_real_sequence_figures_all_expand(built) -> None:
     assert page.count('class="seq-col"') > 0
 
 
+def test_recurring_callouts_are_typed(builder, built) -> None:
+    """All nine recurring callout kinds must be distinguishable.
+
+    Undifferentiated they read as one long grey block, so a reader skimming for
+    the argument cannot tell a worked example from a warning from a statement of
+    scope. The kind comes from the bolded lead, not from writer-added classes.
+    """
+    page, _ = built
+    found = {
+        kind: page.count(f'callout callout-{kind}"') for kind in set(builder.CALLOUT_KINDS.values())
+    }
+    assert all(count > 0 for count in found.values()), found
+    # Every chapter opens with a scenario, objectives, and prerequisites.
+    assert found["scenario"] == 41
+    assert found["objectives"] == 41
+    assert found["prerequisites"] == 41
+    assert sum(found.values()) > 300
+
+
+def test_unknown_callout_leads_fall_through_untyped(builder) -> None:
+    """One-off leads keep the generic style rather than being mislabelled."""
+    markup = "<blockquote>\n<p><strong>Residual risks accepted.</strong> text</p></blockquote>"
+    assert builder.classify_callouts(markup) == markup
+
+
 def _stylesheet(page: str) -> str:
     css = page.split("<style>", 1)[1].split("</style>", 1)[0]
     return re.sub(r"\s+", " ", css)
+
+
+def _without_viewport_media_blocks(css: str) -> str:
+    """Strip ``@media (max-width: ...)`` blocks, brace-matched.
+
+    Splitting on the first ``@media`` does not work: the dark-scheme block sits
+    near the top of the file and would take the whole stylesheet with it.
+    """
+    out, i = [], 0
+    while i < len(css):
+        start = css.find("@media (max-width", i)
+        if start == -1:
+            out.append(css[i:])
+            break
+        out.append(css[i:start])
+        depth, j = 0, css.index("{", start)
+        for j in range(j, len(css)):
+            if css[j] == "{":
+                depth += 1
+            elif css[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+        i = j + 1
+    return "".join(out)
 
 
 def test_stylesheet_never_hides_sequence_columns(built) -> None:
@@ -244,11 +294,38 @@ def test_stylesheet_never_hides_sequence_columns(built) -> None:
     assert re.search(r"\.seq-col[^{]*\{[^}]*display:\s*none", css) is None
 
 
-def test_narrow_screens_pan_figures_rather_than_reflow_them(built) -> None:
+def test_figures_pan_rather_than_reflow_at_every_width(built) -> None:
+    """Panning is not a narrow-screen special case.
+
+    Wrapping broke figures on the desktop too: 34 of 42 flows ran onto two to
+    four rows inside the old 34rem column, so arrows pointed off the end of a
+    line and steps could be read out of order. Both rules are therefore global,
+    not confined to a media query.
+    """
+    unconditional = _without_viewport_media_blocks(_stylesheet(built[0]))
+    assert re.search(r"\.nx-fig \.fig-body \{[^}]*overflow-x: auto", unconditional)
+    assert re.search(r"\.flow \{[^}]*flex-wrap: nowrap", unconditional)
+
+
+def test_nodes_are_visually_distinct_from_the_page(built) -> None:
+    """Regression: nodes were --paper, the same fill as the page behind them.
+
+    A box with no fill contrast and a hairline border reads as a word rather
+    than a box, which is why figures looked like text. Page, container, and node
+    now occupy three different surfaces.
+    """
     css = _stylesheet(built[0])
-    assert ".nx-fig .fig-body { overflow-x: auto; }" in css
-    # A pipeline read out of order is not a pipeline.
-    assert re.search(r"\.flow \{ flex-wrap: nowrap", css) is not None
+    node_rule = re.search(r"\.node \{[^}]*\}", css)
+    assert node_rule, "no .node rule found"
+    assert "background: var(--band-deep)" in node_rule.group(0)
+
+
+def test_prose_and_figures_get_different_measures(built) -> None:
+    """Figures must be allowed wider than the text column, or they cramp."""
+    css = _stylesheet(built[0])
+    assert re.search(r"--measure:\s*40rem", css)
+    assert re.search(r"--wide:\s*60rem", css)
+    assert ".doc > .nx-fig," in css  # figures break out of the prose track
 
 
 # --------------------------------------------------------------------------
@@ -336,6 +413,31 @@ def test_table_of_contents_links_to_every_document(builder, built) -> None:
     for doc in builder.load_documents(MANUSCRIPT):
         assert f'href="#{doc.slug}"' in page
         assert f'id="{doc.slug}"' in page
+
+
+def test_persistent_index_reaches_every_chapter_and_appendix(builder, built) -> None:
+    """The sidebar is how a reader moves between subjects mid-book.
+
+    The contents page at the top is only reachable by scrolling back to it, so
+    every chapter, appendix, and end-matter target must also be in the nav that
+    stays on screen.
+    """
+    page, _ = built
+    nav = page.split('<nav class="booknav"', 1)[1].split("</nav>", 1)[0]
+    documents = builder.load_documents(MANUSCRIPT)
+    for doc in documents:
+        assert f'href="#{doc.slug}"' in nav, f"{doc.label} missing from the persistent index"
+    assert 'href="#bibliography"' in nav
+    assert 'href="#index"' in nav
+    # Grouped by part so 41 chapters stay scannable.
+    assert nav.count("<details") == len(builder.PART_ORDER) + 2  # parts + appendices + end matter
+
+
+def test_index_navigation_needs_no_script(built) -> None:
+    """Collapsible parts are <details>, so navigation survives with JS disabled."""
+    page, _ = built
+    assert "<script" not in page
+    assert "<details" in page
 
 
 def test_main_cli_writes_the_book(builder, tmp_path: Path, capsys) -> None:
