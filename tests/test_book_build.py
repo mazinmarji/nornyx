@@ -226,6 +226,31 @@ def test_real_sequence_figures_all_expand(built) -> None:
     assert page.count('class="seq-col"') > 0
 
 
+def _stylesheet(page: str) -> str:
+    css = page.split("<style>", 1)[1].split("</style>", 1)[0]
+    return re.sub(r"\s+", " ", css)
+
+
+def test_stylesheet_never_hides_sequence_columns(built) -> None:
+    """Regression: a narrow-screen rule set ``.seq-col { display: none }``.
+
+    That stripped every column label from sequence figures on a phone, leaving
+    an unlabelled stack of sentences -- the diagram stopped being a diagram and
+    read as prose. A figure whose content *is* the relationship between its
+    columns cannot survive losing them, so narrow screens pan the figure
+    instead.
+    """
+    css = _stylesheet(built[0])
+    assert re.search(r"\.seq-col[^{]*\{[^}]*display:\s*none", css) is None
+
+
+def test_narrow_screens_pan_figures_rather_than_reflow_them(built) -> None:
+    css = _stylesheet(built[0])
+    assert ".nx-fig .fig-body { overflow-x: auto; }" in css
+    # A pipeline read out of order is not a pipeline.
+    assert re.search(r"\.flow \{ flex-wrap: nowrap", css) is not None
+
+
 # --------------------------------------------------------------------------
 # Tables
 # --------------------------------------------------------------------------

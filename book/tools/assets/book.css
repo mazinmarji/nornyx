@@ -331,8 +331,35 @@ th { background: var(--band-deep); font-weight: 600; }
 @media (max-width: 640px) {
   body { font-size: 16px; }
   .index { columns: 1; }
+
+  /* Narrow screens pan the figure rather than dismantle it.
+   *
+   * An earlier rule here collapsed sequences to `display: block` and hid
+   * .seq-col outright, which removed every column label and left an unlabelled
+   * stack of sentences: the diagram stopped being a diagram and read as prose.
+   * A figure whose whole content is the relationship between columns cannot
+   * survive losing them. So the figure body scrolls, exactly as tables do, and
+   * the diagram keeps its structure at a legible size.
+   *
+   * Only the two horizontal forms need this. Layers and tiers are vertical
+   * stacks, hierarchies are nested lists, and zones wrap without losing the
+   * containment they exist to show -- all of them read correctly when narrow.
+   */
+  .nx-fig .fig-body { overflow-x: auto; }
+
+  /* Roughly 6rem per participant keeps message text readable rather than
+   * squeezing it into a column one word wide. */
+  .seq:has(.seq-cols[data-count="2"]) { min-width: 12rem; }
+  .seq:has(.seq-cols[data-count="3"]) { min-width: 18rem; }
+  .seq:has(.seq-cols[data-count="4"]) { min-width: 24rem; }
+  .seq:has(.seq-cols[data-count="5"]) { min-width: 30rem; }
+  .seq:has(.seq-cols[data-count="6"]) { min-width: 36rem; }
+  .seq:has(.seq-cols[data-count="7"]) { min-width: 42rem; }
+  .seq:has(.seq-cols[data-count="8"]) { min-width: 48rem; }
+
+  /* A pipeline read out of order is not a pipeline; keep it on one line. */
+  .flow { flex-wrap: nowrap; }
+  .flow > .node, .flow > .arr { flex: 0 0 auto; }
+
   .tiers { flex-direction: column; }
-  .seq { display: block; }
-  .seq-col { display: none; }
-  .msg { border: 1px solid var(--rule); margin: .2rem 0; text-align: left; }
 }
