@@ -329,6 +329,95 @@ def test_prose_and_figures_get_different_measures(built) -> None:
 
 
 # --------------------------------------------------------------------------
+# Graph figures (Graphviz)
+# --------------------------------------------------------------------------
+
+
+def test_every_dot_source_becomes_a_rendered_graph(built) -> None:
+    """Regression: 25 ```dot blocks printed their own source as literal text.
+
+    Where a diagram belonged, the reader saw ``digraph G { rankdir=TB; ... }``.
+    Nothing in the HTML was malformed, which is why structural checks passed.
+    """
+    page, stats = built
+    assert stats["graph_figures"] == 25
+    assert page.count('class="nx-fig nx-graph"') == 25
+    assert page.count("<svg") == 25
+    # The failure mode itself: no DOT source may survive into the output.
+    assert "language-dot" not in page
+    assert "digraph" not in page
+
+
+def test_graph_figures_are_numbered_named_and_captioned(built) -> None:
+    page, _ = built
+    figures = re.findall(r'<figure class="nx-fig nx-graph"[^>]*>', page)
+    assert len(figures) == 25
+    for tag in figures:
+        assert re.search(r'id="fig-\d+-\d+"', tag), tag
+        assert 'role="img"' in tag and "aria-label=" in tag, tag
+    # The caption paragraph that followed each fence is absorbed into the figure.
+    elements = re.findall(r'<figure class="nx-fig nx-graph".*?</figure>', page, re.S)
+    assert len(elements) == 25
+    assert all("<figcaption>" in element for element in elements)
+
+
+def test_graph_svgs_adopt_the_page_palette(built) -> None:
+    """One rendering must serve both colour schemes, and print.
+
+    Graphviz emits absolute colours; left alone the graphs are black on black in
+    the dark scheme. Text carries no fill attribute at all, so SVG's own black
+    default applies -- that is fixed in CSS, and asserted here as the absence of
+    any baked-in colour.
+    """
+    page, _ = built
+    svg_region = "".join(re.findall(r"<svg.*?</svg>", page, re.S))
+    assert 'fill="white"' not in svg_region
+    assert 'stroke="black"' not in svg_region
+    assert 'fill="black"' not in svg_region
+    assert svg_region.count("currentColor") > 500
+    # Graphviz writes the layout font onto every text node; an unquoted family
+    # containing spaces would also produce a malformed attribute.
+    assert "font-family=" not in svg_region
+
+
+def test_graph_svgs_keep_their_natural_size_as_a_maximum(built) -> None:
+    """Dropping width/height outright upscaled a 338pt graph to 895x1864px."""
+    page, _ = built
+    caps = re.findall(r'<svg style="max-width:(\d+)px"', page)
+    assert len(caps) == 25
+    assert all(int(c) > 0 for c in caps)
+    assert '<svg width="' not in page  # no fixed pixel size survives
+
+
+def test_dot_block_without_a_header_is_rejected(builder) -> None:
+    body = "```dot\ndigraph G { a -> b; }\n```\n"
+    with pytest.raises(builder.BuildError, match="no `// fig="):
+        builder.render_dot_figures(body, renderer=lambda src: "<svg></svg>")
+
+
+def test_dot_rendering_does_not_pass_svg_through_the_markdown_parser(builder) -> None:
+    """A 50KB SVG must not travel through mistune, so a token stands in for it."""
+    body = '```dot\n// fig=9-9 title="T"\ndigraph G { a -> b; }\n```\n'
+    stripped, figures = builder.render_dot_figures(body, renderer=lambda src: "<svg>x</svg>")
+    assert "digraph" not in stripped
+    assert len(figures) == 1
+    token = next(iter(figures))
+    assert token in stripped
+    assert 'id="fig-9-9"' in figures[token]
+
+
+def test_missing_graphviz_stops_the_build_with_an_actionable_message(builder, monkeypatch) -> None:
+    """Silently emitting DOT source as text is the defect being fixed."""
+
+    def _absent(*args, **kwargs):
+        raise FileNotFoundError("dot")
+
+    monkeypatch.setattr(builder.subprocess, "run", _absent)
+    with pytest.raises(builder.BuildError, match="Graphviz is required"):
+        builder._graphviz_version()
+
+
+# --------------------------------------------------------------------------
 # Tables
 # --------------------------------------------------------------------------
 

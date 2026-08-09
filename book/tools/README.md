@@ -6,6 +6,10 @@ Assembles the manuscript in `book/manuscript/` into one reviewable HTML file.
 python book/tools/build_book.py
 ```
 
+**Requires [Graphviz](https://graphviz.org/download/)** on `PATH`. Twenty-five of
+the book's figures are Graphviz sources; without `dot` the build stops rather
+than emitting them as literal text.
+
 The result is `book/tools/out/book.html` — a single self-contained document with
 the stylesheet inlined, so it opens from disk with no server and no network.
 `book/.gitignore` keeps the output untracked; it is a generated artifact.
@@ -33,6 +37,7 @@ Most of the manuscript's figure vocabulary
 | Sequence figures | `<div class="seq-cols" data-cols="Agent\|Adapter\|Tool">` carries its columns in a delimited attribute, and CSS cannot split an attribute value. The build expands them into elements and resolves each message's `data-from`/`data-to` into an explicit `grid-column`. |
 | Citations | `[@key]` becomes a numbered link into the canonical bibliography in `book/design/05_bibliography.md`. |
 | Index | The 611 `<span class="ix" data-ix="main!sub">` markers each get an anchor, collected into a back-of-book index with `!` nesting sub-entries. |
+| Graph figures | 25 ```` ```dot ```` fences are rendered through Graphviz and recoloured onto `currentColor`, so one rendering serves light, dark, and print. |
 
 Ordering comes from frontmatter (`chapter`, `part`, `appendix`), never from
 filenames, so renaming a file cannot silently reorder the book. Part titles are
