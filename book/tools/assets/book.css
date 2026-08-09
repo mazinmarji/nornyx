@@ -1,0 +1,332 @@
+/* Design system for the Governed Agentic Systems manuscript.
+ *
+ * Implements the figure vocabulary that book/design/04_visual_language.md
+ * declares "CSS provided by the build": layers, flows, zones, sequences, tiers,
+ * hierarchies. Everything is grayscale-safe by construction -- meaning is
+ * carried by border style, weight, and glyph, never by hue alone -- because the
+ * visual language requires figures to survive monochrome printing.
+ */
+
+:root {
+  --ink: #16181d;
+  --ink-soft: #4a5060;
+  --paper: #ffffff;
+  --rule: #c9ccd4;
+  --rule-strong: #16181d;
+  --band: #f2f3f6;
+  --band-deep: #e4e6ec;
+  --accent: #1f4e79;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --measure: 34rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6e8ee;
+    --ink-soft: #a2a9b8;
+    --paper: #14161a;
+    --rule: #3a3f4a;
+    --rule-strong: #e6e8ee;
+    --band: #1c1f25;
+    --band-deep: #23272f;
+    --accent: #86b5e0;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-text-size-adjust: 100%;
+}
+
+main, .toc, .titlepage { max-width: var(--measure); margin: 0 auto; padding: 0 1.25rem; }
+
+/* ---- Title page ------------------------------------------------------- */
+
+.titlepage {
+  padding: 4.5rem 1.25rem 3rem;
+  border-bottom: 3px double var(--rule-strong);
+  margin-bottom: 2.5rem;
+}
+.titlepage h1 { font-size: 2.6rem; line-height: 1.12; margin: 0 0 .6rem; letter-spacing: -.01em; }
+.titlepage .subtitle { font-family: var(--sans); color: var(--ink-soft); font-size: 1.02rem; margin: 0; }
+
+/* ---- Table of contents ------------------------------------------------ */
+
+.toc { margin-bottom: 3.5rem; font-family: var(--sans); font-size: .93rem; }
+.toc h1 { font-family: var(--serif); font-size: 1.5rem; border-bottom: 1px solid var(--rule); padding-bottom: .4rem; }
+.toc ol { list-style: none; padding-left: 0; margin: 0; }
+.toc-list > li { margin: .5rem 0; }
+.toc-list ol { padding-left: 1.1rem; }
+.toc a { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
+.toc a:hover { border-bottom-color: var(--accent); color: var(--accent); }
+.toc-part { font-weight: 600; margin-top: 1.4rem !important; }
+.toc-part .part-label { font-variant: small-caps; letter-spacing: .05em; color: var(--accent); }
+.toc-part > ol { font-weight: 400; margin-top: .35rem; }
+.toc-label { color: var(--ink-soft); font-size: .85em; font-variant: small-caps; letter-spacing: .04em; }
+.toc-sections { font-size: .88em; color: var(--ink-soft); margin: .2rem 0 .5rem; }
+.toc-sections a { color: var(--ink-soft); }
+
+/* ---- Part openers and document flow ----------------------------------- */
+
+.part-opener {
+  margin: 5rem 0 3rem;
+  padding: 2.5rem 0;
+  border-top: 3px double var(--rule-strong);
+  border-bottom: 1px solid var(--rule);
+  text-align: center;
+  break-before: page;
+}
+.part-opener .part-number {
+  font-family: var(--sans); font-variant: small-caps; letter-spacing: .18em;
+  color: var(--accent); margin: 0 0 .5rem; font-size: .9rem;
+}
+.part-opener h1 { font-size: 1.9rem; margin: 0; border: none; }
+
+.doc { margin-bottom: 4rem; break-before: page; }
+.doc-label {
+  font-family: var(--sans); font-variant: small-caps; letter-spacing: .14em;
+  color: var(--ink-soft); font-size: .82rem; margin: 0 0 .3rem;
+}
+
+h1, h2, h3, h4 { font-family: var(--serif); font-weight: 600; line-height: 1.22; break-after: avoid; }
+.doc h1 { font-size: 1.95rem; margin: 0 0 1.4rem; padding-bottom: .45rem; border-bottom: 2px solid var(--rule-strong); }
+.doc h2 { font-size: 1.32rem; margin: 2.4rem 0 .8rem; }
+.doc h3 { font-size: 1.08rem; margin: 1.8rem 0 .6rem; }
+p { margin: 0 0 1.05rem; }
+a { color: var(--accent); }
+
+ul, ol { padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+
+/* ---- Callouts ---------------------------------------------------------
+ * The manuscript expresses every callout as a blockquote whose first element
+ * is a bolded lead ("Key idea.", "Misconception.", ...). Styling the generic
+ * blockquote keeps all nine recurring kinds consistent without requiring the
+ * writers to add classes.
+ */
+
+blockquote {
+  margin: 1.5rem 0;
+  padding: .95rem 1.1rem;
+  background: var(--band);
+  border-left: 4px solid var(--rule-strong);
+  break-inside: avoid;
+  font-size: .96rem;
+}
+blockquote > :first-child { margin-top: 0; }
+blockquote > :last-child { margin-bottom: 0; }
+blockquote strong:first-child { font-family: var(--sans); font-size: .88em; letter-spacing: .02em; }
+blockquote ul, blockquote ol { margin: .5rem 0; }
+
+/* ---- Code -------------------------------------------------------------- */
+
+code {
+  font-family: var(--mono);
+  font-size: .87em;
+  background: var(--band);
+  padding: .1em .32em;
+  border-radius: 3px;
+  overflow-wrap: break-word;
+}
+pre {
+  background: var(--band);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule-strong);
+  padding: .85rem 1rem;
+  overflow-x: auto;
+  font-size: .84rem;
+  line-height: 1.5;
+  break-inside: avoid;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* ---- Tables ------------------------------------------------------------ */
+
+table { border-collapse: collapse; width: 100%; margin: 1.4rem 0; font-size: .9rem; font-family: var(--sans); }
+th, td { border: 1px solid var(--rule); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+th { background: var(--band-deep); font-weight: 600; }
+
+/* ---- Figures ----------------------------------------------------------- */
+
+.nx-fig {
+  margin: 1.9rem 0;
+  padding: 1rem 1rem .8rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  break-inside: avoid;
+}
+.nx-fig .fig-body { font-family: var(--sans); font-size: .84rem; }
+.nx-fig figcaption {
+  margin-top: .9rem; padding-top: .6rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans); font-size: .82rem; color: var(--ink-soft); line-height: 1.5;
+}
+.nx-fig figcaption b { color: var(--ink); }
+
+/* Shared node primitive: a labelled box used by flows, zones, and hierarchies. */
+.node {
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+  padding: .35rem .55rem;
+  text-align: center;
+  border-radius: 2px;
+}
+.node.authority, .authority { border-width: 3px; border-style: double; font-weight: 600; }
+.node.untrusted, .untrusted { border-style: dashed; color: var(--ink-soft); }
+
+/* Layers: top row is closest to human intent. */
+.layers { display: flex; flex-direction: column; gap: .4rem; }
+.layer {
+  border: 1px solid var(--rule-strong);
+  background: var(--band);
+  padding: .5rem .7rem;
+  position: relative;
+}
+.layer.authority { border-width: 3px; border-style: double; }
+.layer.untrusted { border-style: dashed; background: transparent; color: var(--ink-soft); }
+.layer[data-note]::after {
+  content: attr(data-note);
+  display: block;
+  font-size: .85em;
+  color: var(--ink-soft);
+  margin-top: .15rem;
+}
+
+/* Flows: left-to-right pipelines. Arrow semantics are glyph-carried. */
+.flow { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.flow-col { display: flex; flex-direction: column; gap: .5rem; }
+.flow .arr { color: var(--ink-soft); font-size: 1.1em; padding: 0 .1rem; }
+.flow .arr.deny::after { content: " ⛔"; }
+.flow .arr.dashed { opacity: .65; letter-spacing: -.1em; }
+
+/* Zones: containment with a name band. */
+.zones { display: flex; flex-direction: column; gap: .6rem; }
+.zone {
+  border: 1px solid var(--rule-strong);
+  background: var(--band);
+  padding: 1.5rem .6rem .6rem;
+  position: relative;
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.zone.untrusted { border-style: dashed; background: transparent; }
+.zone[data-name]::before {
+  content: attr(data-name);
+  position: absolute; top: .25rem; left: .6rem;
+  font-family: var(--mono); font-size: .74rem;
+  font-variant: small-caps; letter-spacing: .06em;
+  color: var(--ink-soft);
+}
+.zone .zone { flex-basis: 100%; }
+
+/* Sequences: build/build_book.py expands data-cols into .seq-col children and
+ * resolves data-from/data-to into grid-column, so the grid here only needs the
+ * column count. */
+.seq { display: grid; gap: .35rem .4rem; align-items: center; }
+.seq-cols { display: contents; }
+.seq-col {
+  grid-row: 1;
+  border-bottom: 2px solid var(--rule-strong);
+  padding: .3rem .2rem;
+  font-weight: 600;
+  text-align: center;
+  font-size: .82em;
+}
+.seq:has(.seq-cols[data-count="2"]) { grid-template-columns: repeat(2, 1fr); }
+.seq:has(.seq-cols[data-count="3"]) { grid-template-columns: repeat(3, 1fr); }
+.seq:has(.seq-cols[data-count="4"]) { grid-template-columns: repeat(4, 1fr); }
+.seq:has(.seq-cols[data-count="5"]) { grid-template-columns: repeat(5, 1fr); }
+.seq:has(.seq-cols[data-count="6"]) { grid-template-columns: repeat(6, 1fr); }
+.seq:has(.seq-cols[data-count="7"]) { grid-template-columns: repeat(7, 1fr); }
+.seq:has(.seq-cols[data-count="8"]) { grid-template-columns: repeat(8, 1fr); }
+.msg {
+  border-top: 1px solid var(--rule-strong);
+  padding: .2rem .4rem;
+  font-size: .8em;
+  text-align: center;
+  position: relative;
+}
+.msg-ltr::after { content: " →"; }
+.msg-rtl::before { content: "← "; }
+.msg-return { border-top-style: dashed; color: var(--ink-soft); }
+.msg-deny { border-top-width: 2px; }
+.msg-deny::after { content: " ⛔"; }
+
+/* Tiers: parallel labelled columns of properties. */
+.tiers { display: flex; gap: .5rem; flex-wrap: wrap; }
+.tier {
+  flex: 1 1 12rem;
+  border: 1px solid var(--rule-strong);
+  background: var(--band);
+  padding: 1.6rem .6rem .5rem;
+  position: relative;
+}
+.tier[data-name]::before {
+  content: attr(data-name);
+  position: absolute; top: .3rem; left: .6rem;
+  font-variant: small-caps; letter-spacing: .06em; font-weight: 600; font-size: .82rem;
+}
+.tier ul { margin: 0; padding-left: 1rem; font-size: .95em; }
+
+/* Hierarchies: nested lists drawn with connector rules. */
+.hier ul { list-style: none; padding-left: 1rem; margin: 0; }
+.hier > ul { padding-left: 0; }
+.hier li { position: relative; padding-left: .9rem; margin: .18rem 0; }
+.hier li::before {
+  content: "";
+  position: absolute; left: 0; top: .72em;
+  width: .6rem; border-top: 1px solid var(--rule);
+}
+.hier > ul > li::before { display: none; }
+.hier > ul > li { padding-left: 0; font-weight: 600; }
+.hier ul ul { border-left: 1px solid var(--rule); }
+
+.fig-table table { margin: 0; }
+
+/* ---- Citations, index, bibliography ------------------------------------ */
+
+.cite { font-size: .85em; text-decoration: none; vertical-align: super; line-height: 0; }
+.ref-note { color: var(--ink-soft); font-style: italic; }
+
+/* Index markers wrap real body text and must read as ordinary prose. */
+.ix { font: inherit; color: inherit; }
+
+.refs { list-style: none; padding-left: 0; font-size: .9rem; font-family: var(--sans); }
+.refs li { margin: .5rem 0; padding-left: 2.6rem; text-indent: -2.6rem; }
+.ref-num { font-family: var(--mono); color: var(--ink-soft); margin-right: .4rem; }
+
+.index { font-family: var(--sans); font-size: .88rem; columns: 2; column-gap: 2rem; }
+.index dt { font-weight: 600; margin-top: .5rem; break-after: avoid; }
+.index dd { margin-left: 1rem; }
+.index .locs { font-weight: 400; color: var(--ink-soft); }
+.index .locs a { text-decoration: none; margin-right: .15rem; }
+
+/* ---- Print ------------------------------------------------------------- */
+
+@media print {
+  :root { --paper: #fff; --ink: #000; --band: #f4f4f4; --accent: #000; }
+  body { font-size: 10.5pt; }
+  .toc { break-after: page; }
+  .nx-fig, blockquote, pre, table { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .index { columns: 2; }
+}
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .index { columns: 1; }
+  .tiers { flex-direction: column; }
+  .seq { display: block; }
+  .seq-col { display: none; }
+  .msg { border: 1px solid var(--rule); margin: .2rem 0; text-align: left; }
+}
