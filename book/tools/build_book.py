@@ -604,12 +604,28 @@ def build_index_html(entries: list[tuple[str, str]]) -> str:
     return '<dl class="index">\n' + "\n".join(rows) + "\n</dl>"
 
 
+def build_mobile_nav(nav_body: str) -> str:
+    """Wrap the index in a sticky disclosure for screens with no room beside the text.
+
+    A sidebar cannot stay beside the text on a phone, and a block at the top of
+    the page scrolls away and is then gone -- which is no better than the
+    contents page. This is a collapsed bar that stays pinned while reading and
+    opens on tap. ``<details>`` gives the open/close behaviour with no script,
+    so the book remains a single static file.
+    """
+    return (
+        '<details class="navdrawer">'
+        "<summary>Contents</summary>"
+        f'<div class="navdrawer-body">{nav_body}</div>'
+        "</details>"
+    )
+
+
 def build_nav(documents: list[Document], part_titles: dict[str, str]) -> str:
-    """Render the persistent sidebar index.
+    """Render the index used by both the desktop sidebar and the mobile drawer.
 
     A 41-chapter book read as one long page needs somewhere to stand: the
-    contents page at the top is only reachable by scrolling back to it. This nav
-    stays on screen so a reader can move between subjects at any point. Parts
+    contents page at the top is only reachable by scrolling back to it. Parts
     are ``<details>`` so the list can be collapsed to the section in hand, which
     keeps it navigable without any script.
     """
@@ -766,6 +782,7 @@ def build_book(
     css = _read(assets_dir / "book.css")
     toc = build_toc(documents, part_titles)
     nav = build_nav(documents, part_titles)
+    mobile_nav = build_mobile_nav(nav)
 
     page = f"""<!doctype html>
 <html lang="en">
@@ -781,6 +798,7 @@ def build_book(
 <div class="layout">
 {nav}
 <div class="book">
+{mobile_nav}
 <header class="titlepage">
 <h1>{html.escape(BOOK_TITLE)}</h1>
 <p class="subtitle">{html.escape(BOOK_SUBTITLE)}</p>
