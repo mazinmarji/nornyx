@@ -321,10 +321,21 @@ def test_nodes_are_visually_distinct_from_the_page(built) -> None:
 
 
 def test_prose_and_figures_get_different_measures(built) -> None:
-    """Figures must be allowed wider than the text column, or they cramp."""
+    """Figures must be allowed wider than the text column, or they cramp.
+
+    The measure and the base font size move together: widening the column at a
+    fixed type size would just lengthen the line in characters, trading one
+    readability problem for another. At 46rem and 18px the line runs to roughly
+    81 characters, inside the comfortable range, while the column is half again
+    the width it started at.
+    """
     css = _stylesheet(built[0])
-    assert re.search(r"--measure:\s*40rem", css)
-    assert re.search(r"--wide:\s*60rem", css)
+    measure = float(re.search(r"--measure:\s*([\d.]+)rem", css).group(1))
+    wide = float(re.search(r"--wide:\s*([\d.]+)rem", css).group(1))
+    base = float(re.search(r"body \{[^}]*font-size:\s*(\d+)px", css).group(1))
+    assert measure >= 44, "the prose column is back to being cramped"
+    assert wide >= measure * 1.5, "figures are not meaningfully wider than the prose"
+    assert base >= 18, "the type is too small for the widened measure"
     assert ".doc > .nx-fig," in css  # figures break out of the prose track
 
 
@@ -520,6 +531,26 @@ def test_persistent_index_reaches_every_chapter_and_appendix(builder, built) -> 
     assert 'href="#index"' in nav
     # Grouped by part so 41 chapters stay scannable.
     assert nav.count("<details") == len(builder.PART_ORDER) + 2  # parts + appendices + end matter
+
+
+def test_narrow_screens_get_a_pinned_index_that_survives_scrolling(builder, built) -> None:
+    """Regression: on a phone the index scrolled away and was then unreachable.
+
+    The sidebar has nowhere to sit beside the text on a narrow screen, and the
+    earlier fallback -- a plain block at the top of the page -- was gone as soon
+    as the reader scrolled, leaving them no better off than with the contents
+    page. The drawer is `position: sticky`, so it stays put.
+    """
+    page, _ = built
+    drawer = page.split('<details class="navdrawer">', 1)[1].split("</details></div>", 1)[0]
+    for doc in builder.load_documents(MANUSCRIPT):
+        assert f'href="#{doc.slug}"' in drawer, f"{doc.label} unreachable on a narrow screen"
+
+    css = _stylesheet(page)
+    rule = re.search(r"\.navdrawer \{[^}]*position: sticky[^}]*\}", css)
+    assert rule, "the narrow-screen index is not pinned, so it scrolls away"
+    # Anchors must land clear of the pinned bar rather than beneath it.
+    assert re.search(r"scroll-margin-top: [4-9]rem", css)
 
 
 def test_index_navigation_needs_no_script(built) -> None:

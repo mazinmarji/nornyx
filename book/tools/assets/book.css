@@ -19,13 +19,16 @@
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  /* Prose keeps a comfortable line length; figures deliberately break out past
-   * it. Earlier both were pinned to the same 34rem, which squeezed a five-step
-   * pipeline into four wrapped rows on a 1425px screen -- the figure stopped
-   * reading as a diagram and read as a run of boxed words. */
-  --measure: 40rem;
-  --wide: 60rem;
-  --nav: 17.5rem;
+  /* Prose keeps a readable line length; figures deliberately break out past it.
+   *
+   * The measure is expressed in rem and the base font is 18px, so widening the
+   * column and enlarging the type move together: the line grows in pixels while
+   * the count of characters per line stays inside the comfortable range. Simply
+   * stretching the column at a fixed type size would trade one readability
+   * problem for another. Figures take essentially the whole content area. */
+  --measure: 46rem;
+  --wide: 76rem;
+  --nav: 16.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,8 +51,8 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--serif);
-  font-size: 17px;
-  line-height: 1.62;
+  font-size: 18px;
+  line-height: 1.65;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -137,12 +140,53 @@ main { max-width: none; }
   font-family: var(--mono); font-size: .78em; color: var(--ink-soft);
 }
 
+/* Narrow screens: a pinned disclosure instead of a sidebar.
+ *
+ * The sidebar has nowhere to sit beside the text on a phone, and the earlier
+ * fallback -- a plain block at the top -- scrolled away and was then gone,
+ * leaving the reader no better off than with the contents page. This bar stays
+ * pinned while reading and opens on tap. build_book.py emits the same index a
+ * second time inside it. */
+.navdrawer { display: none; }
+
 @media (max-width: 1100px) {
-  .booknav {
-    position: static; height: auto; max-height: 45vh;
-    border-right: none; border-bottom: 2px solid var(--rule-strong);
+  .booknav { display: none; }
+
+  .navdrawer {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--band);
+    border-bottom: 1px solid var(--rule);
     margin-bottom: 1.5rem;
   }
+  .navdrawer > summary {
+    padding: .75rem 1.25rem;
+    font-family: var(--sans);
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+  /* A caret that tracks the open state, drawn rather than imported. */
+  .navdrawer > summary::-webkit-details-marker { display: none; }
+  .navdrawer > summary::after { content: " ▾"; color: var(--ink-soft); }
+  .navdrawer[open] > summary::after { content: " ▴"; }
+  .navdrawer[open] > summary { border-bottom: 1px solid var(--rule); }
+  .navdrawer-body { max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
+  .navdrawer .booknav {
+    display: block;
+    position: static;
+    height: auto;
+    border-right: none;
+    background: transparent;
+  }
+  /* The contents page is what the drawer already is; its own link is noise. */
+  .navdrawer .booknav-home { display: none; }
+
+  /* Headings must clear the pinned bar when an anchor is followed. */
+  .doc, .doc h2, .doc h3, .part-opener { scroll-margin-top: 4rem; }
 }
 
 /* ---- Title page ------------------------------------------------------- */
