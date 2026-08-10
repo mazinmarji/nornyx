@@ -17,8 +17,9 @@ across different enforcement products — are answered by an external, neutral,
 deterministic contract/evidence/conformance layer, not by more capable models or
 another proprietary runtime.
 
-The roadmap therefore prioritizes the proof layer, semantic portability, and
-external adoption before ecosystem tooling or runtime ownership.
+The roadmap therefore prioritizes the proof layer, semantic portability,
+revision-aware change reasoning, and external adoption before ecosystem tooling
+or runtime ownership.
 
 Nornyx remains an independent, neutral, deterministic agentic
 contract/control-plane language for governed AI software delivery: a contract,
@@ -37,7 +38,9 @@ contracts and supplied evidence — it does not attest unverifiable runtime trut
 - canonical authorization semantics and stable decision/reason-code boundaries;
 - conformance schemas and reports;
 - honest assurance-tier boundaries;
-- exact package/provenance examples.
+- exact package/provenance examples;
+- stable identifiers and revision-lineage primitives needed for deterministic
+  comparison and external evidence correlation.
 
 ## Adoption and Interoperability Layer (P1-P2)
 
@@ -47,6 +50,8 @@ contracts and supplied evidence — it does not attest unverifiable runtime trut
   first implemented public boundary (`docs/69_AUTHZEN_INTEROPERABILITY.md`);
 - semantic-equivalence conformance proving that supported mappings preserve the
   same Nornyx decision meaning from the same governed revision;
+- deterministic before/after decision or semantic comparison where a generic
+  Core consumer use case is demonstrated;
 - feasibility and gap analysis for external policy/decision surfaces such as
   OPA/Rego, Cedar, and agent-era decision specifications, without making any of
   them a Core runtime dependency by default;
@@ -65,16 +70,32 @@ Nornyx should integrate across hyperscaler and platform enforcement stacks, not
 compete inside them.
 
 Public Core may define generic mappings, projections, codecs, schemas,
-conformance fixtures, and examples for external policy engines, gateways,
-runtimes, and standards. It should not grow into an agent gateway, traffic
-proxy, identity issuer, sandbox, agent registry, SIEM, model guardrail, or
-hosted hyperscaler-specific control plane.
+conformance fixtures, revision-comparison primitives, and examples for external
+policy engines, gateways, runtimes, and standards. It should not grow into an
+agent gateway, traffic proxy, identity issuer, sandbox, agent registry, SIEM,
+model guardrail, or hosted hyperscaler-specific control plane.
 
 A platform-specific projection is always derived from the reviewed Nornyx
 contract and remains subordinate to that source. The strategic product question
 is not "can Nornyx implement the same runtime feature?" but "can Nornyx preserve,
-prove, and explain one governance meaning across heterogeneous runtime and
-enforcement products?"
+prove, compare, and explain one governance meaning across revisions and
+heterogeneous runtime/enforcement products?"
+
+## Revision Comparison Scope
+
+Public Nornyx may eventually expose generic primitives such as:
+
+- deterministic comparison between two governed revisions;
+- canonical decision-regression fixtures;
+- stable lineage identifiers showing which revision/evidence object is being
+  compared;
+- generic semantic-delta reporting;
+- evidence-correlation fields that let an external record identify the governed
+  revision it relates to.
+
+Those capabilities remain portable language/conformance primitives only. They do
+not imply hosted operational services, environment discovery, provider-specific
+orchestration, or runtime enforcement.
 
 ## Deferred / Adoption-Gated Work (P3)
 
@@ -84,7 +105,8 @@ enforcement products?"
 - additional framework adapters;
 - broad connector integrations;
 - platform-specific operational connectors beyond a demonstrated adoption need;
-- richer editor tooling.
+- richer editor tooling;
+- generic revision/decision diff tooling beyond what real consumers require.
 
 ## Needs Review Work (defer; separate approval required)
 
@@ -112,6 +134,9 @@ enforcement products?"
   semantic gap analysis; deterministic round-trip or decision-equivalence tests;
   exact source-revision binding where applicable; documented unsupported
   semantics; no runtime-enforcement overclaim.
+- **new change-comparison primitive → supported:** demonstrated generic user need;
+  deterministic inputs/outputs; exact revision binding; stable semantic meaning;
+  no provider-specific runtime dependency required.
 - All promotions follow the existing goal-packet model: scoped goal, tests,
   evidence, human approval.
 
@@ -155,5 +180,6 @@ guarantee, a marketplace, or a framework-adapter treadmill.
   and [`docs/decisions/ADR-0044-authzen-interoperability.md`](decisions/ADR-0044-authzen-interoperability.md)
   — historical/decision records that constrain future work. This note supplies
   the forward-looking strategic context: future proposals stay gated, adapter
-  expansion stays thin and user-driven, semantic portability and conformance
-  evidence stay central, and Tier 2/Tier 3 claim boundaries stay strict.
+  expansion stays thin and user-driven, semantic portability, revision-aware
+  comparison, and conformance evidence stay central, and Tier 2/Tier 3 claim
+  boundaries stay strict.
