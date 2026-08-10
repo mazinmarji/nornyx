@@ -1,8 +1,8 @@
 # Nornyx ↔ OpenID AuthZEN Interoperability
 
-**Status:** Public Core interoperability surface  
-**Milestone:** M7-A  
-**Decision:** ADR-0044  
+**Status:** Public Core interoperability surface
+**Milestone:** M7-A
+**Decision:** ADR-0044
 **Implementation:** `nornyx.agentic.authzen`
 
 ## Why this exists
