@@ -205,6 +205,8 @@ where fit is strong and documenting gaps where it is not.
   an AARP mapping is separately implemented.
 - Network transport, PDP discovery, authentication, service hosting, and
   operational availability are deliberately outside this implementation.
+- ADR-0039's curated `nornyx.agentic` facade remains frozen; AuthZEN is imported
+  explicitly from the public `nornyx.agentic.authzen` submodule.
 
 ## Acceptance evidence
 
@@ -215,6 +217,6 @@ This ADR is implemented when:
 3. semantic mismatches fail closed;
 4. allow/deny/approval-required decision translation is tested;
 5. approval-required cannot become an AuthZEN allow;
-6. the public facade exposes the mapping intentionally;
+6. the public `nornyx.agentic.authzen` module is packaged without expanding the frozen facade;
 7. documentation states the AARP/COAZ draft status and commercial boundary;
 8. repository CI passes before merge.
