@@ -14,10 +14,6 @@ The SPI imports no agent framework. Framework interception, executor wrapping,
 argument normalisation, and compatibility live in external adapter packages.
 This is a cooperative Tier 2 boundary (ADR-0040): it never authenticates agents
 or approvers, executes tools, or asserts runtime-event truth.
-
-ADR-0044 adds a narrow public OpenID AuthZEN 1.0 mapping for capability
-evaluations. It is a deterministic codec/local bridge only, not a hosted PDP,
-transport implementation, enforcement point, or Enterprise control plane.
 """
 
 from __future__ import annotations
@@ -76,18 +72,6 @@ from .authz import (
     load_authorizer,
 )
 
-# --- OpenID AuthZEN interoperability (ADR-0044) ---
-from .authzen import (
-    AUTHZEN_ACCESS_EVALUATION_PATH,
-    AUTHZEN_API_VERSION,
-    NORNYX_AUTHZEN_CAPABILITY_PROFILE,
-    AuthZENMappingError,
-    capability_request_from_authzen,
-    capability_request_to_authzen,
-    decision_to_authzen,
-    evaluate_authzen_capability,
-)
-
 __all__ = [
     "SPI_VERSION",
     # curated re-exports
@@ -137,13 +121,4 @@ __all__ = [
     "IdentityResolutionError",
     "RuntimeOccurrence",
     "EvidenceRecorder",
-    # OpenID AuthZEN mapping
-    "AUTHZEN_API_VERSION",
-    "AUTHZEN_ACCESS_EVALUATION_PATH",
-    "NORNYX_AUTHZEN_CAPABILITY_PROFILE",
-    "AuthZENMappingError",
-    "capability_request_to_authzen",
-    "capability_request_from_authzen",
-    "decision_to_authzen",
-    "evaluate_authzen_capability",
 ]
