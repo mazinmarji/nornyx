@@ -1,25 +1,64 @@
 name: StandardsMappingAndEnterpriseAssurance
-status: proposed
+status: active
 strategic_priority: P1
-tracking_issue: "https://github.com/mazinmarji/nornyx/issues/47"
+active_issue: "https://github.com/mazinmarji/nornyx/issues/81"
 objective: >
   Machine-checkable mappings from external standards and framework requirements
   to Nornyx controls, evidence, approvals, evals, assurance tiers, and gaps.
+
+governance_rule: >
+  Keep only active or near-active implementation work as open GitHub issues.
+  Retain deferred standards work in this backlog until a concrete use case,
+  source basis, and implementation window justify promotion to a fresh issue.
+
 first_wave:
-  - NIST AI RMF
-  - OWASP Top 10 for LLM Applications / OWASP GenAI
-  - ISO/IEC 42001
-second_wave:
-  - ISO/IEC 23894
-  - NIST SSDF
-  - SLSA
-  - OpenTelemetry GenAI trace-conformance mapping
+  status: complete
+  record_issue: "https://github.com/mazinmarji/nornyx/issues/47"
+  artifact: "docs/68_STANDARDS_MAPPING_FIRST_WAVE.md"
+  frameworks:
+    - NIST AI RMF
+    - OWASP Top 10 for LLM Applications / OWASP GenAI
+    - ISO/IEC 42001
+
+active_work:
+  - issue: "https://github.com/mazinmarji/nornyx/issues/81"
+    name: Standards mapping schema and deterministic validator
+    scope:
+      - closed versioned machine-readable schema
+      - deterministic local-only validation
+      - machine-readable mapping records
+      - generated human-readable reports
+      - stale contradictory and overclaiming fixtures
+
+deferred_backlog:
+  source_version_grounding:
+    former_issue: "https://github.com/mazinmarji/nornyx/issues/82"
+    status: backlog
+    promotion_condition: >
+      Promote only when authoritative source/version access, citation rights,
+      and a concrete implementation need are available.
+  second_wave:
+    former_issue: "https://github.com/mazinmarji/nornyx/issues/83"
+    status: backlog
+    promotion_condition: >
+      Promote only when the machine-readable substrate is mature and a concrete
+      adoption or assurance use case justifies a scoped implementation issue.
+    frameworks:
+      - ISO/IEC 23894
+      - NIST SSDF
+      - ISO/IEC 27001/27002 relationships relevant to Nornyx
+      - SLSA
+      - OpenTelemetry GenAI trace-conformance mapping
+
 future_wave:
-  - EU AI Act (subject to legal review)
-  - SOC 2 evidence-support mapping
-  - COBIT
-  - ITIL
-  - TOGAF
+  status: adoption_use_case_gated
+  frameworks:
+    - EU AI Act (subject to legal review)
+    - SOC 2 evidence-support mapping
+    - COBIT
+    - ITIL
+    - TOGAF
+
 non_goals:
   - no certification
   - no legal advice
@@ -28,8 +67,9 @@ non_goals:
   - no copyrighted standard text reproduction
   - no live network retrieval
   - no automatic approval
+
 acceptance_criteria:
-  - every mapping has a framework version and source identifier
+  - every grounded mapping has a framework version and source identifier
   - every mapping names the Nornyx control, evidence, eval, approval, or gap
   - partial coverage cannot be reported as full coverage
   - reports say supports/maps/operationalizes, never certifies/complies/guarantees
