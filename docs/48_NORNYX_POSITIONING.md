@@ -12,6 +12,12 @@ Its practical role is to replace scattered control artifacts such as
 configs, policy docs, evidence templates, and approval checklists with a single
 `.nyx` source of truth.
 
+Nornyx is intentionally vendor-neutral. Its durable role is to preserve one
+reviewed governance meaning across heterogeneous execution and enforcement
+surfaces, bind that meaning to exact revisions and evidence, and provide
+conformance boundaries that external policy engines, gateways, runtimes, and
+platform controls can consume without making those systems part of Nornyx.
+
 ## What Nornyx Is Not
 
 Nornyx is not:
@@ -21,8 +27,18 @@ Nornyx is not:
 - a LangGraph, CrewAI, or LangChain replacement;
 - a production execution engine;
 - a live MCP/A2A connector runtime;
+- an agent gateway or traffic proxy;
+- an agent registry or marketplace;
+- an IAM system, identity issuer, secrets manager, or credential broker;
+- a sandbox, service mesh, content-filtering/DLP layer, or model guardrail;
+- a SIEM, telemetry store, or hyperscaler observability service;
+- a hosted generic authorization service in Public Core;
 - automatic approval or self-modification;
 - regulated/enterprise GOAL-100 promotion.
+
+These boundaries are strategic as well as technical: Nornyx should interoperate
+with runtime, gateway, identity, sandbox, cloud, and policy-engine products
+rather than duplicate infrastructure that those platforms already own.
 
 ## Best Use Cases
 
@@ -30,8 +46,25 @@ Nornyx is not:
 - Check policy, eval, approval, budget, evidence, and trace relationships.
 - Generate local control-plane artifacts from `.nyx` files.
 - Model static Nornyx Graph relationships for review and evidence.
-- Prepare optional profile and adapter contracts without enabling runtime
-  execution.
+- Bind decisions, approvals, evidence, locks, and generated artifacts to an
+  exact governed revision.
+- Define deterministic, vendor-neutral authorization semantics and prove that a
+  supported external mapping preserves those semantics.
+- Prepare optional profile, adapter, protocol, and standards mappings without
+  enabling runtime execution.
+
+## Interoperability Position
+
+Public Nornyx owns portable semantics, mappings, schemas, deterministic
+conformance tests, and honest claim boundaries. It should prefer established
+external standards and policy surfaces over a proprietary connector treadmill.
+
+Current and candidate interoperability surfaces include OpenID AuthZEN,
+MCP/A2A declarations, and feasibility or projection work for policy engines or
+policy languages such as OPA/Rego, Cedar, and agent-era decision specifications.
+A mapping or projection remains subordinate to the `.nyx` source contract: it
+must not become a second authoritative policy source, and a successful mapping
+does not imply that an external PEP enforced the result.
 
 ## Release and Distribution
 
@@ -45,6 +78,8 @@ GOAL-100. Nornyx remains an executable specification layer, not a runtime.
 ## Future Tracks
 
 Future work may include schema splits, sharper adoption docs, static Nornyx
-Graph demos, editor tooling, distributable framework adapters, and optional
-connector/runtime research. Each track requires scoped goals, validation,
-evidence, and explicit approval.
+Graph demos, editor tooling, standards-aligned semantic projections,
+cross-platform conformance proof, and thin distributable adapters where adoption
+evidence justifies them. Runtime ownership, broad connector hosting, and
+platform-specific infrastructure remain gated or out of scope. Each track
+requires scoped goals, validation, evidence, and explicit approval.
