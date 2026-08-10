@@ -50,6 +50,8 @@ rather than duplicate infrastructure that those platforms already own.
   exact governed revision.
 - Define deterministic, vendor-neutral authorization semantics and prove that a
   supported external mapping preserves those semantics.
+- Compare supported governed revisions or decision fixtures deterministically
+  when a generic Core use case requires change/conformance analysis.
 - Prepare optional profile, adapter, protocol, and standards mappings without
   enabling runtime execution.
 
@@ -66,6 +68,12 @@ A mapping or projection remains subordinate to the `.nyx` source contract: it
 must not become a second authoritative policy source, and a successful mapping
 does not imply that an external PEP enforced the result.
 
+Generic revision lineage, deterministic before/after semantic comparison,
+decision-regression fixtures, and evidence-correlation identifiers may belong in
+Public Core when they are independently useful to Nornyx consumers. These remain
+portable language/conformance primitives and do not imply hosted operational
+services or runtime enforcement.
+
 ## Release and Distribution
 
 Nornyx publishes a Python package to PyPI (`pip install nornyx`) for the stable
@@ -79,7 +87,8 @@ GOAL-100. Nornyx remains an executable specification layer, not a runtime.
 
 Future work may include schema splits, sharper adoption docs, static Nornyx
 Graph demos, editor tooling, standards-aligned semantic projections,
-cross-platform conformance proof, and thin distributable adapters where adoption
-evidence justifies them. Runtime ownership, broad connector hosting, and
-platform-specific infrastructure remain gated or out of scope. Each track
-requires scoped goals, validation, evidence, and explicit approval.
+cross-platform conformance proof, generic revision/decision comparison where
+adoption demonstrates need, and thin distributable adapters. Runtime ownership,
+broad connector hosting, and platform-specific infrastructure remain gated or
+out of scope. Each track requires scoped goals, validation, evidence, and
+explicit approval.
