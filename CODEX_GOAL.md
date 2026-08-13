@@ -1,5 +1,18 @@
 # CODEX GOAL — Complete the Nornyx Governance Program
 
+> **HISTORICAL RECORD — PROGRAM CLOSED.**
+> This file records a completed historical implementation program and is
+> preserved as project evidence. The program is closed, and this file is
+> **not** a current execution instruction: no agent or contributor should
+> execute it. The historical `Status: Active implementation goal` line below
+> reflects the original record as written at the time. The current sources of
+> truth are the current `main` branch, [docs/README.md](docs/README.md),
+> [docs/48_NORNYX_POSITIONING.md](docs/48_NORNYX_POSITIONING.md),
+> [docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md](docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md),
+> and the current implementation and tests.
+>
+> *The original historical record continues unchanged below.*
+
 **Status:** Active implementation goal
 **Repository:** `mazinmarji/nornyx`
 **Target baseline:** Current `main` at task start
