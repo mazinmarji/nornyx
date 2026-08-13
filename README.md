@@ -5,20 +5,92 @@
 [![CI](https://github.com/mazinmarji/nornyx/actions/workflows/ci.yml/badge.svg)](https://github.com/mazinmarji/nornyx/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**A generalized agentic contract/control-plane language for governed AI software delivery.**
+**Nornyx is a vendor-neutral governance contract language for AI software
+delivery that makes authorization semantics, controls, decisions, and supplied
+evidence deterministic, portable, and revision-bound.**
 
 ```bash
 pip install nornyx
 ```
 
-Your AI-engineering rules live scattered across `AGENTS.md`, a skills folder, prompt/context packs, a harness script, an eval config, policy docs, evidence templates, and approval checklists — and they **drift** out of sync. Nornyx makes them one **checked source of truth**: write a single `.nyx` file, then **generate** and **validate** all those artifacts from it.
+## The problem it solves
+
+Your AI-delivery governance lives scattered across `AGENTS.md`, a skills
+folder, prompt/context packs, a harness script, an eval config, policy docs,
+evidence templates, and approval checklists — and it **drifts** out of sync,
+with no way to show afterward which rules applied, what an agent was allowed
+to do, who approved it, or whether the supplied evidence matches the revision
+that was approved.
+
+Nornyx makes that governance one **checked, revision-bound source of truth**:
+a single `.nyx` contract whose authorization semantics, controls, decisions,
+and evidence requirements are deterministic and portable across tools. One
+mechanism beneath that thesis is deterministic artifact generation — Nornyx
+can **generate** and **validate** the control artifacts your tools already
+read:
 
 ```text
 one .nyx contract  ──►  AGENTS.md · skills/ · harness.yaml · policy.yaml
                         evals.yaml · context.yaml · evidence_contract.md
 ```
 
-Nornyx does **not** replace Codex, Claude Code, Cursor, Copilot, CI/CD, or human review. It compiles, checks, and generates the control artifacts those execution surfaces follow.
+Nornyx does **not** replace Codex, Claude Code, Cursor, Copilot, CI/CD, or
+human review. It defines and checks the governance contract those execution
+surfaces follow and generates the control artifacts they read — execution and
+enforcement stay with them.
+
+## What Nornyx provides
+
+- **One governed source of truth** for agent/skill/harness/policy/eval/evidence
+  artifacts — no more drift.
+- **Deterministic authorization semantics** — a framework-neutral authorization
+  SPI with normalized decisions and reason codes; AI identities can never
+  approve.
+- **Revision and lock binding** — content-addressed locks tie artifacts,
+  approvals, and evidence to the exact governed revision.
+- **Supplied-evidence validation** — runtime-event evidence validated against
+  the declared semantics and the locked revision.
+- **Context trust model** — mark which context is `trusted` vs `untrusted` so
+  untrusted input can't define policy, and deny `secrets_to_llm` at the
+  contract level.
+- **Generators + a checker** — turn `.nyx` into the files your tools read, and
+  verify references and required fields.
+- **Drift and workspace gates** — catch when regenerated output diverges from
+  a committed baseline, in one repo or across many.
+- **Governed packages** — inventory, hash, risk-surface, and evidence-bind
+  package inputs without executing them.
+- **YAML-compatible syntax** — no new parser to learn.
+
+## Where Nornyx sits
+
+```text
+reviewed intent / .nyx contract
+        |
+        v
+Nornyx deterministic governance semantics
+        |
+        +--> deterministic checks / derived control artifacts
+        |
+        +--> authorization decisions
+        |
+        +--> revision-bound evidence requirements
+        |
+        v
+external adapters / PEPs / policy engines / runtimes / platform controls
+        |
+        v
+external execution / enforcement
+        |
+        v
+supplied evidence / runtime records
+        |
+        +----> Nornyx validation against the governed revision
+```
+
+Not every use case traverses every branch. The external components execute and
+enforce; Nornyx defines the governance meaning they must preserve and
+validates the evidence they supply. It does not independently attest that
+supplied runtime events actually occurred.
 
 ## Install
 
@@ -175,30 +247,6 @@ resolve the reference and inline the real rules into `policy.yaml`. See the
 bundled [`org_policies.nyx`](nornyx/examples/org_policies.nyx) and
 [`governed_service.nyx`](nornyx/examples/governed_service.nyx) examples.
 
-## Govern packages as untrusted input
-
-Governed package commands treat folders, repos, plugins, agent kits, and MCP
-bundles as inert inputs. The scanner inventories files, hashes contents, detects
-risk surfaces, redacts secret-like values, and emits evidence reports:
-
-```bash
-nornyx package scan ./some-package --out dist/package-scan
-nornyx package radar ./some-package --out dist/radar_report.json
-nornyx package register ./some-package --contract examples/governed_package/register_existing.nyx --out dist/registered-package
-```
-
-External evidence can be imported from existing reports without making those
-tools mandatory:
-
-```bash
-nornyx package evidence import syft syft-report.json --out dist/external-evidence
-nornyx package evidence import gitleaks gitleaks-report.json --out dist/external-evidence
-```
-
-Nornyx does not install, execute, start MCP servers, activate hooks, upload data,
-approve, or claim a package is safe. It can say that a package was inventoried,
-risk-surfaced, evidence-bound, hash-locked, and approval-gated.
-
 ## Govern an agent network across frameworks
 
 The optional `agentic_network` profile lets one contract declare a bounded
@@ -228,29 +276,109 @@ supplied local evidence — it is not an agent runtime, MCP runtime, or A2A
 runtime, and it does not attest runtime truth. Start with
 [docs/agentic-network/00_OVERVIEW.md](docs/agentic-network/00_OVERVIEW.md).
 
-## Why Nornyx
+## Authorization and interoperability
 
-- **One source of truth** for agent/skill/harness/policy/eval/evidence artifacts — no more drift.
-- **Context trust model:** mark which context is `trusted` vs `untrusted` so untrusted input can't define policy, and deny `secrets_to_llm` at the contract level.
-- **Generators + a checker:** turn `.nyx` into the files your tools read, and verify references and required fields.
-- **Generated-artifact drift gate:** catch when regenerated output diverges from a committed baseline.
-- **YAML-compatible syntax** — no new parser to learn.
+The [authorization SPI](docs/agentic-network/12_AUTHORIZATION_SPI.md) defines
+the framework-neutral authorization semantics external integrations consume:
+deterministic decisions, normalized reason codes, and approval rules under
+which AI identities can never approve.
+
+A scoped [OpenID AuthZEN evaluation interoperability
+surface](docs/69_AUTHZEN_INTEROPERABILITY.md) maps those semantics onto the
+AuthZEN evaluation boundary. It is limited and explicitly scoped: it is not
+complete AuthZEN coverage, and it does not make Nornyx a hosted policy
+decision point. Mappings and projections stay subordinate to the `.nyx` source
+contract, and a successful mapping does not imply that an external enforcement
+point enforced the result.
+
+## Govern packages as untrusted input
+
+Governed package commands treat folders, repos, plugins, agent kits, and MCP
+bundles as inert inputs. The scanner inventories files, hashes contents, detects
+risk surfaces, redacts secret-like values, and emits evidence reports:
+
+```bash
+nornyx package scan ./some-package --out dist/package-scan
+nornyx package radar ./some-package --out dist/radar_report.json
+nornyx package register ./some-package --contract examples/governed_package/register_existing.nyx --out dist/registered-package
+```
+
+External evidence can be imported from existing reports without making those
+tools mandatory:
+
+```bash
+nornyx package evidence import syft syft-report.json --out dist/external-evidence
+nornyx package evidence import gitleaks gitleaks-report.json --out dist/external-evidence
+```
+
+Nornyx does not install, execute, start MCP servers, activate hooks, upload data,
+approve, or claim a package is safe. It can say that a package was inventoried,
+risk-surfaced, evidence-bound, hash-locked, and approval-gated.
+
+## Capability maturity and claim boundaries
+
+- **Shipped:** `.nyx` parsing and semantic checking, deterministic derived
+  artifact generation, context packs and evidence scaffolds, drift and
+  workspace checks, schema inspection, declarative governance composition,
+  the governance CLI/API, governed-package controls, agentic authorization
+  SPI 1.2, agentic-network locks, runtime-event validation 1.1.
+- **Optional profile:** `agentic_network` and the supported profile/module
+  surfaces.
+- **Limited / experimental:** the scoped AuthZEN evaluation interoperability
+  surface, the narrow published runtime-adapter coverage, cooperative
+  higher-assurance claims, theme-level standards mappings, and the
+  first-party external-adoption pilot.
+- **Roadmap:** future work is future — see
+  [docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md](docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md);
+  nothing on the roadmap is a current capability.
+
+The claim boundary: Nornyx validates governed contracts and supplied evidence
+against declared semantics and governed revisions. It does not independently
+attest unverifiable runtime truth, does not authenticate identities or
+approvers, and does not perform live enforcement — external systems remain
+responsible for actual execution and enforcement.
+
+## What Nornyx is not
+
+- Not an agent runtime or workflow engine — it does not execute agents,
+  workflows, or deployments.
+- Not a hosted policy decision point, an identity provider, a traffic proxy,
+  or an execution sandbox.
+- Not a replacement for Cedar, OPA/Rego, or hyperscaler IAM and governance
+  services — it interoperates with them and stays neutral across them.
+- Not complete AuthZEN support, not a standards-compliance claim, and not
+  Tier-3 assurance.
+
+Full non-goals and boundary rationale:
+[docs/48_NORNYX_POSITIONING.md](docs/48_NORNYX_POSITIONING.md).
 
 ## Scope and safety
 
 Nornyx is an **executable specification layer**, not a runtime. It does **not** implement autonomous system modification, production deployment, destructive tool use, credential handling, or arbitrary command execution. The name *Nornyx* is a provisional working brand (no formal legal clearance claimed).
 
-## Learn more
+## Documentation map and learning paths
 
+**[docs/README.md](docs/README.md)** is the documentation map: it identifies
+which documents are authoritative, which are supporting, and which are
+historical records. Key paths:
+
+- [Executive overview](docs/00_EXECUTIVE_OVERVIEW.md) · [Positioning](docs/48_NORNYX_POSITIONING.md)
+- [5-minute adoption](docs/49_NORNYX_5_MINUTE_ADOPTION.md) · [Use it in your repo](docs/USE_IN_YOUR_REPO.md)
 - [Agentic-network governance overview](docs/agentic-network/00_OVERVIEW.md) · [end-to-end tutorial](docs/agentic-network/01_TUTORIAL.md)
 - [CrewAI governance A/B benchmark](examples/crewai_governance_benchmark/README.md) — one workflow run with and without governance, with a side-effect ledger proving what was prevented ([reviewer quickstart](examples/crewai_governance_benchmark/REVIEWER_QUICKSTART.md))
-- [Positioning](docs/48_NORNYX_POSITIONING.md)
-- [5-minute adoption](docs/49_NORNYX_5_MINUTE_ADOPTION.md)
 - [Governed Package Profile](docs/governed-package-profile.md)
 - [Public boundary policy](docs/public-boundary-policy.md)
 - [Nornyx Graph demo](docs/50_NORNYX_GRAPH_DEMO.md) · [expanded](docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md)
 - [Schema targets and examples](docs/52_SCHEMA_TARGETS_AND_EXAMPLES.md)
-- Roadmap toward a stable generalized contract language: see [`docs/03_ROADMAP_TO_v1_AND_BEYOND.md`](docs/03_ROADMAP_TO_v1_AND_BEYOND.md).
+- Roadmap: [current priorities](docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md) · [strategic roadmap](docs/03_ROADMAP_TO_v1_AND_BEYOND.md)
+
+## Textbook
+
+The Nornyx textbook lives in [book/manuscript](book/manuscript): public
+educational material teaching the language and its governance model. Its
+factual assertions may be edition- or SHA-pinned rather than evergreen — where
+the textbook and the current authoritative documentation disagree, the
+documentation wins.
 
 ## Development
 
@@ -259,6 +387,8 @@ git clone https://github.com/mazinmarji/nornyx && cd nornyx
 pip install -e ".[dev]"
 python -m pytest -q
 ```
+
+Contribution rules: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

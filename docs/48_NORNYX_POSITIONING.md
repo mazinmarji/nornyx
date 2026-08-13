@@ -2,10 +2,12 @@
 
 ## What Nornyx Is
 
-Nornyx is a generalized agentic contract/control-plane language for governed
-AI/software delivery. It defines checkable contracts for intent, context,
-agents, skills, policies, evals, approvals, evidence, budgets, traces, graph
-relationships, profiles, and adapter contracts.
+Nornyx is a vendor-neutral governance contract language for AI software
+delivery that makes authorization semantics, controls, decisions, and supplied
+evidence deterministic, portable, and revision-bound. It defines checkable
+contracts for intent, context, agents, skills, policies, evals, approvals,
+evidence, budgets, traces, graph relationships, profiles, and adapter
+contracts.
 
 Its practical role is to replace scattered control artifacts such as
 `AGENTS.md`, skills folders, prompt packs, context packs, harness scripts, eval
@@ -77,7 +79,7 @@ services or runtime enforcement.
 ## Release and Distribution
 
 Nornyx publishes a Python package to PyPI (`pip install nornyx`) for the stable
-generalized agentic contract/control-plane language on the 1.x line. The package
+vendor-neutral governance contract language on the 1.x line. The package
 (distribution) version is independent of the Nornyx language/schema version — see
 [VERSIONING.md](VERSIONING.md). Publishing the package does not deploy software,
 enable live connectors, call models, grant automatic approvals, or unlock
