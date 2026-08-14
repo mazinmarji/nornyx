@@ -21,8 +21,10 @@ The roadmap therefore prioritizes the proof layer, semantic portability,
 revision-aware change reasoning, and external adoption before ecosystem tooling
 or runtime ownership.
 
-Nornyx remains an independent, neutral, deterministic agentic
-contract/control-plane language for governed AI software delivery: a contract,
+Nornyx remains an independent, vendor-neutral governance contract language for
+AI software delivery — defining deterministic controls and authorization
+semantics, binding decisions and supplied evidence to governed revisions, and
+preserving that governance meaning across supported integrations: a contract,
 evidence, and semantic-conformance layer that integrates with external
 governance platforms, policy engines, agent frameworks, CI/CD systems, gateways,
 and execution runtimes without becoming those systems. Nornyx validates declared

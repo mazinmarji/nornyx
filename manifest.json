@@ -1,13 +1,17 @@
 {
   "project": "Nornyx",
-  "category": "AI Engineering Control-Plane Language",
+  "category": "Vendor-Neutral Governance Contract Language",
   "version": "1.11.0",
   "language_version": "1.0.0",
   "status": "Package 1.11.0; Authorizer state SPI 1.2 implemented and validated",
   "source_of_truth": [
     "README.md",
-    "docs/01_LANGUAGE_SPEC_v0_1.md",
+    "docs/README.md",
+    "docs/02_ARCHITECTURE.md",
     "docs/03_ROADMAP_TO_v1_AND_BEYOND.md",
+    "docs/48_NORNYX_POSITIONING.md",
+    "docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md",
+    "docs/VERSIONING.md",
     "examples/governed_delivery_control_plane.nyx"
   ],
   "commands": {
