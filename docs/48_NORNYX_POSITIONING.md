@@ -3,8 +3,9 @@
 ## What Nornyx Is
 
 Nornyx is a vendor-neutral governance contract language for AI software
-delivery that makes authorization semantics, controls, decisions, and supplied
-evidence deterministic, portable, and revision-bound. It defines checkable
+delivery that defines deterministic controls and authorization semantics,
+binds decisions and supplied evidence to governed revisions, and preserves
+that governance meaning across supported integrations. It provides checkable
 contracts for intent, context, agents, skills, policies, evals, approvals,
 evidence, budgets, traces, graph relationships, profiles, and adapter
 contracts.

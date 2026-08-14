@@ -6,8 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Nornyx is a vendor-neutral governance contract language for AI software
-delivery that makes authorization semantics, controls, decisions, and supplied
-evidence deterministic, portable, and revision-bound.**
+delivery that defines deterministic controls and authorization semantics,
+binds decisions and supplied evidence to governed revisions, and preserves
+that governance meaning across supported integrations.**
 
 ```bash
 pip install nornyx
@@ -22,12 +23,13 @@ with no way to show afterward which rules applied, what an agent was allowed
 to do, who approved it, or whether the supplied evidence matches the revision
 that was approved.
 
-Nornyx makes that governance one **checked, revision-bound source of truth**:
-a single `.nyx` contract whose authorization semantics, controls, decisions,
-and evidence requirements are deterministic and portable across tools. One
-mechanism beneath that thesis is deterministic artifact generation — Nornyx
-can **generate** and **validate** the control artifacts your tools already
-read:
+Nornyx makes that governance one **checked, revision-bound source of truth**.
+The `.nyx` contract is the governed entry point: where it selects policy
+references, profiles, or modules, Nornyx resolves those governed inputs
+deterministically, and authorization and evidence validation also use the
+applicable lock/revision and explicit evaluation inputs. One mechanism
+beneath that thesis is deterministic artifact generation — Nornyx can
+**generate** and **validate** the control artifacts your tools already read:
 
 ```text
 one .nyx contract  ──►  AGENTS.md · skills/ · harness.yaml · policy.yaml
@@ -44,8 +46,9 @@ enforcement stay with them.
 - **One governed source of truth** for agent/skill/harness/policy/eval/evidence
   artifacts — no more drift.
 - **Deterministic authorization semantics** — a framework-neutral authorization
-  SPI with normalized decisions and reason codes; AI identities can never
-  approve.
+  SPI producing deterministic decisions with normalized reason codes from
+  explicit supported inputs; approval assertions identified as non-human are
+  rejected, and claimant identity/authentication remains external to Nornyx.
 - **Revision and lock binding** — content-addressed locks tie artifacts,
   approvals, and evidence to the exact governed revision.
 - **Supplied-evidence validation** — runtime-event evidence validated against
@@ -64,22 +67,18 @@ enforcement stay with them.
 ## Where Nornyx sits
 
 ```text
-reviewed intent / .nyx contract
+reviewed intent — the .nyx contract (governed entry point)
         |
         v
-Nornyx deterministic governance semantics
+Nornyx: deterministic resolution and checks, derived control artifacts,
+        locks / governed revisions
         |
-        +--> deterministic checks / derived control artifacts
+        +--> (optional) Nornyx authorization SPI ──► decision
         |
-        +--> authorization decisions
-        |
-        +--> revision-bound evidence requirements
-        |
-        v
-external adapters / PEPs / policy engines / runtimes / platform controls
+        +--> (mapped) external PDP / policy engine ──► decision
         |
         v
-external execution / enforcement
+external PEPs / runtimes / platform controls — enforcement / execution
         |
         v
 supplied evidence / runtime records
@@ -87,10 +86,13 @@ supplied evidence / runtime records
         +----> Nornyx validation against the governed revision
 ```
 
-Not every use case traverses every branch. The external components execute and
-enforce; Nornyx defines the governance meaning they must preserve and
-validates the evidence they supply. It does not independently attest that
-supplied runtime events actually occurred.
+Not every use case involves an authorization decision. Where one does, the
+Nornyx Authorizer is one supported decision path, and in mapped integrations
+an external policy engine owns decision production. External PEPs, runtimes,
+and platform controls own enforcement and execution; Nornyx defines the
+governance meaning they must preserve and validates the evidence they supply.
+It does not independently attest that supplied runtime events actually
+occurred.
 
 ## Install
 
@@ -278,18 +280,25 @@ runtime, and it does not attest runtime truth. Start with
 
 ## Authorization and interoperability
 
-The [authorization SPI](docs/agentic-network/12_AUTHORIZATION_SPI.md) defines
-the framework-neutral authorization semantics external integrations consume:
-deterministic decisions, normalized reason codes, and approval rules under
-which AI identities can never approve.
+Nornyx ships a framework-neutral authorization SPI that produces
+deterministic decisions with normalized reason codes from explicit, supported
+evaluation inputs. Approval assertions identified as non-human are rejected;
+claimant identity and authentication remain external to Nornyx. The complete
+decision semantics live in the current implementation, its tests, and
+[ADR-0039](https://github.com/mazinmarji/nornyx/blob/main/docs/decisions/ADR-0039-agentic-integration-sdk.md);
+the [SPI 1.2 note](https://github.com/mazinmarji/nornyx/blob/main/docs/agentic-network/12_AUTHORIZATION_SPI.md)
+documents the additive Authorizer construction-state capability.
 
-A scoped [OpenID AuthZEN evaluation interoperability
-surface](docs/69_AUTHZEN_INTEROPERABILITY.md) maps those semantics onto the
-AuthZEN evaluation boundary. It is limited and explicitly scoped: it is not
-complete AuthZEN coverage, and it does not make Nornyx a hosted policy
-decision point. Mappings and projections stay subordinate to the `.nyx` source
-contract, and a successful mapping does not imply that an external enforcement
-point enforced the result.
+Nornyx is designed to complement rather than replace external policy engines
+and platform governance. The currently implemented external authorization
+mapping is the scoped [OpenID AuthZEN capability-evaluation
+surface](https://github.com/mazinmarji/nornyx/blob/main/docs/69_AUTHZEN_INTEROPERABILITY.md).
+It is limited and explicitly scoped: it is not complete AuthZEN coverage, and
+it does not make Nornyx a hosted policy decision point. Mappings and
+projections stay subordinate to the `.nyx` source contract, a successful
+mapping does not imply that an external enforcement point enforced the
+result, and additional policy-engine and hyperscaler mappings remain
+adoption-gated or roadmap work.
 
 ## Govern packages as untrusted input
 
@@ -324,12 +333,12 @@ risk-surfaced, evidence-bound, hash-locked, and approval-gated.
   SPI 1.2, agentic-network locks, runtime-event validation 1.1.
 - **Optional profile:** `agentic_network` and the supported profile/module
   surfaces.
-- **Limited / experimental:** the scoped AuthZEN evaluation interoperability
-  surface, the narrow published runtime-adapter coverage, cooperative
-  higher-assurance claims, theme-level standards mappings, and the
-  first-party external-adoption pilot.
-- **Roadmap:** future work is future — see
-  [docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md](docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md);
+- **Limited / experimental:** the scoped AuthZEN capability-evaluation
+  interoperability surface, the narrow published runtime-adapter coverage,
+  cooperative higher-assurance claims, theme-level standards mappings, and
+  the first-party external-adoption pilot.
+- **Roadmap:** future work is future — see the
+  [roadmap priorities](https://github.com/mazinmarji/nornyx/blob/main/docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md);
   nothing on the roadmap is a current capability.
 
 The claim boundary: Nornyx validates governed contracts and supplied evidence
@@ -345,12 +354,15 @@ responsible for actual execution and enforcement.
 - Not a hosted policy decision point, an identity provider, a traffic proxy,
   or an execution sandbox.
 - Not a replacement for Cedar, OPA/Rego, or hyperscaler IAM and governance
-  services — it interoperates with them and stays neutral across them.
+  services — Nornyx is designed to complement them and stay neutral across
+  them; the currently implemented external authorization mapping is the
+  scoped AuthZEN capability-evaluation surface, and additional policy-engine
+  and hyperscaler mappings remain adoption-gated or roadmap work.
 - Not complete AuthZEN support, not a standards-compliance claim, and not
   Tier-3 assurance.
 
 Full non-goals and boundary rationale:
-[docs/48_NORNYX_POSITIONING.md](docs/48_NORNYX_POSITIONING.md).
+[docs/48_NORNYX_POSITIONING.md](https://github.com/mazinmarji/nornyx/blob/main/docs/48_NORNYX_POSITIONING.md).
 
 ## Scope and safety
 
@@ -358,26 +370,27 @@ Nornyx is an **executable specification layer**, not a runtime. It does **not** 
 
 ## Documentation map and learning paths
 
-**[docs/README.md](docs/README.md)** is the documentation map: it identifies
-which documents are authoritative, which are supporting, and which are
-historical records. Key paths:
+**[docs/README.md](https://github.com/mazinmarji/nornyx/blob/main/docs/README.md)**
+is the documentation map: it identifies which documents are authoritative,
+which are supporting, and which are historical records. Key paths:
 
-- [Executive overview](docs/00_EXECUTIVE_OVERVIEW.md) · [Positioning](docs/48_NORNYX_POSITIONING.md)
-- [5-minute adoption](docs/49_NORNYX_5_MINUTE_ADOPTION.md) · [Use it in your repo](docs/USE_IN_YOUR_REPO.md)
-- [Agentic-network governance overview](docs/agentic-network/00_OVERVIEW.md) · [end-to-end tutorial](docs/agentic-network/01_TUTORIAL.md)
-- [CrewAI governance A/B benchmark](examples/crewai_governance_benchmark/README.md) — one workflow run with and without governance, with a side-effect ledger proving what was prevented ([reviewer quickstart](examples/crewai_governance_benchmark/REVIEWER_QUICKSTART.md))
-- [Governed Package Profile](docs/governed-package-profile.md)
-- [Public boundary policy](docs/public-boundary-policy.md)
-- [Nornyx Graph demo](docs/50_NORNYX_GRAPH_DEMO.md) · [expanded](docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md)
-- [Schema targets and examples](docs/52_SCHEMA_TARGETS_AND_EXAMPLES.md)
-- Roadmap: [current priorities](docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md) · [strategic roadmap](docs/03_ROADMAP_TO_v1_AND_BEYOND.md)
+- [Executive overview](https://github.com/mazinmarji/nornyx/blob/main/docs/00_EXECUTIVE_OVERVIEW.md) · [Positioning](https://github.com/mazinmarji/nornyx/blob/main/docs/48_NORNYX_POSITIONING.md)
+- [5-minute adoption](https://github.com/mazinmarji/nornyx/blob/main/docs/49_NORNYX_5_MINUTE_ADOPTION.md) · [Use it in your repo](https://github.com/mazinmarji/nornyx/blob/main/docs/USE_IN_YOUR_REPO.md)
+- [Agentic-network governance overview](https://github.com/mazinmarji/nornyx/blob/main/docs/agentic-network/00_OVERVIEW.md) · [end-to-end tutorial](https://github.com/mazinmarji/nornyx/blob/main/docs/agentic-network/01_TUTORIAL.md)
+- [CrewAI governance A/B benchmark](https://github.com/mazinmarji/nornyx/blob/main/examples/crewai_governance_benchmark/README.md) — one workflow run with and without governance, with a side-effect ledger proving what was prevented ([reviewer quickstart](https://github.com/mazinmarji/nornyx/blob/main/examples/crewai_governance_benchmark/REVIEWER_QUICKSTART.md))
+- [Governed Package Profile](https://github.com/mazinmarji/nornyx/blob/main/docs/governed-package-profile.md)
+- [Public boundary policy](https://github.com/mazinmarji/nornyx/blob/main/docs/public-boundary-policy.md)
+- [Nornyx Graph demo](https://github.com/mazinmarji/nornyx/blob/main/docs/50_NORNYX_GRAPH_DEMO.md) · [expanded](https://github.com/mazinmarji/nornyx/blob/main/docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md)
+- [Schema targets and examples](https://github.com/mazinmarji/nornyx/blob/main/docs/52_SCHEMA_TARGETS_AND_EXAMPLES.md)
+- Roadmap: [current priorities](https://github.com/mazinmarji/nornyx/blob/main/docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md) · [strategic roadmap](https://github.com/mazinmarji/nornyx/blob/main/docs/03_ROADMAP_TO_v1_AND_BEYOND.md)
 
 ## Textbook
 
-The Nornyx textbook lives in [book/manuscript](book/manuscript): public
-educational material teaching the language and its governance model. Its
-factual assertions may be edition- or SHA-pinned rather than evergreen — where
-the textbook and the current authoritative documentation disagree, the
+The development-edition Nornyx textbook manuscript lives in
+[book/manuscript](https://github.com/mazinmarji/nornyx/tree/main/book/manuscript):
+public educational material teaching the language and its governance model.
+Its factual assertions may be edition- or SHA-pinned rather than evergreen —
+where the textbook and the current authoritative documentation disagree, the
 documentation wins.
 
 ## Development
@@ -388,7 +401,7 @@ pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Contribution rules: [CONTRIBUTING.md](CONTRIBUTING.md).
+Contribution rules: [CONTRIBUTING.md](https://github.com/mazinmarji/nornyx/blob/main/CONTRIBUTING.md).
 
 ## License
 

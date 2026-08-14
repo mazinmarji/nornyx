@@ -1,8 +1,9 @@
 # Nornyx Executive Overview
 
 Nornyx is a vendor-neutral governance contract language for AI software
-delivery that makes authorization semantics, controls, decisions, and supplied
-evidence deterministic, portable, and revision-bound.
+delivery that defines deterministic controls and authorization semantics,
+binds decisions and supplied evidence to governed revisions, and preserves
+that governance meaning across supported integrations.
 
 ## The problem
 
@@ -16,8 +17,11 @@ governance that was actually in force.
 
 ## What Nornyx does
 
-Nornyx turns that scattered governance into a single reviewed `.nyx` contract
-with deterministic semantics:
+Nornyx gives that governance a single reviewed entry point: the `.nyx`
+contract. Where the contract selects policy references, profiles, or modules,
+Nornyx resolves those governed inputs deterministically; authorization and
+evidence validation also use the applicable lock/revision and explicit
+evaluation inputs. On that basis Nornyx provides:
 
 - **Deterministic contract checking** — parse and semantically check
   YAML-compatible `.nyx` contracts covering intent, context, agents, skills,
@@ -27,8 +31,10 @@ with deterministic semantics:
   external tools consume (`AGENTS.md`, policy/eval/harness/context files,
   evidence scaffolds) from the contract, with drift and workspace checks that
   fail loudly when generated output diverges from the contract.
-- **Authorization semantics** — a framework-neutral authorization SPI with
-  normalized decisions and reason codes; AI identities can never approve.
+- **Authorization semantics** — a framework-neutral authorization SPI
+  producing deterministic decisions with normalized reason codes from
+  explicit supported inputs; approval assertions identified as non-human are
+  rejected, and claimant identity/authentication remains external.
 - **Revision and lock binding** — content-addressed locks bind artifacts,
   approvals, and evidence to the exact governed revision.
 - **Supplied-evidence validation** — validate supplied runtime-event evidence
@@ -61,7 +67,7 @@ evidence they supply against it.
   SPI 1.2, agentic-network locks, and runtime-event validation 1.1.
 - **Optional profile:** `agentic_network` and the supported profile/module
   surfaces.
-- **Limited / experimental:** the scoped OpenID AuthZEN evaluation
+- **Limited / experimental:** the scoped OpenID AuthZEN capability-evaluation
   interoperability surface, the narrow published runtime-adapter coverage,
   cooperative higher-assurance claims, theme-level standards mappings, and
   the first-party external-adoption pilot.

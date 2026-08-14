@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nornyx"
 version = "1.11.0"
-description = "A generalized agentic contract/control-plane language for governed AI software delivery."
+description = "Vendor-neutral governance contract language for deterministic controls, authorization semantics, and revision-bound decision/evidence records in AI software delivery."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

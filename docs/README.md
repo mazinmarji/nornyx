@@ -5,8 +5,9 @@ It identifies which documents are the current source of truth, which are
 supporting material, and which are historical records preserved as evidence.
 
 Nornyx is a vendor-neutral governance contract language for AI software
-delivery that makes authorization semantics, controls, decisions, and supplied
-evidence deterministic, portable, and revision-bound. For that definition in
+delivery that defines deterministic controls and authorization semantics,
+binds decisions and supplied evidence to governed revisions, and preserves
+that governance meaning across supported integrations. For that definition in
 context, start with the [executive overview](00_EXECUTIVE_OVERVIEW.md) and the
 [positioning document](48_NORNYX_POSITIONING.md).
 
@@ -52,7 +53,12 @@ place rather than moved, renumbered, or deleted.
   this public repository. **Authoritative.**
 - [05_SECURITY_MODEL.md](05_SECURITY_MODEL.md) — security assumptions and
   boundaries. Supporting.
-- [../SECURITY.md](../SECURITY.md) — the repository security-reporting policy.
+- [../SECURITY.md](../SECURITY.md) — the repository security policy.
+  **Warning:** its current vulnerability-reporting instructions are stale, and
+  GitHub Private Vulnerability Reporting is currently disabled for this
+  repository. Do **not** post sensitive vulnerability details in public
+  issues. The security policy will be corrected once a private reporting
+  channel is enabled.
 - [28_NORNYX_PRODUCT_THESIS_SHORT.md](28_NORNYX_PRODUCT_THESIS_SHORT.md) —
   earlier short product thesis. Historical record; the positioning document
   above is current.
@@ -78,8 +84,10 @@ place rather than moved, renumbered, or deleted.
 - [agentic-network/01_TUTORIAL.md](agentic-network/01_TUTORIAL.md) —
   end-to-end tutorial.
 - [agentic-network/12_AUTHORIZATION_SPI.md](agentic-network/12_AUTHORIZATION_SPI.md)
-  — the framework-neutral authorization SPI (1.2): normalized decisions,
-  reason codes, approval rules. **Authoritative.**
+  — the SPI 1.2 note: the additive Authorizer construction-state capability
+  (it changes no authorization or approval semantics). For the complete
+  decision semantics, consult the current implementation, its tests, and
+  [decisions/ADR-0039-agentic-integration-sdk.md](decisions/ADR-0039-agentic-integration-sdk.md).
 - [agentic-network/08_SECURITY_BOUNDARIES.md](agentic-network/08_SECURITY_BOUNDARIES.md)
   — what the profile does and does not protect against.
 - [agentic-network/02_CREWAI_GUIDE.md](agentic-network/02_CREWAI_GUIDE.md) ·
@@ -119,7 +127,7 @@ external systems remain responsible for execution and enforcement.
 ## 7. Interoperability & Conformance
 
 - [69_AUTHZEN_INTEROPERABILITY.md](69_AUTHZEN_INTEROPERABILITY.md) — the
-  scoped OpenID AuthZEN evaluation interoperability surface.
+  scoped OpenID AuthZEN capability-evaluation interoperability surface.
   Limited/experimental: it is not complete AuthZEN coverage and claims no
   AARP/COAZ conformance.
 - [68_STANDARDS_MAPPING_FIRST_WAVE.md](68_STANDARDS_MAPPING_FIRST_WAVE.md) —
@@ -198,10 +206,11 @@ and is not silently promoted because later work overlaps it.
 
 ## 10. Textbook
 
-- [../book/manuscript](../book/manuscript) — the Nornyx textbook manuscript.
-  Public educational material: its factual assertions may be edition- or
-  SHA-pinned rather than evergreen, so where the textbook and the current
-  authoritative documents disagree, the authoritative documents win.
+- [../book/manuscript](../book/manuscript) — the development-edition Nornyx
+  textbook manuscript. Public educational material: its factual assertions may
+  be edition- or SHA-pinned rather than evergreen, so where the textbook and
+  the current authoritative documents disagree, the authoritative documents
+  win.
 - [../book/factpack](../book/factpack) — the revision-pinned fact packs the
   manuscript's claims are checked against. Edition-pinned.
 - [../book/design](../book/design) · [../book/tools](../book/tools) —
