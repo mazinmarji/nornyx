@@ -33,6 +33,10 @@ def test_detect_repo_signals_python(tmp_path) -> None:
     assert "python -m pytest -q" in signals["test_commands"]
     assert signals["recommended_level"] == "lite"
 
+    (tmp_path / "docs" / "decisions").mkdir(parents=True)
+    signals = detect_repo_signals(tmp_path)
+    assert signals["recommended_level"] == "standard"
+
 
 def test_render_lite_nyx_passes_current_checker(tmp_path) -> None:
     (tmp_path / "tests").mkdir()
