@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "Nornyx",
   "status": "active",
-  "updated_at": "2026-06-04",
+  "updated_at": "2026-08-14",
   "source_of_truth": {
     "type": "local_repo",
     "repo": "nornyx",
@@ -10,8 +10,8 @@
     "status_sync": "local_git_optional_remote"
   },
   "summary": {
-    "overall_status": "graph_demo_expansion_completed",
-    "next_recommended_goal": "Proceed to GOAL-064 Adoption Readiness Friction Audit; recommended model level medium",
+    "overall_status": "post_v1_reweighted_roadmap_active",
+    "next_recommended_goal": "Follow the post-v1.0 reweighted roadmap (docs/03_ROADMAP_TO_v1_AND_BEYOND.md, M3-M9): standards mapping first wave (M4, issue #47) and external adoption evidence (M5).",
     "completed_blocks": 55,
     "partial_blocks": 0,
     "locked_blocks": 1,
@@ -25,7 +25,7 @@
     },
     "roadmap_note": "v1.0.1 hygiene is closed. Next work should be named strategic milestones, not open-ended hygiene follow-ups. GOAL-100 remains locked.",
     "pmo_readability": {
-      "current_focus": "post-v1.0.1 strategic track",
+      "current_focus": "post-v1.0 reweighted roadmap (M3-M9); Nornyx 1.11.0 published",
       "latest_completed_goal": "GOAL-063 Nornyx Graph Demo Expansion",
       "history_policy": "Preserve completed goal blocks and evidence links; avoid repeating the full completed-goal chain in summary text.",
       "portal_guidance": "Read summary for current state, goal ledger for history, and vision maps for roadmap context."
