@@ -80,6 +80,18 @@ STRATEGY_LEAK_RULES: list[tuple[str, re.Pattern[str], str]] = [
         "names a commercial boundary; describe the public Core boundary "
         "instead",
     ),
+    (
+        "public-vs-enterprise-split",
+        re.compile(
+            r"\b(?:public(?:[\s/\\-]{0,3}core)?|core|open[\s-]{0,3}source)"
+            r"[\s/\\-]{0,3}(?:versus|vs\.?)[\s/\\-]{0,3}enterprise\b"
+            r"|\benterprise[\s/\\-]{0,3}(?:versus|vs\.?)[\s/\\-]{0,3}"
+            r"(?:public(?:[\s/\\-]{0,3}core)?|core|open[\s-]{0,3}source)\b",
+            re.IGNORECASE,
+        ),
+        "contrasts the public Core with an enterprise counterpart; describe "
+        "the public Core scope boundary instead",
+    ),
 ]
 
 LOCAL_TERM_FILES = [

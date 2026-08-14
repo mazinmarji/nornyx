@@ -40,11 +40,13 @@ distribution version is independent of the Nornyx **language/schema** version
 ### Documentation
 
 - Tighten the public strategy boundary: ADR-0044's consequences and acceptance
-  evidence now describe the public Core boundary in vendor-neutral terms, and
-  `scripts/check-public-boundary.py` gains tracked strategy-shape rules (with
-  regression tests in `tests/test_public_boundary.py`) so CI can flag private
-  product-strategy phrasing without carrying any private name in the public
-  tree. No runtime, schema, or package change.
+  evidence, the AuthZEN interoperability guide's scope heading, and the
+  `nornyx.agentic.authzen` module docstring now describe the public Core scope
+  in vendor-neutral capability terms, and `scripts/check-public-boundary.py`
+  gains tracked strategy-shape rules (with regression tests in
+  `tests/test_public_boundary.py`) so CI can flag private product-strategy
+  phrasing without carrying any private name in the public tree. No runtime
+  behavior, schema, or package-version change.
 - Complete the legacy-to-SPI method/error map, deprecation and minimum-retention
   criteria, occurrence-mode compatibility, unsupported-surface inventory, and
   published Nornyx 1.11.0 / adapter 0.2.0 baseline reconciliation.

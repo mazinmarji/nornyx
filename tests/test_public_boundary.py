@@ -172,6 +172,30 @@ def test_strategy_rules_flag_commercial_boundary_variants(
         target.unlink()
 
 
+def test_strategy_rule_flags_public_versus_enterprise_contrast(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    module = _load_public_boundary_module()
+    cases = [
+        "## " + _assemble("Public/Core", " versus ", "Enterprise") + " boundary",
+        "The " + _assemble("core", " vs ", "enterprise") + " split is documented.",
+        "An " + _assemble("Enterprise", " versus ", "public core") + " comparison.",
+        "The " + _assemble("open-source", " vs. ", "enterprise") + " divide.",
+    ]
+
+    for index, text in enumerate(cases):
+        target = tmp_path / f"doc_{index}.md"
+        target.write_text(text + "\n", encoding="utf-8")
+
+        result = module.main(["--repo", str(tmp_path)])
+        output = capsys.readouterr().out
+
+        assert result == 1, text
+        assert "rule=public-vs-enterprise-split" in output, text
+        target.unlink()
+
+
 def test_strategy_rule_catches_compound_wrapped_across_lines(
     tmp_path: Path,
     capsys,
@@ -216,6 +240,11 @@ def test_legitimate_public_language_passes(tmp_path: Path, capsys) -> None:
             "Standards Mapping and Enterprise Assurance stays vendor-neutral.",
             'BeyondCorp: "A New Approach to Enterprise Security."',
             "Commercial and open-source implementations interoperate here.",
+            "## Public Core scope boundary",
+            "Large-scale hosted operation of those semantics is not",
+            "implemented here.",
+            "Approval fatigue at enterprise scale is an unsolved problem.",
+            "Build versus buy versus platform is a Chapter 37 question.",
             "Nornyx is a vendor-neutral governance contract language for AI",
             "software delivery.",
         ]
