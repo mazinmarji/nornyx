@@ -6,6 +6,11 @@ Nornyx should support first-class delivery state that can render into different 
 
 This document defines the initial read-only renderer model.
 
+The `nornyx render` command shown below is a design target, not an
+implemented CLI surface. The implemented read-only surface is
+`python scripts/dev/render_delivery_state.py
+--format shell|markdown|json|json-compact`, built on `nornyx/renderers.py`.
+
 ## Flow
 
 ```text
