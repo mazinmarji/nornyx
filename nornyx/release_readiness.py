@@ -18,7 +18,6 @@ REQUIRED_RELEASE_DOCS = [
     "docs/10_EXTENSION_PROTOCOLS_MCP_A2A.md",
     "docs/11_OBSERVABILITY_EVIDENCE.md",
     "docs/tooling/26_TOOLING_ROADMAP_LSP_TREESITTER.md",
-    "docs/releases/RELEASE_CANDIDATE_v1_0.md",
     "schemas/nornyx_v0_1.schema.json",
     "schemas/connector_manifest.schema.json",
     "examples/governed_delivery_control_plane.nyx",
@@ -46,7 +45,6 @@ REQUIRED_RC_EXAMPLES = [
 REQUIRED_V1_STABLE_DOCS = [
     *REQUIRED_RC_STABILIZATION_DOCS,
     "docs/47_NORNYX_STABLE_GENERALIZED_CONTRACT_LANGUAGE_v1_0.md",
-    "docs/releases/RELEASE_CANDIDATE_v1_0.md",
 ]
 REQUIRED_V1_STABLE_SCHEMAS = [
     *REQUIRED_RC_SCHEMAS,

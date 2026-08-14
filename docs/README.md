@@ -199,8 +199,8 @@ and is not silently promoted because later work overlaps it.
   into it; historical per-version notes also remain on the corresponding
   GitHub releases.)
 - [../RELEASING.md](../RELEASING.md) — release procedure (maintainer).
-- [releases](releases) — the v1.0 release-candidate and release records, and
-  the governance-program candidate record. Historical.
+- [releases](releases) — the v1.0 release records and the governance-program
+  candidate record. Historical.
 
 ## 10. Textbook
 
