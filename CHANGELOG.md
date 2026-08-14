@@ -17,6 +17,18 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Changed
 
+- The release-readiness required-docs lists no longer require the superseded
+  v1.0 release-candidate preparation note, which is deleted; `release-check`
+  and both release scripts otherwise behave identically and stay green.
+- The adoption signal detector recognizes `docs/decisions` as a governance
+  marker alongside the `docs/ADRs` convention.
+- Adapter CI jobs constrain the core `nornyx` requirement to the candidate
+  wheel built in the same run (and run `pip check`), so a transitive
+  resolution of a different core from PyPI fails loudly instead of silently
+  replacing the candidate under test. The CrewAI conformance suite sets
+  `CREWAI_TESTING` before the first `crewai` import so a fresh install's
+  one-time setup process cannot trip the enforcement-boundary detector on
+  first run.
 - ADR-0039 M2-D converts the unpackaged
   `integrations/nornyx_reference_adapters/GovernanceKernel` into a deprecated
   compatibility shim over the public SPI 1.2 `Authorizer` and
@@ -39,6 +51,13 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Documentation
 
+- Executable/example modernization: the delivery-state renderer document now
+  states that `nornyx render` is a design target and names the implemented
+  renderer script; the five pre-v0.1 block-syntax showcase contracts move to
+  `examples/historical/` and leave the compatibility corpus (which tracks the
+  current top-level example surface); the two early ADRs join
+  `docs/decisions/` as the single ADR home; and the PMO current-status fields
+  roll over to 2026-08-14 per the established rollover procedure.
 - Repository and documentation hygiene: relocate the closed governance-program
   execution record `CODEX_GOAL.md` to `docs/planning/governance-extension/`,
   remove the redundant per-version root release notes (v1.2.0–v1.5.2, all

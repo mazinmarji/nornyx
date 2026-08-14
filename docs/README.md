@@ -24,8 +24,9 @@ context, start with the [executive overview](00_EXECUTIVE_OVERVIEW.md) and the
 - **Edition-pinned** — accurate as of a stated revision or edition rather than
   evergreen.
 
-Existing public paths are stable: documents are corrected or annotated in
-place rather than moved, renumbered, or deleted.
+Public paths are stable by default: documents are corrected or annotated in
+place. When a hygiene cycle does move or retire a document, this index and
+the changelog record the change.
 
 ## 1. Start / Adopt
 
