@@ -192,9 +192,9 @@ where fit is strong and documenting gaps where it is not.
 - Nornyx becomes interoperable with an open authorization boundary without
   becoming a runtime platform.
 - PEP implementers can reuse a standard request/decision model.
-- Nornyx Enterprise or any third-party service can later operate the same public
+- Any independently operated PDP service can later operate the same public
   semantics without forcing public Core consumers onto a proprietary protocol.
-- The commercial/open-source boundary becomes clearer rather than weaker.
+- The public Core boundary becomes clearer rather than weaker.
 
 ### Costs / limitations
 
@@ -218,5 +218,5 @@ This ADR is implemented when:
 4. allow/deny/approval-required decision translation is tested;
 5. approval-required cannot become an AuthZEN allow;
 6. the public `nornyx.agentic.authzen` module is packaged without expanding the frozen facade;
-7. documentation states the AARP/COAZ draft status and commercial boundary;
+7. documentation states the AARP/COAZ draft status and the public Core boundary;
 8. repository CI passes before merge.
