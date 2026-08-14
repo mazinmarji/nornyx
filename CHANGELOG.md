@@ -39,6 +39,14 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Documentation
 
+- Close out the strategy-boundary sweep residuals: retitle the AuthZEN interop
+  guide's scope section (`docs/69_AUTHZEN_INTEROPERABILITY.md`) to describe only
+  the public Core boundary, make the `nornyx.agentic.authzen` module docstring's
+  out-of-scope list vendor-neutral, and extend the tracked strategy-shape rules
+  in `scripts/check-public-boundary.py` (with regression fixtures) to flag
+  capitalized product-edition compounds while keeping lowercase generic usage
+  and established chapter/heading titles passing. No runtime, schema, or
+  package change.
 - Tighten the public strategy boundary: ADR-0044's consequences and acceptance
   evidence now describe the public Core boundary in vendor-neutral terms, and
   `scripts/check-public-boundary.py` gains tracked strategy-shape rules (with

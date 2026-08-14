@@ -172,6 +172,51 @@ def test_strategy_rules_flag_commercial_boundary_variants(
         target.unlink()
 
 
+def test_strategy_rules_flag_capitalized_edition_counterpart_variants(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    module = _load_public_boundary_module()
+    cases = [
+        "## Public/Core " + _assemble("versus", " ", "Enterprise") + " boundary",
+        "or add " + _assemble("Enterprise", " ", "deployment") + " semantics.",
+        "shipped as the " + _assemble("Enterprise", "-", "hosting") + " bundle",
+        "governed core " + _assemble("vs.", " ", "Enterprise") + " governance",
+        "the " + _assemble("Enterprise", " ", "versus") + " public split",
+        "topology(" + _assemble("Enterprise", "", "Boundary") + ") diagram",
+    ]
+
+    for index, text in enumerate(cases):
+        target = tmp_path / f"doc_{index}.md"
+        target.write_text(text + "\n", encoding="utf-8")
+
+        result = module.main(["--repo", str(tmp_path)])
+        output = capsys.readouterr().out
+
+        assert result == 1, text
+        assert "rule=product-edition-counterpart" in output, text
+        assert text not in output
+        target.unlink()
+
+
+def test_capitalized_edition_compound_wrapped_across_lines(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    module = _load_public_boundary_module()
+    wrapped = (
+        "It must not add " + _assemble("Enterprise", "\n", "deployment")
+        + " semantics to the public tree.\n"
+    )
+    (tmp_path / "wrapped.md").write_text(wrapped, encoding="utf-8")
+
+    result = module.main(["--repo", str(tmp_path)])
+    output = capsys.readouterr().out
+
+    assert result == 1
+    assert "wrapped.md:1: rule=product-edition-counterpart" in output
+
+
 def test_strategy_rule_catches_compound_wrapped_across_lines(
     tmp_path: Path,
     capsys,
@@ -216,6 +261,11 @@ def test_legitimate_public_language_passes(tmp_path: Path, capsys) -> None:
             "Standards Mapping and Enterprise Assurance stays vendor-neutral.",
             'BeyondCorp: "A New Approach to Enterprise Security."',
             "Commercial and open-source implementations interoperate here.",
+            "Enterprise Governance Hierarchies is one of the book chapters.",
+            "Enterprise adoption follows the same public contract.",
+            "Enterprise-ready means no validation errors and maturity >= 2.",
+            "Any enterprise deployment can consume the same public artifacts.",
+            "Case studies compare startup versus enterprise governance needs.",
             "Nornyx is a vendor-neutral governance contract language for AI",
             "software delivery.",
         ]

@@ -8,7 +8,7 @@ Nornyx :class:`Decision` to an AuthZEN boolean decision.
 
 It is a codec and local evaluation bridge only. It does not implement an HTTP
 server or client, authenticate callers, distribute policy, operate a PDP, own a
-PEP, execute actions, or add Enterprise deployment semantics.
+PEP, execute actions, or add enterprise deployment or hosting semantics.
 
 The Nornyx mapping identifier is project-defined, not an OpenID Foundation
 registered profile. AARP and COAZ are tracked separately as evolving AuthZEN

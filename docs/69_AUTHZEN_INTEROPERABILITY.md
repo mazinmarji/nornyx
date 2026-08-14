@@ -35,7 +35,7 @@ on 2026-06-15:
 Nornyx tracks those drafts but does not claim AARP or COAZ conformance in this
 milestone.
 
-## Public/Core versus Enterprise boundary
+## Public Core boundary
 
 This repository owns **portable semantics and interoperability**.
 
@@ -271,4 +271,4 @@ commercial product may use the same public contract.
 
 Nornyx's portable value remains in governance semantics, deterministic
 composition, authority modeling, revision/evidence binding, and conformance.
-Enterprise-scale operation of those semantics is not implemented here.
+Operation of those semantics at enterprise scale is not implemented here.

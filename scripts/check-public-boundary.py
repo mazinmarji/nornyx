@@ -62,6 +62,21 @@ STRATEGY_LEAK_RULES: list[tuple[str, re.Pattern[str], str]] = [
         "define paid or private editions",
     ),
     (
+        # Deliberately case-sensitive: the capitalized word is the edition
+        # signal, while lowercase generic usage (industry scale, audience,
+        # deployment style) must keep passing.
+        "product-edition-counterpart",
+        re.compile(
+            r"\b(?:versus|vs)\b\.?" + _SEP + r"{1,3}" + r"Enterprise\b"
+            + r"|\bEnterprise" + _SEP + r"{1,3}" + r"(?:versus|vs)\b"
+            + r"|\bEnterprise" + _SEP + r"{0,3}"
+            + r"(?i:boundar(?:y|ies)|deployments?|hostings?)\b",
+        ),
+        "capitalizes a product-edition counterpart of this repository; use "
+        "lowercase generic wording or describe the public Core boundary "
+        "instead",
+    ),
+    (
         "commercial-open-source-boundary",
         re.compile(
             r"\bcommercial\s*(?:[/\\-]|\bvs\.?\s|\bversus\s)\s*open[\s-]*source\b"
