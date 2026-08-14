@@ -67,10 +67,6 @@
         "sha256": "3ea884c4afd2bbf76c8aae430c840ce5df2879d21ff2e2b237cebf7364030701"
       },
       {
-        "path": "examples/nornyx_decision_boundary_evidence_quality.nyx",
-        "sha256": "cf387f406abea442bbba48ce188e194771d32f890aefb3d8f8305989aa58e9d3"
-      },
-      {
         "path": "examples/nornyx_distinct_language_showcase.nyx",
         "sha256": "97a4ccc283d80b860ffe19c9430f6d54cdc1713808bf0eadcb918b1c2efc8cfa"
       },
@@ -81,22 +77,6 @@
       {
         "path": "examples/nornyx_graph_demo_expanded.nyx",
         "sha256": "531814612702dfecc5332a373f81476629e14affee7471e948960a5044833829"
-      },
-      {
-        "path": "examples/nornyx_handover_and_ambiguity.nyx",
-        "sha256": "a384a9420b1f0b6cefad0abc894d738db16245b13f6ed9ea209817918699bb97"
-      },
-      {
-        "path": "examples/nornyx_pattern_lifecycle.nyx",
-        "sha256": "14603a52b280ac0be3b0fb6dfb77cbaa7a7bc02dc1485aa46e2c65de6a2fbc94"
-      },
-      {
-        "path": "examples/nornyx_portal_contract.nyx",
-        "sha256": "e9a48164ca98f4f4755e9b41fbd2833794327e322cc4a51d25e641745ed69ee5"
-      },
-      {
-        "path": "examples/nornyx_product_to_ops_lifecycle.nyx",
-        "sha256": "ed4f964297186c22e90cd73e559193a0a314aef4f4974f72389dc74cb788e391"
       },
       {
         "path": "examples/nornyx_roadmap_goals.nyx",
