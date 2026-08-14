@@ -23,6 +23,12 @@ from typing import Any, Callable
 os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 os.environ.setdefault("CREWAI_TRACING_ENABLED", "false")
+# On a fresh install crewai's first import performs one-time setup that can
+# spawn a helper process; that external process trips the enforcement-boundary
+# process detector and reports the suite nonconformant on first run only.
+# CREWAI_TESTING is crewai's own switch for suppressing that first-run
+# behavior, and a conformance suite is a testing context by definition.
+os.environ.setdefault("CREWAI_TESTING", "true")
 
 from ..._compat import require_extra  # noqa: E402
 
