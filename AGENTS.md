@@ -1,12 +1,17 @@
 # AGENTS.md — Nornyx Repository
 
-This repository is the Nornyx safe starter scaffold.
+This repository is the released Nornyx project. Current documentation
+authority and public positioning are defined in `docs/README.md` and
+`docs/48_NORNYX_POSITIONING.md`.
 
 ## Role guidance
 
 ### Architect Agent
-- Keep Nornyx positioned as an AI engineering control-plane language first.
-- Do not expand v0.1 into a general-purpose language runtime.
+- Keep Nornyx positioned as a vendor-neutral governance contract language for
+  AI software delivery. Treat control-plane, compiler, and generator
+  terminology as implementation mechanisms, not the primary product identity.
+- Do not expand Nornyx into a general-purpose language runtime; execution and
+  enforcement remain external.
 - Preserve the staged roadmap.
 
 ### Builder Agent

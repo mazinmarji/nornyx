@@ -167,7 +167,9 @@ external systems remain responsible for execution and enforcement.
 
 - [65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md](65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md)
   — current roadmap priorities (P0–P3) and promotion gates. **Authoritative.**
-  Roadmap items are future work, not current capabilities.
+  The roadmap includes both durable shipped capabilities and
+  future/adoption-gated work; roadmap inclusion alone does not indicate
+  current availability.
 - [03_ROADMAP_TO_v1_AND_BEYOND.md](03_ROADMAP_TO_v1_AND_BEYOND.md) — the
   strategic roadmap carrying the M3–M9 milestone sequence.
 

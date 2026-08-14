@@ -71,8 +71,9 @@ evidence they supply against it.
   interoperability surface, the narrow published runtime-adapter coverage,
   cooperative higher-assurance claims, theme-level standards mappings, and
   the first-party external-adoption pilot.
-- **Roadmap:** future work stays future — see the roadmap links below;
-  nothing on the roadmap is a current capability.
+- **Roadmap:** the roadmap (linked below) includes both durable shipped
+  capabilities and future/adoption-gated work; roadmap inclusion alone does
+  not indicate current availability.
 
 ## Where to go next
 

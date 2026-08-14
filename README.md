@@ -338,9 +338,10 @@ risk-surfaced, evidence-bound, hash-locked, and approval-gated.
   interoperability surface, the narrow published runtime-adapter coverage,
   cooperative higher-assurance claims, theme-level standards mappings, and
   the first-party external-adoption pilot.
-- **Roadmap:** future work is future — see the
-  [roadmap priorities](https://github.com/mazinmarji/nornyx/blob/main/docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md);
-  nothing on the roadmap is a current capability.
+- **Roadmap:** the
+  [roadmap priorities](https://github.com/mazinmarji/nornyx/blob/main/docs/65_ROADMAP_REWEIGHTING_EVIDENCE_ADOPTION.md)
+  include both durable shipped capabilities and future/adoption-gated work;
+  roadmap inclusion alone does not indicate current availability.
 
 The claim boundary: Nornyx validates governed contracts and supplied evidence
 against declared semantics and governed revisions. It does not independently
