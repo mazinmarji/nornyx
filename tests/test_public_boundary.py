@@ -224,7 +224,54 @@ def test_strategy_rule_catches_flagged_file_path(tmp_path: Path, capsys) -> None
     output = capsys.readouterr().out
 
     assert result == 1
-    assert ":0: rule=nonpublic-product-edition scope=path" in output
+    assert "rule=nonpublic-product-edition" in output
+    assert "line=0 scope=path" in output
+    assert f"path_fingerprint={module._fingerprint(name)}" in output
+    assert name not in output
+    _assert_no_product_compound_echo(output)
+
+
+def test_private_local_term_in_filename_is_detected_and_redacted(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    module = _load_public_boundary_module()
+    local_marker = "LOCAL_PRIVATE_BOUNDARY_MARKER"
+    (tmp_path / ".private-boundary-terms.txt").write_text(local_marker, encoding="utf-8")
+    sensitive_name = local_marker + "-notes.md"
+    (tmp_path / sensitive_name).write_text("# Clean public content\n", encoding="utf-8")
+
+    result = module.main(["--repo", str(tmp_path)])
+    output = capsys.readouterr().out
+
+    assert result == 1
+    assert local_marker not in output
+    assert sensitive_name not in output
+    assert "line=0 scope=path" in output
+    assert f"path_fingerprint={module._fingerprint(sensitive_name)}" in output
+    assert "term_fingerprint=" in output
+
+
+def test_content_finding_in_sensitively_named_file_redacts_path(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    module = _load_public_boundary_module()
+    local_marker = "LOCAL_PRIVATE_BOUNDARY_MARKER"
+    (tmp_path / ".private-boundary-terms.txt").write_text(local_marker, encoding="utf-8")
+    sensitive_name = local_marker + "-notes.md"
+    (tmp_path / sensitive_name).write_text(
+        "The body mentions " + local_marker + " once.\n", encoding="utf-8"
+    )
+
+    result = module.main(["--repo", str(tmp_path)])
+    output = capsys.readouterr().out
+
+    assert result == 1
+    assert local_marker not in output
+    assert sensitive_name not in output
+    assert "line=1 scope=content" in output
+    assert f"path_fingerprint={module._fingerprint(sensitive_name)}" in output
 
 
 def test_legitimate_public_language_passes(tmp_path: Path, capsys) -> None:

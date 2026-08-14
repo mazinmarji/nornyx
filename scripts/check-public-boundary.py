@@ -13,6 +13,11 @@ Three detection layers, all deterministic and offline:
    flagged compound as contiguous text, and diagnostics never echo matched
    content — findings report a rule id and remediation hint only.
 
+Diagnostics also never echo a sensitive file path: when a *path* matches a
+private term or strategy rule, every finding for that file is rendered with a
+deterministic path fingerprint instead of the raw path, because the path can
+embed the private value itself.
+
 Layer 3 exists because layers 1 and 2 cannot, by design, carry real private
 terms into CI; a strategy phrase that is not a synthetic marker previously
 passed the public scan unchallenged.
@@ -232,6 +237,14 @@ def check_public_boundary(repo: str | Path) -> list[dict[str, object]]:
             for line_number, line in enumerate(lines, start=1):
                 file_findings.extend(_scan_text_line(rel, line_number, line, terms))
             file_findings.extend(_scan_wrapped_lines(rel, lines))
+        if any(finding["scope"] == "path" for finding in file_findings):
+            # The path itself matched a private term or strategy rule, so the
+            # raw path must never be rendered — not even for this file's
+            # content findings. Stamp every finding with a deterministic
+            # fingerprint for _render() to show instead.
+            path_fingerprint = _fingerprint(rel)
+            for finding in file_findings:
+                finding["path_fingerprint"] = path_fingerprint
         file_findings.sort(
             key=lambda finding: (
                 finding["line"],
@@ -244,11 +257,19 @@ def check_public_boundary(repo: str | Path) -> list[dict[str, object]]:
 
 
 def _render(finding: dict[str, object]) -> str:
-    location = f"{finding['path']}:{finding['line']}"
-    scope = f" scope={finding['scope']}" if finding.get("scope") == "path" else ""
-    if "rule" in finding:
-        return f"{location}: rule={finding['rule']}{scope} hint={finding['hint']}"
-    return f"{location}: term_fingerprint={finding['term_fingerprint']}{scope}"
+    detail = (
+        f"rule={finding['rule']} hint={finding['hint']}"
+        if "rule" in finding
+        else f"term_fingerprint={finding['term_fingerprint']}"
+    )
+    if "path_fingerprint" in finding:
+        # A sensitive path is identified only by fingerprint; echoing the raw
+        # path (or any parent of it) would disclose the matched value.
+        return (
+            f"path_fingerprint={finding['path_fingerprint']} "
+            f"line={finding['line']} scope={finding['scope']} {detail}"
+        )
+    return f"{finding['path']}:{finding['line']}: {detail}"
 
 
 def main(argv: list[str] | None = None) -> int:
