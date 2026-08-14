@@ -1,5 +1,9 @@
 # Nornyx v1.0 Release Notes
 
+> **Historical release record.** These notes document the v1.0.0 GitHub
+> source release of 2026-06-03 — the stable contract-language milestone. For
+> current package releases, see [CHANGELOG.md](../../CHANGELOG.md).
+
 ## Status
 
 Nornyx v1.0.0 is published as a GitHub source release:

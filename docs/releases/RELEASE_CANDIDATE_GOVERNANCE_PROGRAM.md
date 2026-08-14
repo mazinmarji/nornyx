@@ -1,5 +1,11 @@
 # Nornyx Governance Program Candidate Record
 
+> **Historical candidate record.** This is a preserved point-in-time
+> candidate record of the governance program. Its unfilled placeholder fields
+> are intentional and are asserted by regression tests; it does not describe
+> the repository's present state. The program's closure reports live in
+> [docs/planning/governance-extension](../planning/governance-extension).
+
 ## Record Identity
 
 - Package version: `1.5.2`

@@ -1,5 +1,9 @@
 # Nornyx v1.0 Release Record
 
+> **Historical release record.** This file records the published v1.0.0
+> GitHub source release of 2026-06-03. For current package releases, see
+> [CHANGELOG.md](../../CHANGELOG.md).
+
 ## Release
 
 - Version: `v1.0.0`
