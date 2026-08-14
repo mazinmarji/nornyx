@@ -194,17 +194,13 @@ and is not silently promoted because later work overlaps it.
 
 ### Releases
 
-- [../CHANGELOG.md](../CHANGELOG.md) — the change record. **Authoritative.**
+- [../CHANGELOG.md](../CHANGELOG.md) — the change record for every release.
+  **Authoritative.** (Per-version root release-note files were consolidated
+  into it; historical per-version notes also remain on the corresponding
+  GitHub releases.)
 - [../RELEASING.md](../RELEASING.md) — release procedure (maintainer).
-- Root release notes — historical release records, kept at their stable
-  paths: [../RELEASE_NOTES_v1.2.0.md](../RELEASE_NOTES_v1.2.0.md),
-  [../RELEASE_NOTES_v1.3.0.md](../RELEASE_NOTES_v1.3.0.md),
-  [../RELEASE_NOTES_v1.4.0.md](../RELEASE_NOTES_v1.4.0.md),
-  [../RELEASE_NOTES_v1.5.0.md](../RELEASE_NOTES_v1.5.0.md),
-  [../RELEASE_NOTES_v1.5.1.md](../RELEASE_NOTES_v1.5.1.md),
-  [../RELEASE_NOTES_v1.5.2.md](../RELEASE_NOTES_v1.5.2.md).
-- [releases](releases) — v1.0 release-candidate and release records.
-  Historical.
+- [releases](releases) — the v1.0 release-candidate and release records, and
+  the governance-program candidate record. Historical.
 
 ## 10. Textbook
 
@@ -221,13 +217,14 @@ and is not silently promoted because later work overlaps it.
 ## 11. Maintainer / Historical Records
 
 These are project records, not user documentation. They are preserved as
-evidence and stay at their existing paths; their internal status lines are
-historical.
+evidence; their internal status lines are historical.
 
 - [../AGENTS.md](../AGENTS.md) — repository agent instructions (maintainer,
   current).
-- [../CODEX_GOAL.md](../CODEX_GOAL.md) — the completed governance-program
-  execution record. Closed historical program, not a current instruction.
+- [planning/governance-extension/CODEX_GOAL.md](planning/governance-extension/CODEX_GOAL.md)
+  — the completed governance-program execution record, filed with the
+  program's other records. Closed historical program, not a current
+  instruction.
 - [goals](goals) — goal packets for the development program. Historical
   records.
 - [planning](planning) — planning surfaces (agentic-network,

@@ -1,5 +1,12 @@
 # Nornyx v1.0 Release Notes
 
+> **Historical record with unresolved provenance.** This file records a
+> claimed v1.0.0 GitHub source release dated 2026-06-03. The current GitHub
+> repository no longer exposes the recorded `v1.0.0` release/tag, and the
+> recorded target commit is not currently resolvable. Preserve this record as
+> historical evidence pending provenance confirmation; do not treat it as
+> current release authority.
+
 ## Status
 
 Nornyx v1.0.0 is published as a GitHub source release:
