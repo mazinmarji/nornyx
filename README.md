@@ -272,10 +272,11 @@ can explicitly distinguish logical operations, repeated occurrences, retries,
 parallel branches, and resumed attempts while retaining exact 1.0 evidence and
 lock compatibility. The supported LangGraph 1.2.2 adapter uses this model for
 synchronous StateGraph nodes; CrewAI synchronous tool coverage remains
-available in the same adapter package. AI identities can never approve and
-sensitive categories are never shareable. Nornyx validates declarations and
-supplied local evidence — it is not an agent runtime, MCP runtime, or A2A
-runtime, and it does not attest runtime truth. Start with
+available in the same adapter package. Approval assertions identified as
+non-human are rejected; claimant identity and authentication remain external
+to Nornyx. Sensitive categories are never shareable. Nornyx validates
+declarations and supplied local evidence — it is not an agent runtime, MCP
+runtime, or A2A runtime, and it does not attest runtime truth. Start with
 [docs/agentic-network/00_OVERVIEW.md](docs/agentic-network/00_OVERVIEW.md).
 
 ## Authorization and interoperability
