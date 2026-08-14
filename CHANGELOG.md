@@ -42,10 +42,11 @@ distribution version is independent of the Nornyx **language/schema** version
 - Repository and documentation hygiene: relocate the closed governance-program
   execution record `CODEX_GOAL.md` to `docs/planning/governance-extension/`,
   remove the redundant per-version root release notes (v1.2.0–v1.5.2, all
-  recorded in this changelog and on the corresponding GitHub releases), add
-  historical-record banners to the retained v1.0 release records and the
-  governance-program candidate record, and update the documentation index
-  accordingly. No runtime, schema, or package change.
+  recorded in this changelog and on the corresponding GitHub releases), add a
+  historical-record banner to the governance-program candidate record and
+  provenance-uncertainty banners to the retained v1.0 release records, and
+  update the documentation index accordingly. No runtime, schema, or package
+  change.
 - Tighten the public strategy boundary: ADR-0044's consequences and acceptance
   evidence, the AuthZEN interoperability guide's scope heading, and the
   `nornyx.agentic.authzen` module docstring now describe the public Core scope

@@ -1,8 +1,11 @@
 # Nornyx v1.0 Release Record
 
-> **Historical release record.** This file records the published v1.0.0
-> GitHub source release of 2026-06-03. For current package releases, see
-> [CHANGELOG.md](../../CHANGELOG.md).
+> **Historical record with unresolved provenance.** This file records a
+> claimed v1.0.0 GitHub source release dated 2026-06-03. The current GitHub
+> repository no longer exposes the recorded `v1.0.0` release/tag, and the
+> recorded target commit is not currently resolvable. Preserve this record as
+> historical evidence pending provenance confirmation; do not treat it as
+> current release authority.
 
 ## Release
 
