@@ -526,7 +526,7 @@
         "docs/33_PRODUCT_TO_OPERATIONS_LIFECYCLE_ROADMAP.md",
         "docs/backlog/nornyx-product-to-ops-lifecycle-backlog.md",
         "docs/backlog/nornyx-product-to-ops-lifecycle.yaml",
-        "examples/nornyx_product_to_ops_lifecycle.nyx",
+        "examples/historical/nornyx_product_to_ops_lifecycle.nyx",
         "schemas/product_lifecycle_extension.schema.json",
         "nornyx/product_lifecycle.py",
         "scripts/dev/check_product_lifecycle.py",
@@ -563,7 +563,7 @@
         "schemas/ambiguity_control.schema.json",
         "nornyx/handover.py",
         "scripts/dev/check_handover_controls.py",
-        "examples/nornyx_handover_and_ambiguity.nyx",
+        "examples/historical/nornyx_handover_and_ambiguity.nyx",
         "tests/test_handover_contracts.py",
         "docs/qa/evidence/GOAL-023/README.md"
       ],
@@ -597,7 +597,7 @@
         "schemas/evidence_quality.schema.json",
         "nornyx/regulated_controls.py",
         "scripts/dev/check_regulated_controls.py",
-        "examples/nornyx_decision_boundary_evidence_quality.nyx",
+        "examples/historical/nornyx_decision_boundary_evidence_quality.nyx",
         "tests/test_decision_boundary_evidence_quality.py",
         "docs/qa/evidence/GOAL-025/README.md"
       ],
@@ -787,7 +787,7 @@
       ],
       "evidence": [
         "docs/39_NORNYX_ZERO_FRICTION_ADOPTION_PACK.md",
-        "docs/ADRs/ADR-0021-zero-friction-adoption-ramp.md",
+        "docs/decisions/ADR-0021-zero-friction-adoption-ramp.md",
         "docs/backlog/nornyx-zero-friction-adoption-pack.yaml",
         "nornyx/adoption.py",
         "nornyx/cli.py",

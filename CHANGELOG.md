@@ -18,8 +18,10 @@ distribution version is independent of the Nornyx **language/schema** version
 ### Changed
 
 - The release-readiness required-docs lists no longer require the superseded
-  v1.0 release-candidate preparation note, which is deleted; `release-check`
-  and both release scripts otherwise behave identically and stay green.
+  v1.0 release-candidate preparation note, which is retired from current
+  release gating and retained as a banner-marked historical evidence record;
+  `release-check` and both release scripts otherwise behave identically and
+  stay green.
 - The adoption signal detector recognizes `docs/decisions` as a governance
   marker alongside the `docs/ADRs` convention.
 - Adapter CI jobs constrain the core `nornyx` requirement to the candidate
