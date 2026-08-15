@@ -1,5 +1,10 @@
 # Nornyx v1.0 Release Candidate
 
+> **Historical/superseded record.** This is the v1.0 candidate-preparation
+> note, retained as historical evidence referenced by preserved PMO records.
+> It is not part of the current release gate and is not present-state
+> guidance. For current releases, see [CHANGELOG.md](../../CHANGELOG.md).
+
 ## Status
 
 Local release-preparation candidate. Package metadata is prepared for `1.0.0`,

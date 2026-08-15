@@ -16,10 +16,12 @@ def test_v101_hygiene_loop_is_closed() -> None:
     data = load_status()
     summary = data["summary"]
 
-    assert summary["pmo_readability"]["current_focus"] == "post-v1.0.1 strategic track"
+    assert summary["pmo_readability"]["current_focus"] == (
+        "post-v1.0 reweighted roadmap (M3-M9); Nornyx 1.11.0 published"
+    )
     assert "v1.0.1 hygiene is closed" in summary["roadmap_model"]["v1.0"]
     assert "Next v1.0.1 hygiene follow-up" not in summary["next_recommended_goal"]
-    assert "GOAL-064" in summary["next_recommended_goal"]
+    assert "M3-M9" in summary["next_recommended_goal"]
 
 
 def test_named_strategic_tracks_are_present() -> None:

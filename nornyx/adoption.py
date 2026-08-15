@@ -66,7 +66,10 @@ def detect_repo_signals(root: str | Path = ".") -> dict[str, Any]:
     recommended_level = "lite"
     if (path / "docs" / "qa").exists() or (path / "docs" / "pmo").exists():
         recommended_level = "standard"
-    if any((path / marker).exists() for marker in ["SECURITY.md", "docs/ADRs", "docs/RFCs"]):
+    if any(
+        (path / marker).exists()
+        for marker in ["SECURITY.md", "docs/ADRs", "docs/decisions", "docs/RFCs"]
+    ):
         recommended_level = "standard"
 
     return {

@@ -16,10 +16,9 @@ def test_pmo_summary_stays_concise_and_current() -> None:
     data = load_status()
     summary = data["summary"]
 
-    assert summary["overall_status"] == "graph_demo_expansion_completed"
-    assert "GOAL-064" in summary["next_recommended_goal"]
-    assert "Adoption Readiness Friction Audit" in summary["next_recommended_goal"]
-    assert "model level medium" in summary["next_recommended_goal"].lower()
+    assert summary["overall_status"] == "post_v1_reweighted_roadmap_active"
+    assert "M3-M9" in summary["next_recommended_goal"]
+    assert "standards mapping" in summary["next_recommended_goal"].lower()
     assert len(summary["roadmap_note"]) <= 220
     assert "GOAL-049" not in summary["roadmap_note"]
     assert "GOAL-055" not in summary["roadmap_note"]

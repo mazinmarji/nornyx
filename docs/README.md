@@ -24,8 +24,9 @@ context, start with the [executive overview](00_EXECUTIVE_OVERVIEW.md) and the
 - **Edition-pinned** — accurate as of a stated revision or edition rather than
   evergreen.
 
-Existing public paths are stable: documents are corrected or annotated in
-place rather than moved, renumbered, or deleted.
+Public paths are stable by default: documents are corrected or annotated in
+place. When a hygiene cycle does move or retire a document, this index and
+the changelog record the change.
 
 ## 1. Start / Adopt
 
@@ -175,18 +176,16 @@ external systems remain responsible for execution and enforcement.
 
 ### Decision records (ADRs and RFCs)
 
-Two ADR homes currently exist for historical reasons, and both are preserved
-in place:
+- [decisions](decisions) — the single ADR home: the early ADR-0001 and
+  ADR-0021 records (relocated from the former `docs/ADRs/` directory) plus
+  ADR-0010 through ADR-0044.
 
-- [decisions](decisions) — the main ADR home (ADR-0010 through ADR-0044).
-- [ADRs](ADRs) — the early ADR home (ADR-0001 and an early ADR-0021).
-
-ADR numbers can collide across the two homes — for example, both
-`docs/ADRs/ADR-0021-zero-friction-adoption-ramp.md` and
-`docs/decisions/ADR-0021-change-governance-as-a-module.md` exist. **Cite an
-ambiguous ADR by its full path and title, never by number alone.** ADRs are
-historical decision records: a status recorded as `Proposed` stays as written
-and is not silently promoted because later work overlaps it.
+One historical numbering collision persists inside the home: both
+`decisions/ADR-0021-zero-friction-adoption-ramp.md` (early series) and
+`decisions/ADR-0021-change-governance-as-a-module.md` exist. **Cite an
+ambiguous ADR by its full filename and title, never by number alone.** ADRs
+are historical decision records: a status recorded as `Proposed` stays as
+written and is not silently promoted because later work overlaps it.
 
 - [RFCs](RFCs) — RFC-0001 and RFC-0002 are historical records;
   [RFCs/RFC-0003-full-language-evolution-research.md](RFCs/RFC-0003-full-language-evolution-research.md)
@@ -200,7 +199,8 @@ and is not silently promoted because later work overlaps it.
   GitHub releases.)
 - [../RELEASING.md](../RELEASING.md) — release procedure (maintainer).
 - [releases](releases) — the v1.0 release-candidate and release records, and
-  the governance-program candidate record. Historical.
+  the governance-program candidate record. Historical; the v1.0 candidate
+  note is retired from current release gating.
 
 ## 10. Textbook
 

@@ -6,6 +6,12 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+### Fixed
+
+- The CrewAI conformance suite sets `CREWAI_TESTING` before the first
+  `crewai` import, so a fresh install's one-time setup process cannot trip
+  the enforcement-boundary process detector on the suite's first run.
+
 ## [0.3.0] - 2026-08-05
 
 ### Added

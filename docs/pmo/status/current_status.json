@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "Nornyx",
   "status": "active",
-  "updated_at": "2026-06-04",
+  "updated_at": "2026-08-14",
   "source_of_truth": {
     "type": "local_repo",
     "repo": "nornyx",
@@ -10,8 +10,8 @@
     "status_sync": "local_git_optional_remote"
   },
   "summary": {
-    "overall_status": "graph_demo_expansion_completed",
-    "next_recommended_goal": "Proceed to GOAL-064 Adoption Readiness Friction Audit; recommended model level medium",
+    "overall_status": "post_v1_reweighted_roadmap_active",
+    "next_recommended_goal": "Follow the post-v1.0 reweighted roadmap (docs/03_ROADMAP_TO_v1_AND_BEYOND.md, M3-M9): standards mapping first wave (M4, issue #47) and external adoption evidence (M5).",
     "completed_blocks": 55,
     "partial_blocks": 0,
     "locked_blocks": 1,
@@ -25,7 +25,7 @@
     },
     "roadmap_note": "v1.0.1 hygiene is closed. Next work should be named strategic milestones, not open-ended hygiene follow-ups. GOAL-100 remains locked.",
     "pmo_readability": {
-      "current_focus": "post-v1.0.1 strategic track",
+      "current_focus": "post-v1.0 reweighted roadmap (M3-M9); Nornyx 1.11.0 published",
       "latest_completed_goal": "GOAL-063 Nornyx Graph Demo Expansion",
       "history_policy": "Preserve completed goal blocks and evidence links; avoid repeating the full completed-goal chain in summary text.",
       "portal_guidance": "Read summary for current state, goal ledger for history, and vision maps for roadmap context."
@@ -526,7 +526,7 @@
         "docs/33_PRODUCT_TO_OPERATIONS_LIFECYCLE_ROADMAP.md",
         "docs/backlog/nornyx-product-to-ops-lifecycle-backlog.md",
         "docs/backlog/nornyx-product-to-ops-lifecycle.yaml",
-        "examples/nornyx_product_to_ops_lifecycle.nyx",
+        "examples/historical/nornyx_product_to_ops_lifecycle.nyx",
         "schemas/product_lifecycle_extension.schema.json",
         "nornyx/product_lifecycle.py",
         "scripts/dev/check_product_lifecycle.py",
@@ -563,7 +563,7 @@
         "schemas/ambiguity_control.schema.json",
         "nornyx/handover.py",
         "scripts/dev/check_handover_controls.py",
-        "examples/nornyx_handover_and_ambiguity.nyx",
+        "examples/historical/nornyx_handover_and_ambiguity.nyx",
         "tests/test_handover_contracts.py",
         "docs/qa/evidence/GOAL-023/README.md"
       ],
@@ -597,7 +597,7 @@
         "schemas/evidence_quality.schema.json",
         "nornyx/regulated_controls.py",
         "scripts/dev/check_regulated_controls.py",
-        "examples/nornyx_decision_boundary_evidence_quality.nyx",
+        "examples/historical/nornyx_decision_boundary_evidence_quality.nyx",
         "tests/test_decision_boundary_evidence_quality.py",
         "docs/qa/evidence/GOAL-025/README.md"
       ],
@@ -787,7 +787,7 @@
       ],
       "evidence": [
         "docs/39_NORNYX_ZERO_FRICTION_ADOPTION_PACK.md",
-        "docs/ADRs/ADR-0021-zero-friction-adoption-ramp.md",
+        "docs/decisions/ADR-0021-zero-friction-adoption-ramp.md",
         "docs/backlog/nornyx-zero-friction-adoption-pack.yaml",
         "nornyx/adoption.py",
         "nornyx/cli.py",
