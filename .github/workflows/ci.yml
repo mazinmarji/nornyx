@@ -951,8 +951,20 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install Graphviz
-        # As above; the Windows job runs the same suite.
-        run: choco install graphviz --no-progress -y
+        # As above; the Windows job runs the same suite. The Chocolatey
+        # community feed has real outages (503/504/timeouts) and `choco` can
+        # exit 0 while installing nothing, so retry with backoff and require
+        # `dot` to actually resolve before continuing.
+        shell: pwsh
+        run: |
+          $attempts = 5
+          for ($i = 1; $i -le $attempts; $i++) {
+            choco install graphviz --no-progress -y
+            if (Get-Command dot -ErrorAction SilentlyContinue) { break }
+            if ($i -eq $attempts) { throw "Graphviz install failed after $attempts attempts" }
+            Start-Sleep -Seconds (60 * $i)
+          }
+          dot -V
       - name: Install package
         run: python -m pip install -e ".[dev]" build twine
       - name: Run tests
