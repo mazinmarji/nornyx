@@ -16,8 +16,10 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - name: Checkout exact candidate
+      - name: Checkout exact candidate with audit history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -42,6 +44,7 @@ jobs:
       - name: Build and inspect wheel
         run: |
           python -m pip install --upgrade pip build twine
+          python -m twine check dist/* || true
           python -m build
           python -m twine check dist/*
       - name: Prove AuthZEN module is packaged
