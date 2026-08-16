@@ -44,7 +44,6 @@ jobs:
       - name: Build and inspect wheel
         run: |
           python -m pip install --upgrade pip build twine
-          python -m twine check dist/* || true
           python -m build
           python -m twine check dist/*
       - name: Prove AuthZEN module is packaged
