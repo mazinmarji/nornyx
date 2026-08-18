@@ -50,6 +50,12 @@ the changelog record the change.
   interoperability position. **Authoritative.**
 - [02_ARCHITECTURE.md](02_ARCHITECTURE.md) — current architecture.
   **Authoritative.**
+- [architecture/FEDERATED_GOVERNANCE_AUTHORITY.md](architecture/FEDERATED_GOVERNANCE_AUTHORITY.md)
+  — future-compatibility doctrine for externally owned, hierarchical and
+  federated governance authority. **Supporting architectural doctrine.** It
+  constrains future interpretation but does not override the authoritative
+  current architecture, positioning, language/schema, or roadmap; any
+  implementation remains adoption- and evidence-gated.
 - [public-boundary-policy.md](public-boundary-policy.md) — what belongs in
   this public repository. **Authoritative.**
 - [05_SECURITY_MODEL.md](05_SECURITY_MODEL.md) — security assumptions and
