@@ -1,0 +1,113 @@
+{
+  "schema": "nornyx.interop.temporal_cross_step_fixture.v1",
+  "fixture_id": "m7.agentcore_dogwood.deploy_after_tests_and_approval.v1",
+  "status": "specification_conformance_fixture",
+  "observed_at": "2026-08-24",
+  "nornyx_baseline": {
+    "repository": "mazinmarji/nornyx",
+    "commit": "8729b5bdf1740e656c2cd0c3a8a0a99454ed973a",
+    "authority_model": "nornyx_contract_is_canonical_governance_intent"
+  },
+  "external_target": {
+    "provider": "Amazon Bedrock AgentCore Policy",
+    "language": "Dogwood",
+    "dogwood_repository": "dogwood-policy/dogwood",
+    "dogwood_commit": "c6237c88099b3f492ecc5fcee42df06a19224b97",
+    "dogwood_language_guide": "https://github.com/dogwood-policy/dogwood/blob/c6237c88099b3f492ecc5fcee42df06a19224b97/dogwood-language/README.md",
+    "agentcore_temporal_policy_docs": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html",
+    "source_observed_at": "2026-08-24"
+  },
+  "classification_vocabulary": [
+    "EQUIVALENT",
+    "COMPOSITE",
+    "UNSUPPORTED"
+  ],
+  "scenario": {
+    "current_action": "DeployProduction",
+    "resource": "application.production",
+    "intent": "DeployProduction is permitted only when RunTests completed successfully in the same external policy session within the previous 30 minutes and a valid human approval is bound to the exact governed revision and deployment action.",
+    "overall_classification": "COMPOSITE",
+    "authority_source": "nornyx_contract",
+    "external_policy_role": "projection_and_enforcement_surface_not_independent_authority"
+  },
+  "semantic_comparison": [
+    {
+      "semantic": "recent_successful_run_tests",
+      "requirement": "A successful RunTests response for the same governed deployment context exists in the same policy session within 30 minutes.",
+      "target_mechanism": "Dogwood formerly-within temporal predicate over response history.",
+      "classification": "EQUIVALENT",
+      "boundary": "Equivalent only for the full Dogwood/AgentCore temporal surface, not for plain Cedar without the temporal monitor."
+    },
+    {
+      "semantic": "human_approval_integrity",
+      "requirement": "Approval must be human, action-scoped, exact-revision-bound, expiring, invalidatable, and revocable.",
+      "target_mechanism": "Dogwood can require a prior approval-like event, but that event alone does not establish Nornyx approval provenance and revision integrity.",
+      "classification": "COMPOSITE",
+      "boundary": "Nornyx preserves approval authority and revision semantics; the external temporal surface may enforce the required prior-event condition."
+    },
+    {
+      "semantic": "nornyx_revision_and_evidence_binding",
+      "requirement": "Decision and supplied evidence remain bound to the exact Nornyx contract, lock, network, and subject revision.",
+      "target_mechanism": "No native Dogwood/AgentCore equivalence is claimed for Nornyx-specific contract/lock/revision evidence semantics.",
+      "classification": "UNSUPPORTED",
+      "boundary": "Must remain Nornyx-owned and be correlated with external decision evidence; it must not be silently dropped during projection."
+    }
+  ],
+  "plain_cedar_projection": {
+    "classification": "UNSUPPORTED",
+    "reason": "A temporal Dogwood policy lowered to Cedar is not self-contained when temporal fields still require the Dogwood temporal monitor to populate runtime context.",
+    "forbidden_claim": "plain_cedar_is_semantically_equivalent_to_full_temporal_policy"
+  },
+  "decision_cases": [
+    {
+      "id": "missing_tests_and_approval",
+      "fresh_successful_tests": false,
+      "valid_revision_bound_human_approval": false,
+      "external_temporal_decision": "DENY",
+      "nornyx_decision": "APPROVAL_REQUIRED",
+      "combined_decision": "DENY"
+    },
+    {
+      "id": "fresh_tests_missing_approval",
+      "fresh_successful_tests": true,
+      "valid_revision_bound_human_approval": false,
+      "external_temporal_decision": "ALLOW",
+      "nornyx_decision": "APPROVAL_REQUIRED",
+      "combined_decision": "DENY"
+    },
+    {
+      "id": "stale_tests_valid_approval",
+      "fresh_successful_tests": false,
+      "valid_revision_bound_human_approval": true,
+      "external_temporal_decision": "DENY",
+      "nornyx_decision": "ALLOW",
+      "combined_decision": "DENY"
+    },
+    {
+      "id": "fresh_tests_wrong_revision_approval",
+      "fresh_successful_tests": true,
+      "valid_revision_bound_human_approval": false,
+      "approval_failure": "revision_mismatch",
+      "external_temporal_decision": "ALLOW",
+      "nornyx_decision": "DENY",
+      "combined_decision": "DENY"
+    },
+    {
+      "id": "fresh_tests_valid_exact_revision_approval",
+      "fresh_successful_tests": true,
+      "valid_revision_bound_human_approval": true,
+      "external_temporal_decision": "ALLOW",
+      "nornyx_decision": "ALLOW",
+      "combined_decision": "ALLOW"
+    }
+  ],
+  "claim_boundaries": {
+    "runtime_executed": false,
+    "agentcore_called": false,
+    "dogwood_dependency_added": false,
+    "proves_agentcore_runtime_enforcement": false,
+    "proves_external_event_truth": false,
+    "nornyx_runtime_policy_engine_added": false,
+    "purpose": "Pin the semantic split and expected cross-step outcomes so a future projection cannot silently weaken temporal, approval, revision, or evidence meaning."
+  }
+}
