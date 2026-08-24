@@ -78,32 +78,70 @@ def test_plain_cedar_cannot_be_called_equivalent_without_temporal_monitor() -> N
     )
 
 
-def test_combined_decision_allows_only_when_both_surfaces_allow() -> None:
+def test_cross_step_cases_pin_each_surface_decision_and_combined_outcome() -> None:
     data = _fixture()
     cases = data["decision_cases"]
     assert isinstance(cases, list)
     assert len(cases) == 5
 
-    ids = set()
+    expected_cases = {
+        "missing_tests_and_approval": {
+            "fresh_successful_tests": False,
+            "valid_revision_bound_human_approval": False,
+            "external_temporal_decision": "DENY",
+            "nornyx_decision": "APPROVAL_REQUIRED",
+            "combined_decision": "DENY",
+        },
+        "fresh_tests_missing_approval": {
+            "fresh_successful_tests": True,
+            "valid_revision_bound_human_approval": False,
+            "external_temporal_decision": "ALLOW",
+            "nornyx_decision": "APPROVAL_REQUIRED",
+            "combined_decision": "DENY",
+        },
+        "stale_tests_valid_approval": {
+            "fresh_successful_tests": False,
+            "valid_revision_bound_human_approval": True,
+            "external_temporal_decision": "DENY",
+            "nornyx_decision": "ALLOW",
+            "combined_decision": "DENY",
+        },
+        "fresh_tests_wrong_revision_approval": {
+            "fresh_successful_tests": True,
+            "valid_revision_bound_human_approval": False,
+            "approval_failure": "revision_mismatch",
+            "external_temporal_decision": "ALLOW",
+            "nornyx_decision": "DENY",
+            "combined_decision": "DENY",
+        },
+        "fresh_tests_valid_exact_revision_approval": {
+            "fresh_successful_tests": True,
+            "valid_revision_bound_human_approval": True,
+            "external_temporal_decision": "ALLOW",
+            "nornyx_decision": "ALLOW",
+            "combined_decision": "ALLOW",
+        },
+    }
+
+    observed_ids = set()
     for case in cases:
         assert isinstance(case, dict)
         case_id = case["id"]
         assert isinstance(case_id, str)
-        assert case_id not in ids
-        ids.add(case_id)
+        assert case_id in expected_cases
+        assert case_id not in observed_ids
+        observed_ids.add(case_id)
+
+        expected = expected_cases[case_id]
+        for field, expected_value in expected.items():
+            assert case[field] == expected_value
 
         external_allows = case["external_temporal_decision"] == "ALLOW"
         nornyx_allows = case["nornyx_decision"] == "ALLOW"
-        expected = "ALLOW" if external_allows and nornyx_allows else "DENY"
-        assert case["combined_decision"] == expected
+        combined = "ALLOW" if external_allows and nornyx_allows else "DENY"
+        assert case["combined_decision"] == combined
 
-    assert ids == {
-        "missing_tests_and_approval",
-        "fresh_tests_missing_approval",
-        "stale_tests_valid_approval",
-        "fresh_tests_wrong_revision_approval",
-        "fresh_tests_valid_exact_revision_approval",
-    }
+    assert observed_ids == set(expected_cases)
 
 
 def test_fixture_cannot_overclaim_runtime_execution_or_event_truth() -> None:
