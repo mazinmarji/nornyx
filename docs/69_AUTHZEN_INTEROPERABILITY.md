@@ -60,10 +60,18 @@ PEP / gateway / agent integration
       external PEP enforcement
 ```
 
-Public Core includes the codec, semantic mapping, tests, and documentation.
-Service hosting, organizational hierarchy operation, governance distribution,
-multi-tenancy, change-impact intelligence, HA/DR, and commercial deployment are
-outside this public implementation.
+Public Core includes the codec, semantic mapping, tests, and documentation —
+that is, **portable deterministic authorization semantics and interoperability**.
+
+Outside this public implementation: transport, service hosting, service
+discovery, governance distribution, caching policy, clustering, multi-tenancy,
+organizational hierarchy operation, change-impact intelligence, HA/DR, external
+enforcement, and commercial deployment.
+
+The division is deliberate. Nornyx Core decides what a governed request *means*
+at a stated decision time against a stated subject revision. Delivering that
+decision to a process, keeping it available, and acting on it are the
+integrator's responsibilities and are not simulated here.
 
 ## Supported mapping: capability evaluation
 
@@ -216,6 +224,95 @@ The standard HTTPS default path is exported only as metadata for adapters:
 ```python
 AUTHZEN_ACCESS_EVALUATION_PATH == "/access/v1/evaluation"
 ```
+
+## Local decision use is a supported deployment pattern
+
+Once a contract has been validated and lock-verified by `load_authorizer`, an
+ordinary authorization decision is a local computation over already-loaded
+state. It reads no file and opens no connection.
+
+That makes embedded and edge deployment a first-class option rather than a
+degraded mode: a caller may hold an `Authorizer` in-process and evaluate against
+it, with or without any network at all.
+
+```python
+authorizer = load_authorizer(contract_path, lock_path, validation_as_of=as_of)
+# ... network may now be unavailable ...
+decision = authorizer.evaluate(request, context=context)
+response = evaluate_authzen_capability(authorizer, payload)
+```
+
+**Measured, not asserted — both halves.**
+`tests/test_agentic_authzen_equivalence.py` loads a real contract, then refuses
+`socket.socket`, `socket.create_connection` and `socket.getaddrinfo`, **proves
+each of those three refuses before proceeding**, and requires every case to
+decide identically offline through both paths. A separate test counts calls to
+`open` across a decision on both paths and requires zero.
+
+The bound of that evidence, network half: it blocks network use through the
+`socket` module, which is the path CPython's networking stack and the standard
+library's clients take. It does not constrain a C extension that opens a
+descriptor without importing `socket`, nor a module holding a
+`from socket import ...` reference bound before the patch.
+
+The bound of that evidence, file half: the count covers `open` and `io.open`,
+the Python-level paths every stdlib reader takes. A raw `os.open` descriptor
+read would not be counted.
+
+What remains the integrator's responsibility: obtaining the contract and lock,
+deciding when to reload them, and any caching, distribution, or availability
+policy around that state. Nornyx Core does not schedule, refresh, or replicate
+governed state.
+
+## Direct-vs-AuthZEN equivalence
+
+Both supported paths — direct `Authorizer.evaluate(...)` and the AuthZEN
+mapping with `evaluate_authzen_capability(...)` — decide the same governed
+request identically when bound to the same `decision_at` and
+`observed_subject_revision`.
+
+**The domain of that claim** is a capability request whose `identity_ref` and
+`capability_ref` are non-empty strings. Outside it the two paths both fail
+closed but not identically: the direct path returns a Nornyx `DENY` decision,
+while the AuthZEN path refuses at the mapping boundary and returns no decision
+at all. That difference is pinned by a test rather than left to be discovered.
+
+Equivalence is asserted field by field over what the mapping represents, because
+the AuthZEN 1.0 response is a *projection* of a Nornyx `Decision`, not a copy:
+
+| Nornyx `Decision` | AuthZEN response |
+|---|---|
+| `effect` | `decision` (boolean), and `context.nornyx.effect` |
+| `code` | `context.nornyx.code` |
+| `reason` | `context.nornyx.reason` (omitted when empty) |
+| `basis` | `context.nornyx.basis` |
+| `APPROVAL_REQUIRED` | `context.nornyx.prerequisite = "human_approval"` |
+
+The last row is **not exercised by the equivalence cases** and is listed for
+completeness of the mapping, not as something these cases establish: no
+capability request produces `APPROVAL_REQUIRED` (see below), so the two paths
+cannot diverge on it here. The codec's encoding of that marker is covered
+separately in `tests/test_agentic_authzen.py` against a constructed `Decision`.
+
+**Not represented, and therefore not claimed equivalent:**
+`Decision.event_intents`. The mapping carries no encoding for decision-event
+intents, so a consumer reading only AuthZEN cannot reconstruct them.
+
+This limitation is enforced structurally: a test asserts the encoded document's
+key set is exactly the documented one, so intents cannot arrive under a new
+field however it is spelled, and every represented field is compared to the
+direct decision by exact equality.
+
+Comparing the two paths would not by itself establish correctness — both could
+drift to the same wrong answer — so each case also asserts the specific effect
+and decision code the contract produces. Covered outcomes, all produced by the
+real example contract rather than constructed: `ALLOWED`, `CAPABILITY_DENIED`,
+`CAPABILITY_UNKNOWN`, `PARTY_INEFFECTIVE`, `REVISION_MISMATCH`.
+
+`APPROVAL_REQUIRED` is **not** among them. `CapabilityRequest` is the only
+request type this mapping supports, and capability evaluation returns ALLOW or
+DENY only, so no honest capability request produces it. The codec's handling of
+that effect is covered separately against a constructed `Decision`.
 
 ## What is deliberately not mapped yet
 
