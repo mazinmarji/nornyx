@@ -1,6 +1,6 @@
 name: A2A
-status: planned
-purpose: Model peer-agent communication contracts across agent runtimes and vendors.
+status: superseded
+purpose: Historical planning stub superseded by agentic_network.protocol_targets for static A2A governance declarations.
 provided_blocks:
   - peer_agent
   - agent_identity
