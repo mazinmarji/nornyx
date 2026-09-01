@@ -19,19 +19,49 @@ named, and that will not change.
 
 The useful definition runs the other way around:
 
-> A document is a **Nornyx governance contract** when it satisfies the Nornyx
-> language/schema version it declares, under the canonical semantics published
-> by this project.
+> A document is a **Nornyx governance contract** when it validates against a
+> published Nornyx language/schema target and honors that target's canonical
+> semantics.
+
+Note what that does *not* say. It does not say the document declares its own
+language/schema version. It cannot — the in-document `nornyx:` marker is a
+different axis entirely, and [§2](#2-which-version-axis-carries-identity)
+sets out why conflating the two would misdescribe every contract in the
+repository.
 
 Under that definition, a fork is free to mint `.abc` and change whatever it
 likes. What it cannot accurately do is call a format with divergent semantics a
 Nornyx contract. The claim is what is checkable; the filename never was.
 
-## 2. What identity a contract actually carries
+## 2. Which version axis carries identity
+
+Nornyx moves several version axes independently, and a conformance claim that
+names the wrong one is unfalsifiable. The two that matter here:
+
+| Axis | Value | Where it is recorded | Set by |
+| --- | --- | --- | --- |
+| **In-document version marker** | `"0.1"` or `"0.2"` | the `nornyx:` key inside the contract | the contract author |
+| **Language/schema version** | `1.0` | `manifest.json` (`language_version`), `nornyx schema --version` | this project |
+
+**A contract does not declare its language/schema version.** The v1.0 schema
+accepts `nornyx: "0.1"` and `nornyx: "0.2"` and nothing else — writing
+`nornyx: "1.0"` is not how a document targets 1.0, and yields the
+`UNKNOWN_VERSION` warning. The flagship example
+`examples/governed_delivery_control_plane.nyx` begins `nornyx: "0.1"`
+while the current language/schema version is 1.0. Both statements are true at
+once, and any claim vocabulary that cannot express that is wrong.
+
+What 1.0 stabilizes is the concept set, not the marker. The marker is a
+compatibility signal; the **schema target the validator applies** — `compat`,
+`0.1`, `0.2`, or `1.0`, chosen by the consumer, not by the document —
+is what selects the semantics a conformance claim can be checked against. An
+unrecognized marker is a warning rather than an error, so the document still
+checks; conformance therefore cannot rest on the marker.
 
 ```
 Nornyx contract
-      ↓  declared language/schema version
+      ↓  in-document marker ("0.1"/"0.2") — a compatibility signal
+      ↓  schema target applied by the consumer (compat/0.1/0.2/1.0)
 canonical .nyx representation
       ↓  canonicalization (nornyx.agentic_artifacts._canonical_contract_view)
 canonical semantics
@@ -39,8 +69,9 @@ canonical semantics
 Nornyx conformance
 ```
 
-Identity is carried by the **declared version plus the canonical semantics it
-selects** — not by a branding field.
+Identity is therefore carried by the **schema target applied plus that
+target's canonical semantics** — not by the in-document marker, and not by a
+branding field.
 
 This is deliberate and load-bearing. `contract_digest()` canonicalizes the
 whole parsed document, so any identity block an author adopted would change
@@ -107,19 +138,23 @@ that Nornyx has reviewed anything.
 
 ### `Nornyx-conformant` (scoped)
 
-**Requirement.** Implements the canonical semantics of a **named** Nornyx
-language/schema version for a **named** scope, and produces the same
+**Requirement.** Implements the canonical semantics of a **named Nornyx
+language/schema target** for a **named scope**, and produces the same
 accept/reject decisions as the specification for that scope. The claim must
-name both, e.g. *"Nornyx-conformant for language/schema 1.0, contract
-validation."* An unscoped "Nornyx-conformant" is not a claim this vocabulary
-defines, because nobody can check it.
+name both, e.g. *"Nornyx-conformant for language/schema target 1.0, contract
+validation."*
+
+The claimant names the target; the document does not. A claim that cites the
+in-document `nornyx:` marker instead ("conformant for 0.1") names the wrong
+axis and is not a claim this vocabulary defines — nor is an unscoped
+"Nornyx-conformant", because nobody can check it.
 
 **Who may assert.** Anyone, by self-assessment, provided the evidence below
 exists and is published alongside the claim.
 
 **Verification.** Deterministic and reproducible by a third party:
 
-- validation against the packaged schema for the named version
+- validation against the packaged schema for the named target
   (`nornyx schema --version 1.0`, `schemas/nornyx_v1_0.schema.json`);
 - agreement with the canonicalization and digest semantics in
   `nornyx.agentic_artifacts` where the scope covers locks or digests;
@@ -217,6 +252,14 @@ three-valued exit codes in the conformance CLI):
 A self-declared string is never equivalent to a tested property, in any record
 this project defines.
 
+The same rule is applied to this repository's own claims:
+`tests/test_identity_claims_boundary.py` scans a named list of primary
+claim surfaces — the root policy and entry documents plus the authoritative
+product and identity documents — rather than all documentation. The
+registered-trademark symbol is checked across every tracked Markdown file; the
+narrower unsupported-claim checks are scoped, and historical planning records
+and the edition-pinned textbook are deliberately out of scope.
+
 ## 5. Ecosystem registration: what is available, and what is not
 
 An extension becomes an ecosystem format partly through registration in places
@@ -268,9 +311,12 @@ So:
 - Independent implementations are welcome and are the point.
 - Conformance is defined semantically and checked deterministically.
 - Official origin is proven cryptographically and separately.
-- Nothing here requires contacting a Nornyx service to parse, check, generate,
-  lock, or verify anything — offline operation and vendor neutrality are
-  constraints on this design, not aspirations.
+- Nothing here requires contacting a **Nornyx-operated** service to parse,
+  check, generate, lock, or verify anything. That is the actual property, and
+  it is a constraint on this design rather than an aspiration. It is not the
+  same as offline operation: obtaining an artifact and its attestation
+  normally means reaching a package index or forge. What must never be
+  required is a service *this project* controls.
 
 The failure mode this document is written against is not someone forking the
 code. It is someone shipping divergent semantics under the Nornyx name and

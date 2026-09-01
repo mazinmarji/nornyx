@@ -20,9 +20,9 @@ Copyright licensing and project identity are different things:
 | **Copyright** | the source code and its derivatives | [LICENSE](LICENSE) (MIT) |
 | **Project identity** | the name that tells people whose project this is | this document |
 
-The MIT license transfers copyright permissions. It does not, by itself, grant
-permission to present a modified or independent work as an official Nornyx
-release, or as endorsed or certified by this project. Those are statements
+The MIT license grants permissions under copyright. It does not, by itself,
+grant permission to present a modified or independent work as an official
+Nornyx release, or as endorsed or certified by this project. Those are statements
 about origin, and a statement about origin can be false in a way that a code
 change cannot.
 
@@ -56,8 +56,8 @@ these are accurate and encouraged where true:
 - Attribution to the Nornyx project, including the MIT notice you are already
   required to retain.
 
-Naming the project in order to say something true about it is nominative use.
-It is exactly what a project name is for.
+Naming the project in order to say something true about it is exactly what a
+project name is for.
 
 ## Representations that would be misleading
 

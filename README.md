@@ -424,5 +424,6 @@ separately:
   conformance claim requires and how to check it.
 - **[docs/PROVENANCE_AND_RELEASE_VERIFICATION.md](docs/PROVENANCE_AND_RELEASE_VERIFICATION.md)**
   — how to verify that an artifact actually came from this project, and why
-  official origin and conformance are independent properties. Verification is
-  offline: no Nornyx service is contacted.
+  official origin and conformance are independent properties. Verification
+  needs no Nornyx-operated service: it reads the package index and forge, then
+  checks locally.

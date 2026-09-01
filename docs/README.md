@@ -219,8 +219,8 @@ written and is not silently promoted because later work overlaps it.
 - [../RELEASING.md](../RELEASING.md) — release procedure (maintainer).
 - [PROVENANCE_AND_RELEASE_VERIFICATION.md](PROVENANCE_AND_RELEASE_VERIFICATION.md)
   — how an artifact is shown to have come from this project, why provenance and
-  conformance are independent, and how to verify a release offline.
-  **Authoritative.**
+  conformance are independent, and how to verify a release without depending on
+  any Nornyx-operated service. **Authoritative.**
 - [releases](releases) — the v1.0 release-candidate and release records, and
   the governance-program candidate record. Historical; the v1.0 candidate
   note is retired from current release gating.

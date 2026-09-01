@@ -58,15 +58,17 @@ Four facts from the current codebase set the boundaries this ADR must encode.
 
 ## Decision
 
-Adopt a four-layer identity model. Each layer is independently verifiable, and
-none of them restricts the MIT grant.
+Adopt the MIT license as the unchanged foundation, and above it four identity
+layers. Each layer is independently verifiable, and none of them restricts the
+MIT grant.
 
 ```
-MIT software      — what anyone may use, modify, rename, and redistribute
-Nornyx identity   — the names and marks that denote this project
-.nyx semantics    — what makes a document a Nornyx governance contract
-conformance       — whether an implementation honors those semantics
-provenance        — whether an artifact came from this project
+MIT software        — the licensing foundation: what anyone may use, modify,
+                      rename, and redistribute. Unchanged by this ADR.
+  ├─ Nornyx identity  — the names and marks that denote this project
+  ├─ .nyx semantics   — what makes a document a Nornyx governance contract
+  ├─ conformance      — whether an implementation honors those semantics
+  └─ provenance       — whether an artifact came from this project
 ```
 
 ### 1. Identity is separated from licensing
@@ -83,10 +85,18 @@ and it asserts no registration that does not exist.
 `.nyx` is the canonical file extension for Nornyx governance contracts. Nornyx
 does not, and will not, assert that others are forbidden to name files `.nyx`,
 and the parser does not gate on the extension. What is defined is the
-converse: a document is a **Nornyx governance contract** when it satisfies the
-language/schema version it declares, under the canonical semantics this
-project publishes. A fork is free to mint `.abc`; what it may not accurately
-do is call a divergent format a Nornyx contract.
+converse: a document is a **Nornyx governance contract** when it validates
+against a published Nornyx language/schema target and honors that target's
+canonical semantics. A fork is free to mint `.abc`; what it may not
+accurately do is call a divergent format a Nornyx contract.
+
+The target is named by the consumer, not declared by the document. The
+in-document `nornyx:` marker (`"0.1"`/`"0.2"`) is a separate axis
+from the language/schema version (`1.0`, recorded in `manifest.json`);
+the v1.0 schema accepts only the 0.1 and 0.2 markers, and an unrecognized
+marker is a warning rather than an error. A conformance claim that names the
+marker instead of the target is therefore unfalsifiable, and the claim
+vocabulary is written to make that distinction explicit.
 
 ### 3. Conformance claims form a small controlled vocabulary
 
@@ -118,7 +128,10 @@ Three properties are mandatory:
 
 Provenance is verified from an artifact plus public trust material plus a local
 verifier. No Nornyx-operated endpoint is contacted at check time, at generation
-time, or at runtime. This is a hard constraint: an identity mechanism that made
+time, or at runtime. This is narrower than "offline": obtaining the artifact and
+its attestation normally means reaching a package index or forge, which is
+expected. What is excluded is a dependency on infrastructure *this project*
+operates. This is a hard constraint: an identity mechanism that made
 `.nyx` processing depend on project infrastructure would contradict the
 vendor-neutral position in `docs/48_NORNYX_POSITIONING.md` and is rejected on
 those grounds.
@@ -139,8 +152,8 @@ those grounds.
   documented boundary (fact 1) and would make lock bytes vary by producer,
   destroying the byte-stability that makes locks reviewable.
 - **A Nornyx-operated conformance or licensing service.** Central point of
-  failure, contradicts offline verification, and converts a specification into
-  infrastructure.
+  failure, makes verification depend on this project's uptime, and converts a
+  specification into infrastructure.
 - **Claiming a registered trademark.** No registration is asserted because none
   is established. Using the registered-trademark symbol without registration is
   itself a misrepresentation in several jurisdictions.

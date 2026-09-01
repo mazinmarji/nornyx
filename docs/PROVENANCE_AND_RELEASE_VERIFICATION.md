@@ -193,9 +193,13 @@ Recorded so a later change does not quietly violate them:
 - **Do not invent Nornyx cryptography.** Use PEP 740, Sigstore, or the signing
   primitives the packaging ecosystem already provides. Nornyx owns the
   semantics of what is attested, not the transport.
-- **Verification must work offline**, from artifact plus public trust material
-  plus a local verifier. Any design requiring a live Nornyx endpoint at check
-  time is rejected on vendor-neutrality grounds.
+- **Verification must never require a Nornyx-operated service.** Once the
+  artifact, its attestation bundle, and the required trust material have been
+  obtained, the cryptographic check itself must be performable locally where
+  the mechanism supports it. Obtaining those inputs normally means reaching a
+  package index or forge — that is expected and is not a Nornyx dependency.
+  Any design requiring a live Nornyx endpoint at check time is rejected on
+  vendor-neutrality grounds.
 - **No phone-home, no license server, no machine binding, no runtime origin
   check.**
 - **Never alter the governed payload to carry provenance.** Detached only.
