@@ -25,7 +25,7 @@ The useful definition runs the other way around:
 
 Note what that does *not* say. It does not say the document declares its own
 language/schema version. It cannot — the in-document `nornyx:` marker is a
-different axis entirely, and [§2](#2-which-version-axis-carries-identity)
+different axis entirely, and [§2](#2-which-version-axis-scopes-conformance)
 sets out why conflating the two would misdescribe every contract in the
 repository.
 
@@ -33,7 +33,7 @@ Under that definition, a fork is free to mint `.abc` and change whatever it
 likes. What it cannot accurately do is call a format with divergent semantics a
 Nornyx contract. The claim is what is checkable; the filename never was.
 
-## 2. Which version axis carries identity
+## 2. Which version axis scopes conformance
 
 Nornyx moves several version axes independently, and a conformance claim that
 names the wrong one is unfalsifiable. The two that matter here:
@@ -69,18 +69,36 @@ canonical semantics
 Nornyx conformance
 ```
 
-Identity is therefore carried by the **schema target applied plus that
-target's canonical semantics** — not by the in-document marker, and not by a
-branding field.
+A **Nornyx conformance claim is scoped by the named language/schema target and
+that target's canonical semantics** — not by the in-document marker, and not by
+a branding field.
 
-This is deliberate and load-bearing. `contract_digest()` canonicalizes the
-whole parsed document, so any identity block an author adopted would change
-that contract's governed digest and every lock bound to it. Nornyx therefore
-does not put identity metadata in the contract language, and will not. Identity
-metadata that changes a governed digest is not identity metadata; it is a
-breaking change wearing a badge.
+Scope, not identity. The target is chosen by the consumer, and the same `.nyx`
+document may legitimately be evaluated against more than one supported target,
+so a target cannot be what makes the document what it is. Three concepts stay
+separate, and this document is careful never to let one stand in for another:
 
-Where machine-readable identity does live today, unchanged by this document:
+```
+governed content identity   →  canonical representation, contract_digest()
+                               a property of the document itself
+
+conformance scope           →  named schema target + that target's canonical
+                               semantics; selected by the consumer
+
+official origin             →  detached provenance / attestation
+                               a property of the artifact, never of the contract
+```
+
+The first of those is why identity metadata stays out of the language.
+`contract_digest()` canonicalizes the whole parsed document, so any branding
+block an author adopted would change that contract's governed digest and every
+lock bound to it. Nornyx therefore does not put identity metadata in the
+contract language, and will not. Metadata that changes a governed digest is not
+metadata; it is a breaking change wearing a badge.
+
+Where machine-readable **project and format** identity does live today —
+distinct from both the governed-content identity above and the conformance
+scope, and unchanged by this document:
 
 | Surface | Identifier | Example |
 | --- | --- | --- |

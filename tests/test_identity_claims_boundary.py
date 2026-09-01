@@ -207,6 +207,25 @@ def test_the_two_version_axes_are_not_conflated() -> None:
     assert "the claimant names the target; the document does not" in flat
 
 
+def test_conformance_scope_is_not_stated_as_document_identity() -> None:
+    """The schema target scopes a claim; it does not identify the document.
+
+    The consumer picks the target, and one contract may be evaluated against
+    more than one supported target — so a target cannot be what makes the
+    document what it is. Governed-content identity stays ``contract_digest()``
+    and official origin stays detached provenance. Collapsing any of the three
+    into another is the error this pins.
+    """
+    flat = _flat(FORMAT_DOC)
+    assert "conformance claim is scoped by the named language/schema target" in flat
+    assert "scope, not identity" in flat
+    for concept in ("governed content identity", "conformance scope", "official origin"):
+        assert concept in flat, f"the three-way separation must name {concept!r}"
+    assert "identity is therefore carried by the" not in flat, (
+        "the superseded wording made the schema target the document's identity"
+    )
+
+
 def test_verification_is_scoped_to_nornyx_operated_services_not_offline() -> None:
     """'Offline' would be false: the procedure reads PyPI and GitHub.
 

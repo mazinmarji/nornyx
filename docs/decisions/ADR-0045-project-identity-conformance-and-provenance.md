@@ -90,9 +90,13 @@ against a published Nornyx language/schema target and honors that target's
 canonical semantics. A fork is free to mint `.abc`; what it may not
 accurately do is call a divergent format a Nornyx contract.
 
-The target is named by the consumer, not declared by the document. The
-in-document `nornyx:` marker (`"0.1"`/`"0.2"`) is a separate axis
-from the language/schema version (`1.0`, recorded in `manifest.json`);
+The target is named by the consumer, not declared by the document, and it
+scopes a **conformance claim** rather than establishing the document's
+identity — governed-content identity remains `contract_digest()`, and
+official origin remains detached provenance. The same document may be evaluated
+against more than one supported target. The in-document `nornyx:` marker
+(`"0.1"`/`"0.2"`) is a separate axis from the language/schema version
+(`1.0`, recorded in `manifest.json`);
 the v1.0 schema accepts only the 0.1 and 0.2 markers, and an unrecognized
 marker is a warning rather than an error. A conformance claim that names the
 marker instead of the target is therefore unfalsifiable, and the claim
