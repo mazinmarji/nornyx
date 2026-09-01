@@ -405,6 +405,25 @@ python -m pytest -q
 
 Contribution rules: [CONTRIBUTING.md](https://github.com/mazinmarji/nornyx/blob/main/CONTRIBUTING.md).
 
-## License
+## License and project identity
 
 MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Mazin Marji and Nornyx Contributors.
+Use it, modify it, redistribute it, fork it, sell it. That is not changing.
+
+Licensing and project identity are separate questions, and Nornyx answers them
+separately:
+
+- **[TRADEMARKS.md](TRADEMARKS.md)** — the MIT grant covers the code; it does
+  not by itself grant the right to present a derivative as an official Nornyx
+  release. Describing your work as based on, compatible with, or derived from
+  Nornyx is welcome. No trademark registration is claimed.
+- **[docs/NYX_FORMAT_AND_CONFORMANCE.md](docs/NYX_FORMAT_AND_CONFORMANCE.md)** —
+  `.nyx` is Nornyx's canonical extension, but conformance is defined
+  semantically, not by filename. Independent implementations of Nornyx
+  semantics are a goal of the project. This document defines what each
+  conformance claim requires and how to check it.
+- **[docs/PROVENANCE_AND_RELEASE_VERIFICATION.md](docs/PROVENANCE_AND_RELEASE_VERIFICATION.md)**
+  — how to verify that an artifact actually came from this project, and why
+  official origin and conformance are independent properties. Verification
+  needs no Nornyx-operated service: it reads the package index and forge, then
+  checks locally.

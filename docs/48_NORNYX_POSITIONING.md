@@ -71,6 +71,17 @@ A mapping or projection remains subordinate to the `.nyx` source contract: it
 must not become a second authoritative policy source, and a successful mapping
 does not imply that an external PEP enforced the result.
 
+Independent implementations of Nornyx semantics — by other vendors, other
+languages, or other open-source projects — are a goal of this position rather
+than a threat to it. Nornyx therefore defines conformance semantically and
+deterministically, and keeps official origin a separate, separately verifiable
+property: see [NYX_FORMAT_AND_CONFORMANCE.md](NYX_FORMAT_AND_CONFORMANCE.md)
+and [PROVENANCE_AND_RELEASE_VERIFICATION.md](PROVENANCE_AND_RELEASE_VERIFICATION.md).
+Vendor neutrality is a constraint on that machinery: verification requires no
+Nornyx-operated service, at check time or at runtime. Reaching a package index
+or forge to obtain an artifact and its attestation is expected and is not such
+a dependency.
+
 Generic revision lineage, deterministic before/after semantic comparison,
 decision-regression fixtures, and evidence-correlation identifiers may belong in
 Public Core when they are independently useful to Nornyx consumers. These remain

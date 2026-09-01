@@ -15,6 +15,17 @@ Start with the [documentation map](docs/README.md) for what is authoritative,
 and the [public boundary policy](docs/public-boundary-policy.md) for what
 belongs in this public repository.
 
+## Claims about identity and conformance
+
+Contributions may describe what Nornyx does. They must not assert authority the
+project has not established — no trademark registration, no certification, no
+endorsement, and no claim that a published artifact carries provenance it does
+not carry. The controlled vocabulary is in
+[`docs/NYX_FORMAT_AND_CONFORMANCE.md`](docs/NYX_FORMAT_AND_CONFORMANCE.md);
+`tests/test_identity_claims_boundary.py` enforces it against the repository's
+own documentation. Independent implementations of Nornyx semantics are a goal
+of the project — see [`TRADEMARKS.md`](TRADEMARKS.md).
+
 ## Development commands
 
 ```bash

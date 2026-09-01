@@ -58,6 +58,11 @@ the changelog record the change.
   implementation remains adoption- and evidence-gated.
 - [public-boundary-policy.md](public-boundary-policy.md) — what belongs in
   this public repository. **Authoritative.**
+- [../TRADEMARKS.md](../TRADEMARKS.md) — project identity: what the MIT license
+  does and does not grant, which descriptive uses are welcome, and which
+  representations would mislead. **Authoritative** for identity, and marked as
+  requiring independent counsel review before being treated as an enforcement
+  instrument. No trademark registration is claimed.
 - [05_SECURITY_MODEL.md](05_SECURITY_MODEL.md) — security assumptions and
   boundaries. Supporting.
 - [../SECURITY.md](../SECURITY.md) — the repository security policy.
@@ -76,6 +81,10 @@ the changelog record the change.
   distribution vs. language/schema). **Authoritative.**
 - [GOVERNANCE_CLI_AND_API.md](GOVERNANCE_CLI_AND_API.md) — governance CLI and
   public API surface and its stability boundary. **Authoritative.**
+- [NYX_FORMAT_AND_CONFORMANCE.md](NYX_FORMAT_AND_CONFORMANCE.md) — what makes
+  a document a Nornyx governance contract, the canonical status of `.nyx`, and
+  the controlled conformance-claim vocabulary with the verification each claim
+  requires. **Authoritative.**
 - [52_SCHEMA_TARGETS_AND_EXAMPLES.md](52_SCHEMA_TARGETS_AND_EXAMPLES.md) —
   schema targets and examples. Supporting.
 - [../schemas](../schemas) — machine-readable schemas; inspect the current
@@ -144,6 +153,10 @@ external systems remain responsible for execution and enforcement.
   standards compliance is not established by mappings.
 - [agentic-network/11_REFERENCE_CI.md](agentic-network/11_REFERENCE_CI.md) —
   reference CI wiring and the adapter-conformance gate.
+- [NYX_FORMAT_AND_CONFORMANCE.md](NYX_FORMAT_AND_CONFORMANCE.md) — the
+  conformance-*claim* vocabulary (who may say what, and on what evidence), as
+  distinct from the adapter and profile conformance *runs* above. Nornyx
+  operates no certification authority.
 - [decisions/ADR-0040-governance-assurance-tiers.md](decisions/ADR-0040-governance-assurance-tiers.md)
   — the assurance-tier decision. Assurance claims stay subordinate to these
   interoperability/conformance boundaries: cooperative higher-assurance claims
@@ -204,6 +217,10 @@ written and is not silently promoted because later work overlaps it.
   into it; historical per-version notes also remain on the corresponding
   GitHub releases.)
 - [../RELEASING.md](../RELEASING.md) — release procedure (maintainer).
+- [PROVENANCE_AND_RELEASE_VERIFICATION.md](PROVENANCE_AND_RELEASE_VERIFICATION.md)
+  — how an artifact is shown to have come from this project, why provenance and
+  conformance are independent, and how to verify a release without depending on
+  any Nornyx-operated service. **Authoritative.**
 - [releases](releases) — the v1.0 release-candidate and release records, and
   the governance-program candidate record. Historical; the v1.0 candidate
   note is retired from current release gating.

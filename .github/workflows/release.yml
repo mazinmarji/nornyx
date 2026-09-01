@@ -65,3 +65,12 @@ jobs:
       - run: python -m build
       - uses: pypa/gh-action-pypi-publish@release/v1
         # No token needed: PyPI verifies the OIDC identity of this workflow.
+        with:
+          # PEP 740 attestations, declared rather than inherited. This is the
+          # action's current default for Trusted Publishing flows, but the ref
+          # above tracks a moving branch: stating it here makes provenance a
+          # property of this workflow rather than of whichever default happens
+          # to be in force at publish time. Removing this line is a change to
+          # the release's verifiability, so tests/test_identity_claims_boundary.py
+          # asserts it stays. See docs/PROVENANCE_AND_RELEASE_VERIFICATION.md.
+          attestations: true

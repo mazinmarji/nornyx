@@ -58,6 +58,34 @@ automatically (see [`.github/workflows/release.yml`](.github/workflows/release.y
    /tmp/v/bin/nornyx check examples/governed_delivery_control_plane.nyx
    ```
 
+## Release provenance
+
+Publishing through Trusted Publishing is what makes an official release
+*verifiable*, not merely *published*. Two properties are load-bearing and must
+not be silently dropped:
+
+- the `publish` job keeps `permissions: id-token: write` and the `pypi`
+  environment — PEP 740 attestation is available only to Trusted Publishing
+  flows;
+- the publish step declares `attestations: true` explicitly. The action ref
+  tracks a moving branch, so an inherited default is not a property of this
+  workflow.
+
+`tests/test_identity_claims_boundary.py` asserts both, so removing either
+fails CI rather than quietly weakening the next release.
+
+After publishing, confirm what actually reached PyPI:
+
+```bash
+curl -s https://pypi.org/pypi/nornyx/X.Y.Z/json | python -c "import json,sys; [print(f['filename'], f.get('provenance')) for f in json.load(sys.stdin)['urls']]"
+```
+
+A `provenance` URL means an attestation was published for that file; `None`
+means none was. Record the actual result — releases up to and including 1.11.0
+report `None`. The full consumer-side verification path, and what absence of
+provenance does and does not mean, are in
+[`docs/PROVENANCE_AND_RELEASE_VERIFICATION.md`](docs/PROVENANCE_AND_RELEASE_VERIFICATION.md).
+
 ## Rules that bite
 
 - **A version is immutable on PyPI.** You can never re-upload `X.Y.Z`, even after
