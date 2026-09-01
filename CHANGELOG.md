@@ -8,11 +8,13 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Changed
 
-- The `nornyx.dev` domain, which every packaged schema `$id` points at, is
-  registered to the project as of 2026-09-01. ADR-0045 recorded its
+- The `nornyx.dev` domain, which every packaged schema `$id` points at, has
+  been under project-owner control since 2026-09-01. ADR-0045 recorded its
   unregistered state as an identity exposure and listed acquisition as external
-  action 1; that action is now closed, and no identifier changed — which was the
-  reason for preferring acquisition over minting a new namespace. The `$id`
+  action 1; that specific exposure is now closed, and no identifier changed —
+  which was the reason for preferring acquisition over minting a new namespace.
+  The closure holds while control is maintained, and the registrant entity
+  remains an open question under ADR-0045 action 4. The `$id`
   values remain opaque identifiers rather than fetch targets: no schemas are
   published at those URLs, the packaged copies stay authoritative, and
   `nornyx/governance/schemas.py` still resolves every schema locally. ADR-0045's

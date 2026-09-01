@@ -121,11 +121,19 @@ packaged local resources via `importlib.resources` and registers it in a local
 `referencing.Registry` keyed by `$id`. No network access is involved in schema
 resolution, and none will be added.
 
-The `nornyx.dev` domain is registered to the project as of 2026-09-01. That
-closes a namespace exposure ADR-0045 recorded while it was unregistered: a
-third party holding the domain could have served documents at Nornyx's
-canonical identifiers to any tool that dereferences `$id`. It was never a
-defect in Nornyx, which fetches nothing.
+The `nornyx.dev` domain has been under project-owner control since
+2026-09-01. That closes the specific exposure ADR-0045 recorded while the
+domain was unregistered: while it was unclaimed, anyone could have registered
+it and served documents at Nornyx's canonical identifiers to a tool that
+dereferences `$id`. It was never a defect in Nornyx, which fetches nothing.
+
+Two limits on that statement, both deliberate. The closure holds only while
+control is maintained — lapse, transfer, or registrar-account compromise are
+separate risks this does not address. And "project-owner control" is not a
+claim about a legal registrant entity: which entity should hold project assets
+is an open question in
+[ADR-0045](decisions/ADR-0045-project-identity-conformance-and-provenance.md),
+and this document does not pre-empt it.
 
 **Registration is not publication, and nothing here changes.** The domain
 currently serves no schema documents, and the guidance is unchanged: consumers
