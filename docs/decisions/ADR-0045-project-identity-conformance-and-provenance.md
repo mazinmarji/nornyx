@@ -41,15 +41,19 @@ Four facts from the current codebase set the boundaries this ADR must encode.
    language.
 
 3. **A controlled identifier namespace already exists — on a domain the
-   project does not demonstrably control.** Schema `$id` values use
+   project did not, at the time of this decision, demonstrably control.**
+   *(Resolved 2026-09-01: `nornyx.dev` was registered to the project on the
+   same day this ADR was accepted — see external action 1 below. The context
+   below is preserved as written, because it is what motivated the decision.)*
+   Schema `$id` values use
    `https://nornyx.dev/schemas/...`; payload discriminators use dotted
    `nornyx.<name>.v<n>`; lower-status extension schemas use `nornyx.local`.
-   As of 2026-09-01, `nornyx.dev` does not resolve in public DNS. Nornyx never
+   At the time of writing, `nornyx.dev` did not resolve in public DNS. Nornyx never
    dereferences these identifiers — `nornyx/governance/schemas.py` loads every
    schema from packaged local resources through `importlib.resources` and
    registers it by `$id` — so this is not a code-execution or supply-chain
-   defect in Nornyx. It is an **identity** exposure: a third party who
-   registered that domain could serve documents at Nornyx's canonical
+   defect in Nornyx. It was an **identity** exposure: a third party who
+   registered that domain could have served documents at Nornyx's canonical
    identifiers to any *other* tool that does dereference `$id`.
 
 4. **Assurance tiers are not identity claims.** ADR-0040 governs how strongly
@@ -172,7 +176,7 @@ behind it.
 
 | # | Action | Why | Owner |
 | --- | --- | --- | --- |
-| 1 | **Acquire `nornyx.dev`, or migrate the schema `$id` namespace.** | Every packaged schema `$id` points at a domain that did not resolve on 2026-09-01. Nornyx never dereferences them, so this is not a code defect — but a third party holding that domain could serve documents at Nornyx's canonical identifiers to any tool that *does* dereference `$id`. Acquiring the domain is cheap; the alternative is minting a non-URL namespace, which would break the permanence rule for existing `$id` tokens and is therefore the worse option. | repository owner |
+| 1 | ~~**Acquire `nornyx.dev`, or migrate the schema `$id` namespace.**~~ **DONE 2026-09-01.** | Every packaged schema `$id` points at this domain, which was unregistered when this ADR was written. Nornyx never dereferences them, so it was never a code defect — but a third party holding the domain could have served documents at Nornyx's canonical identifiers to any tool that *does* dereference `$id`. **Registered to the project on 2026-09-01**, closing the exposure without changing a single identifier, which was the point of preferring acquisition over minting a new namespace. No schemas are published at these URLs, and the packaged copies remain authoritative. | repository owner |
 | 2 | Trademark clearance search for "Nornyx". | Determines whether the name is available and whether anyone else holds conflicting rights. Must precede any registration or enforcement posture. | IP counsel |
 | 3 | Decide whether to register, and in which jurisdictions and Nice classes. | Registration is not automatic and not free. Class 9 and class 42 are the usual candidates for software and SaaS, but scope should follow actual and intended use. | IP counsel + owner |
 | 4 | Decide the owning entity. | An individual, a company, or a foundation. This choice affects enforceability, assignment, and what happens to the mark if the project changes hands. It is easier to decide before registration than after. | owner |
