@@ -8,6 +8,38 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Added
 
+- ADR-0045 separates project identity from software licensing across four
+  independently verifiable layers: MIT software, Nornyx identity, `.nyx`
+  canonical semantics, conformance, and detached provenance. Adds
+  `TRADEMARKS.md` (identity policy; no trademark registration is claimed, and
+  the document is marked as requiring independent counsel review),
+  `docs/NYX_FORMAT_AND_CONFORMANCE.md` (what makes a document a Nornyx
+  contract, plus a four-term conformance-claim vocabulary each with a stated
+  verification method and non-meaning), and
+  `docs/PROVENANCE_AND_RELEASE_VERIFICATION.md` (offline release verification;
+  provenance and conformance as independent axes). Nothing here restricts the
+  MIT grant: forking, renaming, and independent reimplementation remain
+  explicitly permitted, and independent implementations are stated as a goal.
+- `tests/test_identity_claims_boundary.py` holds the repository to the claim
+  vocabulary it publishes — no registered-trademark symbol or unsupported
+  registration/certification/endorsement claim on the current-voice
+  documentation surface, provenance absence documented as distinct from
+  provenance failure, and the release workflow's attestation declaration
+  asserted. It also covers two previously untested behavioural properties:
+  contract identity does not depend on the file extension, and the closed
+  contract-language schemas carry no identity-shaped top-level block (adding
+  one would move every adopting contract's governed digest).
+
+### Changed
+
+- The PyPI publish step declares `attestations: true` explicitly rather than
+  inheriting it. The action reference tracks a moving branch, so PEP 740
+  attestation is now a stated property of this workflow. `RELEASING.md` gains a
+  release-provenance section with the command to confirm what actually reached
+  PyPI. This changes no credential, environment, or publishing authority, and
+  makes no claim about already-published artifacts: distributions up to and
+  including 1.11.0 report `provenance: null`.
+
 - ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
   `adapter-conformance` CI job that installs both framework extras at their
   exact pins, requires both suites so a missing extra cannot pass as a silent
