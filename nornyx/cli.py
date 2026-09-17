@@ -20,7 +20,7 @@ from .agentic_artifacts import (
     write_agentic_network_lock,
 )
 from .agentic_evidence import load_runtime_events, validate_runtime_events
-from .checker import check_document, graph_vocabulary_for_profile_pack, has_errors
+from .checker import check_document, has_errors
 from .connector_runtime import (
     ConnectorRuntimeError,
     build_connector_report,
@@ -57,6 +57,7 @@ from .governance import (
     GovernanceModule,
     GovernanceRegistry,
     ProfilePack,
+    check_document_with_governance,
     compose_document_governance,
     compose_governance,
     evaluate_document_governance,
@@ -186,29 +187,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         composition_error = exc
     # The graph block is checked against the composed profile's vocabulary, so a
     # project- or organisation-supplied pack extends it exactly as a built-in does.
-    diagnostics = list(
-        check_document(
-            doc,
-            graph_vocabulary=(
-                graph_vocabulary_for_profile_pack(composition.profile)
-                if composition is not None and composition.profile is not None
-                else None
-            ),
-        )
-    )
+    diagnostics, composition = check_document_with_governance(doc, composition=composition)
     if composition_error is not None:
         diagnostics.extend(composition_error.diagnostics)
     else:
-        if composition is not None:
-            contributed_blocks = {item.block for item in composition.block_schemas}
-            diagnostics = [
-                item
-                for item in diagnostics
-                if not (
-                    item.code == "UNKNOWN_TOP_LEVEL_BLOCK"
-                    and item.path in contributed_blocks
-                )
-            ]
         try:
             diagnostics.extend(
                 evaluate_document_governance(
@@ -765,31 +747,11 @@ def _agentic_document_and_composition(
     document_root = contract_path.parent
     lock_path = _optional_profile_lock(document_root, trust_root=trust_root)
     as_of = getattr(args, "as_of", None) or datetime.now(timezone.utc).isoformat()
-    composition = compose_document_governance(
+    diagnostics, composition = check_document_with_governance(
         doc,
         registry=registry,
         lock_path=lock_path,
     )
-    diagnostics = list(
-        check_document(
-            doc,
-            graph_vocabulary=(
-                graph_vocabulary_for_profile_pack(composition.profile)
-                if composition is not None and composition.profile is not None
-                else None
-            ),
-        )
-    )
-    if composition is not None:
-        contributed_blocks = {item.block for item in composition.block_schemas}
-        diagnostics = [
-            item
-            for item in diagnostics
-            if not (
-                item.code == "UNKNOWN_TOP_LEVEL_BLOCK"
-                and item.path in contributed_blocks
-            )
-        ]
     diagnostics.extend(
         evaluate_document_governance(
             doc,

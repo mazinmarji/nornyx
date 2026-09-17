@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from ..checker import GraphVocabulary, check_document, graph_vocabulary_for_profile_pack
 from .composition import compose_governance
 from .errors import GovernanceError, error
 from .loader import (
@@ -135,6 +136,67 @@ def compose_document_governance(
         module_ids=module_value,
         lock=lock,
     )
+
+
+def graph_vocabulary_for_composition(
+    composition: CompositionResult | None,
+) -> GraphVocabulary | None:
+    """The graph vocabulary a composed document's ``graph:`` block is checked against.
+
+    ``None`` when nothing composed a profile, which lets the checker fall back
+    to its built-in-profile resolution and report that it did so.
+    """
+    if composition is None or composition.profile is None:
+        return None
+    return graph_vocabulary_for_profile_pack(composition.profile)
+
+
+_UNCOMPOSED = object()
+
+
+def check_document_with_governance(
+    document: Mapping[str, Any],
+    *,
+    registry: GovernanceRegistry | None = None,
+    lock_path: str | Path | None = None,
+    composition: CompositionResult | None | object = _UNCOMPOSED,
+) -> tuple[list[Any], CompositionResult | None]:
+    """Run the static checker against the document's composed governance.
+
+    This is the one place that defines "checked under the active profile": the
+    composed profile's ``graph.node_kinds`` and ``relationship_constraints`` are
+    applied exactly as ``nornyx check`` applies them, and checker diagnostics
+    for top-level blocks a selected module contributes are dropped, as ``nornyx
+    check`` drops them. Pass ``composition`` when the caller has already composed
+    the document (``None`` meaning "composed, no profile"); otherwise ``registry``
+    is required and the document is composed here. Composition failures raise
+    ``GovernanceError``; the checker itself never raises. The checker stays
+    static and side-effect-free: the composition comes from the caller's
+    registry and is handed in.
+    """
+    if composition is _UNCOMPOSED:
+        if registry is None:
+            raise TypeError("registry is required when no composition is supplied")
+        composition = compose_document_governance(
+            document,
+            registry=registry,
+            lock_path=lock_path,
+        )
+    assert composition is None or isinstance(composition, CompositionResult)
+    diagnostics = list(
+        check_document(
+            document,  # type: ignore[arg-type]
+            graph_vocabulary=graph_vocabulary_for_composition(composition),
+        )
+    )
+    if composition is not None:
+        contributed = {item.block for item in (composition.block_schemas or ())}
+        diagnostics = [
+            item
+            for item in diagnostics
+            if not (item.code == "UNKNOWN_TOP_LEVEL_BLOCK" and item.path in contributed)
+        ]
+    return diagnostics, composition
 
 
 def evaluate_document_governance(

@@ -29,8 +29,10 @@ from .projection import project_profile_to_v03
 from .registry import GovernanceRegistry
 from .rules import evaluate_rule, evaluate_rules
 from .runtime import (
+    check_document_with_governance,
     compose_document_governance,
     evaluate_document_governance,
+    graph_vocabulary_for_composition,
     registry_for_contract,
     registry_for_directory,
 )
@@ -52,6 +54,7 @@ __all__ = [
     "Rule",
     "StarterFragment",
     "change_scope_hash",
+    "check_document_with_governance",
     "compose_document_governance",
     "compose_governance",
     "evaluate_document_governance",
@@ -67,6 +70,7 @@ __all__ = [
     "trusted_effective_approval",
     "validate_governance_evidence_file",
     "project_profile_to_v03",
+    "graph_vocabulary_for_composition",
     "registry_for_contract",
     "registry_for_directory",
     "verify_lock",

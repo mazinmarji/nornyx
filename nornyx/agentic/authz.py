@@ -47,9 +47,10 @@ from ..agentic_artifacts import (
     load_agentic_network_lock,
     verify_agentic_network_lock,
 )
-from ..checker import check_document, has_errors
+from ..checker import has_errors
 from ..governance import (
     CompositionResult,
+    check_document_with_governance,
     compose_document_governance,
     evaluate_document_governance,
     registry_for_contract,
@@ -1182,14 +1183,15 @@ def load_authorizer(contract_path: str | Path, lock_path: str | Path, *, validat
         raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, "The contract is not a mapping/object.")
     document_root = Path(contract_path).resolve().parent
     try:
-        diagnostics = list(check_document(document))
+        # Compose first so the static checker sees the composed profile's graph
+        # vocabulary (ADR-0046): a project-supplied profile's declared kinds and
+        # relation pairs apply here exactly as they do under ``nornyx check``.
         composition = compose_document_governance(document, registry=registry)
+        diagnostics, composition = check_document_with_governance(document, composition=composition)
     except Exception as exc:  # noqa: BLE001
         raise AuthorizerLoadError(AuthorizerLoadCode.CONTRACT_INVALID, f"The contract fails to compose: {type(exc).__name__}") from exc
     if composition is None:
         raise AuthorizerLoadError(AuthorizerLoadCode.PROFILE_MISSING, "The contract does not resolve a governance profile.")
-    contributed = {item.block for item in (composition.block_schemas or ())}
-    diagnostics = [item for item in diagnostics if not (item.code == "UNKNOWN_TOP_LEVEL_BLOCK" and item.path in contributed)]
     try:
         diagnostics.extend(evaluate_document_governance(document, registry=registry, as_of=validation_as_of, document_root=document_root))
     except Exception as exc:  # noqa: BLE001
