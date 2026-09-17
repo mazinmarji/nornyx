@@ -20,7 +20,7 @@ from .agentic_artifacts import (
     write_agentic_network_lock,
 )
 from .agentic_evidence import load_runtime_events, validate_runtime_events
-from .checker import check_document, has_errors
+from .checker import check_document, graph_vocabulary_for_profile_pack, has_errors
 from .connector_runtime import (
     ConnectorRuntimeError,
     build_connector_report,
@@ -170,7 +170,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     except NornyxParseError as exc:
         print(json.dumps({"level": "error", "code": "PARSE_ERROR", "message": str(exc)}, indent=2))
         return 2
-    diagnostics = list(check_document(doc))
+    composition = None
+    composition_error: GovernanceError | None = None
     try:
         contract_path, trust_root = _absolute_contract_path(args.file)
         contract_path = Path(os.path.realpath(contract_path))
@@ -181,6 +182,23 @@ def cmd_check(args: argparse.Namespace) -> int:
             registry=registry,
             lock_path=lock_path,
         )
+    except GovernanceError as exc:
+        composition_error = exc
+    # The graph block is checked against the composed profile's vocabulary, so a
+    # project- or organisation-supplied pack extends it exactly as a built-in does.
+    diagnostics = list(
+        check_document(
+            doc,
+            graph_vocabulary=(
+                graph_vocabulary_for_profile_pack(composition.profile)
+                if composition is not None and composition.profile is not None
+                else None
+            ),
+        )
+    )
+    if composition_error is not None:
+        diagnostics.extend(composition_error.diagnostics)
+    else:
         if composition is not None:
             contributed_blocks = {item.block for item in composition.block_schemas}
             diagnostics = [
@@ -191,17 +209,18 @@ def cmd_check(args: argparse.Namespace) -> int:
                     and item.path in contributed_blocks
                 )
             ]
-        diagnostics.extend(
-            evaluate_document_governance(
-                doc,
-                registry=registry,
-                lock_path=lock_path,
-                as_of=as_of,
-                document_root=document_root,
+        try:
+            diagnostics.extend(
+                evaluate_document_governance(
+                    doc,
+                    registry=registry,
+                    lock_path=lock_path,
+                    as_of=as_of,
+                    document_root=document_root,
+                )
             )
-        )
-    except GovernanceError as exc:
-        diagnostics.extend(exc.diagnostics)
+        except GovernanceError as exc:
+            diagnostics.extend(exc.diagnostics)
     for diag in diagnostics:
         print(json.dumps(diag.to_dict(), indent=2))
     if has_errors(diagnostics):
@@ -746,11 +765,20 @@ def _agentic_document_and_composition(
     document_root = contract_path.parent
     lock_path = _optional_profile_lock(document_root, trust_root=trust_root)
     as_of = getattr(args, "as_of", None) or datetime.now(timezone.utc).isoformat()
-    diagnostics = list(check_document(doc))
     composition = compose_document_governance(
         doc,
         registry=registry,
         lock_path=lock_path,
+    )
+    diagnostics = list(
+        check_document(
+            doc,
+            graph_vocabulary=(
+                graph_vocabulary_for_profile_pack(composition.profile)
+                if composition is not None and composition.profile is not None
+                else None
+            ),
+        )
     )
     if composition is not None:
         contributed_blocks = {item.block for item in composition.block_schemas}

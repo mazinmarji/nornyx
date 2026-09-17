@@ -56,6 +56,42 @@ Evidence graph refs can point to:
 Contracts that omit evidence nodes are still accepted, but the checker warns
 because the graph is less auditable.
 
+## Graph vocabulary and cycle diagnostics (ADR-0046, issue #104)
+
+The checks above are applied against an explicit vocabulary:
+
+- **Node kinds.** The core kinds are `adapter, agent, approval, artifact, budget,
+  connector, context, contract, eval, evidence, goal, harness, intent, module,
+  policy, profile, project, skill, trace`. The active profile's
+  `graph.node_kinds` add to that set; a profile never removes a core kind. Any
+  other kind warns `UNKNOWN_GRAPH_NODE_KIND`, and edges touching such a node are
+  not pair-checked (the node diagnostic covers them). World-model entities do
+  not belong in the contract graph; declare a domain kind in a profile if a
+  governance relationship genuinely needs it.
+- **Relations.** Each profile `graph.relationship_constraints` entry adds one
+  allowed `from_kind -> relation -> to_kind` triple, declaring the relation if
+  it is not a core one and widening the allowed pairs if it is. Profile-declared
+  relations are pair-checked like core ones; `UNKNOWN_GRAPH_RELATION` no longer
+  fires for them. `depends_on` matches known kinds only.
+- **Refs.** `profile`, `project` and `contract` node refs resolve against
+  `project.profile` / `project.profile_pack.name`, `project.name` and
+  `contracts[].name` (`UNKNOWN_GRAPH_REF_REFERENCE`, error, as for the other
+  in-document kinds). `artifact`, `module` and profile-declared kinds name
+  things outside the document, so they must carry a `ref`
+  (`GRAPH_NODE_WITHOUT_REF`, warning); path existence is not checked.
+- **Cycles.** `GRAPH_CYCLE` warns once per strongly connected component of the
+  edge set after inverse spellings (`governed_by`, `gated_by`, `bounded_by`,
+  `validated_by`, `uses_context`) are folded onto their canonical direction, so
+  a relationship declared from both ends is not a cycle. Self-edges keep
+  `GRAPH_SELF_EDGE`.
+
+The new codes are warnings so an existing contract keeps its exit status;
+`nornyx check --strict` promotes them. `nornyx check` and the agentic-network
+commands compose the document's governance first and check the graph against
+the composed profile's vocabulary, so project- and organisation-supplied packs
+extend it exactly as built-ins do; other callers resolve `project.profile`
+against the built-in profiles and otherwise use the core vocabulary.
+
 ## Non-goals
 
 v0.5 does not add:

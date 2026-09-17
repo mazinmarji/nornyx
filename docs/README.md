@@ -197,7 +197,7 @@ external systems remain responsible for execution and enforcement.
 
 - [decisions](decisions) — the single ADR home: the early ADR-0001 and
   ADR-0021 records (relocated from the former `docs/ADRs/` directory) plus
-  ADR-0010 through ADR-0044.
+  ADR-0010 through ADR-0046.
 
 One historical numbering collision persists inside the home: both
 `decisions/ADR-0021-zero-friction-adoption-ramp.md` (early series) and

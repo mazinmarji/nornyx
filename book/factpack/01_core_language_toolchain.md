@@ -104,7 +104,7 @@ What is validated (matches the spec list at `docs/01_LANGUAGE_SPEC_v0_1.md:258-2
 - named-entry shape and required `name` per list entry;
 - reference integrity: agent→skill, agent→policy, harness→context, harness flow step→agent/eval (`nornyx/checker.py:653-728`);
 - graph: node id/kind required, duplicate node ids, edge endpoints must be declared nodes, `ref` targets must exist in the matching named block (kind→block map at `nornyx/checker.py:120-141`), evidence nodes should carry refs;
-- **relation typing**: 23 recognized relations with allowed source/target kind pairs in `GRAPH_RELATION_RULES` (`nornyx/checker.py:144-168`) — e.g. `governs: policy → {agent, harness, adapter, connector, goal}`, `gated_by: {goal, agent, harness, artifact, module} → approval`, `has_skill: agent → skill`, `depends_on: * → *`. Unknown relations warn; wrong pairs error (`INVALID_GRAPH_RELATION_PAIR`);
+- **relation typing**: 23 recognized relations with allowed source/target kind pairs in `GRAPH_RELATION_RULES` (`GRAPH_RELATION_RULES` in `nornyx/checker.py`) — e.g. `governs: policy → {agent, harness, adapter, connector, goal}`, `gated_by: {goal, agent, harness, artifact, module} → approval`, `has_skill: agent → skill`, `depends_on: * → *`. Unknown relations warn; wrong pairs error (`INVALID_GRAPH_RELATION_PAIR`);
 - contracts: node refs, approval/budget references must resolve to declared approvals/budgets; auditability warnings when approvals/budgets/evidence are not represented as graph nodes (`nornyx/checker.py:452-581`);
 - goals: full bounded-goal shape incl. `non_goals` and `stop_rules`;
 - unknown top-level keys → warning.
@@ -408,7 +408,7 @@ Canonical release validation run for 1.11.0: 1523 passed, 55 skipped, 1575 colle
 | Determinism: LF newlines, sorted paths/hashes, no timestamps in generated artifacts | `nornyx/generator.py:11-36`; `CHANGELOG.md:683-685` | implemented |
 | `nornyx drift` compares full artifact set by sha256 (AGENTS.md-only diff was insufficient) | `nornyx/repo_drift.py:1-92`; `CHANGELOG.md:613-618` | implemented |
 | Workspace manifest = canonical policies + members; `--write` surgically syncs | `nornyx/workspace.py:1-17,218-299`; `tests/test_workspace.py` | implemented |
-| 23 typed graph relations with source/target kind checking | `nornyx/checker.py:144-168,425-450` | implemented |
+| 23 typed graph relations with source/target kind checking | `GRAPH_RELATION_RULES` and the edge loop in `nornyx/checker.py` | implemented |
 | Context packs: per-file sha256 provenance, taint channels, authority rank | `nornyx/context_builder.py:9-174`; `tests/test_context_provenance.py` | implemented |
 | "Authority rank is advisory metadata until a later enforcement goal" | `nornyx/context_builder.py:170` | implemented (declared limitation) |
 | Lexical remote/UNC/device path rejection before any FS access | `nornyx/path_security.py:15-52`; used in `parser.py:70-71` | implemented |

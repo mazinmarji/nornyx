@@ -48,7 +48,7 @@ not asserted anywhere in the book.
 | Generator emits `AGENTS.md`, `skills/`, six YAML artifacts, task packets, evidence contract, and a hashed generation manifest | `nornyx/generator.py:76-182` | implemented | 21 |
 | Generation determinism: line-feed newlines, sorted paths and hashes, no timestamps | `nornyx/generator.py:11-36`; `CHANGELOG.md:683-685` | implemented | 8, 21 |
 | `nornyx drift` compares the full artifact set by digest | `nornyx/repo_drift.py:1-92`; `tests/test_repo_drift.py`; `CHANGELOG.md:613-618` | implemented | 21, 29 |
-| Twenty-three typed graph relations with source and target kind checking | `nornyx/checker.py:144-168,425-450` | implemented | 17 |
+| Twenty-three typed graph relations with source and target kind checking | `GRAPH_RELATION_RULES` and the edge loop in `nornyx/checker.py` | implemented | 17 |
 | Context packs record per-file digests and taint channels | `nornyx/context_builder.py:9-174`; `tests/test_context_provenance.py` | implemented | 6, 21 |
 | Context authority rank is advisory metadata, not an enforcement mechanism | `nornyx/context_builder.py:170` | implemented (stated limit) | 6, 21 |
 | `--as-of` fails closed with `AS_OF_INVALID` and never falls back to the live clock | `nornyx/cli.py:133-161`; `CHANGELOG.md:95-102` | implemented | 18, App. C |
