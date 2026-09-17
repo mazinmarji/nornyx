@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Mapping
+
 from .errors import Diagnostic
 
 REQUIRED_TOP_LEVEL = ["nornyx", "project"]
@@ -138,6 +140,16 @@ def _graph_ref_targets(doc: dict[str, Any]) -> dict[str, set[str]]:
     }
     targets["goal"] = _goal_ids(doc.get("goals"))
     targets["evidence"] = _evidence_targets(doc)
+    project = doc.get("project") if isinstance(doc.get("project"), dict) else {}
+    profile_targets: set[str] = set()
+    if _is_non_empty_string(project.get("profile")):
+        profile_targets.add(str(project["profile"]))
+    profile_pack = project.get("profile_pack")
+    if isinstance(profile_pack, dict) and _is_non_empty_string(profile_pack.get("name")):
+        profile_targets.add(str(profile_pack["name"]))
+    targets["profile"] = profile_targets
+    targets["project"] = {str(project["name"])} if _is_non_empty_string(project.get("name")) else set()
+    targets["contract"] = set(_named_mapping(doc.get("contracts")))
     return targets
 
 
@@ -168,8 +180,249 @@ GRAPH_RELATION_RULES: dict[str, tuple[set[str], set[str]]] = {
 }
 
 
-def _relation_allows(allowed: set[str], kind: str) -> bool:
+def _relation_allows(allowed: set[str] | frozenset[str], kind: str) -> bool:
     return "*" in allowed or kind in allowed
+
+
+# Graph node kinds the core language defines. A node whose kind is outside this
+# set and outside the active profile's ``graph.node_kinds`` is not a governance
+# concept the checker can reason about, so it is reported (as a warning, so an
+# existing contract keeps its exit status; ``--strict`` promotes it).
+CORE_GRAPH_NODE_KINDS: frozenset[str] = frozenset(
+    {
+        "adapter",
+        "agent",
+        "approval",
+        "artifact",
+        "budget",
+        "connector",
+        "context",
+        "contract",
+        "eval",
+        "evidence",
+        "goal",
+        "harness",
+        "intent",
+        "module",
+        "policy",
+        "profile",
+        "project",
+        "skill",
+        "trace",
+    }
+)
+
+# Relations whose acyclicity the checker enforces. Only ``depends_on`` declares
+# a dependency: a cycle over it is a circular dependency, the same defect
+# ``governance/structural.py`` reports for evidence dependencies and exception
+# renewals. The other relations are control, validation, production and audit
+# statements whose directions are not comparable with one another, so a loop
+# that mixes them is not a dependency cycle and is not reported (ADR-0046,
+# revision 2).
+DEPENDENCY_GRAPH_RELATIONS: frozenset[str] = frozenset({"depends_on"})
+
+
+@dataclass(frozen=True)
+class GraphRelationRule:
+    """Allowed source/target kinds for one relation.
+
+    ``allowed_from`` / ``allowed_to`` carry the core declaration exactly as
+    ``GRAPH_RELATION_RULES`` states it: a source set and a target set, where
+    ``*`` means any known kind. ``pairs`` carries profile-declared
+    ``(from_kind, to_kind)`` pairs verbatim. A pair is allowed when the core
+    declaration admits it or it is one of the exact declared pairs; declared
+    pairs never combine with each other or with the core sets.
+    """
+
+    allowed_from: frozenset[str] = frozenset()
+    allowed_to: frozenset[str] = frozenset()
+    pairs: frozenset[tuple[str, str]] = frozenset()
+
+    def allows(self, source_kind: str, target_kind: str) -> bool:
+        if (
+            self.allowed_from
+            and self.allowed_to
+            and _relation_allows(self.allowed_from, source_kind)
+            and _relation_allows(self.allowed_to, target_kind)
+        ):
+            return True
+        return (source_kind, target_kind) in self.pairs
+
+
+@dataclass(frozen=True)
+class GraphVocabulary:
+    """The node kinds and relation rules one ``graph:`` block is checked against.
+
+    ``core_graph_vocabulary()`` is the language's own vocabulary. A profile pack
+    extends it: its ``graph.node_kinds`` add kinds and each
+    ``graph.relationship_constraints`` entry adds exactly one permitted
+    ``(from_kind, to_kind)`` pair to the named relation, declaring the relation
+    when the verb is not a core one. Profiles only ever widen the vocabulary by
+    the exact pairs they declare; a profile cannot remove a core kind or narrow
+    a core relation.
+
+    ``resolution`` records how the vocabulary was obtained: ``core`` (no profile
+    requested), ``profile`` (a composed or built-in profile applied),
+    ``unresolved`` (``project.profile`` names no known profile) or
+    ``unavailable`` (the profile registry could not be consulted). The checker
+    reports the last two, so core-only checking is never mistaken for profile
+    checking.
+    """
+
+    node_kinds: frozenset[str]
+    relation_rules: Mapping[str, GraphRelationRule]
+    source: str = "core"
+    resolution: str = "core"
+    detail: str = ""
+
+
+def core_graph_vocabulary() -> GraphVocabulary:
+    return GraphVocabulary(
+        node_kinds=CORE_GRAPH_NODE_KINDS,
+        relation_rules={
+            relation: GraphRelationRule(frozenset(allowed_from), frozenset(allowed_to))
+            for relation, (allowed_from, allowed_to) in GRAPH_RELATION_RULES.items()
+        },
+    )
+
+
+def graph_vocabulary_for_profile(profile_graph: Any, *, profile_id: str) -> GraphVocabulary:
+    """Extend the core vocabulary with one profile pack's ``graph`` declaration."""
+    base = core_graph_vocabulary()
+    source = f"core+profile:{profile_id}"
+    if not isinstance(profile_graph, Mapping):
+        return GraphVocabulary(base.node_kinds, base.relation_rules, source, "profile")
+    kinds = set(base.node_kinds)
+    for kind in profile_graph.get("node_kinds") or []:
+        if _is_non_empty_string(kind) and str(kind).strip() != "*":
+            kinds.add(str(kind).strip())
+    declared: dict[str, set[tuple[str, str]]] = {}
+    for constraint in profile_graph.get("relationship_constraints") or []:
+        if not isinstance(constraint, Mapping):
+            continue
+        from_kind = constraint.get("from_kind")
+        relation = constraint.get("relation")
+        to_kind = constraint.get("to_kind")
+        if not all(_is_non_empty_string(value) for value in (from_kind, relation, to_kind)):
+            continue
+        if "*" in (str(from_kind).strip(), str(to_kind).strip()):
+            # Only the core table may say "any kind"; a profile widens by exact
+            # pairs, so a wildcard endpoint is not a declaration it can make.
+            continue
+        declared.setdefault(str(relation), set()).add((str(from_kind), str(to_kind)))
+        kinds.add(str(from_kind))
+        kinds.add(str(to_kind))
+    rules = dict(base.relation_rules)
+    for relation, pairs in declared.items():
+        core_rule = base.relation_rules.get(relation, GraphRelationRule())
+        rules[relation] = GraphRelationRule(
+            core_rule.allowed_from, core_rule.allowed_to, frozenset(pairs)
+        )
+    return GraphVocabulary(frozenset(kinds), rules, source, "profile")
+
+
+def graph_vocabulary_for_profile_pack(profile: Any) -> GraphVocabulary:
+    """Vocabulary for a loaded profile pack (anything exposing ``raw`` and ``id``)."""
+    raw = getattr(profile, "raw", None)
+    graph = raw.get("graph") if isinstance(raw, Mapping) else None
+    return graph_vocabulary_for_profile(graph, profile_id=str(getattr(profile, "id", "?")))
+
+
+def graph_vocabulary_for_document(doc: Mapping[str, Any]) -> GraphVocabulary:
+    """Best-effort vocabulary when no composed profile was supplied.
+
+    Resolves ``project.profile`` against the built-in profile registry only
+    (packaged data, no filesystem lookup). Project- and organisation-supplied
+    packs are known to callers that compose the document's governance first
+    and pass the composed vocabulary explicitly. The result says what happened:
+    a profile that is not built in yields ``resolution="unresolved"`` and a
+    registry that cannot be consulted yields ``resolution="unavailable"``;
+    neither is silently reported as core checking.
+    """
+    project = doc.get("project")
+    profile_name = project.get("profile") if isinstance(project, Mapping) else None
+    core = core_graph_vocabulary()
+    if not _is_non_empty_string(profile_name):
+        return core
+    profile_name = str(profile_name)
+    try:
+        from .governance.errors import GovernanceError
+        from .profiles import builtin_profile_registry
+
+        registry = builtin_profile_registry()
+    except Exception as exc:  # noqa: BLE001 - surfaced as an error diagnostic, never hidden
+        return GraphVocabulary(
+            core.node_kinds, core.relation_rules, "core", "unavailable", f"{type(exc).__name__}: {exc}"
+        )
+    try:
+        profile = registry.resolve_profile(profile_name)
+    except GovernanceError as exc:
+        if {item.code for item in exc.diagnostics} == {"PACK_NOT_FOUND"}:
+            return GraphVocabulary(core.node_kinds, core.relation_rules, "core", "unresolved", profile_name)
+        return GraphVocabulary(core.node_kinds, core.relation_rules, "core", "unavailable", str(exc))
+    return graph_vocabulary_for_profile_pack(profile)
+
+
+def _dependency_cycles(edges: list[tuple[str, str, str]]) -> list[list[str]]:
+    """Strongly connected components of size > 1 among dependency edges.
+
+    ``edges`` are ``(from, to, relation)`` triples exactly as declared. Only
+    relations in ``DEPENDENCY_GRAPH_RELATIONS`` take part, edges are never
+    reversed or renamed, and self-edges are ignored because they have their
+    own diagnostic. The result is deterministic: components and their members
+    are sorted.
+    """
+    adjacency: dict[str, set[str]] = {}
+    for source, target, relation in edges:
+        if relation not in DEPENDENCY_GRAPH_RELATIONS or source == target:
+            continue
+        adjacency.setdefault(source, set()).add(target)
+        adjacency.setdefault(target, set())
+    # Iterative Tarjan: a checker must return diagnostics, never raise, so no
+    # recursion depth is tied to the size of the contract graph.
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    on_stack: set[str] = set()
+    stack: list[str] = []
+    components: list[list[str]] = []
+    counter = 0
+    for root in sorted(adjacency):
+        if root in index:
+            continue
+        work: list[tuple[str, list[str], int]] = [(root, sorted(adjacency[root]), 0)]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, successors, position = work[-1]
+            if position < len(successors):
+                work[-1] = (node, successors, position + 1)
+                successor = successors[position]
+                if successor not in index:
+                    index[successor] = low[successor] = counter
+                    counter += 1
+                    stack.append(successor)
+                    on_stack.add(successor)
+                    work.append((successor, sorted(adjacency[successor]), 0))
+                elif successor in on_stack:
+                    low[node] = min(low[node], index[successor])
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index[node]:
+                component: list[str] = []
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component.append(member)
+                    if member == node:
+                        break
+                if len(component) > 1:
+                    components.append(sorted(component))
+    return sorted(components)
 
 
 def _validate_named_entries(
@@ -239,7 +492,13 @@ def _validate_string_list_field(
         )
 
 
-def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str, Any]) -> None:
+def _validate_graph_contract_model(
+    diagnostics: list[Diagnostic],
+    doc: dict[str, Any],
+    vocabulary: GraphVocabulary | None = None,
+) -> None:
+    if vocabulary is None:
+        vocabulary = graph_vocabulary_for_document(doc)
     graph = doc.get("graph")
     if graph is not None and not isinstance(graph, dict):
         diagnostics.append(
@@ -260,6 +519,30 @@ def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str,
     if isinstance(graph, dict):
         nodes = graph.get("nodes", [])
         edges = graph.get("edges", [])
+        if vocabulary.resolution == "unresolved":
+            diagnostics.append(
+                Diagnostic(
+                    "warning",
+                    "GRAPH_VOCABULARY_PROFILE_UNRESOLVED",
+                    f"project.profile {vocabulary.detail!r} is not a known profile; "
+                    "the graph was checked against the core vocabulary only",
+                    "project.profile",
+                    "Compose the document's governance (as `nornyx check` does) so a project or "
+                    "organisation profile's graph.node_kinds and relationship_constraints apply.",
+                )
+            )
+        elif vocabulary.resolution == "unavailable":
+            diagnostics.append(
+                Diagnostic(
+                    "error",
+                    "GRAPH_VOCABULARY_UNAVAILABLE",
+                    "the profile registry could not be consulted for project.profile: "
+                    + vocabulary.detail,
+                    "project.profile",
+                    "Profile graph semantics were requested but could not be applied; "
+                    "the graph is not accepted on core semantics alone.",
+                )
+            )
         if not isinstance(nodes, list):
             diagnostics.append(
                 Diagnostic(
@@ -329,9 +612,41 @@ def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str,
             kind = str(node.get("kind", "")).strip()
             if _is_non_empty_string(node_id) and kind:
                 node_kinds[str(node_id)] = kind
+            if kind and kind not in vocabulary.node_kinds:
+                diagnostics.append(
+                    Diagnostic(
+                        "warning",
+                        "UNKNOWN_GRAPH_NODE_KIND",
+                        f"graph.nodes[{index}].kind {kind!r} is not a core graph kind"
+                        + (
+                            " or a kind declared by the active profile"
+                            if vocabulary.source != "core"
+                            else ""
+                        ),
+                        f"{path_prefix}.kind",
+                        "Graph nodes name governance concepts (intent, agent, policy, approval, evidence, ...). "
+                        "Declare a domain kind in the active profile's `graph.node_kinds`; do not put "
+                        "world-model entities in the contract graph.",
+                    )
+                )
             ref = node.get("ref")
             if _is_non_empty_string(node_id) and _is_non_empty_string(ref):
                 node_refs[str(node_id)] = str(ref)
+            if (
+                kind
+                and kind in vocabulary.node_kinds
+                and kind not in graph_ref_targets
+                and not _is_non_empty_string(ref)
+            ):
+                diagnostics.append(
+                    Diagnostic(
+                        "warning",
+                        "GRAPH_NODE_WITHOUT_REF",
+                        f"graph.nodes[{index}] {kind} node has no ref",
+                        f"{path_prefix}.ref",
+                        f"A {kind} node names something outside this document; give it a `ref` so the graph stays auditable.",
+                    )
+                )
             if _is_non_empty_string(ref) and kind in graph_ref_targets and str(ref) not in graph_ref_targets[kind]:
                 diagnostics.append(
                     Diagnostic(
@@ -425,7 +740,7 @@ def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str,
             elif from_value in node_kinds and to_value in node_kinds:
                 source_kind = node_kinds[from_value]
                 target_kind = node_kinds[to_value]
-                rule = GRAPH_RELATION_RULES.get(relation)
+                rule = vocabulary.relation_rules.get(relation)
                 if rule is None:
                     diagnostics.append(
                         Diagnostic(
@@ -436,9 +751,10 @@ def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str,
                             "Keep custom relations documented under a profile or adapter contract.",
                         )
                     )
-                else:
-                    allowed_from, allowed_to = rule
-                    if not _relation_allows(allowed_from, source_kind) or not _relation_allows(allowed_to, target_kind):
+                elif source_kind in vocabulary.node_kinds and target_kind in vocabulary.node_kinds:
+                    # An unknown kind already carries UNKNOWN_GRAPH_NODE_KIND; do not
+                    # turn it into a pair error as well.
+                    if not rule.allows(source_kind, target_kind):
                         diagnostics.append(
                             Diagnostic(
                                 "error",
@@ -448,6 +764,27 @@ def _validate_graph_contract_model(diagnostics: list[Diagnostic], doc: dict[str,
                                 "Use a relation whose source and target kinds match the declared graph nodes.",
                             )
                         )
+        for component in _dependency_cycles(
+            [
+                (str(edge["from"]), str(edge["to"]), str(edge.get("relation", "")))
+                for edge in edges
+                if isinstance(edge, dict)
+                and _is_non_empty_string(edge.get("from"))
+                and _is_non_empty_string(edge.get("to"))
+                and str(edge["from"]) in node_ids
+                and str(edge["to"]) in node_ids
+            ]
+        ):
+            diagnostics.append(
+                Diagnostic(
+                    "warning",
+                    "GRAPH_CYCLE",
+                    "graph.edges form a dependency cycle (depends_on) among nodes: " + ", ".join(component),
+                    "graph.edges",
+                    "A depends_on cycle is a circular dependency; break it, or state the relationship "
+                    "with a directed control relation instead.",
+                )
+            )
 
     contracts = doc.get("contracts")
     if contracts is None:
@@ -631,7 +968,19 @@ def _check_policy_rule_vocabulary(diagnostics: list[Diagnostic], doc: dict[str, 
             )
 
 
-def check_document(doc: dict[str, Any]) -> list[Diagnostic]:
+def check_document(
+    doc: dict[str, Any],
+    *,
+    graph_vocabulary: GraphVocabulary | None = None,
+) -> list[Diagnostic]:
+    """Validate one parsed ``.nyx`` document.
+
+    ``graph_vocabulary`` is the node-kind/relation vocabulary the ``graph:``
+    block is checked against. Callers that have composed the document's
+    governance pass ``graph_vocabulary_for_profile_pack(composition.profile)``;
+    otherwise the checker resolves ``project.profile`` against the built-in
+    profiles and falls back to the core vocabulary.
+    """
     diagnostics: list[Diagnostic] = []
 
     for key in REQUIRED_TOP_LEVEL:
@@ -792,7 +1141,7 @@ def check_document(doc: dict[str, Any]) -> list[Diagnostic]:
             )
 
 
-    _validate_graph_contract_model(diagnostics, doc)
+    _validate_graph_contract_model(diagnostics, doc, graph_vocabulary)
 
     if "governed_package" in doc:
         from .governed_package import validate_governed_package

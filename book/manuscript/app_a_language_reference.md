@@ -374,7 +374,7 @@ matching named block for its kind; and evidence nodes without a `ref` are flagge
 duplicate edges are rejected.
 
 Twenty-three relation verbs are typed with allowed source and target kinds
-(`nornyx/checker.py:144-168`): `authorizes_context_for`, `bounded_by`, `bounds`, `depends_on`,
+(`GRAPH_RELATION_RULES` in `nornyx/checker.py`): `authorizes_context_for`, `bounded_by`, `bounds`, `depends_on`,
 `gated_by`, `gates`, `gates_promotion`, `governs`, `governed_by`, `has_skill`, `must_produce`,
 `produces`, `produces_artifact`, `produces_evidence`, `records_trace`, `requires_evidence`,
 `scopes_context`, `satisfies_intent`, `uses_connector`, `uses_context`, `validates`,

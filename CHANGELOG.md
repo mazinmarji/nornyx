@@ -6,6 +6,29 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Fixed
+
+- The checker now validates the `graph:` block against an explicit vocabulary
+  (issue #104, ADR-0046). `graph.nodes[].kind` outside the nineteen core kinds
+  and the active profile's `graph.node_kinds` warns `UNKNOWN_GRAPH_NODE_KIND`;
+  profile `graph.relationship_constraints` are read for the first time and
+  add exact `(from_kind, to_kind)` pairs to a relation without narrowing core
+  rules or combining with each other; `artifact`/`module`/profile kinds without
+  a `ref` warn `GRAPH_NODE_WITHOUT_REF`; `profile`, `project` and `contract`
+  node refs resolve in-document; and a `depends_on` cycle warns `GRAPH_CYCLE`
+  (edges used exactly as declared; other relations are not cycle-checked). All
+  new codes are warnings (`--strict` promotes them), `depends_on` no longer
+  relates unknown kinds, and no shipped example or generated profile document
+  gains a diagnostic. `check_document` takes an optional `graph_vocabulary`;
+  `governance.check_document_with_governance` composes a document and checks it
+  against its profile, and `nornyx check`, the agentic-network commands and
+  `nornyx.agentic.load_authorizer` use it, so a project-supplied profile's pairs
+  apply identically wherever a verdict is produced. A `project.profile` that
+  names no built-in profile is reported by the bare checker
+  (`GRAPH_VOCABULARY_PROFILE_UNRESOLVED`, warning) and a profile registry that
+  cannot be consulted is an error (`GRAPH_VOCABULARY_UNAVAILABLE`) rather than
+  silent core-only checking.
+
 ### Changed
 
 - The `nornyx.dev` domain, which every packaged schema `$id` points at, has

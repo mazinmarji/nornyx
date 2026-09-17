@@ -135,6 +135,8 @@ def schema_model_summary(version: str | float | int | None = "compat") -> dict[s
         "v0_5_graph_validation_surface": {
             "relation_pairs": "Static checks for recognized graph relation source/target kinds.",
             "auditability": "Warnings for duplicate edges, self-edges, and missing contract approval/budget/evidence graph coverage.",
+            "vocabulary": "Node kinds are the core set plus the active profile's graph.node_kinds; profile relationship_constraints add exact relation pairs (ADR-0046).",
+            "cycles": "Warns when the depends_on edges form a cycle; other relations are not cycle-checked.",
             "execution": "Graph validation is diagnostic only and does not execute graph edges.",
         },
         "core_top_level_blocks": CORE_TOP_LEVEL_BLOCKS,

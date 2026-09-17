@@ -1,0 +1,126 @@
+nornyx: "0.2"
+project:
+  name: GraphBoundaryProbe
+  profile: telecom_ops
+  profile_pack:
+    name: telecom_ops
+    version: v0.3
+    core_surface: v0.2
+    status: optional_profile
+  purpose: "Issue #104 specimen: world-model entities, a wildcard chain, and a cycle inside a governed contract graph."
+
+intents:
+  - name: ProbeIntent
+    goal: "Probe."
+
+contexts:
+  - name: ProbeContext
+    include: ["README.md"]
+
+policies:
+  - name: ProbePolicy
+    rules: ["deny production_deployment"]
+
+agents:
+  - name: DiagnosticAgent
+    role: "Diagnose"
+    policy: ProbePolicy
+
+approvals:
+  - name: HumanApproval
+    required_for: [remediation]
+
+budgets:
+  - name: ProbeBudget
+    limits: {max_tokens: 1000}
+
+evidence:
+  required: [probe_evidence.json]
+
+graph:
+  nodes:
+    - id: customer.a
+      kind: customer
+      ref: "Customer-A"
+    - id: service.voice
+      kind: service
+      ref: "Voice-Service"
+    - id: resource.sbc17
+      kind: network_element
+      ref: "SBC-17"
+    - id: alarm.331
+      kind: alarm
+      ref: "Alarm-331"
+    - id: change.782
+      kind: change
+      ref: "Change-782"
+    - id: agent.diagnostic
+      kind: agent
+      ref: DiagnosticAgent
+    - id: policy.probe
+      kind: policy
+      ref: ProbePolicy
+    - id: approval.human
+      kind: approval
+      ref: HumanApproval
+    - id: budget.probe
+      kind: budget
+      ref: ProbeBudget
+    - id: evidence.probe
+      kind: evidence
+      ref: probe_evidence.json
+    - id: goal.probe
+      kind: goal
+      ref: GOAL-001
+  edges:
+    - from: customer.a
+      to: service.voice
+      relation: depends_on
+    - from: service.voice
+      to: resource.sbc17
+      relation: depends_on
+    - from: resource.sbc17
+      to: alarm.331
+      relation: depends_on
+    - from: alarm.331
+      to: change.782
+      relation: depends_on
+    - from: agent.diagnostic
+      to: customer.a
+      relation: depends_on
+    - from: policy.probe
+      to: agent.diagnostic
+      relation: governs
+    - from: approval.human
+      to: goal.probe
+      relation: gates
+    - from: budget.probe
+      to: goal.probe
+      relation: bounds
+    - from: agent.diagnostic
+      to: evidence.probe
+      relation: must_produce
+    - from: change.782
+      to: customer.a
+      relation: depends_on
+    - from: evidence.probe
+      to: resource.sbc17
+      relation: depends_on
+
+contracts:
+  - name: ProbeContract
+    nodes: [customer.a, service.voice, resource.sbc17, alarm.331, change.782, agent.diagnostic, policy.probe, approval.human, budget.probe, evidence.probe, goal.probe]
+    approval: HumanApproval
+    budget: ProbeBudget
+
+goals:
+  - id: GOAL-001
+    title: Probe
+    phase: v0.1
+    goal: "Probe."
+    scope: ["probe"]
+    non_goals: [none]
+    validation: ["nornyx check"]
+    stop_rules: [stop_on_ambiguity]
+    evidence: "probe/"
+    approval: "required before merge"
