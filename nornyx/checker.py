@@ -332,39 +332,50 @@ def _graph_cycles(edges: list[tuple[str, str, str]]) -> list[list[str]]:
             continue
         adjacency.setdefault(source, set()).add(target)
         adjacency.setdefault(target, set())
+    # Iterative Tarjan: a checker must return diagnostics, never raise, so no
+    # recursion depth is tied to the size of the contract graph.
     index: dict[str, int] = {}
     low: dict[str, int] = {}
     on_stack: set[str] = set()
     stack: list[str] = []
     components: list[list[str]] = []
     counter = 0
-
-    def visit(node: str) -> None:
-        nonlocal counter
-        index[node] = low[node] = counter
+    for root in sorted(adjacency):
+        if root in index:
+            continue
+        work: list[tuple[str, list[str], int]] = [(root, sorted(adjacency[root]), 0)]
+        index[root] = low[root] = counter
         counter += 1
-        stack.append(node)
-        on_stack.add(node)
-        for successor in sorted(adjacency[node]):
-            if successor not in index:
-                visit(successor)
-                low[node] = min(low[node], low[successor])
-            elif successor in on_stack:
-                low[node] = min(low[node], index[successor])
-        if low[node] == index[node]:
-            component: list[str] = []
-            while True:
-                member = stack.pop()
-                on_stack.discard(member)
-                component.append(member)
-                if member == node:
-                    break
-            if len(component) > 1:
-                components.append(sorted(component))
-
-    for node in sorted(adjacency):
-        if node not in index:
-            visit(node)
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, successors, position = work[-1]
+            if position < len(successors):
+                work[-1] = (node, successors, position + 1)
+                successor = successors[position]
+                if successor not in index:
+                    index[successor] = low[successor] = counter
+                    counter += 1
+                    stack.append(successor)
+                    on_stack.add(successor)
+                    work.append((successor, sorted(adjacency[successor]), 0))
+                elif successor in on_stack:
+                    low[node] = min(low[node], index[successor])
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index[node]:
+                component: list[str] = []
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component.append(member)
+                    if member == node:
+                        break
+                if len(component) > 1:
+                    components.append(sorted(component))
     return sorted(components)
 
 
@@ -656,12 +667,7 @@ def _validate_graph_contract_model(
                         f"{path_prefix}.relation",
                     )
                 )
-            elif (
-                from_value in node_kinds
-                and to_value in node_kinds
-                and node_kinds[from_value] in vocabulary.node_kinds
-                and node_kinds[to_value] in vocabulary.node_kinds
-            ):
+            elif from_value in node_kinds and to_value in node_kinds:
                 source_kind = node_kinds[from_value]
                 target_kind = node_kinds[to_value]
                 rule = vocabulary.relation_rules.get(relation)
@@ -675,7 +681,9 @@ def _validate_graph_contract_model(
                             "Keep custom relations documented under a profile or adapter contract.",
                         )
                     )
-                else:
+                elif source_kind in vocabulary.node_kinds and target_kind in vocabulary.node_kinds:
+                    # An unknown kind already carries UNKNOWN_GRAPH_NODE_KIND; do not
+                    # turn it into a pair error as well.
                     allowed_from, allowed_to = rule
                     if not _relation_allows(allowed_from, source_kind) or not _relation_allows(allowed_to, target_kind):
                         diagnostics.append(

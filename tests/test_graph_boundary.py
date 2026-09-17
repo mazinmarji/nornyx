@@ -112,6 +112,54 @@ def test_unknown_kind_is_a_warning_and_disables_the_depends_on_wildcard() -> Non
     assert not has_errors(diagnostics)
 
 
+def test_unknown_relation_still_warns_when_an_endpoint_kind_is_unknown() -> None:
+    diagnostics = check_document(
+        _base(
+            nodes=[
+                {"id": "resource.sbc17", "kind": "network_element", "ref": "SBC-17"},
+                {"id": "alarm.331", "kind": "alarm", "ref": "Alarm-331"},
+            ],
+            edges=[{"from": "resource.sbc17", "to": "alarm.331", "relation": "affected_by"}],
+        )
+    )
+    codes = _codes(diagnostics)
+
+    assert codes.count("UNKNOWN_GRAPH_NODE_KIND") == 2
+    assert codes.count("UNKNOWN_GRAPH_RELATION") == 1
+    assert "INVALID_GRAPH_RELATION_PAIR" not in codes
+
+
+def test_a_very_long_chain_is_checked_without_recursion_errors() -> None:
+    size = 5000
+    doc = _base(
+        nodes=[{"id": f"goal.g{i}", "kind": "goal", "ref": f"GOAL-{i:04d}"} for i in range(size)],
+        edges=[
+            {"from": f"goal.g{i}", "to": f"goal.g{i + 1}", "relation": "depends_on"}
+            for i in range(size - 1)
+        ]
+        + [{"from": f"goal.g{size - 1}", "to": "goal.g0", "relation": "depends_on"}],
+    )
+    doc["goals"] = [
+        {
+            "id": f"GOAL-{i:04d}",
+            "title": "t",
+            "phase": "v0.1",
+            "goal": "g",
+            "scope": ["s"],
+            "non_goals": ["n"],
+            "validation": ["v"],
+            "stop_rules": ["r"],
+            "evidence": "e/",
+            "approval": "required",
+        }
+        for i in range(size)
+    ]
+    cycles = [d for d in check_document(doc) if d.code == "GRAPH_CYCLE"]
+
+    assert len(cycles) == 1
+    assert cycles[0].message.count("goal.g") == size
+
+
 def test_depends_on_between_core_kinds_stays_clean() -> None:
     diagnostics = check_document(
         _base(
