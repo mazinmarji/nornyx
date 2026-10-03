@@ -33,14 +33,21 @@ prevention.
 ### Theme-level, deliberately
 
 This wave maps to **control themes**, not to numbered clauses. Clause-level
-mapping needs the standards' own identifiers and versions, which are not
-present in this repository, and the backlog forbids reproducing standard text.
-Inventing clause identifiers would be exactly the kind of unfalsifiable claim
-this document exists to avoid.
+mapping needs the standards' own identifiers and authoritative source access,
+which are not present in this repository, and the backlog forbids reproducing
+standard text. Inventing clause identifiers would be exactly the kind of
+unfalsifiable claim this document exists to avoid.
 
-That is a knowing divergence from one backlog acceptance criterion (*"every
-mapping has a framework version and source identifier"*). It is recorded as
-[NC-12](#explicit-non-coverage-rows) rather than quietly skipped.
+Framework edition/version provenance is a different concern from clause-level
+grounding. Public provenance facts such as framework name, edition/version and
+publication date may be recorded for the existing first-wave mapping so a local
+validator can detect stale editions without reproducing standard text or
+inventing clause identifiers. Edition provenance does not strengthen a theme
+mapping into a clause mapping.
+
+That is a knowing divergence from the clause/source-grounding acceptance
+criterion. It is recorded as [NC-12](#explicit-non-coverage-rows) rather than
+quietly skipped.
 
 ## Evidence Baseline
 
@@ -147,7 +154,7 @@ Part of the deliverable, not an appendix.
 | NC-09 | Legal / organisational compliance | That an organisation is compliant with any law or framework | Legal determination, not a software property | This mapping | Legal review, outside this repository |
 | NC-10 | Replacing source governance docs | That `.nyx` replaces `AGENTS.md`, policy docs, or eval configs | Migration is separation, not replacement | MAP-14 | None — deliberate |
 | NC-11 | Non-promptfoo eval formats | Support for OpenAI Evals, DeepEval, ragas, or others | No repo artifact demonstrates one | MAP-06 | Add an example first, then map |
-| NC-12 | Clause-level mapping | Mapping to numbered clauses, versions, or source identifiers | Standards text is not in this repo and must not be reproduced | This theme-level table | A future wave with licensed access and review |
+| NC-12 | Clause/source-level mapping | Mapping to numbered clauses or source/control identifiers | Authoritative clause/control source grounding is not present here; identifiers must not be invented and licensed text must not be reproduced without rights | This theme-level table | A future source-grounding unit with authoritative access, citation rights and review |
 
 ## How to Read the Mapping
 
@@ -167,7 +174,7 @@ A row does not become stronger by being cited elsewhere.
 - Any statement that Nornyx has been adopted, validated, or found useful by
   someone outside the maintainer flow (NC-01).
 - Any statement about behaviour on contracts, frameworks, or applications not
-  represented in this repository (NC-12, MAP-12).
+  represented in this repository (MAP-12 and the applicable non-coverage rows).
 
 ## What Requires Future Runtime Work
 
@@ -178,7 +185,7 @@ A row does not become stronger by being cited elsewhere.
 
 ## What Requires Future Standards Review
 
-- Clause-level and version-level mapping with source identifiers (NC-12).
+- Clause/control-level mapping with authoritative source identifiers (NC-12).
 - Second-wave frameworks from the backlog: ISO/IEC 23894, NIST SSDF, SLSA,
   OpenTelemetry GenAI trace conformance.
 - Future wave: EU AI Act (subject to legal review), SOC 2 evidence-support
