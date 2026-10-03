@@ -2,9 +2,12 @@
 
 **Proposal only. This document authorizes nothing and does not change issue #81's current scope.**
 
-This proposal records the Nornyx-side shape of the bounded first-wave standards-mapping integrity-hygiene slice that Arsoryn is considering through the separate FD-026 decision package.
+This document records a product-neutral design option for a bounded first-wave
+standards-mapping integrity-hygiene slice. Current Nornyx canon remains
+controlling unless a later, explicitly authorized Nornyx change updates the
+governing planning surfaces consistently.
 
-Until FD-026 is independently reviewed and explicitly ratified by the founder:
+Until such an authorized Nornyx change exists:
 
 - `docs/64_STANDARDS_MAPPING_AND_ENTERPRISE_ASSURANCE.md` remains controlling as written on `main`;
 - `docs/68_STANDARDS_MAPPING_FIRST_WAVE.md` remains controlling as written on `main`;
@@ -13,9 +16,10 @@ Until FD-026 is independently reviewed and explicitly ratified by the founder:
 - the live GitHub issue #81 body must not be changed on the basis of this proposal;
 - no implementation work is authorized by this document.
 
-## Proposed scope if FD-026 is later ratified
+## Proposed bounded scope
 
-The bounded slice would apply only to first-wave material that already exists:
+If separately authorized through normal Nornyx governance, the slice would apply
+only to first-wave material that already exists:
 
 - NIST AI RMF;
 - OWASP GenAI / Top 10 for LLM Applications;
@@ -34,15 +38,19 @@ The proposed hygiene work would be limited to:
 8. structural diagnostics for stale, contradictory, invalid, non-coverage-inconsistent, and overclaiming records;
 9. a generated documentation-class human-readable report.
 
-`STALE` would be a validator diagnostic only. It would not be a compliance, assurance, applicability, or customer-coverage state.
+`STALE` would be a validator diagnostic only. It would not be a compliance,
+assurance, applicability, or customer-coverage state.
 
-The validator would perform **no live network retrieval** and would not discover new framework editions. The intended sequence would be:
+The validator would perform **no live network retrieval** and would not discover
+new framework editions. The intended sequence would be:
 
 external observation → human review → governed registry update → deterministic local comparison → stale diagnostic where applicable.
 
 ## Proposed edition/version split
 
-If FD-026 is ratified, framework edition/version provenance would move into the bounded hygiene slice because stale-edition detection cannot work without it.
+If this bounded slice is separately authorized, framework edition/version
+provenance would move into the hygiene slice because stale-edition detection
+cannot work without it.
 
 This is distinct from clause/control/source grounding.
 
@@ -55,9 +63,12 @@ Still deferred unless separately authorized:
 - legal applicability interpretation;
 - conformity/certification conclusions.
 
-Because current roadmap/backlog records group version grounding together with source/clause grounding, ratification must update all affected Nornyx planning surfaces in the same governed change so the repository does not carry contradictory instructions.
+Because current roadmap/backlog records group version grounding together with
+source/clause grounding, any activation of this proposal must update all affected
+Nornyx planning surfaces in the same governed change so the repository does not
+carry contradictory instructions.
 
-At minimum that ratification change would reconcile:
+At minimum that later authorized change would reconcile:
 
 - `docs/64_STANDARDS_MAPPING_AND_ENTERPRISE_ASSURANCE.md`;
 - `docs/68_STANDARDS_MAPPING_FIRST_WAVE.md`;
@@ -82,13 +93,16 @@ The machine-readable representation should compose existing semantics:
 - residual/non-coverage relationship;
 - provenance/review metadata.
 
-Structural validator diagnostics may include terms such as stale, invalid, contradictory, or overclaim. They are not compliance states.
+Structural validator diagnostics may include terms such as stale, invalid,
+contradictory, or overclaim. They are not compliance states.
 
-The earlier issue #81 candidate status list (`implemented`, `partial`, `external_dependency`, `not_applicable`, `gap`) must not become a second canonical assurance/coverage model if the slice is authorized.
+The earlier issue #81 candidate status list (`implemented`, `partial`,
+`external_dependency`, `not_applicable`, `gap`) must not become a second
+canonical assurance/coverage model if the slice is authorized.
 
 ## Explicitly outside this proposal
 
-Even if FD-026 is later ratified, the proposed bounded slice would not authorize:
+Even if the bounded slice is later authorized, this proposal does not include:
 
 - any new framework;
 - second-wave or future-wave framework expansion;
@@ -100,18 +114,20 @@ Even if FD-026 is later ratified, the proposed bounded slice would not authorize
 - customer-specific framework state;
 - coverage/compliance percentages;
 - a GRC/control-tower product;
-- MCO or Nornyx Enterprise standards product work;
+- downstream platform-specific standards product work;
 - runtime enforcement, PDP/PEP, identity, or inventory work;
 - certification, attestation, audit opinion, or legal-compliance claims.
 
-## Ratification gate
+## Activation gate
 
-No item above becomes active scope until:
+No item above becomes active scope from this proposal.
 
-1. the Arsoryn FD-026 decision package receives exact-head independent review;
-2. blocking findings are closed;
-3. the founder explicitly ratifies the reviewed package;
-4. the resulting authority-bearing Arsoryn ratification tranche is itself reviewed and merged under Arsoryn governance;
-5. Nornyx then receives its own consistent ratification-aligned documentation/issue change under normal Nornyx governance.
+Activation requires a separately authorized Nornyx change that:
 
-This proposal exists only so the Nornyx-side consequences can be reviewed before authority is granted.
+1. preserves the public product-neutral boundary;
+2. updates the relevant roadmap, backlog, standards-mapping docs, and live issue together so they do not conflict;
+3. passes the required Nornyx CI/checks;
+4. receives the independent review required by repository governance before merge.
+
+This proposal exists only so the possible public-Nornyx shape can be reviewed
+without silently converting a design option into active implementation scope.
