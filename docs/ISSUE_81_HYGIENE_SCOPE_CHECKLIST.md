@@ -1,18 +1,33 @@
 # Issue #81 hygiene scope checklist
 
-This checklist records the bounded documentation scope proposed for issue #81.
-It does not authorize implementation and does not supersede Arsoryn founder
-authority.
+This checklist accompanies
+`ISSUE_81_HYGIENE_SCOPE_PROPOSAL.md`.
+
+**Proposal only. It authorizes no implementation and does not change the live
+issue #81 scope.** Current Nornyx roadmap, backlog, `docs/64`, `docs/68`, and the
+live GitHub issue remain controlling until an independently reviewed Arsoryn
+FD-026 is explicitly ratified and the resulting authority-bearing changes are
+merged.
+
+Proposed bounded slice after ratification:
 
 - [x] Existing first-wave frameworks only: NIST AI RMF, OWASP GenAI / Top 10 for LLM Applications, ISO/IEC 42001.
-- [x] Edition/version provenance separated from clause/control/source grounding.
-- [x] Human-maintained local current-edition registry model documented.
+- [x] Edition/version provenance separated conceptually from clause/control/source grounding.
+- [x] Human-maintained local current-edition registry model proposed.
 - [x] No live network retrieval.
 - [x] Existing claim types and control-surface vocabulary retained.
 - [x] ADR-0040 assurance tier/surface metadata retained as the assurance dimension.
 - [x] No customer-specific coverage state or compliance score.
-- [x] No new framework added.
-- [ ] Arsoryn FD-026 ratified before implementation starts.
-- [ ] Live issue #81 body updated only after FD-026 ratification.
-- [ ] Required Nornyx CI/checks pass on exact documentation head.
+- [x] No new framework proposed.
+
+Authority and consistency gates:
+
+- [ ] Arsoryn FD-026 decision package receives exact-head independent review.
+- [ ] Founder explicitly ratifies FD-026 after that review.
+- [ ] Arsoryn authority-bearing ratification tranche is reviewed and merged.
+- [ ] Nornyx `docs/64`, `docs/68`, roadmap, backlog, and issue #81 are reconciled together so edition/version provenance is not active in one surface and deferred in another.
+- [ ] Live issue #81 body is updated only after the authority above exists.
+- [ ] Required Nornyx CI/checks pass on the exact ratification-aligned head.
 - [ ] Independent review closes any claim-boundary finding before merge.
+
+Until those gates close, this branch is review material only.
