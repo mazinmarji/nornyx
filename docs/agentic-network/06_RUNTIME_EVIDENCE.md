@@ -85,7 +85,10 @@ identical work in a new occurrence or retry attempt is not.
 Use `EvidenceRecorder.for_occurrences(...)` with a 1.1 lock, then pass a frozen
 `RuntimeOccurrence` to `record_occurrence_decision(...)` and
 `record_occurrence_observation(...)`. Existing constructor and recording calls
-remain available and retain legacy behavior.
+remain available and retain legacy behavior on legacy recorders. An explicit
+recorder refuses the legacy `record_decision(...)` and
+`record_observation(...)` calls with `ValueError` before recording anything,
+because an explicit stream cannot mix modes.
 
 `EvidenceRecorder.resume(...)` validates and deeply copies a complete prior
 stream, restores mission sequence and occurrence-attempt state, and continues

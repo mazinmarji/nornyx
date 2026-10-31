@@ -381,3 +381,130 @@ def test_resume_rejects_wrong_producer_clock_and_tampering(runtime) -> None:
             producer_id="occurrence-tests",
             producer_type="synthetic_harness",
         )
+
+
+def _legacy_calls(recorder: EvidenceRecorder, decision):
+    """Both legacy recording entry points, as zero-argument callables."""
+
+    return {
+        "record_decision": lambda: recorder.record_decision(
+            decision, mission_id="GOAL-001"
+        ),
+        "record_observation": lambda: recorder.record_observation(
+            "agent_invoked",
+            mission_id="GOAL-001",
+            actor_ref="identity.researcher.local",
+            capability_ref="read_governed_context",
+        ),
+    }
+
+
+@pytest.mark.parametrize("call", ["record_decision", "record_observation"])
+def test_explicit_recorder_refuses_legacy_recording_before_mutation(
+    runtime, call
+) -> None:
+    recorder = _recorder(runtime)
+    with pytest.raises(ValueError, match="explicit occurrence mode"):
+        _legacy_calls(recorder, _decision(runtime))[call]()
+    assert recorder.stream()["events"] == []
+    assert recorder.validate()["status"] == "pass"
+
+
+def test_explicit_recorder_refuses_legacy_decision_without_intents(runtime) -> None:
+    authorizer, context = runtime
+    malformed = authorizer.evaluate(CapabilityRequest("", ""), context=context)
+    assert malformed.event_intents == ()
+    recorder = _recorder(runtime)
+    with pytest.raises(ValueError, match="explicit occurrence mode"):
+        recorder.record_decision(malformed, mission_id="GOAL-001")
+
+
+@pytest.mark.parametrize("call", ["record_decision", "record_observation"])
+def test_legacy_call_cannot_invalidate_a_valid_explicit_stream(runtime, call) -> None:
+    recorder = _recorder(runtime)
+    decision = _decision(runtime)
+    _record_success(recorder, decision, RuntimeOccurrence("node.read", "task.a", 1))
+    before = recorder.stream()
+    assert recorder.validate()["status"] == "pass"
+
+    with pytest.raises(ValueError, match="explicit occurrence mode"):
+        _legacy_calls(recorder, decision)[call]()
+
+    assert recorder.stream() == before
+    # Sequence state is untouched: explicit recording continues contiguously.
+    _record_success(recorder, decision, RuntimeOccurrence("node.read", "task.b", 1))
+    sequences = [event["sequence"] for event in recorder.stream()["events"]]
+    assert sequences == list(range(1, len(sequences) + 1))
+    assert recorder.validate()["status"] == "pass"
+
+
+@pytest.mark.parametrize("call", ["record_decision", "record_observation"])
+def test_resumed_explicit_recorder_refuses_legacy_recording(runtime, call) -> None:
+    authorizer, _context = runtime
+    recorder = _recorder(runtime)
+    recorder.record_occurrence_decision(
+        _decision(runtime),
+        mission_id="GOAL-001",
+        occurrence=RuntimeOccurrence("node.read", "task.resume", 1),
+    )
+    resumed = EvidenceRecorder.resume(
+        authorizer,
+        EvaluationContext(LATER, authorizer.subject_revision),
+        recorder.stream(),
+        producer_id="occurrence-tests",
+        producer_type="synthetic_harness",
+    )
+    before = resumed.stream()
+    with pytest.raises(ValueError, match="explicit occurrence mode"):
+        _legacy_calls(resumed, _decision(runtime))[call]()
+    assert resumed.stream() == before
+    assert resumed.validate()["status"] == "pass"
+
+
+@pytest.mark.parametrize("schema_version", ["1.0", "1.1"])
+def test_legacy_recorders_still_accept_legacy_recording(runtime, schema_version) -> None:
+    authorizer, context = runtime
+    if schema_version == "1.0":
+        state = authorizer.state
+        lock = _build_agentic_network_lock(
+            state.document, state.composition, runtime_events_schema_version="1.0"
+        )
+        authorizer = Authorizer(state.document, state.composition, lock)
+    recorder = EvidenceRecorder(
+        authorizer,
+        context,
+        producer_id="legacy-tests",
+        producer_type="synthetic_harness",
+    )
+    for call in _legacy_calls(recorder, _decision(runtime)).values():
+        call()
+    stream = recorder.stream()
+    assert stream["schema_version"] == schema_version
+    assert [event["event_type"] for event in stream["events"]] == [
+        "capability_requested",
+        "capability_allowed",
+        "agent_invoked",
+    ]
+    assert all("occurrence" not in event for event in stream["events"])
+    assert recorder.validate()["status"] == "pass"
+
+
+def test_refused_legacy_observation_never_reaches_the_stamp_hook(runtime) -> None:
+    authorizer, context = runtime
+    stamped: list[str] = []
+
+    class Observing(EvidenceRecorder):
+        def _stamp(self, event_type, mission_id, fields):
+            stamped.append(event_type)
+            super()._stamp(event_type, mission_id, fields)
+
+    recorder = Observing.for_occurrences(
+        authorizer,
+        context,
+        producer_id="occurrence-tests",
+        producer_type="synthetic_harness",
+    )
+    with pytest.raises(ValueError, match="explicit occurrence mode"):
+        _legacy_calls(recorder, _decision(runtime))["record_observation"]()
+    assert stamped == []
+    assert recorder.stream()["events"] == []

@@ -28,6 +28,13 @@ distribution version is independent of the Nornyx **language/schema** version
   (`GRAPH_VOCABULARY_PROFILE_UNRESOLVED`, warning) and a profile registry that
   cannot be consulted is an error (`GRAPH_VOCABULARY_UNAVAILABLE`) rather than
   silent core-only checking.
+- `EvidenceRecorder.record_decision` and `record_observation` now raise
+  `ValueError`, before any mutation, on an explicit occurrence-mode recorder
+  (one from `EvidenceRecorder.for_occurrences()` or resumed from an explicit
+  stream). Previously they appended events without an `occurrence` object,
+  which made the explicit stream fail validation with
+  `AN_EVT_SCHEMA_INVALID`, including a stream that was valid before the call.
+  Legacy (1.0 and 1.1-legacy) recorders are unchanged.
 
 ### Changed
 

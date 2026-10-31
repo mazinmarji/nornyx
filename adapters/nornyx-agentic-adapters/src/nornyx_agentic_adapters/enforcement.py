@@ -46,6 +46,11 @@ def enforce(
     On DENY or APPROVAL_REQUIRED: records the decision's intents and raises
     :class:`AdapterDenied` without calling ``action``.
 
+    ``recorder`` must be a legacy-mode ``EvidenceRecorder``. With a core that
+    guards recording modes, an explicit occurrence-mode recorder refuses
+    ``record_decision`` with ``ValueError``, so this function raises that error
+    (on ALLOW and DENY alike) before ``on_decision`` or ``action`` runs.
+
     ``on_decision``, when supplied, is called with the authoritative
     :class:`~nornyx.agentic.Decision` after its intents are recorded and before
     any branch on the outcome — so a caller can read the decision's public

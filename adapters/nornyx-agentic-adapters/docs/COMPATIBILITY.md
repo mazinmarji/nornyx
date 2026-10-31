@@ -130,6 +130,17 @@ threads. See
 `docs/decisions/ADR-0041-evidence-recorder-integrity-and-serialization.md`
 in the core repository for the full rationale.
 
+### Recorder mode per entry point
+
+`enforce()` and the CrewAI adapter record legacy events and need a legacy-mode
+recorder; the LangGraph adapter needs an explicit one from
+`EvidenceRecorder.for_occurrences()` and refuses a legacy recorder at
+construction. `make_governed_tool` refuses an explicit recorder at
+construction on every supported core. `enforce()` refuses one (by propagating
+the core's `ValueError` before the action) only with a core carrying the
+recorder-mode guard; with `nornyx` 1.10.x or 1.11.0 an explicit recorder still
+lets the action run and yields evidence that fails validation.
+
 ## Authorizer state (SPI 1.2)
 
 SPI 1.2 adds `Authorizer.state` and `AuthorizerState`. This is an additive
