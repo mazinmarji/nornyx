@@ -1,12 +1,32 @@
 """EvidenceRecorder under forced two-thread interleavings.
 
-Every decisive test here parks one writer inside the recorder lock with
-``threading.Event`` gates, proves a second writer has attempted the lock and is
-blocked on it, then releases the first writer and checks the final order. The
-probe lock wraps the recorder's own lock rather than replacing it, so a recorder
-whose lock stopped excluding would fail these tests. Every wait is bounded, so a
-deadlock fails a test instead of hanging the suite. The many-thread stress test
-at the end is a supplement only.
+Each deterministic test parks one thread at a recorder hook with
+``threading.Event`` gates, then proves a second thread is contending for the
+recorder lock while the first holds it, then releases and checks the result.
+The probe lock wraps the recorder's own lock rather than replacing it, and
+counts contention with a non-blocking acquire first, so a lock that stopped
+excluding fails these tests deterministically. The install tests also record
+the recorder state at each lock release, while the releasing thread is still
+inside the critical section, to prove that ``for_occurrences()`` and
+``resume()`` check for an empty recorder and install the mode or prefix in one
+lock hold. Every wait is bounded, so a deadlock fails a test instead of hanging
+the suite. The many-thread stress test at the end is a supplement only.
+
+The legacy decision/decision and observation/observation cases of
+``test_a_writer_parked_in_the_lock_blocks_every_other_write_path`` supersede
+``test_concurrent_multi_intent_decisions_batch_is_indivisible`` and
+``test_concurrent_observations_serialize_through_the_recorder_lock`` in
+``test_agentic_authz.py``, which swap in a fresh lock instead of probing the
+recorder's own; those tests are left in place.
+
+These tests rely on private recorder names, and renaming any of them breaks
+the tests on purpose: the ``_lock`` attribute (every lock use goes through
+``self._lock``), ``_events``, ``_sequences`` and ``_occurrence_mode``; the hooks
+``_build_checked_unlocked`` and ``_build_event_unlocked`` (called inside the
+lock for each event) and ``_require_no_events`` (called by
+``for_occurrences()`` and ``resume()``; the tests assert at park time that the
+lock is held there rather than assuming it); and ``resume()`` importing
+``validate_runtime_events`` from ``nornyx.agentic_evidence`` at call time.
 """
 
 from __future__ import annotations
@@ -16,6 +36,7 @@ import dataclasses
 import hashlib
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -42,7 +63,7 @@ OBSERVATION = {
 }
 PRODUCER = {"producer_id": "concurrency-tests", "producer_type": "synthetic_harness"}
 SPOOFED_PRODUCER = {"type": "external_runtime", "id": "someone-else", "version": "9.9"}
-TIMEOUT = 5.0
+TIMEOUT = 30.0
 MODES = ["legacy-1.0", "legacy", "explicit"]
 EVENT_TYPES = {
     "decision": ["capability_requested", "capability_allowed"],
@@ -67,32 +88,46 @@ def runtime() -> tuple[Authorizer, EvaluationContext]:
 
 
 class _ProbeLock:
-    """Wraps the recorder's own lock and counts acquire attempts and holds.
+    """Wraps the recorder's own lock and records how it is used.
 
-    A second caller increments ``attempts`` the moment it enters ``acquire()``,
-    then blocks inside the wrapped lock; ``acquired`` moves only once a caller
-    holds it. While a parked writer holds the lock, ``attempts`` ahead of
-    ``acquired`` proves the other writer is blocked, not merely unscheduled.
+    Each acquire first tries the wrapped lock without blocking: ``contended``
+    counts the attempts that found it held, then those block on it as normal.
+    ``acquired_by`` lists the thread of every successful acquire and ``holder``
+    is the current one. ``on_release`` runs inside ``release()`` before the
+    wrapped lock is released, so it sees the state the holder leaves behind
+    while the holder is still inside the critical section.
     """
 
     def __init__(self, inner) -> None:
         self._inner = inner
         self._cond = threading.Condition()
         self.attempts = 0
+        self.contended = 0
         self.acquired = 0
+        self.acquired_by: list[int] = []
+        self.holder: int | None = None
+        self.on_release = None
 
     def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        ok = self._inner.acquire(False)
         with self._cond:
             self.attempts += 1
+            self.contended += not ok
             self._cond.notify_all()
-        ok = self._inner.acquire(blocking, timeout)
+        if not ok and blocking:
+            ok = self._inner.acquire(True, timeout)
         if ok:
             with self._cond:
                 self.acquired += 1
+                self.acquired_by.append(threading.get_ident())
+                self.holder = threading.get_ident()
                 self._cond.notify_all()
         return ok
 
     def release(self) -> None:
+        if self.on_release is not None:
+            self.on_release()
+        self.holder = None
         self._inner.release()
 
     def __enter__(self) -> _ProbeLock:
@@ -169,8 +204,11 @@ class _Harness:
     def close(self) -> None:
         for gate in self.gates:
             gate.release.set()
+        deadline = time.monotonic() + TIMEOUT
         for worker in self.workers:
-            worker.thread.join(TIMEOUT)
+            worker.thread.join(max(0.0, deadline - time.monotonic()))
+        alive = [worker for worker in self.workers if worker.thread.is_alive()]
+        assert not alive, f"deadlock guard: {len(alive)} worker(s) still running"
 
 
 @pytest.fixture
@@ -180,15 +218,15 @@ def harness():
     active.close()
 
 
-def _instrumented(*, gate: _Gate | None = None, leak: list | None = None, spoof=None):
-    """A recorder subclass whose hooks park on ``gate`` and whose lock is probed.
+def _instrumented(*gates: _Gate, leak: list | None = None, spoof=None):
+    """A recorder subclass whose hooks park on ``gates`` and whose lock is probed.
 
     ``init`` runs at the end of construction, outside the lock;
-    ``mode_install_checked`` runs inside the lock just after the empty-recorder
-    check of ``for_occurrences()``/``resume()`` passed and before the mode or
-    prefix is installed; ``build`` runs inside the lock before each event of a
-    write is built. ``spoof`` marks built events whose producer is replaced, so
-    the real commit-point check refuses them.
+    ``mode_install_checked`` runs just after the empty-recorder check of
+    ``for_occurrences()``/``resume()`` passed and before the mode or prefix is
+    installed; ``build`` runs inside the lock before each event of a write is
+    built. ``spoof`` marks built events whose producer is replaced, so the real
+    commit-point check refuses them.
     """
 
     class Instrumented(EvidenceRecorder):
@@ -197,16 +235,16 @@ def _instrumented(*, gate: _Gate | None = None, leak: list | None = None, spoof=
             self._lock = _ProbeLock(self._lock)
             if leak is not None:
                 leak.append(self)
-            if gate is not None:
+            for gate in gates:
                 gate.check("init")
 
         def _require_no_events(self, action):
             super()._require_no_events(action)
-            if gate is not None:
+            for gate in gates:
                 gate.check("mode_install_checked")
 
         def _build_checked_unlocked(self, event_type, mission_id, seq, fields, occurrence=None):
-            if gate is not None:
+            for gate in gates:
                 gate.check("build", event_type=event_type, mission_id=mission_id, fields=fields)
             return super()._build_checked_unlocked(event_type, mission_id, seq, fields, occurrence)
 
@@ -217,6 +255,10 @@ def _instrumented(*, gate: _Gate | None = None, leak: list | None = None, spoof=
             return event
 
     return Instrumented
+
+
+def _hook(name: str):
+    return lambda hook, _call: hook == name
 
 
 # --- recording helpers --------------------------------------------------------
@@ -233,12 +275,15 @@ def _authorizer(runtime, schema_version: str = "1.1") -> Authorizer:
     return authorizer
 
 
+def _schema_version(mode: str) -> str:
+    return "1.0" if mode == "legacy-1.0" else "1.1"
+
+
 def _recorder(runtime, mode: str, cls=EvidenceRecorder) -> EvidenceRecorder:
     _, context = runtime
     if mode == "explicit":
         return cls.for_occurrences(_authorizer(runtime), context, **PRODUCER)
-    schema_version = "1.0" if mode == "legacy-1.0" else "1.1"
-    return cls(_authorizer(runtime, schema_version), context, **PRODUCER)
+    return cls(_authorizer(runtime, _schema_version(mode)), context, **PRODUCER)
 
 
 def _digest(tag: str) -> str:
@@ -343,6 +388,16 @@ def _assert_contiguous_and_valid(recorder) -> list[dict]:
     return events
 
 
+def _record_releases(recorder) -> list[tuple[int, str | None, list, dict]]:
+    """Record (thread, mode, events, sequences) at every later lock release."""
+
+    releases: list[tuple[int, str | None, list, dict]] = []
+    recorder._lock.on_release = lambda: releases.append(
+        (threading.get_ident(), recorder._occurrence_mode, *_private_state(recorder))
+    )
+    return releases
+
+
 # --- atomic batches and ordering on every write path ---------------------------
 
 
@@ -353,21 +408,28 @@ def test_a_writer_parked_in_the_lock_blocks_every_other_write_path(
     runtime, harness, mode, parked, waiting
 ) -> None:
     gate = harness.gate(_last_event_of(parked, "a"))
-    recorder = _recorder(runtime, mode, _instrumented(gate=gate))
-    observers = [(tag, "GOAL-001") for tag, kind in (("a", parked), ("b", waiting)) if kind == "observation"]
+    recorder = _recorder(runtime, mode, _instrumented(gate))
+    observers = [
+        (tag, "GOAL-001")
+        for tag, kind in (("a", parked), ("b", waiting))
+        if kind == "observation"
+    ]
     _seed(runtime, recorder, mode, ["GOAL-001"], observers)
     probe = recorder._lock
     before = _private_state(recorder)
-    attempts, acquired = probe.attempts, probe.acquired
+    attempts, contended, acquired = probe.attempts, probe.contended, probe.acquired
 
     writer_a = harness.start(_write(runtime, recorder, mode, parked, "a"))
     assert gate.parked.wait(TIMEOUT), "deadlock guard: A never reached its last build"
-    # A holds the lock with part (or all) of its call built, nothing committed.
+    # A holds the lock before its last build: for a decision every earlier
+    # event of the batch is built, for an observation nothing is; none committed.
     assert probe.acquired == acquired + 1
+    assert probe.holder == writer_a.thread.ident
     assert _private_state(recorder) == before
 
     writer_b = harness.start(_write(runtime, recorder, mode, waiting, "b"))
     assert probe.wait_for_attempts(attempts + 2), "deadlock guard: B never tried the lock"
+    assert probe.contended == contended + 1
     assert probe.acquired == acquired + 1
     assert not writer_b.done.is_set()
     assert _private_state(recorder) == before
@@ -375,7 +437,8 @@ def test_a_writer_parked_in_the_lock_blocks_every_other_write_path(
     gate.release.set()
     writer_a.join()
     writer_b.join()
-    assert writer_a.error is None and writer_b.error is None
+    assert writer_a.error is None, writer_a.error
+    assert writer_b.error is None, writer_b.error
 
     events = _assert_contiguous_and_valid(recorder)
     assert _runs(events[len(before[0]):]) == [
@@ -394,16 +457,17 @@ def test_a_batch_refused_at_commit_leaves_no_trace_while_a_blocked_writer_procee
         event.get("input_digest") == _digest("a")
         and event["event_type"] == "capability_allowed"
     )
-    recorder = _recorder(runtime, mode, _instrumented(gate=gate, spoof=spoof))
+    recorder = _recorder(runtime, mode, _instrumented(gate, spoof=spoof))
     _seed(runtime, recorder, mode, ["GOAL-001"], [("b", "GOAL-001"), ("c", "GOAL-001")])
     probe = recorder._lock
     before = _private_state(recorder)
-    attempts, acquired = probe.attempts, probe.acquired
+    attempts, contended, acquired = probe.attempts, probe.contended, probe.acquired
 
     writer_a = harness.start(_write(runtime, recorder, mode, "decision", "a"))
     assert gate.parked.wait(TIMEOUT), "deadlock guard: A never reached its second build"
     writer_b = harness.start(_write(runtime, recorder, mode, "observation", "b"))
     assert probe.wait_for_attempts(attempts + 2), "deadlock guard: B never tried the lock"
+    assert probe.contended == contended + 1
     assert probe.acquired == acquired + 1
     assert not writer_b.done.is_set()
     assert _private_state(recorder) == before
@@ -411,9 +475,9 @@ def test_a_batch_refused_at_commit_leaves_no_trace_while_a_blocked_writer_procee
     gate.release.set()
     writer_a.join()
     writer_b.join()
-    assert isinstance(writer_a.error, ValueError)
+    assert isinstance(writer_a.error, ValueError), writer_a.error
     assert "producer" in str(writer_a.error)
-    assert writer_b.error is None
+    assert writer_b.error is None, writer_b.error
 
     # A's first event was built but never committed, and its two sequence
     # numbers were never consumed: B takes the very next one.
@@ -433,17 +497,23 @@ def test_writers_queued_behind_a_parked_batch_keep_every_mission_contiguous(
     runtime, harness, mode
 ) -> None:
     gate = harness.gate(_last_event_of("decision", "a"))
-    recorder = _recorder(runtime, mode, _instrumented(gate=gate))
+    recorder = _recorder(runtime, mode, _instrumented(gate))
     waiting = [
         ("decision", "b", "GOAL-002"),
         ("observation", "c", "GOAL-001"),
         ("observation", "d", "GOAL-002"),
         ("decision", "e", "GOAL-001"),
     ]
-    _seed(runtime, recorder, mode, ["GOAL-001", "GOAL-002"], [("c", "GOAL-001"), ("d", "GOAL-002")])
+    _seed(
+        runtime,
+        recorder,
+        mode,
+        ["GOAL-001", "GOAL-002"],
+        [("c", "GOAL-001"), ("d", "GOAL-002")],
+    )
     probe = recorder._lock
     before = _private_state(recorder)
-    attempts, acquired = probe.attempts, probe.acquired
+    attempts, contended, acquired = probe.attempts, probe.contended, probe.acquired
 
     writer_a = harness.start(_write(runtime, recorder, mode, "decision", "a"))
     assert gate.parked.wait(TIMEOUT), "deadlock guard: A never reached its second build"
@@ -454,6 +524,7 @@ def test_writers_queued_behind_a_parked_batch_keep_every_mission_contiguous(
     assert probe.wait_for_attempts(attempts + 1 + len(waiting)), (
         "deadlock guard: the queued writers never tried the lock"
     )
+    assert probe.contended == contended + len(waiting)
     assert probe.acquired == acquired + 1
     assert not any(worker.done.is_set() for worker in queued)
     assert _private_state(recorder) == before
@@ -461,7 +532,7 @@ def test_writers_queued_behind_a_parked_batch_keep_every_mission_contiguous(
     gate.release.set()
     for worker in [writer_a, *queued]:
         worker.join()
-        assert worker.error is None
+        assert worker.error is None, worker.error
 
     events = _assert_contiguous_and_valid(recorder)
     runs = _runs(events[len(before[0]):])
@@ -477,25 +548,27 @@ def test_writers_queued_behind_a_parked_batch_keep_every_mission_contiguous(
 
 
 @pytest.mark.parametrize("call", ["decision", "observation"])
-def test_for_occurrences_orders_a_racing_legacy_record_after_the_switch(
+def test_for_occurrences_switches_mode_in_its_check_hold_and_a_queued_legacy_record_is_refused(
     runtime, harness, call
 ) -> None:
     authorizer, context = runtime
     leak: list[EvidenceRecorder] = []
-    gate = harness.gate(lambda hook, _call: hook == "mode_install_checked")
-    cls = _instrumented(gate=gate, leak=leak)
+    gate = harness.gate(_hook("mode_install_checked"))
+    cls = _instrumented(gate, leak=leak)
 
     installer = harness.start(lambda: cls.for_occurrences(authorizer, context, **PRODUCER))
-    assert gate.parked.wait(TIMEOUT), "deadlock guard: for_occurrences never took the lock"
+    assert gate.parked.wait(TIMEOUT), "deadlock guard: for_occurrences never ran its check"
     recorder = leak[0]
     probe = recorder._lock
-    # The empty check passed under the lock; the mode is not switched yet.
+    assert probe.attempts == probe.acquired == 1, "the empty check ran outside the lock"
+    assert probe.holder == installer.thread.ident, "the empty check ran outside the lock"
     assert recorder._occurrence_mode == "legacy"
-    assert probe.acquired == 1
+    releases = _record_releases(recorder)
 
     # Mode is still legacy, so B passes the early legacy check and queues.
     racer = harness.start(_write(runtime, recorder, "legacy", call, "b"))
     assert probe.wait_for_attempts(2), "deadlock guard: the record never tried the lock"
+    assert probe.contended == 1
     assert probe.acquired == 1
     assert not racer.done.is_set()
     assert recorder._events == []
@@ -503,10 +576,18 @@ def test_for_occurrences_orders_a_racing_legacy_record_after_the_switch(
     gate.release.set()
     installer.join()
     racer.join()
-    assert installer.error is None and installer.result is recorder
-    # Ordered after the switch: the commit-point check refuses the
-    # occurrence-less event rather than mixing it into the explicit stream.
-    assert isinstance(racer.error, ValueError)
+    assert installer.error is None, installer.error
+    assert installer.result is recorder
+    # One lock hold covered both the empty check and the mode switch: the
+    # installer acquired once, and its only release already shows the mode.
+    ident = installer.thread.ident
+    assert probe.acquired_by.count(ident) == 1
+    assert [release for release in releases if release[0] == ident] == [
+        (ident, "explicit", [], {})
+    ]
+    # The commit-point check refuses the queued occurrence-less event rather
+    # than mixing it into the explicit stream.
+    assert isinstance(racer.error, ValueError), racer.error
     assert "occurrence does not match" in str(racer.error)
     stream = recorder.stream()
     assert stream["occurrence_mode"] == "explicit"
@@ -517,22 +598,38 @@ def test_for_occurrences_orders_a_racing_legacy_record_after_the_switch(
     assert [event["occurrence"]["occurrence_id"] for event in events] == ["task.c"] * 2
 
 
-def test_for_occurrences_is_refused_when_a_racing_record_lands_first(runtime, harness) -> None:
+def test_for_occurrences_waits_for_a_record_holding_the_lock_and_then_refuses(
+    runtime, harness
+) -> None:
     authorizer, context = runtime
     leak: list[EvidenceRecorder] = []
-    gate = harness.gate(lambda hook, _call: hook == "init")
-    cls = _instrumented(gate=gate, leak=leak)
+    constructed = harness.gate(_hook("init"))
+    racer_parked = harness.gate(_last_event_of("decision", "b"))
+    cls = _instrumented(constructed, racer_parked, leak=leak)
 
     installer = harness.start(lambda: cls.for_occurrences(authorizer, context, **PRODUCER))
-    assert gate.parked.wait(TIMEOUT), "deadlock guard: construction never finished"
+    assert constructed.parked.wait(TIMEOUT), "deadlock guard: construction never finished"
     recorder = leak[0]
+    probe = recorder._lock
     racer = harness.start(_write(runtime, recorder, "legacy", "decision", "b"))
-    racer.join()
-    assert racer.error is None
+    assert racer_parked.parked.wait(TIMEOUT), "deadlock guard: the record never built"
+    assert probe.attempts == probe.acquired == 1
+    assert probe.holder == racer.thread.ident
 
-    gate.release.set()
+    constructed.release.set()
+    assert probe.wait_for_attempts(2), "deadlock guard: for_occurrences never tried the lock"
+    # The installer is blocked on the lock the racer holds mid-batch.
+    assert probe.contended == 1
+    assert probe.acquired == 1
+    assert not installer.done.is_set()
+    assert recorder._occurrence_mode == "legacy"
+    assert recorder._events == []
+
+    racer_parked.release.set()
+    racer.join()
     installer.join()
-    assert isinstance(installer.error, ValueError)
+    assert racer.error is None, racer.error
+    assert isinstance(installer.error, ValueError), installer.error
     assert "already recorded" in str(installer.error)
     stream = recorder.stream()
     assert stream["occurrence_mode"] == "legacy"
@@ -547,24 +644,28 @@ def _prior_stream(runtime, mode: str) -> dict:
 
 
 @pytest.mark.parametrize("prefix_mode", MODES)
-def test_resume_installs_its_prefix_before_a_racing_record(
+def test_resume_installs_its_prefix_in_its_check_hold_before_a_queued_record(
     runtime, harness, prefix_mode
 ) -> None:
     _, context = runtime
-    authorizer = _authorizer(runtime, "1.0" if prefix_mode == "legacy-1.0" else "1.1")
+    authorizer = _authorizer(runtime, _schema_version(prefix_mode))
     prior = _prior_stream(runtime, prefix_mode)
     leak: list[EvidenceRecorder] = []
-    gate = harness.gate(lambda hook, _call: hook == "mode_install_checked")
-    cls = _instrumented(gate=gate, leak=leak)
+    gate = harness.gate(_hook("mode_install_checked"))
+    cls = _instrumented(gate, leak=leak)
 
     installer = harness.start(lambda: cls.resume(authorizer, context, prior, **PRODUCER))
-    assert gate.parked.wait(TIMEOUT), "deadlock guard: resume never took the lock"
+    assert gate.parked.wait(TIMEOUT), "deadlock guard: resume never ran its check"
     recorder = leak[0]
     probe = recorder._lock
+    assert probe.attempts == probe.acquired == 1, "the empty check ran outside the lock"
+    assert probe.holder == installer.thread.ident, "the empty check ran outside the lock"
     assert recorder._events == [] and recorder._sequences == {}
+    releases = _record_releases(recorder)
 
     racer = harness.start(_write(runtime, recorder, "legacy", "observation", "b"))
     assert probe.wait_for_attempts(2), "deadlock guard: the record never tried the lock"
+    assert probe.contended == 1
     assert probe.acquired == 1
     assert not racer.done.is_set()
     assert recorder._events == []
@@ -572,57 +673,74 @@ def test_resume_installs_its_prefix_before_a_racing_record(
     gate.release.set()
     installer.join()
     racer.join()
-    assert installer.error is None and installer.result is recorder
+    assert installer.error is None, installer.error
+    assert installer.result is recorder
+    # One lock hold covered both the empty check and the install: the
+    # installer acquired once, and its only release already shows the mode,
+    # the whole prefix and its sequence counters.
+    ident = installer.thread.ident
+    expected_mode = {"legacy-1.0": None, "legacy": "legacy", "explicit": "explicit"}
+    assert probe.acquired_by.count(ident) == 1
+    assert [release for release in releases if release[0] == ident] == [
+        (ident, expected_mode[prefix_mode], prior["events"], {"GOAL-001": 2})
+    ]
     events = _assert_contiguous_and_valid(recorder)
     assert events[: len(prior["events"])] == prior["events"]
     if prefix_mode == "explicit":
         # The record queued behind an explicit prefix is refused, never mixed in.
-        assert isinstance(racer.error, ValueError)
+        assert isinstance(racer.error, ValueError), racer.error
         assert "occurrence does not match" in str(racer.error)
         assert events == prior["events"]
         assert recorder.stream()["occurrence_mode"] == "explicit"
     else:
-        # The record is ordered after the prefix and continues its numbering.
-        assert racer.error is None
+        # The record commits after the prefix and continues its numbering.
+        assert racer.error is None, racer.error
         assert _runs(events[len(prior["events"]):]) == [(("GOAL-001", "b"), ["tool_invoked"])]
         assert events[-1]["sequence"] == len(prior["events"]) + 1
 
 
 @pytest.mark.parametrize("prefix_mode", MODES)
-def test_resume_is_refused_when_a_racing_record_lands_first(
-    runtime, harness, monkeypatch, prefix_mode
+def test_resume_waits_for_a_record_holding_the_lock_and_then_refuses(
+    runtime, harness, prefix_mode
 ) -> None:
-    import nornyx.agentic_evidence as evidence
-
     _, context = runtime
-    authorizer = _authorizer(runtime, "1.0" if prefix_mode == "legacy-1.0" else "1.1")
+    authorizer = _authorizer(runtime, _schema_version(prefix_mode))
     prior = _prior_stream(runtime, prefix_mode)
     leak: list[EvidenceRecorder] = []
-    gate = harness.gate(lambda hook, _call: hook == "validate")
-    original = evidence.validate_runtime_events
-
-    def parking_validator(*args, **kwargs):
-        gate.check("validate")
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(evidence, "validate_runtime_events", parking_validator)
-    cls = _instrumented(leak=leak)
+    constructed = harness.gate(_hook("init"))
+    racer_parked = harness.gate(_last_event_of("decision", "b"))
+    cls = _instrumented(constructed, racer_parked, leak=leak)
 
     installer = harness.start(lambda: cls.resume(authorizer, context, prior, **PRODUCER))
-    assert gate.parked.wait(TIMEOUT), "deadlock guard: resume never validated the prefix"
+    assert constructed.parked.wait(TIMEOUT), "deadlock guard: construction never finished"
     recorder = leak[0]
+    probe = recorder._lock
     racer = harness.start(_write(runtime, recorder, "legacy", "decision", "b", "GOAL-002"))
-    racer.join()
-    assert racer.error is None
+    assert racer_parked.parked.wait(TIMEOUT), "deadlock guard: the record never built"
+    assert probe.attempts == probe.acquired == 1
+    assert probe.holder == racer.thread.ident
 
-    gate.release.set()
+    # resume() validates the prefix outside the lock, then blocks on it.
+    constructed.release.set()
+    assert probe.wait_for_attempts(2), "deadlock guard: resume never tried the lock"
+    assert probe.contended == 1
+    assert probe.acquired == 1
+    assert not installer.done.is_set()
+    assert recorder._events == [] and recorder._sequences == {}
+
+    racer_parked.release.set()
+    racer.join()
     installer.join()
-    assert isinstance(installer.error, ValueError)
+    assert racer.error is None, racer.error
+    assert isinstance(installer.error, ValueError), installer.error
     assert "already recorded" in str(installer.error)
     events = _assert_contiguous_and_valid(recorder)
     # Only the racing record: no prefix event was installed beside it.
     assert _runs(events) == [(("GOAL-002", "b"), EVENT_TYPES["decision"])]
     assert all("occurrence" not in event for event in events)
+    assert recorder.stream().get("occurrence_mode") == (
+        None if prefix_mode == "legacy-1.0" else "legacy"
+    )
 
 
 # --- supplementary stress -----------------------------------------------------
@@ -648,18 +766,21 @@ def test_bounded_concurrent_writers_keep_streams_contiguous_and_valid(runtime, m
         except BaseException as exc:  # noqa: BLE001 - surfaced below
             errors.append(exc)
 
+    threads = [
+        threading.Thread(target=worker, args=(n,), daemon=True) for n in range(threads_n)
+    ]
     previous = sys.getswitchinterval()
     try:
         sys.setswitchinterval(1e-6)
-        threads = [threading.Thread(target=worker, args=(n,), daemon=True) for n in range(threads_n)]
         for thread in threads:
             thread.start()
+        deadline = time.monotonic() + TIMEOUT
         for thread in threads:
-            thread.join(TIMEOUT * 4)
+            thread.join(max(0.0, deadline - time.monotonic()))
     finally:
         sys.setswitchinterval(previous)
     assert not any(thread.is_alive() for thread in threads), "deadlock guard"
-    assert not errors
+    assert not errors, errors
 
     events = _assert_contiguous_and_valid(recorder)
     assert len(events) == threads_n * calls_n * 3
