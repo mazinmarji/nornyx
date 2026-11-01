@@ -102,6 +102,18 @@ values there. `resume(...)` refuses a prior stream whose events name a
 different `producer`; it does not check their `timestamp` or `event_id`
 beyond the ordering rule below.
 
+Event timestamps are producer-asserted. The validator evaluates identity,
+membership, delegation, and revocation validity windows against each event's
+own `timestamp`, and the only timing rule it enforces is that timestamps do not
+decrease along a mission's sequence. Nornyx cannot establish whether a
+timestamp reflects when the event actually happened. A hand-built or
+`external_runtime` stream that dates an event inside a delegation's validity
+window validates `pass` even if the work happened after the delegation's
+`expires_at`. The recorder stamps the authorizer context's `decision_at`, the
+time the decision was evaluated at, and callers cannot override it; for any
+other producer, a window verdict is only as trustworthy as that producer's
+timestamps.
+
 `EvidenceRecorder.resume(...)` validates and deeply copies a complete prior
 stream, restores mission sequence and occurrence-attempt state, and continues
 to return cumulative evidence. The producer, contract, lock, schema/mode, and

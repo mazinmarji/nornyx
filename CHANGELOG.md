@@ -153,6 +153,14 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Documentation
 
+- State that runtime-event timestamps are producer-asserted:
+  `docs/agentic-network/06_RUNTIME_EVIDENCE.md` and the residual risks in
+  `docs/agentic-network/08_SECURITY_BOUNDARIES.md` now say that identity,
+  membership, delegation, and revocation windows are evaluated against each
+  event's own `timestamp`, that only per-mission non-decreasing order is
+  enforced, and that Nornyx cannot establish when an event actually happened,
+  so a supplied stream dated inside a window validates even if the work fell
+  outside it. No runtime, schema, or package change.
 - Executable/example modernization: the delivery-state renderer document now
   states that `nornyx render` is a design target and names the implemented
   renderer script; the five pre-v0.1 block-syntax showcase contracts move to
