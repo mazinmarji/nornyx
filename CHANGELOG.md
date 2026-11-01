@@ -35,6 +35,19 @@ distribution version is independent of the Nornyx **language/schema** version
   which made the explicit stream fail validation with
   `AN_EVT_SCHEMA_INVALID`, including a stream that was valid before the call.
   Legacy (1.0 and 1.1-legacy) recorders are unchanged.
+- `EvidenceRecorder` no longer lets caller fields replace what it stamps.
+  Decision-intent and observation fields named `producer`, `timestamp`,
+  `event_id`, `sequence`, `event_type`, `mission_id`, `network_id`,
+  `contract_digest`, `network_lock_digest`, or `subject_revision` now raise
+  `ValueError` before any mutation. Previously they overwrote the stamped
+  value, and a spoofed `producer`, `timestamp`, or `event_id` still validated
+  `pass`. A caller-supplied `occurrence` is refused on every recording call,
+  including legacy and 1.0 recorders, where it previously produced an invalid
+  stream; only `record_occurrence_*` attach one. Every write path now checks
+  each built event's envelope and recording mode before committing it, so a
+  `_build_event_unlocked` override or a direct `_stamp` call cannot mix modes,
+  and `for_occurrences()`/`resume()` refuse a recorder that already recorded
+  events during construction.
 
 ### Changed
 

@@ -90,6 +90,15 @@ recorder refuses the legacy `record_decision(...)` and
 `record_observation(...)` calls with `ValueError` before recording anything,
 because an explicit stream cannot mix modes.
 
+The recorder stamps each event's `event_id`, `event_type`, `mission_id`,
+`sequence`, `timestamp`, `producer`, network id, digests, and subject revision.
+Decision-intent or observation fields that name one of those keys, or name
+`occurrence`, are refused with `ValueError` before anything is recorded; only
+the occurrence methods attach an occurrence. This is a recorder guarantee, not
+a validation one: the validator does not compare a per-event `producer`,
+`timestamp`, or `event_id` with any recorder, so a hand-built stream can still
+carry different values there.
+
 `EvidenceRecorder.resume(...)` validates and deeply copies a complete prior
 stream, restores mission sequence and occurrence-attempt state, and continues
 to return cumulative evidence. The producer, contract, lock, schema/mode, and

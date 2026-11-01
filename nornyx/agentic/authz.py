@@ -1213,6 +1213,25 @@ def load_authorizer(contract_path: str | Path, lock_path: str | Path, *, validat
 
 
 # ------------------------------------------------------------------ evidence recorder
+# Keys the recorder stamps on every event; caller fields never replace them.
+_ENVELOPE_KEYS = frozenset(
+    {
+        "event_id",
+        "event_type",
+        "mission_id",
+        "sequence",
+        "timestamp",
+        "network_id",
+        "contract_digest",
+        "network_lock_digest",
+        "subject_revision",
+        "producer",
+    }
+)
+# Only the occurrence methods attach an occurrence, from a RuntimeOccurrence.
+_RESERVED_FIELD_KEYS = _ENVELOPE_KEYS | {"occurrence"}
+
+
 class EvidenceRecorder:
     """Deterministic construction + consistency binding for runtime evidence.
 
@@ -1220,7 +1239,10 @@ class EvidenceRecorder:
     into a schema-valid ``nornyx.agentic_runtime_events.v1`` stream bound to the
     contract, lock, and already-verified observed subject revision. It stamps ids,
     mission-local sequence numbers, producer, timestamps (from the bound
-    ``context.decision_at`` — no wall-clock), and binding digests.
+    ``context.decision_at`` — no wall-clock), and binding digests. Caller fields
+    can never replace those stamped keys or supply an ``occurrence``, and every
+    write path checks each built event's envelope and recording mode before
+    committing it.
 
     The bound ``EvaluationContext`` is validated **once at construction**: the
     recorder fails closed (``ValueError``) if ``context.observed_subject_revision``
@@ -1300,6 +1322,7 @@ class EvidenceRecorder:
                 "explicit occurrence recording requires a lock bound to "
                 "runtime-events schema version 1.1"
             )
+        recorder._require_no_events("explicit occurrence mode cannot be set on")
         recorder._occurrence_mode = "explicit"
         return recorder
 
@@ -1333,6 +1356,7 @@ class EvidenceRecorder:
             producer_version=producer_version,
             producer_type=producer_type,
         )
+        recorder._require_no_events("a prior stream cannot be resumed into")
         detached = _detach_plain(prior_stream)
         if detached.get("producer") != recorder._producer:
             raise ValueError("prior_stream producer does not match the resumed recorder")
@@ -1419,6 +1443,57 @@ class EvidenceRecorder:
         event.update(fields)
         return event
 
+    def _build_checked_unlocked(self, event_type: str, mission_id: str, seq: int, fields: Mapping[str, Any]) -> dict[str, Any]:
+        """Build one event, then refuse it unless it is what this recorder stamps.
+
+        Every write path builds through here, so a ``_build_event_unlocked``
+        override or a direct :meth:`_stamp` call cannot commit an event with a
+        different envelope, or one that mixes recording modes (ADR-0042). It
+        raises before the caller touches ``self._events``/``self._sequences``.
+        """
+        event = self._build_event_unlocked(event_type, mission_id, seq, fields)
+        expected = {
+            "event_id": f"{mission_id}-{seq:04d}",
+            "event_type": event_type,
+            "mission_id": mission_id,
+            "sequence": seq,
+            "timestamp": self._context.decision_at,
+            "network_id": self._authorizer.network_id,
+            "contract_digest": self._authorizer.contract_digest,
+            "network_lock_digest": self._authorizer.network_lock_digest,
+            "subject_revision": self._authorizer.subject_revision,
+            "producer": self._producer,
+        }
+        mismatched = sorted(
+            key
+            for key, value in expected.items()
+            if type(event.get(key)) is not type(value) or event.get(key) != value
+        )
+        if mismatched:
+            raise ValueError(
+                f"built event {', '.join(mismatched)} does not match the "
+                "recorder-stamped value"
+            )
+        if ("occurrence" in event) != (self._occurrence_mode == "explicit"):
+            raise ValueError(
+                "built event mixes recording modes: explicit occurrence mode "
+                "requires an occurrence on every event, and legacy recording "
+                "never attaches one"
+            )
+        return event
+
+    @staticmethod
+    def _refuse_reserved_fields(fields: Mapping[str, Any], what: str) -> None:
+        reserved = sorted(_RESERVED_FIELD_KEYS.intersection(fields))
+        if reserved:
+            raise ValueError(f"{what} fields cannot override {', '.join(reserved)}")
+
+    def _require_no_events(self, action: str) -> None:
+        # A subclass __init__ may record before a classmethod sets the mode or
+        # restores a prefix; switching then would mix or discard those events.
+        if self._events:
+            raise ValueError(f"{action} a recorder that already recorded events")
+
     def _stamp(self, event_type: str, mission_id: str, fields: Mapping[str, Any]) -> None:
         """Detach fields, then perform one atomic build/append/counter update.
 
@@ -1430,11 +1505,14 @@ class EvidenceRecorder:
         are touched, so a build failure (e.g. a hostile/broken
         ``_build_event_unlocked`` override) leaves both untouched rather than
         advancing the sequence counter for an event that was never appended.
+        Fields naming a recorder-stamped key or ``occurrence`` are refused, and
+        an explicit-mode recorder refuses the occurrence-less event this builds.
         """
         detached = _materialize_fields(fields)
+        self._refuse_reserved_fields(detached, "observation")
         with self._lock:
             seq = self._sequences.get(mission_id, 0) + 1
-            event = self._build_event_unlocked(event_type, mission_id, seq, detached)
+            event = self._build_checked_unlocked(event_type, mission_id, seq, detached)
             self._sequences[mission_id] = seq
             self._events.append(event)
 
@@ -1462,7 +1540,8 @@ class EvidenceRecorder:
         ``self._events`` is left partially updated.
 
         An explicit-mode recorder refuses this call before any mutation: its
-        stream requires occurrence identity on every event.
+        stream requires occurrence identity on every event. Intent fields
+        naming a recorder-stamped key or ``occurrence`` are refused likewise.
         """
         self._require_legacy_recording()
         mission_id = _canonical_str(mission_id, "mission_id")
@@ -1472,6 +1551,7 @@ class EvidenceRecorder:
             if event_type not in PHASE_INTENT:
                 raise ValueError(f"{event_type!r} is not a decision-event intent")
             detached = _materialize_fields(intent.fields)
+            self._refuse_reserved_fields(detached, "decision intent")
             prepared.append((event_type, detached))
         # Nothing above mutated recorder state: a malformed intent anywhere in
         # the batch raises before any event is appended or any counter moves.
@@ -1480,7 +1560,7 @@ class EvidenceRecorder:
         with self._lock:
             base_seq = self._sequences.get(mission_id, 0)
             built = [
-                self._build_event_unlocked(event_type, mission_id, base_seq + offset, fields)
+                self._build_checked_unlocked(event_type, mission_id, base_seq + offset, fields)
                 for offset, (event_type, fields) in enumerate(prepared, start=1)
             ]
             # Every build in the batch succeeded: commit the whole batch as one
@@ -1538,8 +1618,7 @@ class EvidenceRecorder:
             if event_type not in PHASE_INTENT:
                 raise ValueError(f"{event_type!r} is not a decision-event intent")
             detached = _materialize_fields(intent.fields)
-            if "occurrence" in detached:
-                raise ValueError("decision intent fields cannot override occurrence")
+            self._refuse_reserved_fields(detached, "decision intent")
             detached.update(_detach_plain(occurrence_fields))
             prepared.append((event_type, detached))
         if not prepared:
@@ -1547,7 +1626,7 @@ class EvidenceRecorder:
         with self._lock:
             base_seq = self._sequences.get(mission_id, 0)
             built = [
-                self._build_event_unlocked(
+                self._build_checked_unlocked(
                     event_type, mission_id, base_seq + offset, fields
                 )
                 for offset, (event_type, fields) in enumerate(prepared, start=1)
@@ -1589,12 +1668,11 @@ class EvidenceRecorder:
         if event_type not in PHASE_OBSERVATION:
             raise ValueError(f"{event_type!r} is not a post-action observation")
         detached = _materialize_fields(fields)
-        if "occurrence" in detached:
-            raise ValueError("observation fields cannot override occurrence")
+        self._refuse_reserved_fields(detached, "observation")
         detached.update(self._occurrence_fields(occurrence))
         with self._lock:
             seq = self._sequences.get(mission_id, 0) + 1
-            event = self._build_event_unlocked(
+            event = self._build_checked_unlocked(
                 event_type, mission_id, seq, detached
             )
             self._sequences[mission_id] = seq
