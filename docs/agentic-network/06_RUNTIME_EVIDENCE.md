@@ -51,7 +51,8 @@ truth. A runtime can omit or fabricate events; validation proves conformance
 of what was supplied against the exact contract revision, nothing more. Hash
 validity (including per-event `evidence_artifact` SHA-256 binding) proves
 content binding, not event truth. These limitations are embedded in every
-report.
+report. Event timestamps are producer-asserted; see "Recording and
+continuation" below.
 
 ## Runtime-events 1.1 occurrence modes
 
@@ -99,20 +100,27 @@ methods attach an occurrence. This is a recorder guarantee, not a validation
 one: the validator does not compare a per-event `producer`, `timestamp`, or
 `event_id` with any recorder, so a hand-built stream can still carry different
 values there. `resume(...)` refuses a prior stream whose events name a
-different `producer`; it does not check their `timestamp` or `event_id`
-beyond the ordering rule below.
+different `producer` or carry a timestamp that is unparseable or later than
+the new `decision_at`; it does not otherwise compare their `timestamp` or
+`event_id` with the recorder.
 
 Event timestamps are producer-asserted. The validator evaluates identity,
-membership, delegation, and revocation validity windows against each event's
-own `timestamp`, and the only timing rule it enforces is that timestamps do not
-decrease along a mission's sequence. Nornyx cannot establish whether a
-timestamp reflects when the event actually happened. A hand-built or
-`external_runtime` stream that dates an event inside a delegation's validity
-window validates `pass` even if the work happened after the delegation's
-`expires_at`. The recorder stamps the authorizer context's `decision_at`, the
-time the decision was evaluated at, and callers cannot override it; for any
-other producer, a window verdict is only as trustworthy as that producer's
-timestamps.
+membership, and delegation validity windows, and revocation `effective_at`
+times, against each event's own `timestamp`. The only cross-event timing rule
+it enforces is that timestamps do not decrease along a mission's sequence (the
+schema separately requires each `timestamp` to be an RFC 3339 date-time with
+an offset), and it never compares them with the time of validation. Nornyx
+cannot establish whether a timestamp reflects when the event actually
+happened. A hand-built or `external_runtime` stream that dates an event inside
+a delegation's validity window validates `pass` (structural conformance only)
+even if the work happened after the delegation's `expires_at`, and likewise
+for an event dated before a revocation's `effective_at`. The recorder stamps
+every event it builds, including post-action observations, with the bound
+context's `decision_at`. That value is supplied by whoever constructs the
+`EvaluationContext`, not read from a clock, and per-call fields cannot
+override it. A recorder-built stream therefore carries the supplied decision
+time, not an observed execution time. For any other stream, a window verdict
+is only as trustworthy as the producer's own timestamps.
 
 `EvidenceRecorder.resume(...)` validates and deeply copies a complete prior
 stream, restores mission sequence and occurrence-attempt state, and continues

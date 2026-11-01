@@ -38,11 +38,12 @@
 
 - Evidence is supplied, not observed: omission and fabrication are outside
   Nornyx's proof surface.
-- Event timestamps are producer-asserted. Identity, membership, delegation,
-  and revocation windows are evaluated against them, and only per-mission
-  non-decreasing order is enforced, so a producer can date an event inside a
-  window it actually fell outside. Nornyx cannot establish when an event
-  happened.
+- Event timestamps are producer-asserted. Identity, membership, and
+  delegation validity windows and revocation `effective_at` times are
+  evaluated against them, and only per-mission non-decreasing order is
+  enforced, so a producer can date an event inside a window it actually fell
+  outside, or before a revocation took effect. Nornyx cannot establish when an
+  event happened.
 - A cooperative producer can falsely claim a new occurrence; occurrence
   validation proves structural consistency, not independent execution truth.
 - Adapter enforcement is cooperative; bypassing the adapter bypasses the
