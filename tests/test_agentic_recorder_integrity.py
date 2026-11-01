@@ -491,8 +491,10 @@ def _forged_prefix(runtime, mode: str) -> dict:
 
 @pytest.mark.parametrize("mode", ["legacy", "explicit"])
 def test_resume_refuses_prefix_events_from_another_producer(runtime, mode) -> None:
+    # The validator now rejects a prefix whose events name another producer,
+    # so resume() refuses it while validating the prior stream.
     authorizer, context = runtime
-    with pytest.raises(ValueError, match="event producer does not match"):
+    with pytest.raises(ValueError, match="AN_EVT_PRODUCER_MISMATCH"):
         EvidenceRecorder.resume(authorizer, context, _forged_prefix(runtime, mode), **PRODUCER)
 
 

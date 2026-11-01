@@ -32,6 +32,14 @@ revision fails closed (`AN_EVT_CONTRACT_MISMATCH`, `AN_EVT_LOCK_MISMATCH`,
 validated against a lock that no longer matches the contract
 (`AN_EVT_LOCK_STALE`).
 
+Every event's `producer` must also equal the events file's own `producer`
+(`AN_EVT_PRODUCER_MISMATCH`), in every runtime-events schema version. A file
+names one producer; merging events from several producers into one file is not
+supported. This is internal consistency of the supplied file only: Nornyx does
+not authenticate the producer, and a file can name any producer as long as it
+names the same one throughout. A missing or malformed per-event `producer` is
+reported by the schema check instead.
+
 ## What the ordering validator can and cannot prove
 
 Per mission id, the validator proves **local sequence consistency of the

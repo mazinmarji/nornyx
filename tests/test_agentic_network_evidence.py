@@ -408,6 +408,22 @@ def test_cross_network_evidence_is_rejected(context: Context) -> None:
     }
 
 
+def test_hand_built_event_from_another_producer_is_rejected(context: Context) -> None:
+    events = _positive_events(context)
+    events[2]["producer"] = {
+        "type": "external_runtime",
+        "id": "someone.else",
+        "version": "9.9",
+    }
+    report = context.validate(events)
+    assert report["status"] == "fail"
+    assert [
+        item["path"]
+        for item in report["diagnostics"]
+        if item["code"] == "AN_EVT_PRODUCER_MISMATCH"
+    ] == ["events[2].producer"]
+
+
 def test_expired_delegation_and_expired_actor(context: Context) -> None:
     events = [
         context.event(
@@ -676,6 +692,37 @@ def test_cli_evidence_validate_flow(context: Context, tmp_path: Path) -> None:
             ]
         )
     assert code == 1
+
+    relabelled = context.stream(_positive_events(context))
+    relabelled["events"][1]["producer"] = {
+        "type": "external_runtime",
+        "id": "someone.else",
+        "version": "9.9",
+    }
+    events_path.write_text(json.dumps(relabelled, indent=2), encoding="utf-8")
+    out = StringIO()
+    with redirect_stdout(out):
+        code = cli_main(
+            [
+                "agentic-network",
+                "evidence-validate",
+                str(contract),
+                "--events",
+                str(events_path),
+                "--lock",
+                str(lock_path),
+                "--as-of",
+                "2026-07-17T00:00:00Z",
+                "--out",
+                str(report_path),
+                "--strict",
+            ]
+        )
+    assert code == 1
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert "AN_EVT_PRODUCER_MISMATCH" in {
+        item["code"] for item in report["diagnostics"]
+    }
 
 
 def test_validation_uses_no_network_or_processes(

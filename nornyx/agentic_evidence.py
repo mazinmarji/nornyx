@@ -363,6 +363,7 @@ def validate_runtime_events(
             )
         )
 
+    envelope_producer = events_payload.get("producer")
     seen_ids: dict[str, int] = {}
     seen_sequences: dict[tuple[str, int], int] = {}
     seen_content: dict[str, int] = {}
@@ -376,6 +377,23 @@ def validate_runtime_events(
         event_type = event.get("event_type")
         timestamp = _parse_time(event.get("timestamp"))
         actor_ref = event.get("actor_ref")
+
+        # Internal consistency only: a stream names one producer, on the
+        # envelope and on every event. This does not authenticate the producer.
+        # A missing or non-object producer is left to the schema diagnostics.
+        event_producer = event.get("producer")
+        if (
+            isinstance(envelope_producer, Mapping)
+            and isinstance(event_producer, Mapping)
+            and event_producer != envelope_producer
+        ):
+            diagnostics.append(
+                _diagnostic(
+                    "AN_EVT_PRODUCER_MISMATCH",
+                    "Event producer does not match the evidence file producer.",
+                    path=f"{path}.producer",
+                )
+            )
 
         if isinstance(event_id, str):
             if event_id in seen_ids:

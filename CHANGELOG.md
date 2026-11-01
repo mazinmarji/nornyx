@@ -61,6 +61,18 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Changed
 
+- `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
+  now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
+  differs from the events file's `producer`, in runtime-events schema 1.0 and
+  1.1 (legacy and explicit). **Compatibility:** a file that merges events from
+  several producers under one envelope, or whose envelope and events name
+  different producers, validated before and now fails. Multi-producer files
+  were never a documented shape, every `EvidenceRecorder` stream already
+  satisfies the rule, and no checked-in example, fixture, or adapter stream
+  changes verdict. A missing or malformed per-event `producer` is still
+  reported only as `AN_EVT_SCHEMA_INVALID`. This is internal consistency of the
+  supplied file; it does not authenticate the producer or attest runtime
+  behavior. No schema-version change.
 - The `nornyx.dev` domain, which every packaged schema `$id` points at, has
   been under project-owner control since 2026-09-01. ADR-0045 recorded its
   unregistered state as an identity exposure and listed acquisition as external
