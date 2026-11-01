@@ -1365,12 +1365,13 @@ class EvidenceRecorder:
                 "prior_stream schema version does not match the authorizer lock"
             )
         prior_mode = detached.get("occurrence_mode")
+        # The mode is installed with the prefix, under the lock, below.
         if recorder._schema_version == "1.0":
             if prior_mode is not None:
                 raise ValueError("runtime-events 1.0 streams cannot declare occurrence_mode")
-            recorder._occurrence_mode = None
+            resumed_mode = None
         elif prior_mode in {"legacy", "explicit"}:
-            recorder._occurrence_mode = prior_mode
+            resumed_mode = prior_mode
         else:
             raise ValueError("runtime-events 1.1 streams require a valid occurrence_mode")
 
@@ -1413,6 +1414,7 @@ class EvidenceRecorder:
 
         with recorder._lock:
             recorder._require_no_events("a prior stream cannot be resumed into")
+            recorder._occurrence_mode = resumed_mode
             recorder._events = [
                 {key: _detach_plain(value) for key, value in event.items()}
                 for event in prior_events
@@ -1501,7 +1503,16 @@ class EvidenceRecorder:
                 "recorder-stamped value"
             )
         if self._occurrence_mode == "explicit":
-            consistent = occurrence is not None and event.get("occurrence") == occurrence
+            attached = event.get("occurrence")
+            consistent = (
+                occurrence is not None
+                and type(attached) is dict
+                and attached.keys() == occurrence.keys()
+                and all(
+                    type(attached[key]) is type(value) and attached[key] == value
+                    for key, value in occurrence.items()
+                )
+            )
         else:
             consistent = occurrence is None and "occurrence" not in event
         if not consistent:

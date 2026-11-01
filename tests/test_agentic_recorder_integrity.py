@@ -354,6 +354,13 @@ class _OtherOccurrence(EvidenceRecorder):
         return event
 
 
+class _FloatAttempt(EvidenceRecorder):
+    def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+        event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+        event["occurrence"] = {**event["occurrence"], "attempt": 1.0}
+        return event
+
+
 @pytest.mark.parametrize(
     ("cls", "mode", "match"),
     [
@@ -361,6 +368,7 @@ class _OtherOccurrence(EvidenceRecorder):
         (_EqualLookingProducer, "legacy", "producer"),
         (_NoneOccurrence, "explicit", "occurrence does not match"),
         (_OtherOccurrence, "explicit", "occurrence does not match"),
+        (_FloatAttempt, "explicit", "occurrence does not match"),
     ],
 )
 def test_disguised_builder_output_cannot_pass_the_commit_check(
@@ -486,6 +494,26 @@ def test_resume_refuses_prefix_events_from_another_producer(runtime, mode) -> No
     authorizer, context = runtime
     with pytest.raises(ValueError, match="event producer does not match"):
         EvidenceRecorder.resume(authorizer, context, _forged_prefix(runtime, mode), **PRODUCER)
+
+
+def test_refused_resume_leaves_a_leaked_recorder_in_its_own_mode(runtime) -> None:
+    authorizer, context = runtime
+    prior = _explicit(runtime)
+    prior.record_occurrence_decision(
+        _decision(runtime), mission_id="GOAL-001", occurrence=OCCURRENCE
+    )
+    leaked: list[EvidenceRecorder] = []
+
+    class Leaking(_RecordsDuringInit):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            leaked.append(self)
+
+    with pytest.raises(ValueError, match="already recorded"):
+        Leaking.resume(authorizer, context, prior.stream(), **PRODUCER)
+    stream = leaked[0].stream()
+    assert stream["occurrence_mode"] == "legacy"
+    assert [("occurrence" in event) for event in stream["events"]] == [False]
 
 
 def test_resume_refuses_events_recorded_while_the_prefix_was_validated(
