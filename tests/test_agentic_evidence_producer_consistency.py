@@ -119,10 +119,10 @@ def test_every_event_naming_another_producer_fails(setup, mode) -> None:
         event["producer"] = dict(OTHER_PRODUCER)
     report = _validate(setup, lock, stream)
     assert report["status"] == "fail"
-    # Diagnostics sort by path string, so compare as sets.
-    assert set(_mismatch_paths(report)) == {
+    # Diagnostics sort by path string, so compare sorted lists.
+    assert sorted(_mismatch_paths(report)) == sorted(
         f"events[{index}].producer" for index in range(len(stream["events"]))
-    }
+    )
 
 
 @pytest.mark.parametrize("mode", MODES)

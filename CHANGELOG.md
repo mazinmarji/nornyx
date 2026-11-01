@@ -72,9 +72,10 @@ distribution version is independent of the Nornyx **language/schema** version
   stream already satisfies the rule, and no checked-in example, fixture, or
   adapter stream changes verdict. A missing or non-object per-event `producer`
   is still reported only as `AN_EVT_SCHEMA_INVALID`; an object-shaped but
-  malformed one now also gets the mismatch diagnostic, which names the event.
-  `EvidenceRecorder.resume()` now refuses a prefix whose events name another
-  producer while validating it, so its message changes from "prior_stream
+  malformed one that differs from the envelope's now also gets the mismatch
+  diagnostic, which names the event. `EvidenceRecorder.resume()` now refuses a
+  prefix whose events name a producer other than its own envelope's while
+  validating it, so its message changes from "prior_stream
   event producer does not match the resumed recorder" to "prior_stream is not
   valid against the supplied authorizer: AN_EVT_PRODUCER_MISMATCH". This is
   internal consistency of the supplied file; it does not authenticate the
