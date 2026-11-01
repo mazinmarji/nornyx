@@ -37,8 +37,10 @@ Every event's `producer` must also equal the events file's own `producer`
 names one producer; merging events from several producers into one file is not
 supported. This is internal consistency of the supplied file only: Nornyx does
 not authenticate the producer, and a file can name any producer as long as it
-names the same one throughout. A missing or malformed per-event `producer` is
-reported by the schema check instead.
+names the same one throughout. A missing or non-object per-event `producer` is
+reported only by the schema check; an object-shaped but malformed one is
+reported by both, and the mismatch diagnostic is the one that names the event.
+A file that merges producers should be split into one file per producer.
 
 ## What the ordering validator can and cannot prove
 
@@ -66,7 +68,9 @@ report.
 The schema id remains `nornyx.agentic_runtime_events.v1`. The lock selects an
 exact schema version:
 
-- **1.0** is the published Nornyx 1.9.0 shape and behavior.
+- **1.0** is the published Nornyx 1.9.0 shape. 1.0 streams are validated as in
+  1.9.0 plus later version-independent consistency rules
+  (`AN_EVT_PRODUCER_MISMATCH`).
 - **1.1 legacy** adds `occurrence_mode: legacy` to the envelope while retaining
   the old event shape and mission-scoped transition/replay behavior. Existing
   `EvidenceRecorder` calls use this mode with a newly generated 1.1 lock.
@@ -104,9 +108,10 @@ Decision-intent or observation fields that name one of those keys, or name
 `occurrence`, are refused with `ValueError` before anything is recorded
 (`None`-valued fields are dropped, as for any field); only the occurrence
 methods attach an occurrence. This is a recorder guarantee, not a validation
-one: the validator does not compare a per-event `producer`, `timestamp`, or
-`event_id` with any recorder, so a hand-built stream can still carry different
-values there. `resume(...)` refuses a prior stream whose events name a
+one: the validator compares a per-event `producer` only with the file's own
+envelope `producer` (see "Every event binds") and does not compare
+`timestamp` or `event_id` with any recorder, so a hand-built stream can name
+any producer consistently and carry any timestamp or event id there. `resume(...)` refuses a prior stream whose events name a
 different `producer`; it does not check their `timestamp` or `event_id`
 beyond the ordering rule below.
 

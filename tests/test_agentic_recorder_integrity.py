@@ -498,6 +498,23 @@ def test_resume_refuses_prefix_events_from_another_producer(runtime, mode) -> No
         EvidenceRecorder.resume(authorizer, context, _forged_prefix(runtime, mode), **PRODUCER)
 
 
+@pytest.mark.parametrize("mode", ["legacy", "explicit"])
+def test_resume_keeps_its_own_prefix_producer_check(runtime, mode, monkeypatch) -> None:
+    # Defence in depth: resume() refuses a forged prefix even if the validator
+    # stopped binding per-event producers.
+    import nornyx.agentic_evidence as evidence
+
+    prefix = _forged_prefix(runtime, mode)
+    monkeypatch.setattr(
+        evidence,
+        "validate_runtime_events",
+        lambda *args, **kwargs: {"status": "pass", "diagnostics": []},
+    )
+    authorizer, context = runtime
+    with pytest.raises(ValueError, match="event producer does not match"):
+        EvidenceRecorder.resume(authorizer, context, prefix, **PRODUCER)
+
+
 def test_refused_resume_leaves_a_leaked_recorder_in_its_own_mode(runtime) -> None:
     authorizer, context = runtime
     prior = _explicit(runtime)
