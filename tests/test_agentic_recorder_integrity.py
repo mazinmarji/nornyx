@@ -274,6 +274,246 @@ def test_resume_refuses_a_recorder_that_recorded_during_construction(runtime) ->
         _RecordsDuringInit.resume(authorizer, context, prior.stream(), **PRODUCER)
 
 
+class _Key(str):
+    pass
+
+
+@pytest.mark.parametrize("path", ["decision", "observation"])
+def test_reserved_names_are_refused_in_any_spelling(runtime, path) -> None:
+    from types import MappingProxyType
+
+    recorder = _legacy(runtime)
+    spoof = ENVELOPE_OVERRIDES["producer"]
+    if path == "observation":
+        call = lambda: recorder.record_observation(  # noqa: E731
+            "tool_invoked", mission_id="GOAL-001", **OBSERVATION, **{_Key("producer"): spoof}
+        )
+    else:
+        decision = _decision(runtime)
+        decision = dataclasses.replace(
+            decision,
+            event_intents=tuple(
+                dataclasses.replace(
+                    intent, fields=MappingProxyType({**intent.fields, _Key("producer"): spoof})
+                )
+                for intent in decision.event_intents
+            ),
+        )
+        call = lambda: recorder.record_decision(decision, mission_id="GOAL-001")  # noqa: E731
+    _assert_refused_without_mutation(recorder, call, "cannot override producer")
+
+
+class _HonestView(dict):
+    """A dict whose lookups show the honest event while its items say otherwise."""
+
+    def __init__(self, honest, items):
+        super().__init__(items)
+        self._honest = honest
+
+    def get(self, key, default=None):
+        return self._honest.get(key, default)
+
+    def __contains__(self, key):
+        return key in self._honest
+
+
+class _AlwaysEqual(str):
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+    __hash__ = str.__hash__
+
+
+class _DisguisedSpoof(EvidenceRecorder):
+    def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+        event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+        return _HonestView(event, {**event, "producer": dict(ENVELOPE_OVERRIDES["producer"])})
+
+
+class _EqualLookingProducer(EvidenceRecorder):
+    def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+        event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+        event["producer"] = {key: _AlwaysEqual("spoofed") for key in event["producer"]}
+        return event
+
+
+class _NoneOccurrence(EvidenceRecorder):
+    def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+        event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+        event["occurrence"] = None
+        return event
+
+
+class _OtherOccurrence(EvidenceRecorder):
+    def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+        event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+        event["occurrence"] = {**event["occurrence"], "occurrence_id": "task.other"}
+        return event
+
+
+@pytest.mark.parametrize(
+    ("cls", "mode", "match"),
+    [
+        (_DisguisedSpoof, "legacy", "plain dict"),
+        (_EqualLookingProducer, "legacy", "producer"),
+        (_NoneOccurrence, "explicit", "occurrence does not match"),
+        (_OtherOccurrence, "explicit", "occurrence does not match"),
+    ],
+)
+def test_disguised_builder_output_cannot_pass_the_commit_check(
+    runtime, cls, mode, match
+) -> None:
+    if mode == "legacy":
+        recorder = _legacy(runtime, cls=cls)
+        call = lambda: recorder.record_observation(  # noqa: E731
+            "tool_invoked", mission_id="GOAL-001", **OBSERVATION
+        )
+    else:
+        recorder = _explicit(runtime, cls=cls)
+        call = lambda: recorder.record_occurrence_observation(  # noqa: E731
+            "tool_invoked", mission_id="GOAL-001", occurrence=OCCURRENCE, **OBSERVATION
+        )
+    with pytest.raises(ValueError, match=match):
+        call()
+    assert recorder.stream()["events"] == []
+
+
+def test_builder_cannot_mutate_an_event_after_commit(runtime) -> None:
+    built: list[dict] = []
+
+    class Retaining(EvidenceRecorder):
+        def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+            event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+            built.append(event)
+            return event
+
+    recorder = _legacy(runtime, cls=Retaining)
+    recorder.record_decision(_decision(runtime), mission_id="GOAL-001")
+    for event in built:
+        event["producer"]["id"] = "someone-else"
+    assert {event["producer"]["id"] for event in recorder.stream()["events"]} == {
+        "integrity-tests"
+    }
+
+
+def test_refusal_mid_batch_leaves_events_and_sequences_untouched(runtime) -> None:
+    calls = {"n": 0}
+
+    class SecondBuildSpoofs(EvidenceRecorder):
+        def _build_event_unlocked(self, event_type, mission_id, seq, fields):
+            event = super()._build_event_unlocked(event_type, mission_id, seq, fields)
+            calls["n"] += 1
+            if calls["n"] == 2:
+                event["producer"] = dict(ENVELOPE_OVERRIDES["producer"])
+            return event
+
+    recorder = _legacy(runtime, cls=SecondBuildSpoofs)
+    with pytest.raises(ValueError, match="producer"):
+        recorder.record_decision(_decision(runtime), mission_id="GOAL-001")
+    assert recorder.stream()["events"] == []
+    recorder.record_decision(_decision(runtime), mission_id="GOAL-001")
+    assert [event["sequence"] for event in recorder.stream()["events"]] == [1, 2]
+    assert recorder.validate()["status"] == "pass"
+
+
+class _LyingFormat(str):
+    def __format__(self, spec):
+        return "GOAL-777"
+
+
+def test_direct_stamp_canonicalizes_its_identifiers(runtime) -> None:
+    recorder = _legacy(runtime)
+    recorder.record_decision(_decision(runtime), mission_id="GOAL-001")
+    recorder._stamp("tool_invoked", _LyingFormat("GOAL-001"), OBSERVATION)
+    event = recorder.stream()["events"][-1]
+    assert event["event_id"] == "GOAL-001-0003"
+    assert type(event["mission_id"]) is str
+    assert recorder.validate()["status"] == "pass"
+
+
+def test_occurrence_values_are_read_past_subclass_hooks(runtime) -> None:
+    class Shifting(RuntimeOccurrence):
+        """Validates honestly, then answers differently once constructed."""
+
+        def __post_init__(self):
+            super().__post_init__()
+            object.__setattr__(self, "_ready", True)
+
+        def __getattribute__(self, name):
+            if object.__getattribute__(self, "__dict__").get("_ready"):
+                if name == "occurrence_id":
+                    return ["caller", "owned"]
+                if name == "attempt":
+                    return object()
+            return super().__getattribute__(name)
+
+    recorder = _explicit(runtime)
+    recorder.record_occurrence_decision(
+        _decision(runtime), mission_id="GOAL-001", occurrence=Shifting("node.read", "task.a", 1)
+    )
+    recorder.record_occurrence_observation(
+        "tool_invoked",
+        mission_id="GOAL-001",
+        occurrence=Shifting("node.read", "task.a", 1),
+        **OBSERVATION,
+    )
+    occurrences = [event["occurrence"] for event in recorder.stream()["events"]]
+    assert occurrences == [
+        {"operation_id": "node.read", "occurrence_id": "task.a", "attempt": 1}
+    ] * 3
+    assert recorder.validate()["status"] == "pass"
+
+
+def _forged_prefix(runtime, mode: str) -> dict:
+    recorder = _explicit(runtime) if mode == "explicit" else _legacy(runtime)
+    if mode == "explicit":
+        recorder.record_occurrence_decision(
+            _decision(runtime), mission_id="GOAL-001", occurrence=OCCURRENCE
+        )
+    else:
+        recorder.record_decision(_decision(runtime), mission_id="GOAL-001")
+    stream = recorder.stream()
+    for event in stream["events"]:
+        event["producer"] = dict(ENVELOPE_OVERRIDES["producer"])
+    return stream
+
+
+@pytest.mark.parametrize("mode", ["legacy", "explicit"])
+def test_resume_refuses_prefix_events_from_another_producer(runtime, mode) -> None:
+    authorizer, context = runtime
+    with pytest.raises(ValueError, match="event producer does not match"):
+        EvidenceRecorder.resume(authorizer, context, _forged_prefix(runtime, mode), **PRODUCER)
+
+
+def test_resume_refuses_events_recorded_while_the_prefix_was_validated(
+    runtime, monkeypatch
+) -> None:
+    import nornyx.agentic_evidence as evidence
+
+    authorizer, context = runtime
+    prior = _legacy(runtime)
+    prior.record_decision(_decision(runtime), mission_id="GOAL-001")
+    holder: list[EvidenceRecorder] = []
+
+    class Exposing(EvidenceRecorder):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            holder.append(self)
+
+    original = evidence.validate_runtime_events
+
+    def recording_validator(*args, **kwargs):
+        holder[0].record_observation("agent_invoked", mission_id="GOAL-002", **OBSERVATION)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(evidence, "validate_runtime_events", recording_validator)
+    with pytest.raises(ValueError, match="already recorded"):
+        Exposing.resume(authorizer, context, prior.stream(), **PRODUCER)
+
+
 # --- preserved behaviour ------------------------------------------------------
 
 

@@ -36,18 +36,28 @@ distribution version is independent of the Nornyx **language/schema** version
   `AN_EVT_SCHEMA_INVALID`, including a stream that was valid before the call.
   Legacy (1.0 and 1.1-legacy) recorders are unchanged.
 - `EvidenceRecorder` no longer lets caller fields replace what it stamps.
-  Decision-intent and observation fields named `producer`, `timestamp`,
-  `event_id`, `sequence`, `event_type`, `mission_id`, `network_id`,
-  `contract_digest`, `network_lock_digest`, or `subject_revision` now raise
-  `ValueError` before any mutation. Previously they overwrote the stamped
-  value, and a spoofed `producer`, `timestamp`, or `event_id` still validated
-  `pass`. A caller-supplied `occurrence` is refused on every recording call,
-  including legacy and 1.0 recorders, where it previously produced an invalid
-  stream; only `record_occurrence_*` attach one. Every write path now checks
-  each built event's envelope and recording mode before committing it, so a
-  `_build_event_unlocked` override or a direct `_stamp` call cannot mix modes,
-  and `for_occurrences()`/`resume()` refuse a recorder that already recorded
-  events during construction.
+  A non-`None` decision-intent or observation field named `producer`,
+  `timestamp`, `event_id`, `sequence`, `network_id`, `contract_digest`,
+  `network_lock_digest`, or `subject_revision` (and, for intent fields,
+  `event_type` or `mission_id`, which are named parameters of the observation
+  calls) now raises `ValueError` before any mutation; `None`-valued fields are
+  still dropped. Previously they overwrote the stamped value, and a spoofed
+  `producer`, `timestamp`, or `event_id` still validated `pass`. A
+  caller-supplied `occurrence` is refused the same way on every recording
+  call, including legacy and 1.0 recorders, where it previously produced an
+  invalid stream; only `record_occurrence_*` attach one, from values re-read
+  and re-validated from the `RuntimeOccurrence`.
+- `EvidenceRecorder.resume()` refuses a prior stream whose events carry a
+  `producer` different from the resumed recorder's. The validator does not
+  bind per-event producers, so such a prefix previously resumed and
+  validated `pass`.
+- Every recording path now commits a detached copy of each built event only
+  after checking its envelope and its occurrence against the call, and
+  `for_occurrences()`/`resume()` refuse, under the recorder lock, a recorder
+  that already recorded events. A `_build_event_unlocked` override that
+  changes the envelope or occurrence, or a direct `_stamp` call on an explicit
+  recorder, now raises instead of committing; this guards against broken
+  overrides, and subclasses remain trusted code.
 
 ### Changed
 
