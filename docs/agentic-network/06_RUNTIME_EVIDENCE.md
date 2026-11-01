@@ -108,8 +108,8 @@ Event timestamps are producer-asserted. The validator evaluates identity,
 membership, and delegation validity windows, and revocation `effective_at`
 times, against each event's own `timestamp`. The only cross-event timing rule
 it enforces is that timestamps do not decrease along a mission's sequence (the
-schema separately requires each `timestamp` to be an RFC 3339 date-time with
-an offset), and it never compares them with the time of validation. Nornyx
+schema separately requires each `timestamp` to be shaped like an RFC 3339
+date-time with an offset), and it never compares them with the time of validation. Nornyx
 cannot establish whether a timestamp reflects when the event actually
 happened. A hand-built or `external_runtime` stream that dates an event inside
 a delegation's validity window validates `pass` (structural conformance only)
