@@ -322,10 +322,21 @@ def make_governed_tool(
     state are attached out-of-band via ``object.__setattr__`` and are never
     part of the schema (and so are never serialized as tool arguments).
 
+    ``recorder`` must be a legacy-mode ``EvidenceRecorder``: this adapter's
+    events carry no occurrence identity. An explicit occurrence-mode recorder
+    fails closed here with ``AdapterConfigurationError``, because CrewAI's
+    executor would turn a call-time refusal into an ordinary tool step.
+
     This is NOT arbitrary CrewAI-tool wrapping: it constructs a governed tool
     from an explicit ``action`` and (optional) ``args_schema``.
     """
     validate_binding(binding)
+    stream = getattr(recorder, "stream", None)
+    if callable(stream) and stream().get("occurrence_mode") == "explicit":
+        raise AdapterConfigurationError(
+            "The CrewAI adapter records legacy events and needs a legacy-mode "
+            "EvidenceRecorder; got one created with EvidenceRecorder.for_occurrences()."
+        )
     if args_schema is not None and not (
         isinstance(args_schema, type) and issubclass(args_schema, _PydanticBaseModel)
     ):

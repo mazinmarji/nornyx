@@ -591,6 +591,34 @@ def test_denial_never_records_runtime_failed(authorizer: Authorizer) -> None:
     assert "tool_invoked" not in event_types
 
 
+def test_explicit_occurrence_recorder_is_refused_at_construction(authorizer: Authorizer) -> None:
+    """This adapter records legacy events, so an explicit-mode recorder is refused when wiring.
+
+    Refusing here, not at call time, matters: CrewAI's executor converts tool
+    exceptions into a normal step, so a call-time refusal would surface as a
+    successful crew with an empty, trivially valid evidence stream.
+    """
+    recorder = EvidenceRecorder.for_occurrences(
+        authorizer, _context(), producer_id="test-crewai-adapter", producer_type="synthetic_harness"
+    )
+    with pytest.raises(AdapterConfigurationError, match="legacy-mode EvidenceRecorder"):
+        make_governed_tool(
+            name="governed_reader",
+            description="Read governed context.",
+            binding=SurfaceBinding(
+                surface="tool:governed_reader",
+                identity_ref="identity.researcher.local",
+                capability_ref="read_governed_context",
+            ),
+            authorizer=authorizer,
+            context=_context(),
+            recorder=recorder,
+            mission_id=MISSION_ID,
+            action=lambda: None,
+        )
+    assert recorder.stream()["events"] == []
+
+
 # --------------------------------------------------------------- full Crew.kickoff() lifecycle
 def test_native_crew_kickoff_allowed_capability_end_to_end(
     authorizer: Authorizer, monkeypatch: pytest.MonkeyPatch

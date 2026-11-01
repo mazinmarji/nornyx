@@ -11,6 +11,16 @@ package versions independently of the `nornyx` core package — see
 - The CrewAI conformance suite sets `CREWAI_TESTING` before the first
   `crewai` import, so a fresh install's one-time setup process cannot trip
   the enforcement-boundary process detector on the suite's first run.
+- `make_governed_tool` refuses an explicit occurrence-mode `EvidenceRecorder`
+  at construction with `AdapterConfigurationError`. Previously such a tool ran
+  its action and left evidence that failed validation; a call-time refusal
+  alone would have been swallowed by CrewAI's executor. This check works with
+  every supported core.
+- `enforce()` with an explicit occurrence-mode recorder now raises the core's
+  `ValueError` before `on_decision` or the action runs, instead of running the
+  action and emitting invalid evidence. This needs a core carrying the
+  recorder-mode guard (see the core `[Unreleased]` entry); on `nornyx` 1.10.x
+  and 1.11.0 the old behaviour remains.
 
 ## [0.3.0] - 2026-08-05
 

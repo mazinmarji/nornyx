@@ -1460,7 +1460,11 @@ class EvidenceRecorder:
         batch — not just a validation/detachment failure, which already raises
         before the lock is even acquired — neither ``self._sequences`` nor
         ``self._events`` is left partially updated.
+
+        An explicit-mode recorder refuses this call before any mutation: its
+        stream requires occurrence identity on every event.
         """
+        self._require_legacy_recording()
         mission_id = _canonical_str(mission_id, "mission_id")
         prepared: list[tuple[str, dict[str, Any]]] = []
         for intent in decision.event_intents:
@@ -1503,6 +1507,17 @@ class EvidenceRecorder:
             raise ValueError(
                 "occurrence-aware recording requires EvidenceRecorder.for_occurrences() "
                 "or an explicit stream resumed with EvidenceRecorder.resume()"
+            )
+
+    def _require_legacy_recording(self) -> None:
+        # An explicit stream cannot mix modes (ADR-0042), so the legacy calls,
+        # whose events carry no occurrence, must never append to one.
+        if self._occurrence_mode == "explicit":
+            raise ValueError(
+                "this recorder is in explicit occurrence mode; use "
+                "record_occurrence_decision() / record_occurrence_observation() "
+                "with a RuntimeOccurrence, or a legacy-mode EvidenceRecorder for "
+                "legacy recording calls"
             )
 
     def record_occurrence_decision(
@@ -1548,8 +1563,10 @@ class EvidenceRecorder:
         recorder's control. Once inside, strings and fields are canonicalized
         without builtin-subclass callbacks and before recorder mutation. The
         actual recording delegates to :meth:`_stamp`, which a private subclass
-        may override to observe every call on this path.
+        may override to observe every call on this path. An explicit-mode
+        recorder refuses this call before any mutation.
         """
+        self._require_legacy_recording()
         event_type = _canonical_str(event_type, "event_type")
         mission_id = _canonical_str(mission_id, "mission_id")
         if event_type not in PHASE_OBSERVATION:

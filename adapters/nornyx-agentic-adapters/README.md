@@ -65,6 +65,11 @@ tool = make_governed_tool(
 # never runs unless the SPI evaluates ALLOW for the declared binding.
 ```
 
+`recorder` must be a legacy-mode `EvidenceRecorder(authorizer, context, ...)`.
+The CrewAI adapter's events carry no occurrence identity, so a recorder from
+`EvidenceRecorder.for_occurrences()` (the LangGraph adapter's) is refused at
+construction with `AdapterConfigurationError`. The same applies to `enforce()`.
+
 **Coverage (cooperative Tier 2 — declared, wrapped surfaces only):** the only
 verified CrewAI extension point is subclassing `crewai.tools.BaseTool` and
 overriding the **synchronous** `_run`, reached through `Crew.kickoff()`'s
