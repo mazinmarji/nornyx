@@ -25,8 +25,7 @@ the tests on purpose: the ``_lock`` attribute (every lock use goes through
 ``_build_checked_unlocked`` and ``_build_event_unlocked`` (called inside the
 lock for each event) and ``_require_no_events`` (called by
 ``for_occurrences()`` and ``resume()``; the tests assert at park time that the
-lock is held there rather than assuming it); and ``resume()`` importing
-``validate_runtime_events`` from ``nornyx.agentic_evidence`` at call time.
+lock is held there rather than assuming it).
 """
 
 from __future__ import annotations
@@ -661,6 +660,7 @@ def test_resume_installs_its_prefix_in_its_check_hold_before_a_queued_record(
     assert probe.attempts == probe.acquired == 1, "the empty check ran outside the lock"
     assert probe.holder == installer.thread.ident, "the empty check ran outside the lock"
     assert recorder._events == [] and recorder._sequences == {}
+    assert recorder._occurrence_mode == (None if prefix_mode == "legacy-1.0" else "legacy")
     releases = _record_releases(recorder)
 
     racer = harness.start(_write(runtime, recorder, "legacy", "observation", "b"))
@@ -727,6 +727,7 @@ def test_resume_waits_for_a_record_holding_the_lock_and_then_refuses(
     assert probe.acquired == 1
     assert not installer.done.is_set()
     assert recorder._events == [] and recorder._sequences == {}
+    assert recorder._occurrence_mode == (None if prefix_mode == "legacy-1.0" else "legacy")
 
     racer_parked.release.set()
     racer.join()
