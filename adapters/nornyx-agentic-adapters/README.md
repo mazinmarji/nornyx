@@ -68,7 +68,10 @@ tool = make_governed_tool(
 `recorder` must be a legacy-mode `EvidenceRecorder(authorizer, context, ...)`.
 The CrewAI adapter's events carry no occurrence identity, so a recorder from
 `EvidenceRecorder.for_occurrences()` (the LangGraph adapter's) is refused at
-construction with `AdapterConfigurationError`. The same applies to `enforce()`.
+construction with `AdapterConfigurationError`. `enforce()` also needs a
+legacy-mode recorder. With nornyx 1.12.0 or later an explicit recorder raises
+the core's `ValueError` before the action runs; with 1.10.x and 1.11.0 the
+action still runs and the evidence fails validation.
 
 **Coverage (cooperative Tier 2 — declared, wrapped surfaces only):** the only
 verified CrewAI extension point is subclassing `crewai.tools.BaseTool` and

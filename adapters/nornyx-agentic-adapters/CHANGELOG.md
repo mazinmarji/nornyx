@@ -6,6 +6,8 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-02
+
 ### Fixed
 
 - The CrewAI conformance suite sets `CREWAI_TESTING` before the first
@@ -16,11 +18,22 @@ package versions independently of the `nornyx` core package — see
   its action and left evidence that failed validation; a call-time refusal
   alone would have been swallowed by CrewAI's executor. This check works with
   every supported core.
-- `enforce()` with an explicit occurrence-mode recorder now raises the core's
-  `ValueError` before `on_decision` or the action runs, instead of running the
-  action and emitting invalid evidence. This needs a core carrying the
-  recorder-mode guard (see the core `[Unreleased]` entry); on `nornyx` 1.10.x
-  and 1.11.0 the old behaviour remains.
+
+### Changed
+
+- The adapter distribution advances to 0.3.1 for the fixes above. It retains
+  the `nornyx>=1.10,<2` floor, SPI major 1, and the exact `crewai==1.15.4` /
+  `langgraph==1.2.2` pins.
+
+### Compatibility notes
+
+- `enforce()` has no code change in this release and still needs a
+  legacy-mode recorder. Refusing an explicit occurrence-mode recorder needs
+  nornyx 1.12.0 or later: with it, `enforce()` raises the core's `ValueError`
+  before `on_decision` or the action runs. With `nornyx` 1.10.x and 1.11.0 the
+  old behaviour remains: the action runs and the evidence fails validation.
+  The adapter test suite selects which behaviour to assert by probing the
+  installed core, not by its version.
 
 ## [0.3.0] - 2026-08-05
 
