@@ -1343,10 +1343,12 @@ class EvidenceRecorder:
         The prior stream must be valid against the exact authorizer contract and
         lock, use the same producer identity on the envelope and on every event,
         and not contain timestamps later than the new context's ``decision_at``.
-        The prefix is deeply detached before becoming recorder-owned state.
+        The prefix is deeply detached before becoming recorder-owned state, and
+        a ``sequence`` or ``occurrence.attempt`` written as a whole-number
+        float is stored as the integer the validator checked.
         """
 
-        from ..agentic_evidence import validate_runtime_events
+        from ..agentic_evidence import _with_schema_integers, validate_runtime_events
 
         if not isinstance(prior_stream, Mapping):
             raise TypeError("prior_stream must be a mapping")
@@ -1419,7 +1421,10 @@ class EvidenceRecorder:
             recorder._require_no_events("a prior stream cannot be resumed into")
             recorder._occurrence_mode = resumed_mode
             recorder._events = [
-                {key: _detach_plain(value) for key, value in event.items()}
+                {
+                    key: _detach_plain(value)
+                    for key, value in _with_schema_integers(event).items()
+                }
                 for event in prior_events
             ]
             recorder._sequences = {}

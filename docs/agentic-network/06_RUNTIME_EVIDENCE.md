@@ -52,6 +52,14 @@ numbers, and paired transitions (completion requires initiation, acceptance
 requires request, grant requires request, tool invocation requires a prior
 allowance). It rejects duplicates and content replays.
 
+`sequence` and `occurrence.attempt` are JSON Schema integers, and JSON Schema
+also accepts a whole-number float such as `2.0` there. Every check above treats
+such a value as the integer it equals, so `2.0` gets the verdict of `2`.
+Values the schema rejects are not converted: booleans, fractions, non-finite
+numbers, and numbers outside 1 to 1,000,000 still fail as schema-invalid.
+`EvidenceRecorder.resume(...)` stores an accepted whole-number float in a
+prior stream as that integer.
+
 Per-event `evidence_artifact.path` values resolve relative to the events
 file's own directory and must stay inside it; escapes, symlinks, and hash
 mismatches fail closed.
