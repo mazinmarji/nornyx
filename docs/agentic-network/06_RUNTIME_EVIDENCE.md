@@ -127,6 +127,33 @@ stamped. `resume(...)` refuses a prior stream whose events name a different
 `decision_at`; it does not otherwise compare their `timestamp` or `event_id`
 with the recorder.
 
+Nornyx 1.11.0 tolerated a stamped key among the fields and let it silently
+replace the stamped value. That was never a documented use, and in releases
+after 1.11.0 it raises even when the value matches what the recorder would
+stamp (see `docs/VERSIONING.md` rule 7, Nornyx-owned fields). To migrate,
+remove the argument; for a field that matched, the recorded event is
+identical. Do not rename it instead: an unknown field fails the closed event
+schema (`AN_EVT_SCHEMA_INVALID`).
+
+```python
+# Before: accepted by 1.11.0, now raises ValueError
+recorder.record_observation(
+    "tool_invoked",
+    mission_id="GOAL-001",
+    actor_ref="identity.researcher.local",
+    capability_ref="read_governed_context",
+    subject_revision=authorizer.subject_revision,
+)
+
+# After: the recorder stamps subject_revision itself
+recorder.record_observation(
+    "tool_invoked",
+    mission_id="GOAL-001",
+    actor_ref="identity.researcher.local",
+    capability_ref="read_governed_context",
+)
+```
+
 Event timestamps are producer-asserted. The validator evaluates identity,
 membership, and delegation validity windows, and revocation `effective_at`
 times, against each event's own `timestamp`. The only cross-event timing rule
