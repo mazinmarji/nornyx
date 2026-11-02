@@ -15,11 +15,24 @@ distribution version is independent of the Nornyx **language/schema** version
   add exact `(from_kind, to_kind)` pairs to a relation without narrowing core
   rules or combining with each other; `artifact`/`module`/profile kinds without
   a `ref` warn `GRAPH_NODE_WITHOUT_REF`; `profile`, `project` and `contract`
-  node refs resolve in-document; and a `depends_on` cycle warns `GRAPH_CYCLE`
-  (edges used exactly as declared; other relations are not cycle-checked). All
-  new codes are warnings (`--strict` promotes them), `depends_on` no longer
-  relates unknown kinds, and no shipped example or generated profile document
-  gains a diagnostic. `check_document` takes an optional `graph_vocabulary`;
+  node refs resolve in-document and warn `UNRESOLVED_GRAPH_NODE_REF` when they
+  name nothing; a relation only the active profile declares, used with a pair
+  it does not declare, warns `UNDECLARED_GRAPH_RELATION_PAIR`; and a
+  `depends_on` cycle warns `GRAPH_CYCLE` (edges used exactly as declared; other
+  relations are not cycle-checked). All new codes are warnings (`--strict`
+  promotes them), `depends_on` no longer relates unknown kinds, and no shipped
+  example or generated profile document gains a diagnostic. **Compatibility:**
+  every contract Nornyx 1.11.0 accepted is still accepted by `nornyx check`,
+  the agentic-network commands and `load_authorizer`. The existing errors keep
+  their 1.11.0 meaning: `INVALID_GRAPH_RELATION_PAIR` for a core relation used
+  with a disallowed pair, and `UNKNOWN_GRAPH_REF_REFERENCE` for the fourteen ref
+  kinds 1.11.0 resolved. Two verdicts are relaxed: a core relation touching a
+  kind outside the vocabulary now warns `UNKNOWN_GRAPH_NODE_KIND` instead of
+  failing the pair check, and a core relation used with a pair the active
+  profile declares is accepted. An unresolved `profile`/`project`/`contract`
+  ref may become an error in a later minor release; an undeclared pair of a
+  profile-only relation will not, since 1.11.0 documented custom relations as
+  allowed with a warning. `check_document` takes an optional `graph_vocabulary`;
   `governance.check_document_with_governance` composes a document and checks it
   against its profile, and `nornyx check`, the agentic-network commands and
   `nornyx.agentic.load_authorizer` use it, so a project-supplied profile's pairs

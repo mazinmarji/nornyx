@@ -73,13 +73,19 @@ The checks above are applied against an explicit vocabulary:
   declaring the relation if it is not a core one. Declared pairs are kept apart
   from the core source/target sets and from each other: declaring
   `policy governs component` does not make `policy governs interface` or
-  `component governs agent` legal. Profile-declared relations are pair-checked
-  like core ones; `UNKNOWN_GRAPH_RELATION` no longer fires for them.
-  `depends_on` matches known kinds only.
+  `component governs agent` legal. A core relation used with a pair neither the
+  core rule nor a declared pair allows is an error
+  (`INVALID_GRAPH_RELATION_PAIR`). A relation only the profile declares is
+  pair-checked too, but, as a custom relation, it warns
+  (`UNDECLARED_GRAPH_RELATION_PAIR`) when used with a pair the profile does not
+  declare, so contracts that Nornyx 1.11.0 accepted keep their exit status;
+  `UNKNOWN_GRAPH_RELATION` no longer fires for it. `depends_on` matches known
+  kinds only.
 - **Refs.** `profile`, `project` and `contract` node refs resolve against
   `project.profile` / `project.profile_pack.name`, `project.name` and
-  `contracts[].name` (`UNKNOWN_GRAPH_REF_REFERENCE`, error, as for the other
-  in-document kinds). `artifact`, `module` and profile-declared kinds name
+  `contracts[].name`. Nornyx 1.11.0 treated these refs as free text, so an
+  unresolved one warns (`UNRESOLVED_GRAPH_NODE_REF`); the other in-document
+  kinds keep `UNKNOWN_GRAPH_REF_REFERENCE` as an error. `artifact`, `module` and profile-declared kinds name
   things outside the document, so they must carry a `ref`
   (`GRAPH_NODE_WITHOUT_REF`, warning); path existence is not checked.
 - **Cycles.** `GRAPH_CYCLE` warns once per strongly connected component of the
@@ -91,7 +97,11 @@ The checks above are applied against an explicit vocabulary:
   require them to form one global DAG. Self-edges keep `GRAPH_SELF_EDGE`.
 
 The new codes are warnings so an existing contract keeps its exit status;
-`nornyx check --strict` promotes them. `nornyx check`, the agentic-network
+`nornyx check --strict` promotes them. Two behaviours are relaxed compared
+with Nornyx 1.11.0: a core relation touching a kind outside the vocabulary is
+no longer pair-checked (it warns `UNKNOWN_GRAPH_NODE_KIND` instead of failing
+`INVALID_GRAPH_RELATION_PAIR`), and a core relation used with a pair the active
+profile declares is accepted. `nornyx check`, the agentic-network
 commands and `nornyx.agentic.load_authorizer` compose the document's governance
 first (`governance.check_document_with_governance`) and check the graph against
 the composed profile's vocabulary, so project- and organisation-supplied packs

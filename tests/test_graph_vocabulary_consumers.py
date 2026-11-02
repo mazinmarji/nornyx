@@ -41,6 +41,7 @@ PROFILE_NAME = "agentic_graph_custom"
 WIDENED_CORE_EDGE = {"from": "goal.network", "to": "agent.researcher", "relation": "governs"}
 PROFILE_ONLY_EDGE = {"from": "component.gateway", "to": "interface.rest", "relation": "exposes"}
 MISMATCHED_EDGE = {"from": "interface.rest", "to": "component.gateway", "relation": "exposes"}
+CORE_MISMATCHED_EDGE = {"from": "agent.researcher", "to": "goal.network", "relation": "governs"}
 
 
 def _custom_profile_payload(**overrides) -> dict:
@@ -119,13 +120,15 @@ def test_b3_relation_declared_only_by_the_custom_profile_is_honored(tmp_path: Pa
     assert _load(tmp_path, contract, document).contract_digest.startswith("sha256:")
 
 
-def test_b3_mismatched_custom_profile_relation_fails_closed(tmp_path: Path) -> None:
+def test_b3_mismatched_custom_profile_relation_warns_and_still_loads(tmp_path: Path) -> None:
+    # `exposes` is declared only by the custom profile. Nornyx 1.11.0 loaded
+    # this contract, so the undeclared pair is a warning and the load proceeds.
     contract, document = _project(tmp_path, MISMATCHED_EDGE)
 
-    with pytest.raises(AuthorizerLoadError) as caught:
-        _load(tmp_path, contract, document)
-    assert caught.value.code is AuthorizerLoadCode.CONTRACT_INVALID
-    assert "INVALID_GRAPH_RELATION_PAIR" in str(caught.value)
+    assert _load(tmp_path, contract, document).contract_digest.startswith("sha256:")
+    diagnostics, _ = check_document_with_governance(document, registry=registry_for_contract(contract))
+    assert "UNDECLARED_GRAPH_RELATION_PAIR" in [d.code for d in diagnostics]
+    assert not has_errors(diagnostics)
 
 
 def test_b3_unknown_profile_never_yields_a_weaker_successful_load(tmp_path: Path) -> None:
@@ -175,8 +178,10 @@ def test_b3_nornyx_check_applies_the_same_composed_vocabulary(tmp_path: Path, ca
     rejected = tmp_path / "rejected"
     rejected.mkdir()
     contract, _ = _project(rejected, MISMATCHED_EDGE)
-    assert main(["check", "--as-of", AS_OF, str(contract)]) == 1
-    assert "INVALID_GRAPH_RELATION_PAIR" in capsys.readouterr().out
+    assert main(["check", "--as-of", AS_OF, str(contract)]) == 0
+    assert "UNDECLARED_GRAPH_RELATION_PAIR" in capsys.readouterr().out
+    assert main(["check", "--as-of", AS_OF, "--strict", str(contract)]) == 1
+    assert "UNDECLARED_GRAPH_RELATION_PAIR" in capsys.readouterr().out
 
 
 # ------------------------------------------ the shared helper and the fallback
@@ -273,9 +278,30 @@ def test_b3_agentic_network_generate_applies_the_composed_vocabulary(
     assert code == 0, out
     assert "INVALID_GRAPH_RELATION_PAIR" not in out
 
+    # An undeclared pair of a profile-only relation is a warning, so generation
+    # proceeds as it did in Nornyx 1.11.0.
+    mismatched = tmp_path / "mismatched"
+    mismatched.mkdir()
+    contract, _ = _project(mismatched, MISMATCHED_EDGE)
+    code = main(
+        [
+            "agentic-network",
+            "generate",
+            str(contract),
+            "--out",
+            str(mismatched / "out"),
+            "--as-of",
+            AS_OF,
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code == 0, out
+    assert "INVALID_GRAPH_RELATION_PAIR" not in out
+
+    # A core relation used with a wrong pair is still refused.
     rejected = tmp_path / "rejected"
     rejected.mkdir()
-    contract, _ = _project(rejected, MISMATCHED_EDGE)
+    contract, _ = _project(rejected, CORE_MISMATCHED_EDGE)
     code = main(
         [
             "agentic-network",
