@@ -65,15 +65,19 @@ distribution version is independent of the Nornyx **language/schema** version
   refusal also covers a stamped field passed with exactly the value the
   recorder would stamp. 1.11.0 tolerated that call and produced identical
   evidence, but it was never documented: ADR-0039 and the `EvidenceRecorder`
-  docstring assign these values to the recorder, and no published guide,
-  example, adapter or test passed them. Such a call now raises `ValueError`.
+  docstring assign the stamped values to the recorder (`event_type` and
+  `mission_id` are the call's own arguments and `network_id` comes from the
+  loaded contract), and no published guide, example, adapter or test passed
+  them. On `record_decision`, `record_observation`,
+  `record_occurrence_decision` and `record_occurrence_observation`, such a
+  call now raises `ValueError`.
   This is a deliberate, narrow exception under `docs/VERSIONING.md` rule 7
   (Nornyx-owned fields); refusing forged values is the security fix, and
   refusing matching ones keeps one rule, that these fields belong to the
-  recorder. `occurrence` is newly refused only on the legacy
-  `record_decision`/`record_observation` paths; the occurrence methods
-  already refused it. Migration: remove the argument and let the recorder
-  stamp it; the event is unchanged (see "Recording and continuation" in
+  recorder. For `occurrence`, only the legacy paths are new; the occurrence
+  methods already refused it. Migration: remove the argument and let the
+  recorder stamp it; for a field that matched, the recorded event is
+  identical (see "Recording and continuation" in
   `docs/agentic-network/06_RUNTIME_EVIDENCE.md`).
 - `EvidenceRecorder.resume()` refuses a prior stream whose events carry a
   `producer` different from the resumed recorder's. At the time the validator

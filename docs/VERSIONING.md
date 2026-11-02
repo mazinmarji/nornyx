@@ -80,24 +80,29 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
      input is internally inconsistent (two values for the same fact, such as an event producer
      that differs from its file's producer).
    - It **must first ship as a warning** in at least one released minor version, with a
-     **Compatibility** entry announcing the planned error, when the last release's published
-     material was silent on the input (the schema accepted it and no text excluded it).
+     **Compatibility** entry naming the error it may later become, when the last release's
+     published material was silent on the input (the schema accepted it and no text excluded it).
    - It **is breaking**, and needs a major package version, when the last release's published
      material described the input as valid or allowed. A schema or SPI break additionally
      needs the new schema id (rule 4) or SPI major (axis table).
-   - **Nornyx-owned fields — a narrow exception.** A field the last release's published
-     material assigns to Nornyx to set is not caller input, even where no text forbids passing
-     it. Today that means only the keys `EvidenceRecorder` stamps on every event: `event_id`,
-     `event_type`, `mission_id`, `sequence`, `timestamp`, `producer`, `network_id`,
-     `contract_digest`, `network_lock_digest` and `subject_revision` (ADR-0039 and the
-     `EvidenceRecorder` docstring). Refusing such a field, including one passed with the value
-     Nornyx would set, may ship in a minor release with a **Compatibility** entry and
-     migration. This clause was introduced for #108 and covers no other field. It does not
-     overturn the 1.9.0 precedent in ADR-0041, which restored annotation-compatible caller
-     *values*; that precedent concerns data the caller owns and still governs such data.
+   - **Nornyx-owned fields — a narrow exception.** A field Nornyx sets on every event is not
+     caller input, even where no text forbids passing it. This covers only the keys
+     `EvidenceRecorder` stamps: `event_id`, `event_type`, `mission_id`, `sequence`, `timestamp`,
+     `producer`, `network_id`, `contract_digest`, `network_lock_digest` and `subject_revision`.
+     ADR-0039 and the `EvidenceRecorder` docstring name the ids, sequence, producer,
+     timestamps, digests and verified subject revision (and ADR-0039 excludes timestamp,
+     sequence, producer and digests from decision-intent fields); `event_type` and
+     `mission_id` come from the call's own arguments and `network_id` from the loaded
+     contract, so none of the three was ever a caller field. Refusing such a key as a field,
+     including one passed with the value Nornyx would set, may ship in a minor release with a
+     **Compatibility** entry and migration. The exception is recorded in ADR-0041 (its
+     compatibility exception for recorder-owned fields). It does not overturn the 1.9.0
+     precedent in ADR-0041, which restored annotation-compatible caller values (`str`
+     subclasses); that precedent concerns data the caller owns and still governs such data.
 
-   In every case the schema `$id`, the runtime-events version, the lock and generation formats
-   and the SPI major stay unchanged; no public parameter is removed, renamed or made required
+   For a change that stays inside this rule, rather than a schema or SPI break, the schema
+   `$id`, the runtime-events version, the lock and generation formats and the SPI major stay
+   unchanged; no public parameter is removed, renamed or made required
    (refusing values of an existing parameter is governed by this rule); no existing code
    changes meaning; and `CHANGELOG.md` names, under **Compatibility**, the input that now
    fails, every entry point where it fails, and the migration. A change that relaxes a verdict

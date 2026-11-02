@@ -128,11 +128,12 @@ stamped. `resume(...)` refuses a prior stream whose events name a different
 with the recorder.
 
 Nornyx 1.11.0 tolerated a stamped key among the fields and let it silently
-replace the stamped value. That was never a documented use, and since #108 it
-raises even when the value matches what the recorder would stamp (see
-`docs/VERSIONING.md` rule 7, Nornyx-owned fields). To migrate, remove the
-argument; the recorded event is unchanged. Do not rename it instead: an
-unknown field fails the closed event schema (`AN_EVT_SCHEMA_INVALID`).
+replace the stamped value. That was never a documented use, and in releases
+after 1.11.0 it raises even when the value matches what the recorder would
+stamp (see `docs/VERSIONING.md` rule 7, Nornyx-owned fields). To migrate,
+remove the argument; for a field that matched, the recorded event is
+identical. Do not rename it instead: an unknown field fails the closed event
+schema (`AN_EVT_SCHEMA_INVALID`).
 
 ```python
 # Before: accepted by 1.11.0, now raises ValueError

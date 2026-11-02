@@ -256,11 +256,11 @@ each change, and #111 is test-only and has no entry.
 - PR #107: `record_decision` and `record_observation` raise `ValueError`,
   before any mutation, on an explicit occurrence-mode recorder.
 - PR #108: caller fields can no longer replace what the recorder stamps,
-  even with the value the recorder would stamp. Every recording path checks each built event's envelope and occurrence
-  against the call before committing a detached copy, `for_occurrences()`
-  and `resume()` refuse, under the lock, a recorder that already recorded
-  events, and `resume()` refuses a prior stream that names a different
-  producer.
+  even with the value the recorder would stamp. Every recording path checks
+  each built event's envelope and occurrence against the call before
+  committing a detached copy, `for_occurrences()` and `resume()` refuse,
+  under the lock, a recorder that already recorded events, and `resume()`
+  refuses a prior stream that names a different producer.
 - PR #109: the runtime-evidence guide and security boundaries state that
   event timestamps are producer-asserted (documentation only).
 - PR #110: `validate_runtime_events` reports `AN_EVT_PRODUCER_MISMATCH` when
@@ -285,15 +285,17 @@ empty-recorder check in `for_occurrences()` and `resume()`; section 5's
 a stamped key silently replace the stamped value, so a caller passing the
 value the recorder would stamp got identical evidence. #108 refuses that call
 too. This runs against the precedent of the revision note "compatibility
-remediation before release" above, where a rejection of annotation-compatible
-input that had produced schema-valid evidence was reversed before 1.9.0. The
-two differ in ownership: that note restored caller-owned field *values*, while
-the stamped keys are values the published contract assigns to the recorder
-(ADR-0039; the `EvidenceRecorder` docstring), and this ADR's context already
-treats `**fields` and hand-built intents as untrusted input. Refusing forged values is the security
-fix; refusing matching ones keeps one rule, that these fields belong to the
-recorder. `docs/VERSIONING.md` rule 7 records this as a narrow, named exception,
-and the CHANGELOG gives the migration: remove the argument.
+remediation before release" above, which before 1.9.0 reversed a rejection of
+annotation-compatible caller values (`str` subclasses) that had produced
+schema-valid evidence. The two differ in ownership: that note restored values
+the caller owns, while the stamped keys, used as field names, name values the
+published contract assigns to the recorder (ADR-0039; the `EvidenceRecorder`
+docstring; `event_type` and `mission_id` are call arguments, not fields, and
+`network_id` comes from the loaded contract). This ADR's context already
+treats `**fields` and hand-built intents as untrusted input.
+`docs/VERSIONING.md` rule 7 records the case as a narrow, named exception, and
+the CHANGELOG `[Unreleased]` #108 entry gives the rationale and the migration:
+remove the argument.
 
 **Known exception to section 6.** `stream()` takes its producer and event
 snapshot under the lock but reads `_occurrence_mode` after releasing it. If
