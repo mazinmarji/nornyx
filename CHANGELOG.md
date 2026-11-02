@@ -61,7 +61,20 @@ distribution version is independent of the Nornyx **language/schema** version
   caller-supplied `occurrence` is refused the same way on every recording
   call, including legacy and 1.0 recorders, where it previously produced an
   invalid stream; only `record_occurrence_*` attach one, from values re-read
-  and re-validated from the `RuntimeOccurrence`.
+  and re-validated from the `RuntimeOccurrence`. **Compatibility:** the
+  refusal also covers a stamped field passed with exactly the value the
+  recorder would stamp. 1.11.0 tolerated that call and produced identical
+  evidence, but it was never documented: ADR-0039 and the `EvidenceRecorder`
+  docstring assign these values to the recorder, and no published guide,
+  example, adapter or test passed them. Such a call now raises `ValueError`.
+  This is a deliberate, narrow exception under `docs/VERSIONING.md` rule 7
+  (Nornyx-owned fields); refusing forged values is the security fix, and
+  refusing matching ones keeps one rule, that these fields belong to the
+  recorder. `occurrence` is newly refused only on the legacy
+  `record_decision`/`record_observation` paths; the occurrence methods
+  already refused it. Migration: remove the argument and let the recorder
+  stamp it; the event is unchanged (see "Recording and continuation" in
+  `docs/agentic-network/06_RUNTIME_EVIDENCE.md`).
 - `EvidenceRecorder.resume()` refuses a prior stream whose events carry a
   `producer` different from the resumed recorder's. At the time the validator
   did not bind per-event producers (it now does; see Changed), so such a

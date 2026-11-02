@@ -48,7 +48,8 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
 2. **Semantic Versioning for the package.** Backward-compatible functionality (new commands,
    schemas, artifact formats that do not break existing contracts) is a **minor** bump; bug fixes
    are a **patch**. AN-002…AN-006 were additive, so the next release after 1.6.2 is **1.7.0**
-   (a minor bump, not a patch).
+   (a minor bump, not a patch). A change that rejects input the last release accepted is
+   classified by rule 7.
 3. **Language/schema version changes are separate** and are announced in `CHANGELOG.md` and the
    schema docs, not implied by a package bump.
 4. **Schema `$id` tokens are permanent.** A breaking change to a schema mints a new `_v2` id; it
@@ -66,6 +67,44 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
    Nornyx 1.11.0 is the release PR that advances all seven synchronized
    locations for that capability. Tagging and publication remain separate
    authorized actions.
+7. **Stricter validation on an unchanged schema.** Compatibility is judged against the
+   schemas, ADRs and documentation **published with the last release**; text added since
+   cannot make earlier input unsupported. A change is *stricter* when a public entry point —
+   the runtime-events validator, the checker and every API or CLI path that consumes it
+   (including `load_authorizer` and the `agentic-network` commands), or `EvidenceRecorder` —
+   newly rejects input the last release accepted: a new error diagnostic, a `pass` that
+   becomes `fail`, a zero exit that becomes non-zero, or a call that now raises.
+   - It **may ship in a minor release** when the last release's published material stated the
+     input invalid, unsupported or forbidden; or the accepted input produced evidence that
+     misstates what happened (a forged stamped field, a violation hidden from a check); or the
+     input is internally inconsistent (two values for the same fact, such as an event producer
+     that differs from its file's producer).
+   - It **must first ship as a warning** in at least one released minor version, with a
+     **Compatibility** entry announcing the planned error, when the last release's published
+     material was silent on the input (the schema accepted it and no text excluded it).
+   - It **is breaking**, and needs a major package version, when the last release's published
+     material described the input as valid or allowed. A schema or SPI break additionally
+     needs the new schema id (rule 4) or SPI major (axis table).
+   - **Nornyx-owned fields — a narrow exception.** A field the last release's published
+     material assigns to Nornyx to set is not caller input, even where no text forbids passing
+     it. Today that means only the keys `EvidenceRecorder` stamps on every event: `event_id`,
+     `event_type`, `mission_id`, `sequence`, `timestamp`, `producer`, `network_id`,
+     `contract_digest`, `network_lock_digest` and `subject_revision` (ADR-0039 and the
+     `EvidenceRecorder` docstring). Refusing such a field, including one passed with the value
+     Nornyx would set, may ship in a minor release with a **Compatibility** entry and
+     migration. This clause was introduced for #108 and covers no other field. It does not
+     overturn the 1.9.0 precedent in ADR-0041, which restored annotation-compatible caller
+     *values*; that precedent concerns data the caller owns and still governs such data.
+
+   In every case the schema `$id`, the runtime-events version, the lock and generation formats
+   and the SPI major stay unchanged; no public parameter is removed, renamed or made required
+   (refusing values of an existing parameter is governed by this rule); no existing code
+   changes meaning; and `CHANGELOG.md` names, under **Compatibility**, the input that now
+   fails, every entry point where it fails, and the migration. A change that relaxes a verdict
+   is minor and is also listed under **Compatibility**. New checker warnings are minor and
+   never change an exit code without `--strict`, so `--strict` pipelines must expect new
+   warnings in minor releases. A patch release may carry a change under this rule only when it
+   adds no feature (rule 2).
 
 ## Supported Python
 
