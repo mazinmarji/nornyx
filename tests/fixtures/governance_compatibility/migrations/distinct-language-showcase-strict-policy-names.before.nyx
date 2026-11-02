@@ -1,0 +1,129 @@
+nornyx: "0.1"
+project:
+  name: NornyxDistinctLanguageShowcase
+  profile: nornyx_language
+  purpose: Demonstrate Nornyx as a context-native agentic engineering language.
+constitution:
+  principles:
+    - human_authority_over_high_impact_actions
+    - evidence_required_for_code_changes
+    - context_authority_order_required
+    - no_secret_exposure
+    - no_unapproved_self_modification
+intents:
+  - name: DistinctLanguageIntent
+    goal: Make Nornyx easy to learn, install, use, adapt, integrate, and govern.
+contexts:
+  - name: LanguageDesignContext
+    include:
+      - docs/**/*.md
+      - examples/**/*.nyx
+      - nornyx/**/*.py
+      - tests/**/*.py
+    exclude:
+      - .env
+      - secrets/**
+      - generated/**
+      - '**/__pycache__/**'
+    authority:
+      - docs/01_LANGUAGE_SPEC_v0_1.md
+      - docs/16_FINAL_LANGUAGE_TARGET.md
+      - docs/23_DISTINCT_LANGUAGE_STRATEGY.md
+      - tests/**/*.py
+    budget:
+      max_tokens: 32000
+      reserve_output_tokens: 6000
+agents:
+  - name: LanguageArchitect
+    role: Freeze language semantics and developer-experience rules.
+    skills: [SpecDesign]
+    policy: SafeLanguageDesign
+  - name: ToolingBuilder
+    role: Implement safe CLI and generator improvements.
+    skills: [CliBuild]
+    policy: SafeRepoEdit
+  - name: PMOReviewer
+    role: Validate evidence, roadmap, risks, and adoption readiness.
+    skills: [EvidenceReview]
+    policy: SafeReview
+skills:
+  - name: SpecDesign
+    purpose: Convert language strategy into stable syntax and acceptance criteria.
+    input: [strategy, roadmap]
+    output: [spec, acceptance_tests]
+  - name: CliBuild
+    purpose: Add bounded CLI features without external execution.
+    input: [spec]
+    output: [patch, tests]
+  - name: EvidenceReview
+    purpose: Check validation, evidence, and PMO readiness.
+    input: [test_report, docs]
+    output: [review_report]
+policies:
+  - name: SafeLanguageDesign
+    deny: [breaking_core_without_rfc, vague_ai_native_claims]
+    require: [examples, acceptance_tests, migration_note]
+  - name: SafeRepoEdit
+    deny: [secrets_to_llm, production_write_without_approval, external_connector_execution]
+    require: [tests_if_code_changed, evidence_if_goal_completed]
+  - name: SafeReview
+    require: [risk_check, evidence_check, approval_before_merge]
+harnesses:
+  - name: LanguageDXHarness
+    flow:
+      - agent: LanguageArchitect
+        action: define_acceptance
+      - agent: ToolingBuilder
+        action: implement_cli_dx
+      - tool: tests
+        action: run
+      - agent: PMOReviewer
+        action: review_evidence
+      - tool: pmo
+        action: update_status
+    gates:
+      - tests.pass
+      - no_external_execution
+      - evidence.exists
+evals:
+  - name: LanguageDXEval
+    metrics:
+      - init_command_works
+      - doctor_command_reports_readiness
+      - fmt_command_is_deterministic
+      - explain_command_is_human_readable
+evidence:
+  required:
+    - test_report.json
+    - cli_demo_output.txt
+    - risk_update.md
+    - pmo_status_update.json
+goals:
+  - id: GOAL-014
+    title: Distinct language developer experience
+    phase: v0.2
+    goal: Add the first easy-init, doctor, formatter, explain, and profile layer.
+    scope:
+      - nornyx/doctor.py
+      - nornyx/fmt.py
+      - nornyx/explain.py
+      - nornyx/profiles.py
+      - nornyx/cli.py
+      - examples/nornyx_distinct_language_showcase.nyx
+      - tests/test_cli_dx.py
+      - docs/qa/evidence/GOAL-014/
+    non_goals:
+      - parser rewrite
+      - Tree-sitter grammar
+      - long-running LSP server
+      - harness runtime execution
+      - external connector execution
+    validation:
+      - python -m pytest -q tests/test_cli_dx.py
+      - nornyx check examples/nornyx_distinct_language_showcase.nyx
+    evidence: docs/qa/evidence/GOAL-014/
+    approval: required before public syntax, runtime, connector, release, or security-model change
+    stop_rules:
+      - stop on syntax or runtime scope expansion
+      - stop after 3 failed validation attempts
+      - stop if validation weakens policy, evidence, or approval semantics

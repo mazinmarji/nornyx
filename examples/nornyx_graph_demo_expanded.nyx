@@ -41,13 +41,13 @@ skills:
 
 policies:
   - name: StaticGraphContractPolicy
+    # No graph execution, tool execution, model calls or automatic approval:
+    # stated by the constitution principles and GOAL-063's non_goals and
+    # stop_rules. They are not deny rules because the policy matcher does not
+    # evaluate those names.
     rules:
-      - "deny graph_execution"
-      - "deny tool_execution"
       - "deny live_connector_execution"
-      - "deny model_calls"
       - "deny production_deployment"
-      - "deny automatic_approval"
       - "deny self_modification"
       - "require evidence_for_demo_changes"
       - "require human_approval_for_public_promotion"

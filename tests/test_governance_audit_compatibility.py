@@ -627,5 +627,7 @@ def test_aud020_migration_record_is_mechanically_bound_to_artifacts() -> None:
     manifest = verify_manifest(CORPUS / "manifest.json")
     # 7 pre-AN migrations, the AN-002 module evolution
     # (migration:modules-agentic-network-governance-v2), and the post-v1.0
-    # roadmap reweighting (migration:roadmap-goals-post-v1-reweighting-v1).
-    assert len(manifest["intentional_migrations"]) == 9
+    # roadmap reweighting (migration:roadmap-goals-post-v1-reweighting-v1),
+    # and the four example edits that keep `nornyx check --strict` clean
+    # (migration:*-strict-policy-names-v1).
+    assert len(manifest["intentional_migrations"]) == 13

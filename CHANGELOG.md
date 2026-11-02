@@ -149,6 +149,27 @@ distribution version is independent of the Nornyx **language/schema** version
   `nornyx/governance/schemas.py` still resolves every schema locally. ADR-0045's
   context is annotated in place rather than rewritten, since it records what was
   true when the decision was made.
+- Shipped examples pass `nornyx check --strict`. The bundled
+  `org_policies.nyx` (and `governed_service.nyx`, which references it) and the
+  language showcase, graph demo, expanded graph demo and v0.4 adapter-contract
+  examples no longer list `policies.deny` names the policy matcher never
+  evaluates (`nondeterministic_evaluation`, `breaking_core_without_rfc`,
+  `vague_ai_native_claims`, `automatic_approval`, `graph_execution`,
+  `tool_execution`, `model_calls`, `credential_loading`); each intent stays as
+  a comment beside its policy. Plain `nornyx check` exit codes and every
+  policy-runtime verdict are unchanged; only the `UNKNOWN_POLICY_RULE` warnings
+  go. The four repository examples are recorded in the compatibility corpus as
+  `migration:distinct-language-showcase-strict-policy-names-v1`,
+  `migration:graph-demo-strict-policy-names-v1`,
+  `migration:graph-demo-expanded-strict-policy-names-v1` and
+  `migration:v04-adapter-contracts-strict-policy-names-v1`. Still warning under
+  `--strict`, by design: `examples/agentic_network.nyx`,
+  `examples/agentic_network_support/support_network.nyx`, the CrewAI benchmark
+  contract (bound by its lock and stored evidence), contracts created by
+  `nornyx init --profile agentic_network`, and the adapter package's
+  `conformance_network.nyx`. The migration guide
+  (`docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`) lists them and
+  why. No runtime, schema, or package-version change.
 
 ### Added
 

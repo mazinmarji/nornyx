@@ -61,7 +61,9 @@ skills:
     output: [review_report]
 policies:
   - name: SafeLanguageDesign
-    deny: [breaking_core_without_rfc, vague_ai_native_claims]
+    # Review guidance, not deny rules: no breaking core change without an RFC,
+    # and no vague "AI-native" claims. The policy matcher evaluates neither
+    # name, so they are not encoded as deny rules.
     require: [examples, acceptance_tests, migration_note]
   - name: SafeRepoEdit
     deny: [secrets_to_llm, production_write_without_approval, external_connector_execution]

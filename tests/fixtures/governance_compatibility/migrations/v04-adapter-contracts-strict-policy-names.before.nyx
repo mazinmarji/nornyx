@@ -1,0 +1,347 @@
+nornyx: "0.2"
+project:
+  name: NornyxV04AdapterContracts
+  profile: ai_coding
+  purpose: "Contract-only adapter bridge example for v0.4."
+
+experimental:
+  bounded_execution:
+    sandbox:
+      filesystem: workspace_only
+      network: disabled
+      credentials: disabled
+      production: disabled
+      shell: disabled
+      approval_required: true
+      trace_required: true
+      evidence_required: true
+
+intents:
+  - name: AdapterBridgeIntent
+    goal: "Describe ecosystem adapter contracts without enabling live execution."
+
+contexts:
+  - name: AdapterContractContext
+    include:
+      - docs/40_NORNYX_DOMAIN_PROFILES_v0_3.md
+      - docs/41_NORNYX_ADAPTER_CONTRACTS_v0_4.md
+      - schemas/adapter_contract.schema.json
+    exclude:
+      - .env
+      - secrets/**
+    authority:
+      - docs/03_ROADMAP_TO_v1_AND_BEYOND.md
+      - docs/05_SECURITY_MODEL.md
+      - docs/10_EXTENSION_PROTOCOLS_MCP_A2A.md
+
+skills:
+  - name: AdapterContractDesign
+    purpose: "Map external ecosystem concepts into Nornyx contract metadata."
+    input: [ProfilePack, ConnectorManifest]
+    output: [AdapterContract]
+
+policies:
+  - name: AdapterContractOnlyPolicy
+    deny:
+      - live_connector_execution
+      - credential_loading
+      - production_deployment
+      - automatic_approval
+    require:
+      - connector_manifest
+      - human_approval_before_live_enablement
+      - evidence_for_adapter_conformance
+
+capabilities:
+  - name: AdapterMCPManifest
+    kind: connector
+    allow:
+      - validate_manifest_shape
+    approval_required: true
+  - name: AdapterA2APeerContract
+    kind: connector
+    allow:
+      - validate_peer_contract_shape
+    approval_required: true
+
+guardrails:
+  - name: AdapterNoSecretBoundary
+    validate:
+      - no_secrets
+      - schema_valid
+
+agents:
+  - name: AdapterArchitect
+    role: "Design contract-only ecosystem bridge metadata."
+    skills: [AdapterContractDesign]
+    policy: AdapterContractOnlyPolicy
+
+harnesses:
+  - name: AdapterContractHarness
+    context: AdapterContractContext
+    flow:
+      - agent: AdapterArchitect
+        action: design_contracts
+      - connector: AdapterMCPManifest
+        action: validate_manifest_shape
+      - connector: AdapterA2APeerContract
+        action: validate_peer_contract_shape
+      - eval: AdapterContractEval
+        action: verify_contract_only_scope
+    gates:
+      - connectors.disabled
+      - adapters.not_executed
+      - policy.pass
+      - eval.pass
+      - evidence.exists
+      - approval.before_live_enablement
+
+evals:
+  - name: AdapterContractEval
+    metrics:
+      - all_adapters_contract_only
+      - connector_manifests_safe_default
+      - policies_evals_evidence_referenced
+      - no_live_endpoint_or_command
+
+evidence:
+  required:
+    - adapter_contract_report.json
+    - connector_report.json
+    - policy_report.json
+    - eval_report.json
+    - approval_log.json
+
+approvals:
+  - name: AdapterOwnerApproval
+    required_for:
+      - adapter_contract_promotion
+      - connector_live_enablement
+      - production_write
+
+budgets:
+  - name: AdapterPlanningBudget
+    max_tokens: 60000
+    max_tool_calls: 20
+    max_runtime_minutes: 20
+
+connectors:
+  - name: AdapterMCPManifest
+    protocol: MCP
+    capabilities:
+      - validate_connector_manifest
+      - read_contract_metadata
+    deny:
+      - execute_tool
+      - write_remote
+      - load_credentials
+    security:
+      requires_approval: true
+      default_mode: contract_only
+  - name: AdapterA2APeerContract
+    protocol: A2A
+    capabilities:
+      - share_evidence_digest
+      - compare_contract_conformance
+    share:
+      - evidence_digest
+      - conformance_summary
+    never_share:
+      - secrets
+      - credentials
+      - tokens
+      - private_memory
+      - private-memory
+    security:
+      requires_approval: true
+      default_mode: contract_only
+
+adapters:
+  - name: GovernedDeliveryControlPlaneAdapter
+    kind: governed_delivery_control_plane
+    target_profile: ai_coding
+    execution_mode: contract_only
+    live_connector_execution: false
+    connector_refs: [AdapterMCPManifest]
+    policy_refs: [AdapterContractOnlyPolicy]
+    eval_refs: [AdapterContractEval]
+    evidence_refs: [adapter_contract_report.json, connector_report.json]
+    connector_conformance:
+      protocols: [mcp]
+      default_mode: contract_only
+      approval_required: true
+    non_goals: [live connector execution, production deployment, unrestricted adapter execution, credential loading, network calls, automatic approvals]
+  - name: AgenticDevelopmentHarnessAdapter
+    kind: agentic_development_harness
+    target_profile: agentic_repo_harness
+    execution_mode: contract_only
+    live_connector_execution: false
+    connector_refs: [AdapterMCPManifest, AdapterA2APeerContract]
+    policy_refs: [AdapterContractOnlyPolicy]
+    eval_refs: [AdapterContractEval]
+    evidence_refs: [adapter_contract_report.json, connector_report.json]
+    connector_conformance:
+      protocols: [mcp, a2a]
+      default_mode: contract_only
+      approval_required: true
+    non_goals: [live connector execution, production deployment, unrestricted adapter execution, credential loading, network calls, automatic approvals]
+  - name: GovernanceAdapterAdapter
+    kind: governance_adapter
+    target_profile: ai_governance
+    execution_mode: contract_only
+    live_connector_execution: false
+    connector_refs: [AdapterA2APeerContract]
+    policy_refs: [AdapterContractOnlyPolicy]
+    eval_refs: [AdapterContractEval]
+    evidence_refs: [adapter_contract_report.json, eval_report.json]
+    connector_conformance:
+      protocols: [a2a]
+      default_mode: contract_only
+      approval_required: true
+    non_goals: [live connector execution, production deployment, unrestricted adapter execution, credential loading, network calls, automatic approvals]
+  - name: TelecomOpsAdapter
+    kind: telecom_ops
+    target_profile: telecom_ops
+    execution_mode: contract_only
+    live_connector_execution: false
+    connector_refs: [AdapterMCPManifest]
+    policy_refs: [AdapterContractOnlyPolicy]
+    eval_refs: [AdapterContractEval]
+    evidence_refs: [adapter_contract_report.json, policy_report.json]
+    connector_conformance:
+      protocols: [mcp]
+      default_mode: contract_only
+      approval_required: true
+    non_goals: [live connector execution, production deployment, unrestricted adapter execution, credential loading, network calls, automatic approvals]
+  - name: BusinessOpsAdapter
+    kind: business_ops
+    target_profile: business_ops
+    execution_mode: contract_only
+    live_connector_execution: false
+    connector_refs: [AdapterMCPManifest]
+    policy_refs: [AdapterContractOnlyPolicy]
+    eval_refs: [AdapterContractEval]
+    evidence_refs: [adapter_contract_report.json, approval_log.json]
+    connector_conformance:
+      protocols: [mcp]
+      default_mode: contract_only
+      approval_required: true
+    non_goals: [live connector execution, production deployment, unrestricted adapter execution, credential loading, network calls, automatic approvals]
+
+graph:
+  nodes:
+    - id: context.adapter
+      kind: context
+      ref: AdapterContractContext
+    - id: policy.adapter_contract_only
+      kind: policy
+      ref: AdapterContractOnlyPolicy
+    - id: eval.adapter_contract
+      kind: eval
+      ref: AdapterContractEval
+    - id: approval.adapter_owner
+      kind: approval
+      ref: AdapterOwnerApproval
+    - id: budget.adapter_planning
+      kind: budget
+      ref: AdapterPlanningBudget
+    - id: evidence.adapter_contract
+      kind: evidence
+      ref: adapter_contract_report.json
+    - id: adapter.governed_delivery_control_plane
+      kind: adapter
+      ref: GovernedDeliveryControlPlaneAdapter
+    - id: adapter.agentic_development_harness
+      kind: adapter
+      ref: AgenticDevelopmentHarnessAdapter
+    - id: adapter.governance_adapter
+      kind: adapter
+      ref: GovernanceAdapterAdapter
+    - id: adapter.telecom_ops
+      kind: adapter
+      ref: TelecomOpsAdapter
+    - id: adapter.business_ops
+      kind: adapter
+      ref: BusinessOpsAdapter
+  edges:
+    - from: policy.adapter_contract_only
+      to: adapter.governed_delivery_control_plane
+      relation: governs
+    - from: policy.adapter_contract_only
+      to: adapter.agentic_development_harness
+      relation: governs
+    - from: policy.adapter_contract_only
+      to: adapter.governance_adapter
+      relation: governs
+    - from: policy.adapter_contract_only
+      to: adapter.telecom_ops
+      relation: governs
+    - from: policy.adapter_contract_only
+      to: adapter.business_ops
+      relation: governs
+    - from: eval.adapter_contract
+      to: adapter.governed_delivery_control_plane
+      relation: validates_contract
+    - from: eval.adapter_contract
+      to: adapter.agentic_development_harness
+      relation: validates_contract
+    - from: eval.adapter_contract
+      to: adapter.governance_adapter
+      relation: validates_contract
+    - from: eval.adapter_contract
+      to: adapter.telecom_ops
+      relation: validates_contract
+    - from: eval.adapter_contract
+      to: adapter.business_ops
+      relation: validates_contract
+    - from: approval.adapter_owner
+      to: adapter.governed_delivery_control_plane
+      relation: gates_promotion
+    - from: budget.adapter_planning
+      to: adapter.governed_delivery_control_plane
+      relation: bounds
+    - from: adapter.governed_delivery_control_plane
+      to: evidence.adapter_contract
+      relation: must_produce
+
+contracts:
+  - name: AdapterBridgeContract
+    nodes:
+      - context.adapter
+      - policy.adapter_contract_only
+      - eval.adapter_contract
+      - approval.adapter_owner
+      - budget.adapter_planning
+      - evidence.adapter_contract
+      - adapter.governed_delivery_control_plane
+      - adapter.agentic_development_harness
+      - adapter.governance_adapter
+      - adapter.telecom_ops
+      - adapter.business_ops
+    approval: AdapterOwnerApproval
+    budget: AdapterPlanningBudget
+
+goals:
+  - id: GOAL-036
+    title: v0.4 adapter contracts and ecosystem bridges
+    phase: v0.4
+    goal: "Define contract-only adapters and connector conformance gates."
+    scope:
+      - docs/41_NORNYX_ADAPTER_CONTRACTS_v0_4.md
+      - schemas/adapter_contract.schema.json
+      - examples/nornyx_v04_adapter_contracts.nyx
+      - tests/test_v04_adapter_contracts.py
+    non_goals:
+      - live connector execution
+      - production deployment
+      - unrestricted adapter execution
+    validation:
+      - python -m pytest -q
+      - python -m nornyx.cli check examples/nornyx_v04_adapter_contracts.nyx
+      - python -m nornyx.cli connector-plan examples/nornyx_v04_adapter_contracts.nyx
+    evidence: docs/qa/evidence/GOAL-036/
+    approval: required before adapter contracts are promoted as stable
+    stop_rules:
+      - stop on credential risk
+      - stop on live connector execution
+      - stop on egress ambiguity

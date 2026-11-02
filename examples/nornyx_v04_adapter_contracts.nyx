@@ -42,11 +42,14 @@ skills:
 
 policies:
   - name: AdapterContractOnlyPolicy
+    # No credential loading and no automatic approval: declared by the
+    # bounded_execution sandbox (credentials: disabled, approval_required),
+    # the AdapterMCPManifest connector's load_credentials deny, and the
+    # approval requirements below. They are not deny rules because the policy
+    # matcher does not evaluate those names.
     deny:
       - live_connector_execution
-      - credential_loading
       - production_deployment
-      - automatic_approval
     require:
       - connector_manifest
       - human_approval_before_live_enablement

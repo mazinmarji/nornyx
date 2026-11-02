@@ -92,6 +92,32 @@ The recognized **rule-name** tokens are `production`, `secret`, `destructive`,
 trigger words in the table above (`token`, `credential`, `delete`, `wipe`, and
 so on) are matched against *step text*, not against rule names.
 
+### Contracts that still warn under `--strict`
+
+The bundled examples (`nornyx/examples/*.nyx`) and the repository's language
+showcase, graph demo, expanded graph demo and v0.4 adapter-contract examples
+pass `nornyx check --strict`. Their unevaluated deny names were removed and the
+intent kept as a comment beside each policy; no policy-runtime verdict changed.
+
+These contracts still emit `UNKNOWN_POLICY_RULE`, so `nornyx check --strict`
+fails on them. They are left unchanged on purpose:
+
+| Contract | Unevaluated deny names | Why it is unchanged |
+|---|---|---|
+| `examples/agentic_network.nyx` and `examples/agentic_network_support/support_network.nyx` | `autonomous_approval`, `undeclared_capability_use`, `undeclared_cross_zone_transition`; `support_network.nyx` also `customer_pii_exposure` | Reference agentic-network contracts: the core and adapter agentic test suites load `agentic_network.nyx`, and the agentic-network tutorial walks through `support_network.nyx`. Both carry the starter template's deny names (below) |
+| `examples/crewai_governance_benchmark/contract/remediation_network.nyx` | the same four | Bound by its lock and stored evidence: any edit moves the contract digest, which stales the lock and fails validation of the recorded run |
+| Contracts created by `nornyx init --profile agentic_network` | `autonomous_approval`, `undeclared_capability_use`, `undeclared_cross_zone_transition` | Changing the starter template changes every new agentic scaffold and its starter golden |
+| `conformance_network.nyx`, the conformance fixture in the `nornyx-agentic-adapters` package | the same three | Ships in the adapter package; changing it is an adapter release change |
+
+None of these deny entries is evaluated by the policy matcher, and the
+agentic-network checks do not read `policies[].deny` either. Three of the names
+label properties those checks cover structurally, whether or not the deny entry
+is present: an agent identity that can approve fails
+`AN_NON_HUMAN_APPROVAL_INVALID`, a protocol transition between trust zones that
+the source zone does not allow fails `AN_PROTOCOL_TRANSITION_NOT_ALLOWED`, and a
+capability not held by the identity fails `AN_CAPABILITY_ESCALATION`. The deny
+entry itself enforces nothing. `customer_pii_exposure` has no structural check.
+
 ---
 
 ## Two Different Enforcement Surfaces
