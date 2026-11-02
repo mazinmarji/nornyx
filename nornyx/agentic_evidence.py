@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
@@ -167,6 +168,68 @@ def _schema_diagnostics(payload: Mapping[str, Any]) -> list[GovernanceDiagnostic
             )
         )
     return diagnostics
+
+
+# The schema types ``sequence`` and ``occurrence.attempt`` as JSON Schema
+# integers in this range; JSON Schema also accepts a whole-number float such
+# as ``2.0`` there.
+_SCHEMA_INTEGER_MINIMUM = 1
+_SCHEMA_INTEGER_MAXIMUM = 1_000_000
+
+
+def _schema_integer(value: Any) -> Any:
+    """Return a schema-valid integer value as an exact ``int``.
+
+    A finite, integral float, or an int subclass, inside the schema's bounds is
+    converted, so every number the schema accepts reaches the semantic checks
+    as an exact ``int``. Subclasses are read through the base type, as
+    ``_detach_plain`` reads them. Anything else (an exact ``int``, a boolean, a
+    fraction, a non-finite or out-of-range number, a non-number) is returned
+    unchanged and is left to the schema diagnostics.
+    """
+
+    if isinstance(value, bool) or type(value) is int:
+        return value
+    if isinstance(value, int):
+        # An int subclass (an IntEnum, say): the schema accepts it, but the
+        # attempt checks read only an exact int.
+        number = int.__int__(value)
+        if _SCHEMA_INTEGER_MINIMUM <= number <= _SCHEMA_INTEGER_MAXIMUM:
+            return number
+        return value
+    if isinstance(value, float):
+        # Read a float subclass (numpy.float64, say) through the base type, so
+        # it is judged and converted as a float.
+        number = float.__float__(value)
+        if (
+            math.isfinite(number)
+            and number.is_integer()
+            and _SCHEMA_INTEGER_MINIMUM <= number <= _SCHEMA_INTEGER_MAXIMUM
+        ):
+            return int(number)
+    return value
+
+
+def _with_schema_integers(event: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Return ``event`` with ``sequence`` and ``occurrence.attempt`` as ints.
+
+    The supplied event is never modified: a shallow copy is returned only when
+    a value is converted.
+    """
+
+    sequence = event.get("sequence")
+    occurrence = event.get("occurrence")
+    attempt = occurrence.get("attempt") if isinstance(occurrence, Mapping) else None
+    new_sequence = _schema_integer(sequence)
+    new_attempt = _schema_integer(attempt)
+    if new_sequence is sequence and new_attempt is attempt:
+        return event
+    converted = dict(event)
+    if new_sequence is not sequence:
+        converted["sequence"] = new_sequence
+    if new_attempt is not attempt:
+        converted["occurrence"] = {**occurrence, "attempt": new_attempt}
+    return converted
 
 
 def _interval_contains(
@@ -344,8 +407,10 @@ def validate_runtime_events(
             and not revoked_at("delegation", delegation_ref, timestamp)
         )
 
+    # Semantic checks read schema integers as exact ints, so a value the
+    # schema accepts, such as a sequence written 2.0, cannot skip them.
     events = [
-        item
+        _with_schema_integers(item)
         for item in (
             events_payload.get("events")
             if isinstance(events_payload.get("events"), list)
@@ -1069,10 +1134,11 @@ def validate_runtime_events(
 
         if explicit_occurrences:
             for occurrence_id, attempts in sorted(attempts_by_occurrence.items()):
+                # Distinct attempts are contiguous from 1 exactly when they
+                # are 1..len; comparing against the count, not the largest
+                # attempt, keeps a huge attempt from building a huge list.
                 ordered_attempts = sorted(attempts)
-                if ordered_attempts != list(
-                    range(1, ordered_attempts[-1] + 1)
-                ):
+                if ordered_attempts != list(range(1, len(ordered_attempts) + 1)):
                     diagnostics.append(
                         _diagnostic(
                             "AN_EVT_ATTEMPT_GAP",
