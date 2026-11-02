@@ -32,6 +32,17 @@ revision fails closed (`AN_EVT_CONTRACT_MISMATCH`, `AN_EVT_LOCK_MISMATCH`,
 validated against a lock that no longer matches the contract
 (`AN_EVT_LOCK_STALE`).
 
+Every event's `producer` must also equal the events file's own `producer`
+(`AN_EVT_PRODUCER_MISMATCH`), in every runtime-events schema version. A file
+names one producer; merging events from several producers into one file is not
+supported. This is internal consistency of the supplied file only: Nornyx does
+not authenticate the producer, and a file can name any producer as long as it
+names the same one throughout. A missing or non-object per-event `producer` is
+reported only by the schema check; an object-shaped but malformed one that
+differs from the envelope's (always the case when the envelope's is valid) is
+reported by both, and the mismatch diagnostic is the one that names the event.
+A file that merges producers should be split into one file per producer.
+
 ## What the ordering validator can and cannot prove
 
 Per mission id, the validator proves **local sequence consistency of the
@@ -59,7 +70,9 @@ continuation" below.
 The schema id remains `nornyx.agentic_runtime_events.v1`. The lock selects an
 exact schema version:
 
-- **1.0** is the published Nornyx 1.9.0 shape and behavior.
+- **1.0** is the published Nornyx 1.9.0 shape. 1.0 streams are validated as in
+  1.9.0 plus later version-independent consistency rules
+  (`AN_EVT_PRODUCER_MISMATCH`).
 - **1.1 legacy** adds `occurrence_mode: legacy` to the envelope while retaining
   the old event shape and mission-scoped transition/replay behavior. Existing
   `EvidenceRecorder` calls use this mode with a newly generated 1.1 lock.
@@ -97,12 +110,14 @@ Decision-intent or observation fields that name one of those keys, or name
 `occurrence`, are refused with `ValueError` before anything is recorded
 (`None`-valued fields are dropped, as for any field); only the occurrence
 methods attach an occurrence. This is a recorder guarantee, not a validation
-one: the validator does not compare a per-event `producer`, `timestamp`, or
-`event_id` with any recorder, so a hand-built stream can still carry different
-values there. `resume(...)` refuses a prior stream whose events name a
-different `producer` or carry a timestamp that is unparseable or later than
-the new `decision_at`; it does not otherwise compare their `timestamp` or
-`event_id` with the recorder.
+one: the validator compares a per-event `producer` only with the file's own
+envelope `producer` (see "Every event binds") and does not compare
+`timestamp` or `event_id` with any recorder, so a hand-built stream can name
+any producer consistently and carry timestamps and event ids that no recorder
+stamped. `resume(...)` refuses a prior stream whose events name a different
+`producer` or carry a timestamp that is unparseable or later than the new
+`decision_at`; it does not otherwise compare their `timestamp` or `event_id`
+with the recorder.
 
 Event timestamps are producer-asserted. The validator evaluates identity,
 membership, and delegation validity windows, and revocation `effective_at`

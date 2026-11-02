@@ -1401,7 +1401,10 @@ class EvidenceRecorder:
         for event in prior_events:
             if not isinstance(event, Mapping):
                 raise ValueError("prior_stream events must be objects")
-            # The validator does not bind per-event producers, so check here.
+            # The validator already refuses events whose producer differs from
+            # the envelope's (AN_EVT_PRODUCER_MISMATCH), and the envelope is
+            # bound to this recorder above; keep the recorder's own check so
+            # resume() does not depend on that rule.
             if event.get("producer") != recorder._producer:
                 raise ValueError(
                     "prior_stream event producer does not match the resumed recorder"
