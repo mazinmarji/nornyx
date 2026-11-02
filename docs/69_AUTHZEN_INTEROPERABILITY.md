@@ -96,6 +96,16 @@ It maps as follows:
 
 The mapping identifier is Nornyx-owned. It is not an OpenID-registered profile.
 
+## Versioning
+
+`nornyx.agentic.authzen` is part of the supported `nornyx.agentic` SPI from
+SPI 1.3 (`nornyx.agentic.SPI_VERSION`). Import it explicitly as a submodule; the
+frozen `nornyx.agentic` facade does not re-export it. Its supported names are
+the module's `__all__`. The mapping identifier
+`nornyx.authzen.capability.v1` versions the wire mapping separately from the
+SPI: a breaking change to the mapping mints a new identifier rather than
+changing what `v1` means.
+
 ## Example
 
 ```python

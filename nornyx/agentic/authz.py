@@ -64,7 +64,7 @@ from ..governance.agentic_network import (
 )
 from ..parser import load_nyx
 
-SPI_VERSION = "1.2"
+SPI_VERSION = "1.3"
 
 # Canonical subject-revision syntax (ADR-0039): git 40/64 lowercase hex, or
 # sha256 64 lowercase hex. No branch names, abbreviated SHAs, or aliases.

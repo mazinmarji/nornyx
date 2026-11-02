@@ -109,7 +109,7 @@ def _event_types(kernel: GovernanceKernel) -> list[str]:
 def test_spi_and_legacy_public_signatures_are_pinned() -> None:
     # The shim consumes the public Authorizer construction-state SPI, first
     # published in Nornyx 1.11.0 as SPI 1.2.
-    assert SPI_VERSION == "1.2"
+    assert SPI_VERSION == "1.3"
     signatures = {
         "resolve_identity": "(self, agent_key: 'str') -> 'str'",
         "check_capability": (

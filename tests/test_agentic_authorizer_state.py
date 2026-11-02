@@ -252,7 +252,7 @@ def test_state_is_the_exact_authorizer_construction_and_load_contract_is_unchang
     )
     authorizer = load_authorizer(contract_path, lock_path, validation_as_of=AS_OF)
 
-    assert SPI_VERSION == "1.2"
+    assert SPI_VERSION == "1.3"
     assert type(authorizer) is Authorizer
     assert str(inspect.signature(load_authorizer)) == (
         "(contract_path: 'str | Path', lock_path: 'str | Path', *, "

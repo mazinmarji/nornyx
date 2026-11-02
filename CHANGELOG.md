@@ -118,6 +118,11 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Changed
 
+- `SPI_VERSION` advances from 1.2 to 1.3 for the additive
+  `nornyx.agentic.authzen` capability (ADR-0044), which is now part of the
+  supported SPI as an explicit submodule import with a pinned `__all__`. The
+  frozen `nornyx.agentic` facade is unchanged. No package, language/schema, or
+  runtime-events version changes.
 - `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
   now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
   differs from the events file's `producer`, in runtime-events schema 1.0 and
