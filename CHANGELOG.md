@@ -293,10 +293,11 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Distribution boundaries
 
-- Runtime behavior changes only in the unpackaged repository compatibility
-  tree. No core or adapter runtime code, package version, runtime-events schema,
-  SPI version, occurrence/replay semantics, or core Authorizer policy behavior
-  changes. Because the adapter package README changes wheel metadata, the actual
+- For the M2-D compatibility shim: runtime behavior changes only in the
+  unpackaged repository compatibility tree; the shim changes no core or adapter
+  runtime code, package version, runtime-events schema, SPI version,
+  occurrence/replay semantics, or core Authorizer policy behavior. Because the
+  adapter package README changes wheel metadata, the actual
   diff is release classification C; any later adapter publication requires
   separate authorization.
 

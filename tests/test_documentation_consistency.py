@@ -103,3 +103,15 @@ def test_an_completion_record_is_a_closure_not_a_pending_record() -> None:
     )
     # The permanent record cites the merge commit as the closure marker.
     assert "e4fb39e0" in record, "AN completion record must cite the merge commit"
+
+
+def test_versioning_records_the_current_agentic_spi_version() -> None:
+    import nornyx.agentic
+
+    versioning = (ROOT / "docs" / "VERSIONING.md").read_text(encoding="utf-8")
+    row = re.search(r"(?m)^\| \*\*Agentic integration SPI\*\* \| `([^`]+)` \|", versioning)
+    assert row, "docs/VERSIONING.md has no Agentic integration SPI axis row"
+    assert row.group(1) == nornyx.agentic.SPI_VERSION, (
+        f"docs/VERSIONING.md records SPI {row.group(1)} but "
+        f"nornyx.agentic.SPI_VERSION is {nornyx.agentic.SPI_VERSION}"
+    )

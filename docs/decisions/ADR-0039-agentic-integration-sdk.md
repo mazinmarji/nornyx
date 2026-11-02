@@ -19,8 +19,9 @@
   - Post-merge CI: run 29956041864 — success
   - Package state: SPI **1.2** is published in Nornyx **1.11.0**
     (Nornyx 1.10.0 published SPI 1.1); SPI **1.3** is implemented in the
-    repository and not yet released (see the SPI 1.3 revision note); `nornyx-agentic-adapters` **0.2.0** is
-    also published and keeps its `nornyx>=1.10,<2` floor. M2-D changes runtime
+    repository and not yet released (see the SPI 1.3 revision note);
+    `nornyx-agentic-adapters` **0.2.0** is also published and keeps its
+    `nornyx>=1.10,<2` floor. M2-D changes runtime
     behavior only in the unpackaged repository compatibility tree, which now
     consumes the public `Authorizer.state` and therefore requires Nornyx
     1.11.0. It changes no core or adapter runtime code and no version; the
@@ -78,7 +79,12 @@ contract semantics** (identities, capabilities, delegations, handoffs, approvals
 trust zones, data-sharing categories, and revision binding). It is not framework
 behavior, and it imports no framework.
 
-### 1. `nornyx/agentic/` — the supported SPI (two parts)
+### 1. `nornyx/agentic/` — the supported SPI (two facade parts, plus the explicitly imported `authzen` submodule from SPI 1.3)
+
+The facade `nornyx.agentic.__all__` has the two parts below. From SPI 1.3 the
+supported SPI also includes the `nornyx.agentic.authzen` submodule, imported
+explicitly and not re-exported by the facade (see the SPI 1.3 revision note in
+section 4 and ADR-0044).
 
 **(a) Curated re-exports** — one stable import path for names that already exist
 in their home modules (`load_nyx`; `check_document`, `has_errors`;
@@ -472,9 +478,15 @@ of the supported SPI. Its supported surface is the module's `__all__` — the
 `decision_to_authzen`, and `evaluate_authzen_capability` functions — pinned by
 `tests/test_agentic_authzen_surface.py`. It is imported explicitly as
 `nornyx.agentic.authzen`; the frozen facade `nornyx.agentic.__all__` is
-unchanged and does not re-export it. SPI 1.3 changes no existing request,
-decision, recorder, or load behavior, and no package, language/schema,
-runtime-events, lock, or generation format version. It adds no hosted PDP,
+unchanged and does not re-export it. The AuthZEN JSON objects it encodes and
+decodes are a second serialized format, identified by
+`nornyx.authzen.capability.v1`; the statement above that the runtime-events
+stream is the only serialized contract describes SPI 1.2 and earlier. The SPI
+1.3 addition itself changes no existing request, decision, recorder, or load
+behavior; the release that carries SPI 1.3 also carries the stricter recorder
+and validator behaviour described in the note above (VERSIONING rule 7). SPI
+1.3 changes no package, language/schema, runtime-events, lock, or generation
+format version. It adds no hosted PDP,
 HTTP server or client, authentication, policy distribution, or enforcement
 ownership; ADR-0044's public Core boundary is unchanged. As with SPI 1.2, the
 SPI value advances in an implementation-only change before the package release

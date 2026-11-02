@@ -9,6 +9,7 @@ SPI 1.3. It is imported explicitly as a submodule; the frozen top-level facade
 from __future__ import annotations
 
 import inspect
+import pkgutil
 import subprocess
 import sys
 
@@ -44,12 +45,40 @@ AUTHZEN_SIGNATURES = {
 
 
 def test_spi_version_includes_authzen_submodule():
-    assert agentic.SPI_VERSION == "1.3"
+    # The exact SPI value is pinned in test_agentic_facade_surface.py; here the
+    # requirement is only that the SPI is a 1.x release from 1.3 onward.
+    major, minor = (int(part) for part in agentic.SPI_VERSION.split("."))
+    assert major == 1
+    assert minor >= 3
 
 
 def test_all_matches_supported_surface():
     assert set(authzen.__all__) == AUTHZEN_SURFACE
     assert len(authzen.__all__) == len(set(authzen.__all__))
+
+
+def test_all_lists_every_public_name_the_module_defines():
+    # A public function, class, or UPPER_CASE constant defined in the module
+    # but missing from __all__ would be an unclassified API.
+    defined = set()
+    for name, value in vars(authzen).items():
+        if name.startswith("_"):
+            continue
+        if inspect.isfunction(value) or inspect.isclass(value):
+            if value.__module__ == "nornyx.agentic.authzen":
+                defined.add(name)
+        elif name.isupper():
+            defined.add(name)
+    assert defined == set(authzen.__all__)
+
+
+def test_agentic_package_has_only_classified_submodules():
+    # Every submodule of nornyx.agentic is either re-exported through the
+    # frozen facade (authz) or an explicitly imported supported submodule
+    # (authzen, from SPI 1.3). A new submodule needs an SPI classification
+    # (docs/VERSIONING.md) before it is added here.
+    found = {module.name for module in pkgutil.iter_modules(agentic.__path__)}
+    assert found == {"authz", "authzen"}
 
 
 def test_every_exported_name_resolves_and_is_owned_by_the_module():
