@@ -28,7 +28,7 @@
 | Mutable revision, hash/schema/lock/evidence substitution | content-addressed revisions, lock field-by-field verification, per-event digest binding |
 | Replay, ordering manipulation, dependency omission | closed ordering model: unique contiguous mission sequences, dependency precedence, and explicit-mode semantic replay fingerprints independent of transport restamping |
 | Retry/loop state confusion | explicit operation/occurrence/attempt identity; authorization and transitions are attempt-scoped; success closes an occurrence |
-| Expired/revoked identity or delegation, capability or scope escalation, onward-delegation bypass | AN-002 static checks + AN-004 timestamp-effective re-checks |
+| Expired/revoked identity or delegation, capability or scope escalation, onward-delegation bypass | AN-002 static checks + AN-004 timestamp-effective re-checks (against producer-asserted timestamps; see residual risks) |
 | Handoff used as delegation | `AN_HANDOFF_AUTHORITY_ESCALATION`: targets must already hold or validly receive every required capability |
 | Approval-role spoofing, AI-generated approval | composed-module role authority, producer/actor-type checks, adapter policy-violation events |
 | Framework identity mismatch, missing adapter hook, stale controls | exact one-binding resolution, `AN_ADAPTER_HOOK_MISSING`, lock verification before any enforcement |
@@ -38,6 +38,12 @@
 
 - Evidence is supplied, not observed: omission and fabrication are outside
   Nornyx's proof surface.
+- Event timestamps are producer-asserted. Identity, membership, and
+  delegation validity windows and revocation `effective_at` times are
+  evaluated against them, and only per-mission non-decreasing order is
+  enforced, so a producer can date an event inside a window it actually fell
+  outside, or before a revocation took effect. Nornyx cannot establish when an
+  event happened.
 - A cooperative producer can falsely claim a new occurrence; occurrence
   validation proves structural consistency, not independent execution truth.
 - Adapter enforcement is cooperative; bypassing the adapter bypasses the
