@@ -174,7 +174,8 @@ top-level or per-event — can never change what a later call to `stream()` or
   duplication, a decision's intents commit as an indivisible batch, and a
   `stream()` snapshot taken mid-write is always internally consistent (never
   a torn view; see the evidence-integrity revision note below for one known
-  exception during `resume()`).
+  exception while `for_occurrences()` or `resume()` is constructing a
+  recorder).
 - A hostile or buggy adapter cannot use a crafted supported builtin subclass,
   a non-string mapping key, or an unsupported field-value type to execute a
   subclass override during recorder canonicalization, corrupt recorder state,
@@ -247,9 +248,10 @@ and fixed before independent audit:
 
 ## Revision note (evidence-integrity follow-ups, unreleased)
 
-After 1.11.0, five merged pull requests tightened the recorder and the
-validator. None is released yet; the `[Unreleased]` entries in the CHANGELOG
-are the authoritative description of each change.
+After 1.11.0, five merged pull requests changed the recorder, the validator,
+and their documentation and tests. None is released yet; for #107 to #110 the
+`[Unreleased]` entries in the CHANGELOG are the authoritative description of
+each change, and #111 is test-only and has no entry.
 
 - PR #107: `record_decision` and `record_observation` raise `ValueError`,
   before any mutation, on an explicit occurrence-mode recorder.
@@ -262,23 +264,31 @@ are the authoritative description of each change.
 - PR #109: the runtime-evidence guide and security boundaries state that
   event timestamps are producer-asserted (documentation only).
 - PR #110: `validate_runtime_events` reports `AN_EVT_PRODUCER_MISMATCH` when
-  an event's `producer` differs from the events file's own, in runtime-events
-  schema 1.0 and 1.1. This is internal consistency of the supplied file, not
-  producer authentication.
+  an event's object-shaped `producer` differs from the events file's own (a
+  missing or non-object one is still reported only as
+  `AN_EVT_SCHEMA_INVALID`), in runtime-events schema 1.0 and 1.1. This is
+  internal consistency of the supplied file, not producer authentication.
 - PR #111: `tests/test_agentic_recorder_concurrency.py` forces two-thread
-  interleavings against the recorder's own lock. It covers sections 5 and 6
-  for every write path and schema mode: batches commit as one adjacent run,
+  interleavings against the recorder's own lock. It covers section 5 for
+  every write path and schema mode: batches commit as one adjacent run,
   sequences stay contiguous, a refused batch leaves no trace, and
-  `for_occurrences()` and `resume()` check and install in one lock hold. It is
-  test-only and found no defect in the paths it covers.
+  `for_occurrences()` and `resume()` check and install in one lock hold. It
+  does not run `stream()` concurrently with a writer, so section 6 is not
+  exercised here, and the known exception below is outside it. It is
+  test-only and passes against the unchanged recorder.
+
+Since #108 the lock also covers the occurrence-mode switch and the
+empty-recorder check in `for_occurrences()` and `resume()`; section 5's
+"only" is read accordingly.
 
 **Known exception to section 6.** `stream()` takes its producer and event
 snapshot under the lock but reads `_occurrence_mode` after releasing it. If
-`resume()` installs an explicit mode and prefix between those two points,
+`for_occurrences()`, or `resume()` of an explicit stream, installs the
+explicit mode (and, for `resume()`, the prefix) between those two points,
 `stream()` returns `occurrence_mode: explicit` with an empty event list.
-Reaching that window needs another thread to hold the recorder while
-`resume()` is still building it, for example through a trusted subclass that
-leaks the instance from `__init__`. The result is still a valid stream and
+Reaching that window needs another thread to hold the recorder while the
+classmethod is still building it, for example through a trusted subclass
+that leaks the instance from `__init__`. The result is still a valid stream and
 never mixes modes, but it is not a single-point-in-time snapshot. The
 candidate correction, reading the mode in the same lock hold, is a runtime
 change; it needs its own minimal, independently reviewed patch and is not
