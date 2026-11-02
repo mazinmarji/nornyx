@@ -32,6 +32,17 @@ revision fails closed (`AN_EVT_CONTRACT_MISMATCH`, `AN_EVT_LOCK_MISMATCH`,
 validated against a lock that no longer matches the contract
 (`AN_EVT_LOCK_STALE`).
 
+Every event's `producer` must also equal the events file's own `producer`
+(`AN_EVT_PRODUCER_MISMATCH`), in every runtime-events schema version. A file
+names one producer; merging events from several producers into one file is not
+supported. This is internal consistency of the supplied file only: Nornyx does
+not authenticate the producer, and a file can name any producer as long as it
+names the same one throughout. A missing or non-object per-event `producer` is
+reported only by the schema check; an object-shaped but malformed one that
+differs from the envelope's (always the case when the envelope's is valid) is
+reported by both, and the mismatch diagnostic is the one that names the event.
+A file that merges producers should be split into one file per producer.
+
 ## What the ordering validator can and cannot prove
 
 Per mission id, the validator proves **local sequence consistency of the
@@ -51,14 +62,17 @@ truth. A runtime can omit or fabricate events; validation proves conformance
 of what was supplied against the exact contract revision, nothing more. Hash
 validity (including per-event `evidence_artifact` SHA-256 binding) proves
 content binding, not event truth. These limitations are embedded in every
-report.
+report. Event timestamps are producer-asserted; see "Recording and
+continuation" below.
 
 ## Runtime-events 1.1 occurrence modes
 
 The schema id remains `nornyx.agentic_runtime_events.v1`. The lock selects an
 exact schema version:
 
-- **1.0** is the published Nornyx 1.9.0 shape and behavior.
+- **1.0** is the published Nornyx 1.9.0 shape. 1.0 streams are validated as in
+  1.9.0 plus later version-independent consistency rules
+  (`AN_EVT_PRODUCER_MISMATCH`).
 - **1.1 legacy** adds `occurrence_mode: legacy` to the envelope while retaining
   the old event shape and mission-scoped transition/replay behavior. Existing
   `EvidenceRecorder` calls use this mode with a newly generated 1.1 lock.
@@ -96,11 +110,32 @@ Decision-intent or observation fields that name one of those keys, or name
 `occurrence`, are refused with `ValueError` before anything is recorded
 (`None`-valued fields are dropped, as for any field); only the occurrence
 methods attach an occurrence. This is a recorder guarantee, not a validation
-one: the validator does not compare a per-event `producer`, `timestamp`, or
-`event_id` with any recorder, so a hand-built stream can still carry different
-values there. `resume(...)` refuses a prior stream whose events name a
-different `producer`; it does not check their `timestamp` or `event_id`
-beyond the ordering rule below.
+one: the validator compares a per-event `producer` only with the file's own
+envelope `producer` (see "Every event binds") and does not compare
+`timestamp` or `event_id` with any recorder, so a hand-built stream can name
+any producer consistently and carry timestamps and event ids that no recorder
+stamped. `resume(...)` refuses a prior stream whose events name a different
+`producer` or carry a timestamp that is unparseable or later than the new
+`decision_at`; it does not otherwise compare their `timestamp` or `event_id`
+with the recorder.
+
+Event timestamps are producer-asserted. The validator evaluates identity,
+membership, and delegation validity windows, and revocation `effective_at`
+times, against each event's own `timestamp`. The only cross-event timing rule
+it enforces is that timestamps do not decrease along a mission's sequence (the
+schema separately requires each `timestamp` to be shaped like an RFC 3339
+date-time with an offset), and it never compares them with the time of validation. Nornyx
+cannot establish whether a timestamp reflects when the event actually
+happened. A hand-built or `external_runtime` stream that dates an event inside
+a delegation's validity window validates `pass` (structural conformance only)
+even if the work happened after the delegation's `expires_at`, and likewise
+for an event dated before a revocation's `effective_at`. The recorder stamps
+every event it builds, including post-action observations, with the bound
+context's `decision_at`. That value is supplied by whoever constructs the
+`EvaluationContext`, not read from a clock, and per-call fields cannot
+override it. A recorder-built stream therefore carries the supplied decision
+time, not an observed execution time. For any other stream, a window verdict
+is only as trustworthy as the producer's own timestamps.
 
 `EvidenceRecorder.resume(...)` validates and deeply copies a complete prior
 stream, restores mission sequence and occurrence-attempt state, and continues

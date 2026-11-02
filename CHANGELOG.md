@@ -48,9 +48,9 @@ distribution version is independent of the Nornyx **language/schema** version
   invalid stream; only `record_occurrence_*` attach one, from values re-read
   and re-validated from the `RuntimeOccurrence`.
 - `EvidenceRecorder.resume()` refuses a prior stream whose events carry a
-  `producer` different from the resumed recorder's. The validator does not
-  bind per-event producers, so such a prefix previously resumed and
-  validated `pass`.
+  `producer` different from the resumed recorder's. At the time the validator
+  did not bind per-event producers (it now does; see Changed), so such a
+  prefix previously resumed and validated `pass`.
 - Every recording path now commits a detached copy of each built event only
   after checking its envelope and its occurrence against the call, and
   `for_occurrences()`/`resume()` refuse, under the recorder lock, a recorder
@@ -61,6 +61,25 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Changed
 
+- `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
+  now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
+  differs from the events file's `producer`, in runtime-events schema 1.0 and
+  1.1 (legacy and explicit). **Compatibility:** a file that merges events from
+  several producers under one envelope, or whose envelope and events name
+  different producers, validated before and now fails; split such files per
+  producer. Multi-producer files were never a documented or supported shape,
+  though the schema permitted them structurally; every `EvidenceRecorder`
+  stream already satisfies the rule, and no checked-in example, fixture, or
+  adapter stream changes verdict. A missing or non-object per-event `producer`
+  is still reported only as `AN_EVT_SCHEMA_INVALID`; an object-shaped but
+  malformed one that differs from the envelope's now also gets the mismatch
+  diagnostic, which names the event. `EvidenceRecorder.resume()` now refuses a
+  prefix whose events name a producer other than its own envelope's while
+  validating it, so its message changes from "prior_stream
+  event producer does not match the resumed recorder" to "prior_stream is not
+  valid against the supplied authorizer: AN_EVT_PRODUCER_MISMATCH". This is
+  internal consistency of the supplied file; it does not authenticate the
+  producer or attest runtime behavior. No schema-version change.
 - The `nornyx.dev` domain, which every packaged schema `$id` points at, has
   been under project-owner control since 2026-09-01. ADR-0045 recorded its
   unregistered state as an identity exposure and listed acquisition as external
@@ -153,6 +172,18 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Documentation
 
+- State that runtime-event timestamps are producer-asserted:
+  `docs/agentic-network/06_RUNTIME_EVIDENCE.md` and the residual risks in
+  `docs/agentic-network/08_SECURITY_BOUNDARIES.md` now say that identity,
+  membership, and delegation validity windows and revocation `effective_at`
+  times are evaluated against each event's own `timestamp`, that only
+  per-mission non-decreasing order is enforced, and that Nornyx cannot
+  establish when an event actually happened, so a supplied stream dated inside
+  a window validates even if the work fell outside it. The guide also states
+  that recorder streams carry the supplied `decision_at`, not an observed
+  execution time, and corrects its description of `resume(...)`, which does
+  refuse prior timestamps that are unparseable or later than the new
+  `decision_at`. No runtime, schema, or package change.
 - Executable/example modernization: the delivery-state renderer document now
   states that `nornyx render` is a design target and names the implemented
   renderer script; the five pre-v0.1 block-syntax showcase contracts move to

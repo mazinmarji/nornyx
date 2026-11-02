@@ -195,6 +195,8 @@ by what they defend, which is how a failing report should be read.
 the lock's — a 1.0 stream is never silently upgraded); `AN_EVT_LOCK_STALE` (the supplied lock no
 longer verifies); `AN_EVT_NETWORK_MISMATCH`, `AN_EVT_REVISION_MISMATCH`,
 `AN_EVT_CONTRACT_MISMATCH`, `AN_EVT_LOCK_MISMATCH` (a per-event binding field differs);
+`AN_EVT_PRODUCER_MISMATCH` (an event's `producer` differs from the envelope's; consistency, not
+producer authentication);
 `AN_EVT_FIELD_REQUIRED` (a field the event type requires is absent);
 `AN_EVT_DECISION_CONTRADICTION`; `AN_EVT_INVALID`.
 
