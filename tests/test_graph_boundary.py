@@ -303,8 +303,6 @@ def test_b1_exact_declared_and_core_pairs_pass_through_check_document(
     [
         ("policy.safe", "governs", "interface.rest"),  # core source x profile target
         ("component.api", "governs", "agent.builder"),  # profile source x core target
-        ("interface.rest", "exposes", "component.api"),  # declared pair reversed
-        ("component.api", "exposes", "agent.builder"),  # declared source, undeclared target
     ],
 )
 def test_b1_crossed_pairs_are_rejected_through_check_document(
@@ -316,6 +314,27 @@ def test_b1_crossed_pairs_are_rejected_through_check_document(
     assert len(pair_errors) == 1
     assert pair_errors[0].path == "graph.edges[0].relation"
     assert has_errors(diagnostics)
+
+
+@pytest.mark.parametrize(
+    ("edge_from", "relation", "edge_to"),
+    [
+        ("interface.rest", "exposes", "component.api"),  # declared pair reversed
+        ("component.api", "exposes", "agent.builder"),  # declared source, undeclared target
+    ],
+)
+def test_b1_crossed_pairs_of_a_profile_only_relation_warn(
+    edge_from: str, relation: str, edge_to: str
+) -> None:
+    # Nornyx 1.11.0 accepted these edges with a warning, so the exact-pair rule
+    # for a relation only the profile declares reports a warning, not an error.
+    diagnostics = check_document(_architecture_doc(edge_from, edge_to, relation))
+    pair_warnings = [d for d in diagnostics if d.code == "UNDECLARED_GRAPH_RELATION_PAIR"]
+
+    assert len(pair_warnings) == 1
+    assert pair_warnings[0].path == "graph.edges[0].relation"
+    assert pair_warnings[0].level == "warning"
+    assert not has_errors(diagnostics)
 
 
 def test_b1_depends_on_wildcard_ranges_over_known_kinds_only() -> None:
@@ -400,15 +419,17 @@ def test_profile_project_and_contract_refs_resolve_in_document() -> None:
     )
     doc["project"]["profile"] = "architecture_governance"
     doc["contracts"] = [{"name": "BuildContract", "nodes": ["contract.build"]}]
-    assert "UNKNOWN_GRAPH_REF_REFERENCE" not in _codes(check_document(doc))
+    assert "UNRESOLVED_GRAPH_NODE_REF" not in _codes(check_document(doc))
 
     doc["graph"]["nodes"][2]["ref"] = "MissingContract"
     doc["graph"]["nodes"][0]["ref"] = "other_profile"
     diagnostics = check_document(doc)
-    ref_errors = [d.path for d in diagnostics if d.code == "UNKNOWN_GRAPH_REF_REFERENCE"]
+    # Nornyx 1.11.0 treated these refs as free text, so an unresolved one warns.
+    ref_warnings = [d.path for d in diagnostics if d.code == "UNRESOLVED_GRAPH_NODE_REF"]
 
-    assert ref_errors == ["graph.nodes[0].ref", "graph.nodes[2].ref"]
-    assert has_errors(diagnostics)
+    assert ref_warnings == ["graph.nodes[0].ref", "graph.nodes[2].ref"]
+    assert "UNKNOWN_GRAPH_REF_REFERENCE" not in _codes(diagnostics)
+    assert not has_errors(diagnostics)
 
 
 @pytest.mark.parametrize("kind", ["artifact", "module"])

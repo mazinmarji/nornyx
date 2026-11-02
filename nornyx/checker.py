@@ -153,6 +153,12 @@ def _graph_ref_targets(doc: dict[str, Any]) -> dict[str, set[str]]:
     return targets
 
 
+#: Ref kinds resolved since issue #104. Nornyx 1.11.0 treated these refs as free
+#: text, so an unresolved one is a warning (``UNRESOLVED_GRAPH_NODE_REF``) rather
+#: than the ``UNKNOWN_GRAPH_REF_REFERENCE`` error the other kinds have always had.
+ADVISORY_GRAPH_REF_KINDS: frozenset[str] = frozenset({"profile", "project", "contract"})
+
+
 GRAPH_RELATION_RULES: dict[str, tuple[set[str], set[str]]] = {
     "authorizes_context_for": ({"context"}, {"agent", "harness", "adapter"}),
     "bounded_by": ({"goal", "agent", "harness", "artifact", "module"}, {"budget"}),
@@ -648,15 +654,26 @@ def _validate_graph_contract_model(
                     )
                 )
             if _is_non_empty_string(ref) and kind in graph_ref_targets and str(ref) not in graph_ref_targets[kind]:
-                diagnostics.append(
-                    Diagnostic(
-                        "error",
-                        "UNKNOWN_GRAPH_REF_REFERENCE",
-                        f"graph.nodes[{index}].ref references unknown {kind} {ref!r}",
-                        f"{path_prefix}.ref",
-                        f"Define the referenced `{kind}` or remove the graph node ref.",
+                if kind in ADVISORY_GRAPH_REF_KINDS:
+                    diagnostics.append(
+                        Diagnostic(
+                            "warning",
+                            "UNRESOLVED_GRAPH_NODE_REF",
+                            f"graph.nodes[{index}].ref names no {kind} in this document: {ref!r}",
+                            f"{path_prefix}.ref",
+                            f"Point the ref at this document's `{kind}`, or remove it.",
+                        )
                     )
-                )
+                else:
+                    diagnostics.append(
+                        Diagnostic(
+                            "error",
+                            "UNKNOWN_GRAPH_REF_REFERENCE",
+                            f"graph.nodes[{index}].ref references unknown {kind} {ref!r}",
+                            f"{path_prefix}.ref",
+                            f"Define the referenced `{kind}` or remove the graph node ref.",
+                        )
+                    )
             if kind == "evidence" and not _is_non_empty_string(ref):
                 diagnostics.append(
                     Diagnostic(
@@ -754,7 +771,7 @@ def _validate_graph_contract_model(
                 elif source_kind in vocabulary.node_kinds and target_kind in vocabulary.node_kinds:
                     # An unknown kind already carries UNKNOWN_GRAPH_NODE_KIND; do not
                     # turn it into a pair error as well.
-                    if not rule.allows(source_kind, target_kind):
+                    if not rule.allows(source_kind, target_kind) and relation in GRAPH_RELATION_RULES:
                         diagnostics.append(
                             Diagnostic(
                                 "error",
@@ -762,6 +779,20 @@ def _validate_graph_contract_model(
                                 f"Relation {relation!r} does not match {source_kind!r} -> {target_kind!r}",
                                 f"{path_prefix}.relation",
                                 "Use a relation whose source and target kinds match the declared graph nodes.",
+                            )
+                        )
+                    elif not rule.allows(source_kind, target_kind):
+                        # A relation only the active profile declares. Nornyx 1.11.0
+                        # reported it as UNKNOWN_GRAPH_RELATION (warning) and docs/42
+                        # promised custom relations warn, so this stays a warning.
+                        diagnostics.append(
+                            Diagnostic(
+                                "warning",
+                                "UNDECLARED_GRAPH_RELATION_PAIR",
+                                f"Relation {relation!r} is declared by the active profile, but not for "
+                                f"{source_kind!r} -> {target_kind!r}",
+                                f"{path_prefix}.relation",
+                                "Use a pair the profile declares in `graph.relationship_constraints`, or declare this one.",
                             )
                         )
         for component in _dependency_cycles(
