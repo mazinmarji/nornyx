@@ -81,7 +81,6 @@ policies:            # org_policies.nyx
     rules:
       - deny secrets_to_llm
       - require tests_if_code_changed
-      - deny nondeterministic_evaluation
       - require evidence_if_harness_completed
       - require human_approval_before_merge
 ```
@@ -93,7 +92,7 @@ policies:            # governed_service.nyx
 ```
 
 **Listing E.3 — The canonical definition and its reference.** From
-`nornyx/examples/org_policies.nyx:9-16` and `nornyx/examples/governed_service.nyx:11-13`.
+`nornyx/examples/org_policies.nyx:9-18` and `nornyx/examples/governed_service.nyx:11-13`.
 
 The comment in the referencing contract states the value plainly: the rules resolve from one source
 at load time, so the contract carries no copy and cannot drift from the organisation standard. The

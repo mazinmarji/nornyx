@@ -84,7 +84,6 @@ policies:
     rules:
       - deny secrets_to_llm
       - require tests_if_code_changed
-      - deny nondeterministic_evaluation
       - require evidence_if_harness_completed
       - require human_approval_before_merge
 

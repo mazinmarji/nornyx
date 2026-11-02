@@ -158,7 +158,11 @@ distribution version is independent of the Nornyx **language/schema** version
   `tool_execution`, `model_calls`, `credential_loading`); each intent stays as
   a comment beside its policy. Plain `nornyx check` exit codes and every
   policy-runtime verdict are unchanged; only the `UNKNOWN_POLICY_RULE` warnings
-  go. The four repository examples are recorded in the compatibility corpus as
+  go. YAML comments are not carried into generated output, so the `policy.yaml`
+  from `nornyx generate` and the `nornyx policy-check --out` report no longer
+  list the removed names; committed generated output for copies of these
+  examples will show drift until regenerated. The four repository examples
+  are recorded in the compatibility corpus as
   `migration:distinct-language-showcase-strict-policy-names-v1`,
   `migration:graph-demo-strict-policy-names-v1`,
   `migration:graph-demo-expanded-strict-policy-names-v1` and
@@ -166,8 +170,9 @@ distribution version is independent of the Nornyx **language/schema** version
   `--strict`, by design: `examples/agentic_network.nyx`,
   `examples/agentic_network_support/support_network.nyx`, the CrewAI benchmark
   contract (bound by its lock and stored evidence), contracts created by
-  `nornyx init --profile agentic_network`, and the adapter package's
-  `conformance_network.nyx`. The migration guide
+  `nornyx init --profile agentic_network`, contracts created by
+  `nornyx adopt init-lite` (`scope_expansion_without_triage`), and the adapter
+  package's `conformance_network.nyx`. The migration guide
   (`docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`) lists them and
   why. No runtime, schema, or package-version change.
 
