@@ -28,12 +28,12 @@ package versions independently of the `nornyx` core package — see
 ### Compatibility notes
 
 - `enforce()` has no code change in this release and still needs a
-  legacy-mode recorder. Refusing an explicit occurrence-mode recorder needs
-  nornyx 1.12.0 or later: with it, `enforce()` raises the core's `ValueError`
-  before `on_decision` or the action runs. With `nornyx` 1.10.x and 1.11.0 the
-  old behaviour remains: the action runs and the evidence fails validation.
-  The adapter test suite selects which behaviour to assert by probing the
-  installed core, not by its version.
+  legacy-mode recorder. For `enforce()`, refusing an explicit occurrence-mode
+  recorder needs nornyx 1.12.0 or later: with it, `enforce()` raises the
+  core's `ValueError` before `on_decision` or the action runs. With `nornyx`
+  1.10.x and 1.11.0 the old behaviour remains: the action runs and the
+  evidence fails validation. (`make_governed_tool` refuses an explicit
+  recorder with every supported core; see Fixed.)
 
 ## [0.3.0] - 2026-08-05
 

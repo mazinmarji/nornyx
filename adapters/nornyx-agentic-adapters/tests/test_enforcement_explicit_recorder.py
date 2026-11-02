@@ -57,7 +57,7 @@ def runtime():
 
 
 @pytest.mark.parametrize("request_", [_ALLOW, _DENY], ids=["allow", "deny"])
-def test_explicit_recorder_fails_closed_before_action(runtime, request_) -> None:
+def test_explicit_recorder_behaviour_matches_installed_core(runtime, request_) -> None:
     authorizer, context = runtime
     recorder = EvidenceRecorder.for_occurrences(authorizer, context, producer_id="explicit-enforce")
     calls: list[int] = []
