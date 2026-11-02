@@ -316,5 +316,5 @@ that mixes producers, or whose envelope and events name different producers,
 validated before and now fails. `docs/VERSIONING.md` rule 7 now records how
 a stricter validator on an unchanged schema is classified; under it, #110
 rejects internally inconsistent input, which may ship in a minor release.
-The release itself and its version remain separate founder decisions. No
-release or schema-version change is part of these changes.
+Release versioning and publication are governed by the separate release
+process. No release or schema-version change is part of these changes.
