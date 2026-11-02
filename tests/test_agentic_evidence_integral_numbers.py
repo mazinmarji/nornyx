@@ -16,6 +16,7 @@ import math
 import shutil
 from contextlib import redirect_stdout
 from copy import deepcopy
+from enum import IntEnum
 from io import StringIO
 from pathlib import Path
 
@@ -294,10 +295,10 @@ def test_valid_stream_with_whole_float_numbers_still_passes(setup, mode) -> None
 def test_validation_does_not_modify_the_supplied_stream(setup, mode) -> None:
     stream, lock = _recorded(setup, mode)
     floated = _as_floats(stream)
-    snapshot = deepcopy(floated)
+    snapshot = json.dumps(floated, sort_keys=True)
     _validate(setup, lock, floated)
-    assert floated == snapshot
-    assert all(type(event["sequence"]) is float for event in floated["events"])
+    # json.dumps tells 2.0 from 2, which == does not.
+    assert json.dumps(floated, sort_keys=True) == snapshot
 
 
 def test_whole_float_attempt_cannot_evade_replay_detection(setup) -> None:
@@ -378,8 +379,66 @@ def test_conversion_bounds_match_the_bundled_schema() -> None:
         assert field["type"] == "integer"
         assert type(_schema_integer(float(field["minimum"]))) is int
         assert type(_schema_integer(float(field["maximum"]))) is int
-        assert _schema_integer(float(field["minimum"] - 1)) == field["minimum"] - 1
+        assert type(_schema_integer(float(field["minimum"] - 1))) is float
         assert type(_schema_integer(float(field["maximum"] + 1))) is float
+
+
+class _Float(float):
+    """A plain float subclass, as numpy.float64 is."""
+
+
+class _Int(int):
+    """A plain int subclass."""
+
+
+class _Attempt(IntEnum):
+    TWO = 2
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(_Float(2.0), 2), (_Int(2), 2), (_Attempt.TWO, 2), (_Float(1_000_000.0), 1_000_000)],
+)
+def test_schema_valid_subclass_numbers_become_exact_ints(value, expected) -> None:
+    from nornyx.agentic_evidence import _schema_integer
+
+    result = _schema_integer(value)
+    assert type(result) is int
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "value", [_Float(2.5), _Float(math.nan), _Float(0.0), _Int(0), _Int(1_000_001)]
+)
+def test_schema_rejected_subclass_numbers_are_not_converted(value) -> None:
+    from nornyx.agentic_evidence import _schema_integer
+
+    assert _schema_integer(value) is value
+
+
+@pytest.mark.parametrize("number", [_Float, _Int])
+@pytest.mark.parametrize("mode", MODES)
+def test_subclass_sequence_gets_the_integer_verdict(setup, mode, number) -> None:
+    # The direct API can receive numbers the JSON loader never produces, such
+    # as numpy.float64; the schema accepts them, so the checks must see them.
+    stream, lock = _recorded(setup, mode)
+    target = _missing_allowance(stream, mode)
+    integer_report = _validate(setup, lock, stream)
+    stream["events"][target]["sequence"] = number(stream["events"][target]["sequence"])
+    report = _validate(setup, lock, stream)
+    assert "AN_EVT_TOOL_WITHOUT_ALLOWANCE" in _codes(report)
+    assert _diagnostics(report) == _diagnostics(integer_report)
+
+
+@pytest.mark.parametrize("attempt", [_Float(2.0), _Int(2), _Attempt.TWO])
+def test_subclass_attempt_gets_the_integer_verdict(setup, attempt) -> None:
+    stream, lock = _recorded(setup, "1.1-explicit")
+    target = _retry_after_success(stream, "1.1-explicit")
+    integer_report = _validate(setup, lock, stream)
+    stream["events"][target]["occurrence"]["attempt"] = attempt
+    report = _validate(setup, lock, stream)
+    assert "AN_EVT_ATTEMPT_AFTER_SUCCESS" in _codes(report)
+    assert _diagnostics(report) == _diagnostics(integer_report)
 
 
 def _run_cli(setup, lock: dict, stream: dict, tmp_path: Path, name: str) -> tuple[int, dict]:

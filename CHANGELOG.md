@@ -61,15 +61,19 @@ distribution version is independent of the Nornyx **language/schema** version
 - `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
   no longer lets a `sequence` or `occurrence.attempt` written as a
   whole-number float, such as `2.0`, skip its semantic checks. JSON Schema
-  accepts `2.0` as an integer, but the per-mission checks read only exact
-  `int` values, so such an event was silently left out of the sequence,
-  duplicate, dependency-order, pairing (allowance, approval, delegation,
-  handoff), replay, and occurrence-attempt checks, and a stream that fails
-  with `2` could validate `pass` with `2.0`, including through the CLI with
-  `--strict`. A finite whole-number float inside the schema's 1 to 1,000,000
-  range is now treated as that integer, so `2.0` gets exactly the verdict of
-  `2`; booleans, fractions, non-finite and out-of-range values are not
-  converted and still fail as `AN_EVT_SCHEMA_INVALID`. The supplied payload is
+  accepts `2.0` as an integer, but the per-mission checks read only `int`
+  values, so an event with such a `sequence` was silently left out of the
+  duplicate, sequence, ordering, pairing (allowance, approval, delegation,
+  handoff) and occurrence-attempt checks, and an `attempt` written that way
+  was left out of the occurrence-attempt checks and let an exact replay go
+  undetected. A stream that fails with `2` could therefore validate `pass`
+  with `2.0`, including through the CLI with `--strict`. A finite
+  whole-number float inside the schema's 1 to 1,000,000 range is now treated
+  as that integer, so `2.0` gets exactly the verdict of `2`; on the direct
+  Python API the same holds for float and int subclasses such as
+  `numpy.float64` or an `IntEnum`. Booleans, fractions, non-finite and
+  out-of-range values are not converted and still fail as
+  `AN_EVT_SCHEMA_INVALID`. The supplied payload is
   not modified. `EvidenceRecorder.resume()` stores such a prefix value as the
   integer, so the resumed recorder continues the sequence and counts recorded
   attempts correctly. **Compatibility:** a stream that passed only because

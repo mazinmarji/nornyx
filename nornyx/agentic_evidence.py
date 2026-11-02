@@ -178,22 +178,35 @@ _SCHEMA_INTEGER_MAXIMUM = 1_000_000
 
 
 def _schema_integer(value: Any) -> Any:
-    """Return a schema-valid whole-number float as an exact ``int``.
+    """Return a schema-valid integer value as an exact ``int``.
 
-    Only a finite, integral float inside the schema's bounds is converted, so
-    every value the schema accepts reaches the semantic checks as an ``int``.
-    Anything else (an ``int``, a boolean, a fraction, a non-finite or
-    out-of-range float, a non-number) is returned unchanged and is left to the
-    schema diagnostics.
+    A finite, integral float, or an int subclass, inside the schema's bounds is
+    converted, so every number the schema accepts reaches the semantic checks
+    as an exact ``int``. Subclasses are read through the base type, as
+    ``_detach_plain`` reads them. Anything else (an exact ``int``, a boolean, a
+    fraction, a non-finite or out-of-range number, a non-number) is returned
+    unchanged and is left to the schema diagnostics.
     """
 
-    if (
-        type(value) is float
-        and math.isfinite(value)
-        and value.is_integer()
-        and _SCHEMA_INTEGER_MINIMUM <= value <= _SCHEMA_INTEGER_MAXIMUM
-    ):
-        return int(value)
+    if isinstance(value, bool) or type(value) is int:
+        return value
+    if isinstance(value, int):
+        # An int subclass (an IntEnum, say): the schema accepts it, but the
+        # attempt checks read only an exact int.
+        number = int.__int__(value)
+        if _SCHEMA_INTEGER_MINIMUM <= number <= _SCHEMA_INTEGER_MAXIMUM:
+            return number
+        return value
+    if isinstance(value, float):
+        # Read a float subclass (numpy.float64, say) through the base type, so
+        # it is judged and converted as a float.
+        number = float.__float__(value)
+        if (
+            math.isfinite(number)
+            and number.is_integer()
+            and _SCHEMA_INTEGER_MINIMUM <= number <= _SCHEMA_INTEGER_MAXIMUM
+        ):
+            return int(number)
     return value
 
 
