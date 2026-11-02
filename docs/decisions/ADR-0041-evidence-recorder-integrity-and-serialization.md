@@ -173,7 +173,8 @@ top-level or per-event — can never change what a later call to `stream()` or
   sharing one instance: sequence numbers are assigned without loss or
   duplication, a decision's intents commit as an indivisible batch, and a
   `stream()` snapshot taken mid-write is always internally consistent (never
-  a torn view).
+  a torn view; see the evidence-integrity revision note below for one known
+  exception during `resume()`).
 - A hostile or buggy adapter cannot use a crafted supported builtin subclass,
   a non-string mapping key, or an unsupported field-value type to execute a
   subclass override during recorder canonicalization, corrupt recorder state,
@@ -243,3 +244,51 @@ and fixed before independent audit:
    by building every event in a batch into a local list first and writing to
    `self._sequences`/`self._events` only after every build in the batch has
    succeeded; `_stamp` was fixed the same way for its single event.
+
+## Revision note (evidence-integrity follow-ups, unreleased)
+
+After 1.11.0, five merged pull requests tightened the recorder and the
+validator. None is released yet; the `[Unreleased]` entries in the CHANGELOG
+are the authoritative description of each change.
+
+- PR #107: `record_decision` and `record_observation` raise `ValueError`,
+  before any mutation, on an explicit occurrence-mode recorder.
+- PR #108: caller fields can no longer replace what the recorder stamps.
+  Every recording path checks each built event's envelope and occurrence
+  against the call before committing a detached copy, `for_occurrences()`
+  and `resume()` refuse, under the lock, a recorder that already recorded
+  events, and `resume()` refuses a prior stream that names a different
+  producer.
+- PR #109: the runtime-evidence guide and security boundaries state that
+  event timestamps are producer-asserted (documentation only).
+- PR #110: `validate_runtime_events` reports `AN_EVT_PRODUCER_MISMATCH` when
+  an event's `producer` differs from the events file's own, in runtime-events
+  schema 1.0 and 1.1. This is internal consistency of the supplied file, not
+  producer authentication.
+- PR #111: `tests/test_agentic_recorder_concurrency.py` forces two-thread
+  interleavings against the recorder's own lock. It covers sections 5 and 6
+  for every write path and schema mode: batches commit as one adjacent run,
+  sequences stay contiguous, a refused batch leaves no trace, and
+  `for_occurrences()` and `resume()` check and install in one lock hold. It is
+  test-only and found no defect in the paths it covers.
+
+**Known exception to section 6.** `stream()` takes its producer and event
+snapshot under the lock but reads `_occurrence_mode` after releasing it. If
+`resume()` installs an explicit mode and prefix between those two points,
+`stream()` returns `occurrence_mode: explicit` with an empty event list.
+Reaching that window needs another thread to hold the recorder while
+`resume()` is still building it, for example through a trusted subclass that
+leaks the instance from `__init__`. The result is still a valid stream and
+never mixes modes, but it is not a single-point-in-time snapshot. The
+candidate correction, reading the mode in the same lock hold, is a runtime
+change; it needs its own minimal, independently reviewed patch and is not
+part of the changes above.
+
+**Release precondition.** PR #110 makes validation stricter for
+runtime-events schema 1.0 and 1.1 without a schema-version change: a file
+that mixes producers, or whose envelope and events name different producers,
+validated before and now fails. `docs/VERSIONING.md` does not yet say which
+package-version bump a stricter validator on an unchanged schema requires.
+That decision must be made and recorded before any package release that
+includes PR #110. No release or schema-version change is part of these
+changes.

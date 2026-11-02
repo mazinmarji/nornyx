@@ -172,6 +172,12 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Documentation
 
+- ADR-0041 gains a revision note that records the unreleased recorder and
+  validator follow-ups (PRs #107 to #111), one known exception to its
+  snapshot guarantee (`stream()` reads the occurrence mode after releasing the
+  lock, which `resume()` can race only through a subclass that leaks the
+  recorder), and the versioning decision required before any release that
+  includes the stricter producer check. No runtime, schema, or package change.
 - State that runtime-event timestamps are producer-asserted:
   `docs/agentic-network/06_RUNTIME_EVIDENCE.md` and the residual risks in
   `docs/agentic-network/08_SECURITY_BOUNDARIES.md` now say that identity,
