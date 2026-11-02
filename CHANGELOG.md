@@ -19,20 +19,19 @@ distribution version is independent of the Nornyx **language/schema** version
   name nothing; a relation only the active profile declares, used with a pair
   it does not declare, warns `UNDECLARED_GRAPH_RELATION_PAIR`; and a
   `depends_on` cycle warns `GRAPH_CYCLE` (edges used exactly as declared; other
-  relations are not cycle-checked). All new codes are warnings (`--strict`
-  promotes them), `depends_on` no longer relates unknown kinds, and no shipped
+  relations are not cycle-checked). All new codes except
+  `GRAPH_VOCABULARY_UNAVAILABLE` are warnings (`--strict` promotes them), `depends_on` no longer relates unknown kinds, and no shipped
   example or generated profile document gains a diagnostic. **Compatibility:**
-  every contract Nornyx 1.11.0 accepted is still accepted by `nornyx check`,
-  the agentic-network commands and `load_authorizer`. The existing errors keep
+  the graph checks accept every contract Nornyx 1.11.0 accepted, in
+  `nornyx check`, the agentic-network commands and `load_authorizer`. The existing errors keep
   their 1.11.0 meaning: `INVALID_GRAPH_RELATION_PAIR` for a core relation used
   with a disallowed pair, and `UNKNOWN_GRAPH_REF_REFERENCE` for the fourteen ref
   kinds 1.11.0 resolved. Two verdicts are relaxed: a core relation touching a
   kind outside the vocabulary now warns `UNKNOWN_GRAPH_NODE_KIND` instead of
   failing the pair check, and a core relation used with a pair the active
-  profile declares is accepted. An unresolved `profile`/`project`/`contract`
-  ref may become an error in a later minor release; an undeclared pair of a
-  profile-only relation will not, since 1.11.0 documented custom relations as
-  allowed with a warning. `check_document` takes an optional `graph_vocabulary`;
+  profile declares is accepted. Promoting either new warning to an error is
+  not planned for a minor release: 1.11.0 documented custom relations as
+  allowed with a warning, and `profile` refs are compared as literal names. `check_document` takes an optional `graph_vocabulary`;
   `governance.check_document_with_governance` composes a document and checks it
   against its profile, and `nornyx check`, the agentic-network commands and
   `nornyx.agentic.load_authorizer` use it, so a project-supplied profile's pairs

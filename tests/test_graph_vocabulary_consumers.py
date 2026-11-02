@@ -10,6 +10,7 @@ profile discovered from ``<contract dir>/.nornyx/profiles/``.
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -175,13 +176,23 @@ def test_b3_nornyx_check_applies_the_same_composed_vocabulary(tmp_path: Path, ca
     assert "GRAPH_VOCABULARY_PROFILE_UNRESOLVED" not in out
     assert "UNKNOWN_GRAPH_NODE_KIND" not in out
 
-    rejected = tmp_path / "rejected"
-    rejected.mkdir()
-    contract, _ = _project(rejected, MISMATCHED_EDGE)
+    undeclared = tmp_path / "undeclared"
+    undeclared.mkdir()
+    contract, _ = _project(undeclared, MISMATCHED_EDGE)
     assert main(["check", "--as-of", AS_OF, str(contract)]) == 0
     assert "UNDECLARED_GRAPH_RELATION_PAIR" in capsys.readouterr().out
     assert main(["check", "--as-of", AS_OF, "--strict", str(contract)]) == 1
-    assert "UNDECLARED_GRAPH_RELATION_PAIR" in capsys.readouterr().out
+    # The base example carries another warning; the strict summary must name this one.
+    strict = re.search(
+        r'"code": "STRICT_WARNINGS_PRESENT",\s*"message": "([^"]*)"', capsys.readouterr().out
+    )
+    assert strict and "UNDECLARED_GRAPH_RELATION_PAIR" in strict.group(1)
+
+    rejected = tmp_path / "rejected"
+    rejected.mkdir()
+    contract, _ = _project(rejected, CORE_MISMATCHED_EDGE)
+    assert main(["check", "--as-of", AS_OF, str(contract)]) == 1
+    assert "INVALID_GRAPH_RELATION_PAIR" in capsys.readouterr().out
 
 
 # ------------------------------------------ the shared helper and the fallback

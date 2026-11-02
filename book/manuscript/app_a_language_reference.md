@@ -370,8 +370,9 @@ attempts.
 
 Under the 0.2 marker a contract may declare a typed graph. Nodes require `id` and `kind`; duplicate
 ids are errors; edge endpoints must be declared nodes; a node carrying `ref` must resolve into the
-matching named block for its kind; and evidence nodes without a `ref` are flagged. Self-edges and
-duplicate edges are rejected.
+matching named block for its kind (a `profile`, `project` or `contract` ref that resolves to
+nothing warns, `UNRESOLVED_GRAPH_NODE_REF`); and evidence nodes without a `ref` are flagged.
+Self-edges and duplicate edges warn.
 
 Twenty-three relation verbs are typed with allowed source and target kinds
 (`GRAPH_RELATION_RULES` in `nornyx/checker.py`): `authorizes_context_for`, `bounded_by`, `bounds`, `depends_on`,
@@ -379,8 +380,10 @@ Twenty-three relation verbs are typed with allowed source and target kinds
 `produces`, `produces_artifact`, `produces_evidence`, `records_trace`, `requires_evidence`,
 `scopes_context`, `satisfies_intent`, `uses_connector`, `uses_context`, `validates`,
 `validated_by`, and `validates_contract`. An unrecognised relation warns
-(`UNKNOWN_GRAPH_RELATION`); a recognised relation used between the wrong kinds is an error
-(`INVALID_GRAPH_RELATION_PAIR`). Only `depends_on` accepts any pair.
+(`UNKNOWN_GRAPH_RELATION`); a core relation used between the wrong kinds is an error
+(`INVALID_GRAPH_RELATION_PAIR`), while a relation only the active profile declares, used with a
+pair the profile does not declare, warns (`UNDECLARED_GRAPH_RELATION_PAIR`). `depends_on` accepts
+any pair of known kinds.
 
 The `contracts` block ties graph nodes to approvals and budgets; approval and budget references
 must resolve to declared entries, and the checker warns when approvals, budgets, or evidence are

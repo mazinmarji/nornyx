@@ -21,6 +21,7 @@ ref of the fourteen kinds 1.11.0 already resolved, are still errors.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from contextlib import redirect_stdout
 from io import StringIO
@@ -261,9 +262,17 @@ def test_nornyx_check_passes_and_strict_promotes_the_warning(tmp_path: Path, cas
     code, out = _cli(["check", "--as-of", AS_OF, str(contract)])
     assert code == 0, out
 
+    # The base example already carries another warning, so the exit code alone
+    # cannot show this one is promoted; the strict summary must name it.
     code, out = _cli(["check", "--as-of", AS_OF, "--strict", str(contract)])
     assert code == 1
-    assert warning in out and "STRICT_WARNINGS_PRESENT" in out
+    assert warning in _strict_summary(out), out
+
+
+def _strict_summary(out: str) -> str:
+    match = re.search(r'"code": "STRICT_WARNINGS_PRESENT",\s*"message": "([^"]*)"', out)
+    assert match, out
+    return match.group(1)
 
 
 @pytest.mark.parametrize(("case", "warning"), CASES)
@@ -315,10 +324,11 @@ def test_load_authorizer_accepts_a_lock_built_for_the_mismatched_pack_pair(tmp_p
     assert authorizer.contract_digest.startswith("sha256:")
 
 
-@pytest.mark.parametrize(("case", "warning"), CASES)
-def test_core_static_generate_and_repo_drift_accept_the_contract(
-    tmp_path: Path, case: str, warning: str
-) -> None:
+@pytest.mark.parametrize("case", ["ref", "pair"])
+def test_core_static_generate_and_repo_drift_accept_the_contract(tmp_path: Path, case: str) -> None:
+    # Core-static tools use the built-in-profile fallback, so the project pack's
+    # pair rule never applies to them ("pair" guards that); the ref case failed
+    # before the fix.
     contract = _agentic_project(tmp_path, case)
     out_dir = tmp_path / "generated"
 
