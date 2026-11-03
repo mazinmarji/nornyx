@@ -50,10 +50,16 @@ jobs:
     steps:
       - name: Checkout the exact commit the release tag targets
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Verify the release tag matches vX.Y.Z and binds to the package version
         id: check
+        # The tag name reaches the script as data, never as script text: git
+        # allows quotes, `$`, `;` and `(` in tag names.
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          tag="${{ github.event.release.tag_name }}"
+          tag="$TAG_NAME"
           if [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             tag_version="${BASH_REMATCH[1]}"
             pkg_version="$(grep -m1 -E '^version[[:space:]]*=' pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
@@ -82,6 +88,16 @@ jobs:
           python-version: "3.12"
       - run: pip install build
       - run: python -m build
+      # Bind what is uploaded, not only what pyproject.toml declares: exactly
+      # the sdist and wheel for the tag's version, nothing else.
+      - name: Verify the built distributions carry the release tag's version
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          test -f "dist/nornyx-${version}.tar.gz"
+          test -f "dist/nornyx-${version}-py3-none-any.whl"
+          test "$(ls dist | wc -l)" -eq 2
       - uses: pypa/gh-action-pypi-publish@release/v1
         # No token needed: PyPI verifies the OIDC identity of this workflow.
         with:

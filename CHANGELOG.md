@@ -230,9 +230,11 @@ classifies the stricter behavior.
   job, could not run. The core release gate now also requires the `vX.Y.Z` tag
   to equal the `pyproject.toml` version at the tagged commit, as the adapter
   gate already did for `adapters-vX.Y.Z`; a mismatched tag publishes nothing.
-  The adapter publish step declares `attestations: true` explicitly, matching
-  the core workflow. No credential, environment, or publishing permission
-  changes.
+  Both publish jobs check that they built exactly the sdist and wheel for the
+  tag's version, and both tag gates read the tag name from an environment
+  variable instead of interpolating it into the script. The adapter publish
+  step declares `attestations: true` explicitly, matching the core workflow.
+  No credential, environment, or publishing permission changes.
 - ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
   `adapter-conformance` CI job that installs both framework extras at their
   exact pins, requires both suites so a missing extra cannot pass as a silent
