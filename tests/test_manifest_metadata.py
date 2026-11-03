@@ -23,9 +23,9 @@ def test_manifest_current_validation_is_fresh() -> None:
     assert manifest["language_version"] == "1.0.0"
     assert manifest["updated_for"] == f"{__version__}-release-candidate"
     assert validation["goal"] == f"{__version__}-release-candidate"
-    assert validation["date"] == "2026-08-01"
+    assert validation["date"] == "2026-11-03"
     assert validation["test_command"] == "python -m pytest -q"
-    assert validation["package_publication"] == "1.10.0"
+    assert validation["package_publication"] == "1.11.0"
     assert validation["release_check"]["blocked"] == 0
     assert validation["release_check"]["warning"] == 1
     assert validation["stable_language_check"]["blocked"] == 0
@@ -33,9 +33,9 @@ def test_manifest_current_validation_is_fresh() -> None:
 
     test_result = validation["test_result"]
     for marker in (
-        "Authorizer.state",
-        "AuthorizerState",
-        "SPI 1.2",
+        "nornyx.agentic.authzen",
+        "SPI 1.3",
+        "UNKNOWN_POLICY_RULE",
         "runtime-events schema 1.1",
         "focused release-consistency checks",
         "core build",
