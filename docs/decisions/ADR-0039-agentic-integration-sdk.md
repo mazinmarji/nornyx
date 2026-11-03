@@ -498,6 +498,7 @@ that carries it (`docs/VERSIONING.md` rule 6).
 | --- | --- | --- | --- | --- |
 | 0.1.x | 1.0 (nornyx 1.8–1.x) | 1.15.4 | Not implemented | 3.10–3.13 |
 | 0.2.x | 1.1 (nornyx 1.10–1.x) | 1.15.4 | 1.2.2 | 3.10–3.13 |
+| 0.3.x | 1.x (nornyx 1.10–1.x) | 1.15.4 | 1.2.2 | 3.10–3.13 |
 
 ## Consequences
 

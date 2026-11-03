@@ -72,7 +72,7 @@ FRAMEWORK = "langgraph"
 
 METADATA = AdapterMetadata(
     adapter_name="nornyx-agentic-adapters-langgraph",
-    adapter_version="0.3.0",
+    adapter_version="0.3.1",
     spi_version=SPI_VERSION,
     framework_name=FRAMEWORK,
     framework_version_range=f"=={_REQUIRED_LANGGRAPH_VERSION}",
