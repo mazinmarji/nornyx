@@ -7,9 +7,11 @@ name: adapters-release
 # must equal the adapter package's own pyproject.toml version at the exact
 # commit the tag targets — a tag/version mismatch (e.g. tagging
 # adapters-v0.2.1 while the package still declares 0.2.0) fails closed rather
-# than publishing. Manual dispatch runs the test job without deploying to
-# PyPI and cannot satisfy the binding check (there is no release tag to
-# evaluate). This workflow never creates, moves, or repairs tags.
+# than publishing. A release marked as a prerelease publishes nothing, and
+# neither does a tag on a commit that main does not contain. Manual dispatch
+# runs the test job without deploying to PyPI and cannot satisfy the binding
+# check (there is no release tag to evaluate). This workflow never creates,
+# moves, or repairs tags.
 #
 # Requires its own one-time PyPI trusted-publisher registration for the
 # `nornyx-agentic-adapters` project (repo mazinmarji/nornyx, workflow
@@ -68,28 +70,39 @@ jobs:
       - name: Checkout the exact commit the release tag targets
         uses: actions/checkout@v4
         with:
+          # Full history fetches every branch to refs/remotes/origin/*, so the
+          # check below can confirm main contains the tagged commit.
+          fetch-depth: 0
           persist-credentials: false
-      - name: Verify tag matches adapters-vX.Y.Z and binds to the package version
+      - name: Verify tag matches adapters-vX.Y.Z, binds to the package version, is not a prerelease and is on main
         id: check
-        # The tag name reaches the script as data, never as script text: git
-        # allows quotes, `$`, `;` and `(` in tag names.
+        # The tag name and the prerelease flag reach the script as data, never
+        # as script text: git allows quotes, `$`, `;` and `(` in tag names.
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           tag="$TAG_NAME"
+          eligible=false
           if [[ "$tag" =~ ^adapters-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             tag_version="${BASH_REMATCH[1]}"
             pkg_version="$(grep -m1 -E '^version[[:space:]]*=' adapters/nornyx-agentic-adapters/pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
             pkg_version="${pkg_version%$'\r'}"
-            if [[ "$tag_version" == "$pkg_version" ]]; then
-              echo "eligible=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "eligible=false" >> "$GITHUB_OUTPUT"
+            if [[ "$tag_version" != "$pkg_version" ]]; then
               echo "::error::release tag adapters-v${tag_version} does not match adapter package version ${pkg_version} at this commit"
+            elif [[ "$PRERELEASE" != "false" ]]; then
+              # An adapters-vX.Y.Z upload is a final release on PyPI and cannot
+              # be replaced, so a GitHub prerelease never publishes.
+              echo "::error::release ${tag} is marked as a prerelease; prereleases never publish"
+            elif ! main_sha="$(git show-ref --verify --hash refs/remotes/origin/main)" || ! git merge-base --is-ancestor HEAD "$main_sha"; then
+              # main is resolved by its full ref name only, so no tag or branch
+              # named like it can stand in for it; a missing main refuses.
+              echo "::error::release tag ${tag} targets a commit that main does not contain"
+            else
+              eligible=true
             fi
-          else
-            echo "eligible=false" >> "$GITHUB_OUTPUT"
           fi
+          echo "eligible=${eligible}" >> "$GITHUB_OUTPUT"
 
   publish:
     if: github.event_name == 'release' && needs.check-adapter-tag.outputs.eligible == 'true'

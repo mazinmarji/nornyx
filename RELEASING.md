@@ -46,7 +46,9 @@ automatically (see [`.github/workflows/release.yml`](.github/workflows/release.y
 
 5. The **release** workflow runs: it tests, builds, and publishes to PyPI. If the
    `pypi` GitHub Environment has a required reviewer, approve the run in the repo's
-   **Actions** tab. Watch it with:
+   **Actions** tab, but only after confirming that the tag gate step ("… is
+   not a prerelease and is on main") passed in that run (see
+   [Release provenance](#release-provenance)). Watch it with:
    ```bash
    gh run watch -R mazinmarji/nornyx
    ```
@@ -82,8 +84,33 @@ sdist and wheel for that version. A mismatched tag publishes nothing
 annotation, the `publish` job is skipped, and the GitHub Release stays
 published with nothing on PyPI.
 Re-running reuses the same commit, so it cannot fix a mismatch: delete the
-release and its tag, fix the version, and create the release again. The gate
-does not check which branch the tagged commit is on; tag a commit on `main`.
+release and its tag, fix the version, and create the release again.
+
+The gate also publishes nothing in two more cases, each with an error
+annotation:
+
+- **The release is marked as a prerelease.** GitHub runs the workflow for
+  prereleases too, but a `vX.Y.Z` or `adapters-vX.Y.Z` upload is a final
+  release on PyPI and cannot be replaced. Changing the release to a full
+  release afterwards does not run the workflow again, and a re-run sees the
+  same prerelease flag. Delete the GitHub Release (the tag can stay), then
+  create a new release for the same tag without "Set as a pre-release".
+- **`main` does not contain the tagged commit.** The gate checks out full
+  history and requires the tagged commit to be an ancestor of `main` as
+  fetched when the gate runs. A commit on a pull request's branch qualifies
+  only once a merge commit brings it into `main`; squash and rebase merges
+  create new commits, so after those it never qualifies. Delete the release
+  and its tag, tag a commit on `main`, and create the release again.
+
+These checks live in the workflow files, and GitHub runs a release with the
+workflow files of the commit the tag targets. They protect only tags on
+commits that include them: a tag on an older commit, or on a branch whose
+workflows differ, runs that commit's own gate. Tag a commit on `main` that
+includes them, and in the run confirm that the gate step ("… is not a
+prerelease and is on main") ran and passed. Each PyPI trusted publisher is
+registered for its environment (`pypi`, `pypi-adapters`), so a workflow that
+drops the environment cannot publish; where that environment requires a
+reviewer, approve the deployment only after that confirmation.
 
 After publishing, confirm what actually reached PyPI:
 

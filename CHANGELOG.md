@@ -234,6 +234,11 @@ classifies the stricter behavior.
   tag's version, and both tag gates read the tag name from an environment
   variable instead of interpolating it into the script. The adapter publish
   step declares `attestations: true` explicitly, matching the core workflow.
+  Both tag gates also refuse a release marked as a prerelease (GitHub runs the
+  release workflows for prereleases too, and PyPI would receive a final
+  release) and a tag on a commit that `main` does not contain. A release runs
+  the workflows of its tagged commit, so these checks cover tags on commits
+  that include them.
   No credential, environment, or publishing permission changes.
 - ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
   `adapter-conformance` CI job that installs both framework extras at their
