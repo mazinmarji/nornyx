@@ -44,40 +44,43 @@ classifies the stricter behavior.
 - **Whole-number floats.** A `sequence` or `occurrence.attempt` written as a
   whole-number float, such as `2.0`, now gets the verdict of the integer in
   `validate_runtime_events`, `nornyx agentic-network evidence-validate`
-  (non-zero exit with `--strict`) and `EvidenceRecorder.resume()`, which
-  raises `ValueError` for such a prefix (see Fixed). A stream valid with
-  integers needs no change. A stream that passed only because float-written
-  values skipped the checks now fails: treat it as failed evidence, and do
-  not rewrite recorded values to make it pass. An `occurrence.attempt` of
-  `2**64` now fails validation instead of raising `OverflowError`.
-- **Recorder subclasses.** A subclass that records during `__init__` before
-  `for_occurrences()` or `resume()` returns, a `_build_event_unlocked`
-  override that alters the envelope or occurrence, and a `_stamp` call on an
-  explicit recorder now raise instead of committing (see Fixed).
+  (non-zero exit with `--strict`) and `EvidenceRecorder.resume()`, which raises
+  `ValueError` for a float-written prefix whose integer form is invalid and
+  resumes one that is valid (see Fixed). A stream valid with integers needs no
+  change. A stream that passed only because float-written values skipped the
+  checks now fails: treat it as failed evidence, and do not rewrite recorded
+  values to make it pass. An `occurrence.attempt` of `2**64` now fails
+  validation instead of raising `OverflowError`.
+- **Recorder subclasses.** A subclass that records during `__init__` now makes
+  `for_occurrences()` or `resume()` raise; a `_build_event_unlocked` override
+  that alters the envelope or occurrence, and a `_stamp` call on an explicit
+  recorder, now raise instead of committing (see Fixed).
 - **Graph checks.** The graph checks accept every contract Nornyx 1.11.0
   accepted, in `nornyx check`, the agentic-network commands and
   `load_authorizer` (see Fixed). Two verdicts are relaxed: a core relation
   touching a kind outside the vocabulary now warns `UNKNOWN_GRAPH_NODE_KIND`
   instead of failing the pair check, and a core relation used with a pair the
   active profile declares is accepted. The new codes are warnings except
-  `GRAPH_VOCABULARY_UNAVAILABLE`, which is reported only when the built-in
-  profile registry cannot be consulted. Promoting
-  `UNDECLARED_GRAPH_RELATION_PAIR` or `UNRESOLVED_GRAPH_NODE_REF` to an error
-  is not planned for a minor release.
+  `GRAPH_VOCABULARY_UNAVAILABLE`, which is reported only when the checker cannot
+  resolve `project.profile` against the built-in profile registry for a reason
+  other than the name being unknown. Promoting `UNDECLARED_GRAPH_RELATION_PAIR`
+  or `UNRESOLVED_GRAPH_NODE_REF` to an error is not planned for a minor release.
 - **`UNKNOWN_POLICY_RULE` and `nornyx check --strict`.** Plain `nornyx check`
   now prints a warning for each `policies.deny` name the policy matcher never
-  evaluates; its exit code is unchanged (see Added). The new, opt-in
-  `nornyx check --strict` fails on any warning-level diagnostic, so `--strict`
-  pipelines must expect new warnings in minor releases. To pass it, remove an
-  inert deny name or keep its intent as guidance outside `deny`; rename it to
-  an evaluated name only where the policy matcher actually implements the
-  intended control, since a renamed rule can start blocking steps. Any edit
-  to a lock-bound agentic-network contract changes its digest, so its
-  existing lock no longer verifies (`AN_LOCK_SOURCE_STALE`); regenerate the
-  lock before loading the edited contract. Contracts created by
-  `nornyx init --profile agentic_network` and `nornyx adopt init-lite` still
-  warn; `docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md` lists every
-  shipped contract that does, and why.
+  evaluates; its exit code is unchanged (see Added). The new, opt-in `nornyx
+  check --strict` fails on any warning-level diagnostic, so `--strict` pipelines
+  must expect new warnings in minor releases. To pass it, remove an inert deny
+  name or keep its intent as guidance outside `deny`; rename it to an evaluated
+  name only where the policy matcher actually implements the intended control,
+  since a renamed rule can start blocking steps. Removing or renaming a deny
+  name in a lock-bound agentic-network contract is a semantic edit: it changes
+  the contract digest, so the existing lock no longer verifies
+  (`AN_LOCK_SOURCE_STALE`); regenerate the lock before loading the edited
+  contract. Comment-only and formatting edits do not change the digest.
+  Contracts created by `nornyx init --profile agentic_network` and `nornyx adopt
+  init-lite` still warn;
+  `docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md` lists every shipped
+  contract that does, and why.
 - **Shipped examples.** Copies of the changed examples, including the bundled
   `org_policies.nyx` and `governed_service.nyx` that `nornyx examples`
   copies, produce `policy.yaml` (from `nornyx generate`) and
@@ -263,41 +266,39 @@ classifies the stricter behavior.
   (issue #104; #105 and #114; ADR-0046). `graph.nodes[].kind` outside the
   nineteen core kinds and the active profile's `graph.node_kinds` warns
   `UNKNOWN_GRAPH_NODE_KIND`; profile `graph.relationship_constraints` are read
-  for the first time and
-  add exact `(from_kind, to_kind)` pairs to a relation without narrowing core
-  rules or combining with each other; `artifact`/`module`/profile kinds without
-  a `ref` warn `GRAPH_NODE_WITHOUT_REF`; `profile`, `project` and `contract`
-  node refs resolve in-document and warn `UNRESOLVED_GRAPH_NODE_REF` when they
-  name nothing; a relation only the active profile declares, used with a pair
-  it does not declare, warns `UNDECLARED_GRAPH_RELATION_PAIR`; and a
-  `depends_on` cycle warns `GRAPH_CYCLE` (edges used exactly as declared; other
-  relations are not cycle-checked). All new codes except
-  `GRAPH_VOCABULARY_UNAVAILABLE` are warnings (`--strict` promotes them),
-  `depends_on` no longer relates unknown kinds, and no shipped example or
-  generated profile document gains any of these graph diagnostics.
-  **Compatibility:** the graph
-  checks accept every contract Nornyx 1.11.0 accepted, in `nornyx check`, the
-  agentic-network commands and `load_authorizer`. The existing errors keep
-  their 1.11.0 meaning: `INVALID_GRAPH_RELATION_PAIR` for a core relation used
-  with a disallowed pair, and `UNKNOWN_GRAPH_REF_REFERENCE` for the fourteen ref
-  kinds 1.11.0 resolved. Two verdicts are relaxed: a core relation touching a
-  kind outside the vocabulary now warns `UNKNOWN_GRAPH_NODE_KIND` instead of
-  failing the pair check, and a core relation used with a pair the active
-  profile declares is accepted. Promoting `UNDECLARED_GRAPH_RELATION_PAIR` or
+  for the first time and add exact `(from_kind, to_kind)` pairs to a relation
+  without narrowing core rules or combining with each other;
+  `artifact`/`module`/profile kinds without a `ref` warn
+  `GRAPH_NODE_WITHOUT_REF`; `profile`, `project` and `contract` node refs
+  resolve in-document and warn `UNRESOLVED_GRAPH_NODE_REF` when they name
+  nothing; a relation only the active profile declares, used with a pair it does
+  not declare, warns `UNDECLARED_GRAPH_RELATION_PAIR`; and a `depends_on` cycle
+  warns `GRAPH_CYCLE` (edges used exactly as declared; other relations are not
+  cycle-checked). All new codes except `GRAPH_VOCABULARY_UNAVAILABLE` are
+  warnings (`--strict` promotes them), `depends_on` no longer relates unknown
+  kinds, and no shipped example or generated profile document gains any of these
+  graph diagnostics. **Compatibility:** the graph checks accept every contract
+  Nornyx 1.11.0 accepted, in `nornyx check`, the agentic-network commands and
+  `load_authorizer`. The existing errors keep their 1.11.0 meaning:
+  `INVALID_GRAPH_RELATION_PAIR` for a core relation used with a disallowed pair,
+  and `UNKNOWN_GRAPH_REF_REFERENCE` for the fourteen ref kinds 1.11.0 resolved.
+  Two verdicts are relaxed: a core relation touching a kind outside the
+  vocabulary now warns `UNKNOWN_GRAPH_NODE_KIND` instead of failing the pair
+  check, and a core relation used with a pair the active profile declares is
+  accepted. Promoting `UNDECLARED_GRAPH_RELATION_PAIR` or
   `UNRESOLVED_GRAPH_NODE_REF` to an error is not planned for a minor release:
   1.11.0 documented custom relations as allowed with a warning, and `profile`
   refs are compared as literal names. `check_document` takes an optional
-  `graph_vocabulary`, which
-  `governance.graph_vocabulary_for_composition` builds;
-  `governance.check_document_with_governance` composes a document and checks it
-  against its profile, and `nornyx check`, the agentic-network commands and
-  `nornyx.agentic.load_authorizer` use it, so a project-supplied profile's pairs
-  apply identically wherever a verdict is produced. A `project.profile` that
-  names no built-in profile is reported by the bare checker
-  (`GRAPH_VOCABULARY_PROFILE_UNRESOLVED`, warning) and a profile registry that
-  cannot be consulted is an error (`GRAPH_VOCABULARY_UNAVAILABLE`) rather than
-  silent core-only checking. The `nornyx schema` graph-validation summary
-  gains `vocabulary` and `cycles` entries describing these rules.
+  `graph_vocabulary`, which `governance.graph_vocabulary_for_composition`
+  builds; `governance.check_document_with_governance` composes a document and
+  checks it against its profile, and `nornyx check`, the agentic-network
+  commands and `nornyx.agentic.load_authorizer` use it, so a project-supplied
+  profile's pairs apply identically wherever a verdict is produced. A
+  `project.profile` that names no built-in profile is reported by the bare
+  checker (`GRAPH_VOCABULARY_PROFILE_UNRESOLVED`, warning) and a profile
+  registry that cannot be consulted is an error (`GRAPH_VOCABULARY_UNAVAILABLE`)
+  rather than silent core-only checking. The `nornyx schema` graph-validation
+  summary gains `vocabulary` and `cycles` entries describing these rules.
 - `EvidenceRecorder.record_decision` and `record_observation` now raise
   `ValueError`, before any mutation, on an explicit occurrence-mode recorder
   (one from `EvidenceRecorder.for_occurrences()` or resumed from an explicit
@@ -375,13 +376,13 @@ classifies the stricter behavior.
 ### Documentation
 
 - ADR-0041 gains a revision note that records the unreleased recorder and
-  validator follow-ups (PRs #107 to #111), one known exception to its
-  snapshot guarantee (`stream()` reads the occurrence mode after releasing the
-  lock, which `for_occurrences()` or `resume()` can race only through a
-  subclass that leaks the recorder), and, for the stricter producer check,
-  a pointer to `docs/VERSIONING.md` rule 7, which classifies it, and its
-  compatibility exception for recorder-owned fields (#115). No runtime,
-  schema, or package change.
+  validator follow-ups (PRs #107 to #111), one known exception to its snapshot
+  guarantee (`stream()` reads the occurrence mode after releasing the lock,
+  which `for_occurrences()` or `resume()` can race only through a subclass that
+  leaks the recorder), and, for the stricter producer check, a pointer to
+  `docs/VERSIONING.md` rule 7, which classifies it, and a record of the narrow
+  compatibility exception for recorder-owned fields (#115). No runtime, schema,
+  or package change.
 - State that runtime-event timestamps are producer-asserted:
   `docs/agentic-network/06_RUNTIME_EVIDENCE.md` and the residual risks in
   `docs/agentic-network/08_SECURITY_BOUNDARIES.md` now say that identity,
@@ -470,9 +471,9 @@ classifies the stricter behavior.
 - For the M2-D compatibility shim: runtime behavior changes only in the
   unpackaged repository compatibility tree; the shim changes no core or adapter
   runtime code, package version, runtime-events schema, SPI version,
-  occurrence/replay semantics, or core Authorizer policy behavior. Because the
-  adapter package README changes wheel metadata; that README change shipped
-  in `nornyx-agentic-adapters` 0.3.0.
+  occurrence/replay semantics, or core Authorizer policy behavior. The adapter
+  package README change, which alters wheel metadata, shipped in
+  `nornyx-agentic-adapters` 0.3.0.
 
 ## [1.11.0] - 2026-08-01
 
