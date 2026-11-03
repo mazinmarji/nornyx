@@ -7,7 +7,9 @@ name: release
 # shape (adapters-vX.Y.Z, a prerelease suffix, an unrelated tag) is excluded.
 # The tag's X.Y.Z must also equal the `pyproject.toml` version at the exact
 # commit the tag targets, as in adapters-release.yml: a well-formed tag on a
-# commit that declares a different version publishes nothing.
+# commit that declares a different version publishes nothing. A release marked
+# as a prerelease publishes nothing, and neither does a tag on a commit that
+# main does not contain.
 # Manual dispatch runs the test job without deploying to PyPI.
 on:
   release:
@@ -51,28 +53,37 @@ jobs:
       - name: Checkout the exact commit the release tag targets
         uses: actions/checkout@v4
         with:
+          # Full history fetches every branch to refs/remotes/origin/*, so the
+          # check below can confirm main contains the tagged commit.
+          fetch-depth: 0
           persist-credentials: false
-      - name: Verify the release tag matches vX.Y.Z and binds to the package version
+      - name: Verify the release tag matches vX.Y.Z, binds to the package version, is not a prerelease and is on main
         id: check
-        # The tag name reaches the script as data, never as script text: git
-        # allows quotes, `$`, `;` and `(` in tag names.
+        # The tag name and the prerelease flag reach the script as data, never
+        # as script text: git allows quotes, `$`, `;` and `(` in tag names.
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           tag="$TAG_NAME"
+          eligible=false
           if [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             tag_version="${BASH_REMATCH[1]}"
             pkg_version="$(grep -m1 -E '^version[[:space:]]*=' pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
             pkg_version="${pkg_version%$'\r'}"
-            if [[ "$tag_version" == "$pkg_version" ]]; then
-              echo "eligible=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "eligible=false" >> "$GITHUB_OUTPUT"
+            if [[ "$tag_version" != "$pkg_version" ]]; then
               echo "::error::release tag v${tag_version} does not match package version ${pkg_version} at this commit"
+            elif [[ "$PRERELEASE" != "false" ]]; then
+              # A vX.Y.Z upload is a final release on PyPI and cannot be
+              # replaced, so a GitHub prerelease never publishes.
+              echo "::error::release ${tag} is marked as a prerelease; prereleases never publish"
+            elif ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+              echo "::error::release tag ${tag} targets a commit that main does not contain"
+            else
+              eligible=true
             fi
-          else
-            echo "eligible=false" >> "$GITHUB_OUTPUT"
           fi
+          echo "eligible=${eligible}" >> "$GITHUB_OUTPUT"
 
   publish:
     if: github.event_name == 'release' && needs.check-core-tag.outputs.eligible == 'true'
