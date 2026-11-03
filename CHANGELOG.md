@@ -224,6 +224,17 @@ classifies the stricter behavior.
   PyPI. This changes no credential, environment, or publishing authority, and
   makes no claim about already-published artifacts: distributions up to and
   including 1.11.0 report `provenance: null`.
+- Release workflows: the core release test job installs the `dev` extra and
+  Graphviz, as CI does. Without them `tests/test_book_build.py` (which needs
+  `mistune` and `dot`) failed, and the publish job, which depends on the test
+  job, could not run. The core release gate now also requires the `vX.Y.Z` tag
+  to equal the `pyproject.toml` version at the tagged commit, as the adapter
+  gate already did for `adapters-vX.Y.Z`; a mismatched tag publishes nothing.
+  Both publish jobs check that they built exactly the sdist and wheel for the
+  tag's version, and both tag gates read the tag name from an environment
+  variable instead of interpolating it into the script. The adapter publish
+  step declares `attestations: true` explicitly, matching the core workflow.
+  No credential, environment, or publishing permission changes.
 - ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
   `adapter-conformance` CI job that installs both framework extras at their
   exact pins, requires both suites so a missing extra cannot pass as a silent

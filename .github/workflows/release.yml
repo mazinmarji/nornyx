@@ -5,6 +5,9 @@ name: release
 # tag matches the core package's own `vX.Y.Z` convention exactly — this is a
 # positive eligibility gate, not merely "not an adapter tag": any other tag
 # shape (adapters-vX.Y.Z, a prerelease suffix, an unrelated tag) is excluded.
+# The tag's X.Y.Z must also equal the `pyproject.toml` version at the exact
+# commit the tag targets, as in adapters-release.yml: a well-formed tag on a
+# commit that declares a different version publishes nothing.
 # Manual dispatch runs the test job without deploying to PyPI.
 on:
   release:
@@ -26,7 +29,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install . pytest
+      # Install what ci.yml installs for the full suite: the dev extra (pytest,
+      # and mistune for tests/test_book_build.py) and the Graphviz `dot` binary
+      # the book build needs. Without them the test job fails, and publish,
+      # which needs it, never runs.
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+      - run: python -m pip install ".[dev]"
       # python -m puts the checkout root on sys.path so the repository-root
       # `scripts` helper modules imported by the test suite are resolvable.
       - run: python -m pytest -q
@@ -39,12 +48,28 @@ jobs:
     outputs:
       eligible: ${{ steps.check.outputs.eligible }}
     steps:
-      - name: Verify the release tag matches the core vX.Y.Z convention exactly
+      - name: Checkout the exact commit the release tag targets
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify the release tag matches vX.Y.Z and binds to the package version
         id: check
+        # The tag name reaches the script as data, never as script text: git
+        # allows quotes, `$`, `;` and `(` in tag names.
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          tag="${{ github.event.release.tag_name }}"
-          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          tag="$TAG_NAME"
+          if [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            tag_version="${BASH_REMATCH[1]}"
+            pkg_version="$(grep -m1 -E '^version[[:space:]]*=' pyproject.toml | sed -E 's/^version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/')"
+            pkg_version="${pkg_version%$'\r'}"
+            if [[ "$tag_version" == "$pkg_version" ]]; then
+              echo "eligible=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "eligible=false" >> "$GITHUB_OUTPUT"
+              echo "::error::release tag v${tag_version} does not match package version ${pkg_version} at this commit"
+            fi
           else
             echo "eligible=false" >> "$GITHUB_OUTPUT"
           fi
@@ -63,6 +88,16 @@ jobs:
           python-version: "3.12"
       - run: pip install build
       - run: python -m build
+      # Bind what is uploaded, not only what pyproject.toml declares: exactly
+      # the sdist and wheel for the tag's version, nothing else.
+      - name: Verify the built distributions carry the release tag's version
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          test -f "dist/nornyx-${version}.tar.gz"
+          test -f "dist/nornyx-${version}-py3-none-any.whl"
+          test "$(ls dist | wc -l)" -eq 2
       - uses: pypa/gh-action-pypi-publish@release/v1
         # No token needed: PyPI verifies the OIDC identity of this workflow.
         with:

@@ -297,6 +297,18 @@ def test_release_workflow_still_uses_trusted_publishing() -> None:
     assert publish["environment"] == "pypi"
 
 
+def test_adapters_release_workflow_declares_attestations_explicitly() -> None:
+    # The adapter distribution is published by its own workflow; the same
+    # provenance property must hold there, not only for the core package.
+    workflow = yaml.safe_load(_read(ROOT / ".github" / "workflows" / "adapters-release.yml"))
+    publish = workflow["jobs"]["publish"]
+    steps = [s for s in publish["steps"] if str(s.get("uses", "")).startswith("pypa/gh-action-pypi-publish")]
+    assert len(steps) == 1, "expected exactly one PyPI publish step"
+    assert steps[0].get("with", {}).get("attestations") is True
+    assert publish["permissions"]["id-token"] == "write"
+    assert publish["environment"] == "pypi-adapters"
+
+
 @pytest.mark.parametrize(
     "schema_name",
     ["nornyx_v0_1.schema.json", "nornyx_v0_2.schema.json", "nornyx_v1_0.schema.json"],
