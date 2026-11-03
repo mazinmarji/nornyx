@@ -6,7 +6,7 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
-## [1.12.0] - 2026-11-03
+## [1.12.0] - 2026-11-04
 
 ### Compatibility and migration
 
