@@ -107,9 +107,10 @@ workflow files of the commit the tag targets. They protect only tags on
 commits that include them: a tag on an older commit, or on a branch whose
 workflows differ, runs that commit's own gate. Tag a commit on `main` that
 includes them, and in the run confirm that the gate step ("… is not a
-prerelease and is on main") ran and passed. A deployment approval on the
-publishing environment is the control that does not depend on the tagged
-commit; where one is configured, give it only after that confirmation.
+prerelease and is on main") ran and passed. Each PyPI trusted publisher is
+registered for its environment (`pypi`, `pypi-adapters`), so a workflow that
+drops the environment cannot publish; where that environment requires a
+reviewer, approve the deployment only after that confirmation.
 
 After publishing, confirm what actually reached PyPI:
 
