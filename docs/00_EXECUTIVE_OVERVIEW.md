@@ -64,7 +64,7 @@ evidence they supply against it.
   artifact generation, context packs and evidence scaffolds, drift and
   workspace checks, schema inspection, declarative governance composition,
   the governance CLI/API, governed-package controls, agentic authorization
-  SPI 1.2, agentic-network locks, and runtime-event validation 1.1.
+  SPI 1.3, agentic-network locks, and runtime-event validation 1.1.
 - **Optional profile:** `agentic_network` and the supported profile/module
   surfaces.
 - **Limited / experimental:** the scoped OpenID AuthZEN capability-evaluation

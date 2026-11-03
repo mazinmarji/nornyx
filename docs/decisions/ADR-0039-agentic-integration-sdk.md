@@ -17,11 +17,11 @@
   - Implementation head: `8b3c8b2eee4d181b7a896097b7210644c8ff4ce0`
   - Merge commit: `c83a8a4897f1de8ab776885be52992bbf2280594`
   - Post-merge CI: run 29956041864 — success
-  - Package state: SPI **1.2** is published in Nornyx **1.11.0**
-    (Nornyx 1.10.0 published SPI 1.1); SPI **1.3** is implemented in the
-    repository and not yet released (see the SPI 1.3 revision note);
-    `nornyx-agentic-adapters` **0.2.0** is also published and keeps its
-    `nornyx>=1.10,<2` floor. M2-D changes runtime
+  - Package state: SPI **1.3** is carried by Nornyx **1.12.0** (see the
+    SPI 1.3 revision note); Nornyx **1.11.0** published SPI **1.2** and
+    Nornyx 1.10.0 published SPI 1.1; `nornyx-agentic-adapters` **0.2.0** and
+    **0.3.0** are also published and keep their `nornyx>=1.10,<2` floor.
+    M2-D changes runtime
     behavior only in the unpackaged repository compatibility tree, which now
     consumes the public `Authorizer.state` and therefore requires Nornyx
     1.11.0. It changes no core or adapter runtime code and no version; the
@@ -460,8 +460,9 @@ SPI 1.2 is a minor-compatible addition: it adds `AuthorizerState` and the
 request, decision, recorder, or load behavior. Runtime-events schema versions
 remain independently selected by the verified lock.
 
-*Note (2026-11-02):* the previous paragraph describes SPI 1.2 as released in
-Nornyx 1.11.0 and remains accurate for that release. It does not describe the
+*Note (2026-11-02; updated 2026-11-03 for the 1.12.0 release):* the previous
+paragraph describes SPI 1.2 as released in Nornyx 1.11.0 and remains accurate
+for that release. It does not describe the
 package release that carries SPI 1.3, Nornyx 1.12.0: that release also
 carries stricter `EvidenceRecorder` and `validate_runtime_events` behaviour,
 recorded under **Compatibility and migration** in the CHANGELOG `[1.12.0]`
@@ -485,8 +486,9 @@ stream is the only serialized contract describes SPI 1.2 and earlier. The SPI
 1.3 addition itself changes no existing request, decision, recorder, or load
 behavior; the release that carries SPI 1.3 also carries the stricter recorder
 and validator behaviour described in the note above (VERSIONING rule 7). SPI
-1.3 changes no package, language/schema, runtime-events, lock, or generation
-format version. It adds no hosted PDP,
+1.3 itself changes no language/schema, runtime-events, lock, or generation
+format version; the package version advances in the Nornyx 1.12.0 release.
+It adds no hosted PDP,
 HTTP server or client, authentication, policy distribution, or enforcement
 ownership; ADR-0044's public Core boundary is unchanged. As with SPI 1.2, the
 SPI value advances in an implementation-only change before the package release
@@ -619,8 +621,9 @@ promotion gate still requires an external adoption signal, which no amount of
 first-party CI can supply.
 
 The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C ship in
-published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`; the
-current published core is Nornyx 1.11.0 / SPI 1.2. M2-D closes the repository
+published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`;
+Nornyx 1.11.0 published SPI 1.2, and Nornyx 1.12.0 carries SPI 1.3. M2-D
+closes the repository
 compatibility baseline without entering either distribution's runtime code: the
 unpackaged shim consumes the public `Authorizer.state` and so requires Nornyx
 1.11.0, which does not change the adapter distribution's own floor. Its update to the adapter README is distribution metadata, so the

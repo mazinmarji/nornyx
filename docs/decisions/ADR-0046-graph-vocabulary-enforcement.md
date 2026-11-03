@@ -1,6 +1,6 @@
 # ADR-0046 — Graph Vocabulary Enforcement: the Checker Checks the Boundary the Docs Describe
 
-- Status: Accepted (merged by the owner in PR #105 for issue #104; this ADR named the merge as acceptance). Revision 2 below takes effect when its PR is merged. Checker correctness only — no language, schema, or runtime change.
+- Status: Accepted (merged by the owner in PR #105 for issue #104; this ADR named the merge as acceptance). Revision 2 below took effect with PR #114. Checker correctness only — no language, schema, or runtime change.
 - Date: 2026-09-17
 - Decision owner: human repository owner
 - Relates to: ADR-0040 (assurance tiers and claim boundaries); `docs/42_NORNYX_GRAPH_VALIDATION_v0_5.md`; `docs/50_NORNYX_GRAPH_DEMO.md`; `docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md`; issue #104

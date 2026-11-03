@@ -470,8 +470,8 @@ classifies the stricter behavior.
   unchanged: the runtime-events schema stays at 1.1 under the same `$id`, and
   the language/schema version stays 1.0.
 - `nornyx-agentic-adapters` is a separate distribution with its own version
-  and changelog. Its 0.3.1 (#116) is released separately, through its own
-  workflow, and is not part of the `nornyx` package.
+  and changelog. Its 0.3.1 (#116) has its own release workflow and is not
+  part of the `nornyx` package.
 - For the M2-D compatibility shim: runtime behavior changes only in the
   unpackaged repository compatibility tree; the shim changes no core or adapter
   runtime code, package version, runtime-events schema, SPI version,
