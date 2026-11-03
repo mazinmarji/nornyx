@@ -6,11 +6,235 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Compatibility and migration
+
+This section collects every change in this release that can alter a verdict,
+an exit code, or whether a call succeeds, with the action it needs. Each entry
+below has the full description. `docs/VERSIONING.md` rule 7 classifies the
+stricter behaviour.
+
+- **Explicit occurrence-mode recorders.** `record_decision` and
+  `record_observation` now raise `ValueError` on a recorder from
+  `EvidenceRecorder.for_occurrences()` or one resumed from an explicit stream
+  (see Fixed). Record through `record_occurrence_decision` and
+  `record_occurrence_observation`, which take a `RuntimeOccurrence`. Calls
+  that previously succeeded on such a recorder produced a stream that failed
+  validation.
+- **Recorder-stamped fields.** A decision-intent or observation field named
+  after a key the recorder stamps now raises `ValueError`, including when its
+  value equals the stamped one, and `occurrence` is refused on every recording
+  call except `record_occurrence_*` (see Fixed). Remove the argument and let
+  the recorder stamp it; for a field that matched, the recorded event is
+  identical. This is the named exception in `docs/VERSIONING.md` rule 7.
+- **One producer per events file.** `validate_runtime_events` and
+  `nornyx agentic-network evidence-validate` now fail a file whose events name
+  a `producer` other than the file's (`AN_EVT_PRODUCER_MISMATCH`; see
+  Changed). Split such files per producer. `EvidenceRecorder.resume()` refuses
+  such a prefix with the message "prior_stream is not valid against the
+  supplied authorizer: AN_EVT_PRODUCER_MISMATCH"; code that matched its
+  earlier message needs updating.
+- **Whole-number floats.** A `sequence` or `occurrence.attempt` written as a
+  whole-number float, such as `2.0`, now gets the verdict of the integer (see
+  Fixed). A stream valid with integers needs no change; a stream that passed
+  only because float-written values skipped the checks now fails and must be
+  corrected.
+- **Graph checks.** The graph checks accept every contract Nornyx 1.11.0
+  accepted, in `nornyx check`, the agentic-network commands and
+  `load_authorizer` (see Fixed). Two verdicts are relaxed, and the new codes
+  are warnings except `GRAPH_VOCABULARY_UNAVAILABLE`. Promoting
+  `UNDECLARED_GRAPH_RELATION_PAIR` or `UNRESOLVED_GRAPH_NODE_REF` to an error
+  is not planned for a minor release.
+- **`UNKNOWN_POLICY_RULE` and `nornyx check --strict`.** Plain `nornyx check`
+  now prints a warning for each `policies.deny` name the policy matcher never
+  evaluates; its exit code is unchanged (see Added). The new, opt-in
+  `nornyx check --strict` fails on any warning-level diagnostic. To pass it,
+  remove an inert deny name or keep its intent as guidance outside `deny`;
+  rename it to an evaluated name only where the policy matcher actually
+  implements the intended control, since a renamed rule can start blocking
+  steps. Contracts created by `nornyx init --profile agentic_network` and
+  `nornyx adopt init-lite` still warn;
+  `docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md` lists every
+  shipped contract that does, and why.
+- **Shipped examples.** Copies of the changed examples produce `policy.yaml`
+  (from `nornyx generate`) and `nornyx policy-check --out` reports without the
+  removed deny names (see Changed); committed generated output for them will
+  show drift until regenerated. Policy verdicts are unchanged.
+- **Known open item.** `EvidenceRecorder.stream()` reads the occurrence mode
+  after releasing its lock. A `for_occurrences()` or `resume()` that installs
+  the explicit mode in that window, reachable only through a subclass that
+  leaks the recorder while it is being built, can produce an explicit-mode
+  stream with no events. ADR-0041 records this as a known exception to its
+  snapshot guarantee.
+
+### Added
+
+- `nornyx check` warns `UNKNOWN_POLICY_RULE` for a `policies.deny` name that
+  contains none of the tokens the policy matcher evaluates (`production`,
+  `secret`, `destructive`, `connector`, `self_modification`); such a name is
+  accepted as text but evaluated by nothing (#69). The warning does not change
+  the exit code. The new `nornyx check --strict` flag returns non-zero when
+  any warning-level diagnostic is present and reports
+  `STRICT_WARNINGS_PRESENT`. `nornyx.policy_runtime` exposes the vocabulary as
+  `EVALUATED_DENY_RULE_NAME_TOKENS` and `is_evaluated_deny_rule_name()`. An
+  evaluated name is eligible for matching, not guaranteed to match a given
+  flow.
+- `nornyx.agentic.authzen`, a public submodule mapping one Nornyx request
+  type, `CapabilityRequest`, and its `Decision` to and from the OpenID AuthZEN
+  Authorization API 1.0 Access Evaluation shape (#80, ADR-0044,
+  `docs/69_AUTHZEN_INTEROPERABILITY.md`). Its supported names are
+  `capability_request_to_authzen`, `capability_request_from_authzen`,
+  `decision_to_authzen`, `evaluate_authzen_capability`, `AuthZENMappingError`,
+  `AUTHZEN_API_VERSION`, `AUTHZEN_ACCESS_EVALUATION_PATH` and
+  `NORNYX_AUTHZEN_CAPABILITY_PROFILE` (`nornyx.authzen.capability.v1`, a
+  project-defined mapping identifier). It is a codec and local evaluation
+  bridge only: no HTTP server or client, caller authentication, policy
+  distribution, PDP operation or enforcement. It is imported explicitly; the
+  `nornyx.agentic` facade does not re-export it, and `SPI_VERSION` 1.3 covers
+  it (see Changed). `APPROVAL_REQUIRED` maps to an AuthZEN `false` decision.
+  Equivalence between direct and AuthZEN evaluation is tested on a loaded
+  `Authorizer` (#101). AARP and COAZ are tracked as AuthZEN Working Group
+  drafts; no conformance with either is claimed.
+- ADR-0045 separates project identity from software licensing across four
+  independently verifiable layers: MIT software, Nornyx identity, `.nyx`
+  canonical semantics, conformance, and detached provenance. Adds
+  `TRADEMARKS.md` (identity policy; no trademark registration is claimed, and
+  the document is marked as requiring independent counsel review),
+  `docs/NYX_FORMAT_AND_CONFORMANCE.md` (what makes a document a Nornyx
+  contract, plus a four-term conformance-claim vocabulary each with a stated
+  verification method and non-meaning), and
+  `docs/PROVENANCE_AND_RELEASE_VERIFICATION.md` (offline release verification;
+  provenance and conformance as independent axes). Nothing here restricts the
+  MIT grant: forking, renaming, and independent reimplementation remain
+  explicitly permitted, and independent implementations are stated as a goal.
+- `tests/test_identity_claims_boundary.py` holds the repository to the claim
+  vocabulary it publishes — no registered-trademark symbol or unsupported
+  registration/certification/endorsement claim on the current-voice
+  documentation surface, provenance absence documented as distinct from
+  provenance failure, and the release workflow's attestation declaration
+  asserted. It also covers two previously untested behavioural properties:
+  contract identity does not depend on the file extension, and the closed
+  contract-language schemas carry no identity-shaped top-level block (adding
+  one would move every adopting contract's governed digest).
+
+### Changed
+
+- `SPI_VERSION` advances from 1.2 to 1.3 for the additive
+  `nornyx.agentic.authzen` capability (ADR-0044), which is now part of the
+  supported SPI as an explicit submodule import with a pinned `__all__`. The
+  frozen `nornyx.agentic` facade is unchanged. No package, language/schema, or
+  runtime-events version changes.
+- `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
+  now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
+  differs from the events file's `producer`, in runtime-events schema 1.0 and
+  1.1 (legacy and explicit). **Compatibility:** a file that merges events from
+  several producers under one envelope, or whose envelope and events name
+  different producers, validated before and now fails; split such files per
+  producer. Multi-producer files were never a documented or supported shape,
+  though the schema permitted them structurally; every `EvidenceRecorder`
+  stream already satisfies the rule, and no checked-in example, fixture, or
+  adapter stream changes verdict. A missing or non-object per-event `producer`
+  is still reported only as `AN_EVT_SCHEMA_INVALID`; an object-shaped but
+  malformed one that differs from the envelope's now also gets the mismatch
+  diagnostic, which names the event. `EvidenceRecorder.resume()` now refuses a
+  prefix whose events name a producer other than its own envelope's while
+  validating it, so its message changes from "prior_stream
+  event producer does not match the resumed recorder" to "prior_stream is not
+  valid against the supplied authorizer: AN_EVT_PRODUCER_MISMATCH". This is
+  internal consistency of the supplied file; it does not authenticate the
+  producer or attest runtime behavior. No schema-version change.
+- The `nornyx.dev` domain, which every packaged schema `$id` points at, has
+  been under project-owner control since 2026-09-01. ADR-0045 recorded its
+  unregistered state as an identity exposure and listed acquisition as external
+  action 1; that specific exposure is now closed, and no identifier changed —
+  which was the reason for preferring acquisition over minting a new namespace.
+  The closure holds while control is maintained, and the registrant entity
+  remains an open question under ADR-0045 action 4. The `$id`
+  values remain opaque identifiers rather than fetch targets: no schemas are
+  published at those URLs, the packaged copies stay authoritative, and
+  `nornyx/governance/schemas.py` still resolves every schema locally. ADR-0045's
+  context is annotated in place rather than rewritten, since it records what was
+  true when the decision was made.
+- Shipped examples pass `nornyx check --strict`. The bundled
+  `org_policies.nyx` (and `governed_service.nyx`, which references it) and the
+  language showcase, graph demo, expanded graph demo and v0.4 adapter-contract
+  examples no longer list `policies.deny` names the policy matcher never
+  evaluates (`nondeterministic_evaluation`, `breaking_core_without_rfc`,
+  `vague_ai_native_claims`, `automatic_approval`, `graph_execution`,
+  `tool_execution`, `model_calls`, `credential_loading`); each intent stays as
+  a comment beside its policy. Plain `nornyx check` exit codes and every
+  policy-runtime verdict are unchanged; only the `UNKNOWN_POLICY_RULE` warnings
+  go. YAML comments are not carried into generated output, so the `policy.yaml`
+  from `nornyx generate` and the `nornyx policy-check --out` report no longer
+  list the removed names; committed generated output for copies of these
+  examples will show drift until regenerated. The four repository examples
+  are recorded in the compatibility corpus as
+  `migration:distinct-language-showcase-strict-policy-names-v1`,
+  `migration:graph-demo-strict-policy-names-v1`,
+  `migration:graph-demo-expanded-strict-policy-names-v1` and
+  `migration:v04-adapter-contracts-strict-policy-names-v1`. Still warning under
+  `--strict`, by design: `examples/agentic_network.nyx`,
+  `examples/agentic_network_support/support_network.nyx`, the CrewAI benchmark
+  contract (bound by its lock and stored evidence), contracts created by
+  `nornyx init --profile agentic_network`, contracts created by
+  `nornyx adopt init-lite` (`scope_expansion_without_triage`), and the adapter
+  package's `conformance_network.nyx`. The migration guide
+  (`docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`) lists them and
+  why. No runtime, schema, or package-version change.
+- The PyPI publish step declares `attestations: true` explicitly rather than
+  inheriting it. The action reference tracks a moving branch, so PEP 740
+  attestation is now a stated property of this workflow. `RELEASING.md` gains a
+  release-provenance section with the command to confirm what actually reached
+  PyPI. This changes no credential, environment, or publishing authority, and
+  makes no claim about already-published artifacts: distributions up to and
+  including 1.11.0 report `provenance: null`.
+
+- ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
+  `adapter-conformance` CI job that installs both framework extras at their
+  exact pins, requires both suites so a missing extra cannot pass as a silent
+  skip, and uploads the emitted report as a build artifact. The kit itself
+  ships in `nornyx-agentic-adapters`; the `nornyx` core package, its public
+  API, and the static `nornyx.adapter_conformance.v0.7` report are unchanged.
+
+- The release-readiness required-docs lists no longer require the superseded
+  v1.0 release-candidate preparation note, which is retired from current
+  release gating and retained as a banner-marked historical evidence record;
+  `release-check` and both release scripts otherwise behave identically and
+  stay green.
+- The adoption signal detector recognizes `docs/decisions` as a governance
+  marker alongside the `docs/ADRs` convention.
+- Adapter CI jobs constrain the core `nornyx` requirement to the candidate
+  wheel built in the same run (and run `pip check`), so a transitive
+  resolution of a different core from PyPI fails loudly instead of silently
+  replacing the candidate under test. The CrewAI conformance suite sets
+  `CREWAI_TESTING` before the first `crewai` import so a fresh install's
+  one-time setup process cannot trip the enforcement-boundary detector on
+  first run.
+- ADR-0039 M2-D converts the unpackaged
+  `integrations/nornyx_reference_adapters/GovernanceKernel` into a deprecated
+  compatibility shim over the public SPI 1.2 `Authorizer` and
+  `EvidenceRecorder`. Existing method signatures and stable legacy
+  `AN_ADAPTER_*` translations remain available; runtime-events 1.0 and 1.1
+  legacy envelopes retain lock/revision binding.
+- The shim's legacy `document`, `composition`, `lock_payload`, and `network`
+  surfaces are now non-authoritative read-only projections of the public
+  `Authorizer.state` (SPI 1.2, published in Nornyx 1.11.0). The shim performs
+  no second read, composition, verification, or authorization of its own, reads
+  no Authorizer private attribute, and retains no caller-supplied structure as a
+  second source of authority, so compatibility data cannot drift from the
+  Authorizer's exact validated state or change an authorization outcome. The
+  unpackaged shim therefore requires Nornyx 1.11.0 or newer; the published
+  `nornyx-agentic-adapters` distribution is unaffected and keeps its
+  `nornyx>=1.10,<2` floor.
+- The legacy CrewAI task and LangGraph node guards now authorize once, execute
+  the protected callable exactly once only on ALLOW, record success after the
+  callable, and record `runtime_failed` when it raises.
+
 ### Fixed
 
 - The checker now validates the `graph:` block against an explicit vocabulary
-  (issue #104, ADR-0046). `graph.nodes[].kind` outside the nineteen core kinds
-  and the active profile's `graph.node_kinds` warns `UNKNOWN_GRAPH_NODE_KIND`;
+  (issue #104; #105 and #114; ADR-0046). `graph.nodes[].kind` outside the
+  nineteen core kinds and the active profile's `graph.node_kinds` warns
+  `UNKNOWN_GRAPH_NODE_KIND`;
   profile `graph.relationship_constraints` are read for the first time and
   add exact `(from_kind, to_kind)` pairs to a relation without narrowing core
   rules or combining with each other; `artifact`/`module`/profile kinds without
@@ -22,7 +246,8 @@ distribution version is independent of the Nornyx **language/schema** version
   relations are not cycle-checked). All new codes except
   `GRAPH_VOCABULARY_UNAVAILABLE` are warnings (`--strict` promotes them),
   `depends_on` no longer relates unknown kinds, and no shipped example or
-  generated profile document gains a diagnostic. **Compatibility:** the graph
+  generated profile document gains any of these graph diagnostics.
+  **Compatibility:** the graph
   checks accept every contract Nornyx 1.11.0 accepted, in `nornyx check`, the
   agentic-network commands and `load_authorizer`. The existing errors keep
   their 1.11.0 meaning: `INVALID_GRAPH_RELATION_PAIR` for a core relation used
@@ -42,14 +267,16 @@ distribution version is independent of the Nornyx **language/schema** version
   names no built-in profile is reported by the bare checker
   (`GRAPH_VOCABULARY_PROFILE_UNRESOLVED`, warning) and a profile registry that
   cannot be consulted is an error (`GRAPH_VOCABULARY_UNAVAILABLE`) rather than
-  silent core-only checking.
+  silent core-only checking. The `nornyx schema` graph-validation summary
+  gains `vocabulary` and `cycles` entries describing these rules.
 - `EvidenceRecorder.record_decision` and `record_observation` now raise
   `ValueError`, before any mutation, on an explicit occurrence-mode recorder
   (one from `EvidenceRecorder.for_occurrences()` or resumed from an explicit
   stream). Previously they appended events without an `occurrence` object,
   which made the explicit stream fail validation with
   `AN_EVT_SCHEMA_INVALID`, including a stream that was valid before the call.
-  Legacy (1.0 and 1.1-legacy) recorders are unchanged.
+  This change does not affect legacy (1.0 and 1.1-legacy) recorders; the
+  stamped-field and `occurrence` refusals below do.
 - `EvidenceRecorder` no longer lets caller fields replace what it stamps.
   A non-`None` decision-intent or observation field named `producer`,
   `timestamp`, `event_id`, `sequence`, `network_id`, `contract_digest`,
@@ -116,156 +343,14 @@ distribution version is independent of the Nornyx **language/schema** version
   but no longer builds a list as long as a huge out-of-range attempt (an
   attempt of `2**64` previously raised `OverflowError`).
 
-### Changed
-
-- `SPI_VERSION` advances from 1.2 to 1.3 for the additive
-  `nornyx.agentic.authzen` capability (ADR-0044), which is now part of the
-  supported SPI as an explicit submodule import with a pinned `__all__`. The
-  frozen `nornyx.agentic` facade is unchanged. No package, language/schema, or
-  runtime-events version changes.
-- `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
-  now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
-  differs from the events file's `producer`, in runtime-events schema 1.0 and
-  1.1 (legacy and explicit). **Compatibility:** a file that merges events from
-  several producers under one envelope, or whose envelope and events name
-  different producers, validated before and now fails; split such files per
-  producer. Multi-producer files were never a documented or supported shape,
-  though the schema permitted them structurally; every `EvidenceRecorder`
-  stream already satisfies the rule, and no checked-in example, fixture, or
-  adapter stream changes verdict. A missing or non-object per-event `producer`
-  is still reported only as `AN_EVT_SCHEMA_INVALID`; an object-shaped but
-  malformed one that differs from the envelope's now also gets the mismatch
-  diagnostic, which names the event. `EvidenceRecorder.resume()` now refuses a
-  prefix whose events name a producer other than its own envelope's while
-  validating it, so its message changes from "prior_stream
-  event producer does not match the resumed recorder" to "prior_stream is not
-  valid against the supplied authorizer: AN_EVT_PRODUCER_MISMATCH". This is
-  internal consistency of the supplied file; it does not authenticate the
-  producer or attest runtime behavior. No schema-version change.
-- The `nornyx.dev` domain, which every packaged schema `$id` points at, has
-  been under project-owner control since 2026-09-01. ADR-0045 recorded its
-  unregistered state as an identity exposure and listed acquisition as external
-  action 1; that specific exposure is now closed, and no identifier changed —
-  which was the reason for preferring acquisition over minting a new namespace.
-  The closure holds while control is maintained, and the registrant entity
-  remains an open question under ADR-0045 action 4. The `$id`
-  values remain opaque identifiers rather than fetch targets: no schemas are
-  published at those URLs, the packaged copies stay authoritative, and
-  `nornyx/governance/schemas.py` still resolves every schema locally. ADR-0045's
-  context is annotated in place rather than rewritten, since it records what was
-  true when the decision was made.
-- Shipped examples pass `nornyx check --strict`. The bundled
-  `org_policies.nyx` (and `governed_service.nyx`, which references it) and the
-  language showcase, graph demo, expanded graph demo and v0.4 adapter-contract
-  examples no longer list `policies.deny` names the policy matcher never
-  evaluates (`nondeterministic_evaluation`, `breaking_core_without_rfc`,
-  `vague_ai_native_claims`, `automatic_approval`, `graph_execution`,
-  `tool_execution`, `model_calls`, `credential_loading`); each intent stays as
-  a comment beside its policy. Plain `nornyx check` exit codes and every
-  policy-runtime verdict are unchanged; only the `UNKNOWN_POLICY_RULE` warnings
-  go. YAML comments are not carried into generated output, so the `policy.yaml`
-  from `nornyx generate` and the `nornyx policy-check --out` report no longer
-  list the removed names; committed generated output for copies of these
-  examples will show drift until regenerated. The four repository examples
-  are recorded in the compatibility corpus as
-  `migration:distinct-language-showcase-strict-policy-names-v1`,
-  `migration:graph-demo-strict-policy-names-v1`,
-  `migration:graph-demo-expanded-strict-policy-names-v1` and
-  `migration:v04-adapter-contracts-strict-policy-names-v1`. Still warning under
-  `--strict`, by design: `examples/agentic_network.nyx`,
-  `examples/agentic_network_support/support_network.nyx`, the CrewAI benchmark
-  contract (bound by its lock and stored evidence), contracts created by
-  `nornyx init --profile agentic_network`, contracts created by
-  `nornyx adopt init-lite` (`scope_expansion_without_triage`), and the adapter
-  package's `conformance_network.nyx`. The migration guide
-  (`docs/67_M5_A2B_MIGRATION_GUIDE_AGENTS_POLICIES_EVALS.md`) lists them and
-  why. No runtime, schema, or package-version change.
-
-### Added
-
-- ADR-0045 separates project identity from software licensing across four
-  independently verifiable layers: MIT software, Nornyx identity, `.nyx`
-  canonical semantics, conformance, and detached provenance. Adds
-  `TRADEMARKS.md` (identity policy; no trademark registration is claimed, and
-  the document is marked as requiring independent counsel review),
-  `docs/NYX_FORMAT_AND_CONFORMANCE.md` (what makes a document a Nornyx
-  contract, plus a four-term conformance-claim vocabulary each with a stated
-  verification method and non-meaning), and
-  `docs/PROVENANCE_AND_RELEASE_VERIFICATION.md` (offline release verification;
-  provenance and conformance as independent axes). Nothing here restricts the
-  MIT grant: forking, renaming, and independent reimplementation remain
-  explicitly permitted, and independent implementations are stated as a goal.
-- `tests/test_identity_claims_boundary.py` holds the repository to the claim
-  vocabulary it publishes — no registered-trademark symbol or unsupported
-  registration/certification/endorsement claim on the current-voice
-  documentation surface, provenance absence documented as distinct from
-  provenance failure, and the release workflow's attestation declaration
-  asserted. It also covers two previously untested behavioural properties:
-  contract identity does not depend on the file extension, and the closed
-  contract-language schemas carry no identity-shaped top-level block (adding
-  one would move every adopting contract's governed digest).
-
-### Changed
-
-- The PyPI publish step declares `attestations: true` explicitly rather than
-  inheriting it. The action reference tracks a moving branch, so PEP 740
-  attestation is now a stated property of this workflow. `RELEASING.md` gains a
-  release-provenance section with the command to confirm what actually reached
-  PyPI. This changes no credential, environment, or publishing authority, and
-  makes no claim about already-published artifacts: distributions up to and
-  including 1.11.0 report `provenance: null`.
-
-- ADR-0043 M2-E records the runtime adapter-conformance contract and adds an
-  `adapter-conformance` CI job that installs both framework extras at their
-  exact pins, requires both suites so a missing extra cannot pass as a silent
-  skip, and uploads the emitted report as a build artifact. The kit itself
-  ships in `nornyx-agentic-adapters`; the `nornyx` core package, its public
-  API, and the static `nornyx.adapter_conformance.v0.7` report are unchanged.
-
-### Changed
-
-- The release-readiness required-docs lists no longer require the superseded
-  v1.0 release-candidate preparation note, which is retired from current
-  release gating and retained as a banner-marked historical evidence record;
-  `release-check` and both release scripts otherwise behave identically and
-  stay green.
-- The adoption signal detector recognizes `docs/decisions` as a governance
-  marker alongside the `docs/ADRs` convention.
-- Adapter CI jobs constrain the core `nornyx` requirement to the candidate
-  wheel built in the same run (and run `pip check`), so a transitive
-  resolution of a different core from PyPI fails loudly instead of silently
-  replacing the candidate under test. The CrewAI conformance suite sets
-  `CREWAI_TESTING` before the first `crewai` import so a fresh install's
-  one-time setup process cannot trip the enforcement-boundary detector on
-  first run.
-- ADR-0039 M2-D converts the unpackaged
-  `integrations/nornyx_reference_adapters/GovernanceKernel` into a deprecated
-  compatibility shim over the public SPI 1.2 `Authorizer` and
-  `EvidenceRecorder`. Existing method signatures and stable legacy
-  `AN_ADAPTER_*` translations remain available; runtime-events 1.0 and 1.1
-  legacy envelopes retain lock/revision binding.
-- The shim's legacy `document`, `composition`, `lock_payload`, and `network`
-  surfaces are now non-authoritative read-only projections of the public
-  `Authorizer.state` (SPI 1.2, published in Nornyx 1.11.0). The shim performs
-  no second read, composition, verification, or authorization of its own, reads
-  no Authorizer private attribute, and retains no caller-supplied structure as a
-  second source of authority, so compatibility data cannot drift from the
-  Authorizer's exact validated state or change an authorization outcome. The
-  unpackaged shim therefore requires Nornyx 1.11.0 or newer; the published
-  `nornyx-agentic-adapters` distribution is unaffected and keeps its
-  `nornyx>=1.10,<2` floor.
-- The legacy CrewAI task and LangGraph node guards now authorize once, execute
-  the protected callable exactly once only on ALLOW, record success after the
-  callable, and record `runtime_failed` when it raises.
-
 ### Documentation
 
 - ADR-0041 gains a revision note that records the unreleased recorder and
   validator follow-ups (PRs #107 to #111), one known exception to its
   snapshot guarantee (`stream()` reads the occurrence mode after releasing the
   lock, which `for_occurrences()` or `resume()` can race only through a
-  subclass that leaks the recorder), and the versioning decision required
-  before any release that includes the stricter producer check. No runtime,
+  subclass that leaks the recorder), and, for the stricter producer check,
+  a pointer to `docs/VERSIONING.md` rule 7, which classifies it. No runtime,
   schema, or package change.
 - State that runtime-event timestamps are producer-asserted:
   `docs/agentic-network/06_RUNTIME_EVIDENCE.md` and the residual risks in
@@ -316,9 +401,39 @@ distribution version is independent of the Nornyx **language/schema** version
   The intentional example change is recorded in the compatibility corpus as
   `migration:roadmap-goals-post-v1-reweighting-v1`; no package version, runtime
   behavior, public API, or schema changes.
+- `docs/VERSIONING.md` rule 7 classifies a change that makes a public entry
+  point reject input the last release accepted: it may ship in a minor
+  release, must first ship as a warning, or is breaking, depending on what the
+  last release's published material said about that input. It names the
+  recorder-stamped-field refusal as a narrow exception (#115). No runtime,
+  schema, or package change.
+
+### Packaging
+
+- The package description (the PyPI summary) now reads "Vendor-neutral
+  governance contract language for deterministic controls, authorization
+  semantics, and revision-bound decision/evidence records in AI software
+  delivery." (#89).
+- The `dev` extra adds `mistune>=3.0,<4`, which renders the textbook
+  manuscript in `book/tools/`; the `nornyx` distribution never imports it
+  (#72). Runtime dependencies are unchanged.
 
 ### Distribution boundaries
 
+- The `nornyx` core runtime changes in this release are the graph-vocabulary
+  checks (#105, with compatibility restored in #114), the
+  `UNKNOWN_POLICY_RULE` warning and `nornyx check --strict` (#69), the
+  `nornyx.agentic.authzen` module (#80), the recorder guards (#107, #108), the
+  per-event producer check (#110), whole-number float handling in the
+  runtime-events validator (#113), and the adoption-signal and
+  release-readiness detector updates (#93).
+- `SPI_VERSION` is 1.3 for the additive AuthZEN capability; the
+  `nornyx.agentic` facade is unchanged (#117). The packaged schemas are
+  unchanged: the runtime-events schema stays at 1.1 under the same `$id`, and
+  the language/schema version stays 1.0.
+- `nornyx-agentic-adapters` is a separate distribution with its own version
+  and changelog. Its 0.3.1 is prepared in the repository (#116) and is not
+  part of the `nornyx` package.
 - For the M2-D compatibility shim: runtime behavior changes only in the
   unpackaged repository compatibility tree; the shim changes no core or adapter
   runtime code, package version, runtime-events schema, SPI version,
