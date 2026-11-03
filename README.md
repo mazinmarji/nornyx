@@ -99,7 +99,7 @@ occurred.
 ```bash
 pip install nornyx          # from PyPI
 # or pin from source:
-pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.11.0"
+pip install "nornyx @ git+https://github.com/mazinmarji/nornyx@v1.12.0"
 ```
 
 Requires Python 3.10–3.13. Runtime dependencies: **PyYAML**, **jsonschema**, and **referencing**.
@@ -331,7 +331,7 @@ risk-surfaced, evidence-bound, hash-locked, and approval-gated.
   artifact generation, context packs and evidence scaffolds, drift and
   workspace checks, schema inspection, declarative governance composition,
   the governance CLI/API, governed-package controls, agentic authorization
-  SPI 1.2, agentic-network locks, runtime-event validation 1.1.
+  SPI 1.3, agentic-network locks, runtime-event validation 1.1.
 - **Optional profile:** `agentic_network` and the supported profile/module
   surfaces.
 - **Limited / experimental:** the scoped AuthZEN capability-evaluation

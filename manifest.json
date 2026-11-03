@@ -1,7 +1,7 @@
 {
   "project": "Nornyx",
   "category": "Vendor-Neutral Governance Contract Language",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "language_version": "1.0.0",
   "status": "Package 1.11.0; Authorizer state SPI 1.2 implemented and validated",
   "source_of_truth": [

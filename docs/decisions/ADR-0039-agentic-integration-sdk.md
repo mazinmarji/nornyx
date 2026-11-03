@@ -462,12 +462,12 @@ remain independently selected by the verified lock.
 
 *Note (2026-11-02):* the previous paragraph describes SPI 1.2 as released in
 Nornyx 1.11.0 and remains accurate for that release. It does not describe the
-package release that will carry SPI 1.3: that release also carries stricter
-`EvidenceRecorder` and `validate_runtime_events` behaviour, recorded under
-**Compatibility** in the CHANGELOG `[Unreleased]` section and in ADR-0041's
-unreleased revision note. Those changes are classified under
-`docs/VERSIONING.md` rule 7 and keep the SPI major; they are not part of what
-the SPI 1.3 minor adds.
+package release that carries SPI 1.3, Nornyx 1.12.0: that release also
+carries stricter `EvidenceRecorder` and `validate_runtime_events` behaviour,
+recorded under **Compatibility and migration** in the CHANGELOG `[1.12.0]`
+section and in ADR-0041's 1.12.0 revision note. Those changes are classified
+under `docs/VERSIONING.md` rule 7 and keep the SPI major; they are not part of
+what the SPI 1.3 minor adds.
 
 **SPI 1.3 (revision note, 2026-11-02).** SPI 1.3 is a minor-compatible
 addition: the public `nornyx.agentic.authzen` submodule (ADR-0044) becomes part

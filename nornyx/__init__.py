@@ -1,6 +1,6 @@
 """Nornyx stable generalized agentic contract language."""
 
-__version__ = "1.11.0"
+__version__ = "1.12.0"
 
 from .governed_package import (
     GovernedPackage,

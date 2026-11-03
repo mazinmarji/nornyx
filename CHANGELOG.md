@@ -6,6 +6,8 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-03
+
 ### Compatibility and migration
 
 This section collects the changes in this release that can alter a verdict,
@@ -155,8 +157,10 @@ classifies the stricter behavior.
 - `SPI_VERSION` advances from 1.2 to 1.3 for the additive
   `nornyx.agentic.authzen` capability (ADR-0044), which is now part of the
   supported SPI as an explicit submodule import with a pinned `__all__`. The
-  frozen `nornyx.agentic` facade is unchanged. No package, language/schema, or
-  runtime-events version changes.
+  frozen `nornyx.agentic` facade is unchanged. The language/schema and
+  runtime-events versions are unchanged. This release, Nornyx 1.12.0,
+  synchronizes all seven equality-enforced package-version locations. Tagging
+  and PyPI publication are performed separately through the release workflow.
 - `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
   now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
   differs from the events file's `producer`, in runtime-events schema 1.0 and
@@ -375,8 +379,8 @@ classifies the stricter behavior.
 
 ### Documentation
 
-- ADR-0041 gains a revision note that records the unreleased recorder and
-  validator follow-ups (PRs #107 to #111), one known exception to its snapshot
+- ADR-0041 gains a revision note that records the recorder and validator
+  follow-ups (PRs #107 to #111), one known exception to its snapshot
   guarantee (`stream()` reads the occurrence mode after releasing the lock,
   which `for_occurrences()` or `resume()` can race only through a subclass that
   leaks the recorder), and, for the stricter producer check, a pointer to
@@ -466,8 +470,8 @@ classifies the stricter behavior.
   unchanged: the runtime-events schema stays at 1.1 under the same `$id`, and
   the language/schema version stays 1.0.
 - `nornyx-agentic-adapters` is a separate distribution with its own version
-  and changelog. Its 0.3.1 is prepared in the repository (#116) and is not
-  part of the `nornyx` package.
+  and changelog. Its 0.3.1 (#116) is released separately, through its own
+  workflow, and is not part of the `nornyx` package.
 - For the M2-D compatibility shim: runtime behavior changes only in the
   unpackaged repository compatibility tree; the shim changes no core or adapter
   runtime code, package version, runtime-events schema, SPI version,
