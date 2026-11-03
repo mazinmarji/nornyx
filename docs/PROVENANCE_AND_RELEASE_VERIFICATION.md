@@ -76,7 +76,9 @@ Four properties of the current pipeline, each verifiable from the repository:
 2. **A positive tag-shape gate.** Publishing fires only when a GitHub Release is
    published *and* its tag matches `^v[0-9]+\.[0-9]+\.[0-9]+$` exactly. Any
    other tag shape — an adapter tag, a prerelease suffix, an unrelated tag — is
-   excluded rather than merely "not matched".
+   excluded rather than merely "not matched". The tag's `X.Y.Z` must also
+   equal the `pyproject.toml` version at the commit the tag targets, so a
+   well-formed tag on the wrong commit publishes nothing.
 3. **CI builds the artifact, not a human.** `RELEASING.md` forbids
    `twine upload` by hand, so the published artifact corresponds to the tagged
    source.

@@ -108,3 +108,8 @@ jobs:
         # No token needed: PyPI verifies the OIDC identity of this workflow.
         with:
           packages-dir: adapters/nornyx-agentic-adapters/dist
+          # PEP 740 attestations, declared rather than inherited, as in
+          # release.yml: the action ref tracks a moving branch, so provenance
+          # must be a property of this workflow, not of the action's default.
+          # tests/test_identity_claims_boundary.py asserts it stays.
+          attestations: true

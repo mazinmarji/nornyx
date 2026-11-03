@@ -61,18 +61,23 @@ automatically (see [`.github/workflows/release.yml`](.github/workflows/release.y
 ## Release provenance
 
 Publishing through Trusted Publishing is what makes an official release
-*verifiable*, not merely *published*. Two properties are load-bearing and must
-not be silently dropped:
+*verifiable*, not merely *published*. Two properties are load-bearing in both
+`release.yml` and `adapters-release.yml` and must not be silently dropped:
 
-- the `publish` job keeps `permissions: id-token: write` and the `pypi`
-  environment — PEP 740 attestation is available only to Trusted Publishing
-  flows;
+- the `publish` job keeps `permissions: id-token: write` and its environment
+  (`pypi`, `pypi-adapters`) — PEP 740 attestation is available only to
+  Trusted Publishing flows;
 - the publish step declares `attestations: true` explicitly. The action ref
-  tracks a moving branch, so an inherited default is not a property of this
+  tracks a moving branch, so an inherited default is not a property of the
   workflow.
 
-`tests/test_identity_claims_boundary.py` asserts both, so removing either
-fails CI rather than quietly weakening the next release.
+`tests/test_identity_claims_boundary.py` asserts both for both workflows, so
+removing either fails CI rather than quietly weakening the next release.
+
+Both workflows also bind the release tag to the package version at the tagged
+commit: `vX.Y.Z` must equal the root `pyproject.toml` version, and
+`adapters-vX.Y.Z` the adapter package's. A mismatched tag publishes nothing
+(`tests/test_release_workflow_policy.py`).
 
 After publishing, confirm what actually reached PyPI:
 

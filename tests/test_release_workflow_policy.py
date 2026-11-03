@@ -105,9 +105,54 @@ def _adapter_eligible(tag_name: str) -> bool:
     return _eligible_for_tag(script, tag_name, cwd=ROOT) == "true"
 
 
+def _core_package_version() -> str:
+    return re.search(
+        r'(?m)^version\s*=\s*"([^"]+)"',
+        (ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+    ).group(1)
+
+
 def test_core_vXYZ_tag_is_core_eligible_and_adapter_ineligible() -> None:
-    assert _core_eligible("v1.8.1") is True
-    assert _adapter_eligible("v1.8.1") is False
+    # Uses the real current package version from the checked-out
+    # pyproject.toml: the gate binds the tag to it.
+    tag = f"v{_core_package_version()}"
+    assert _core_eligible(tag) is True
+    assert _adapter_eligible(tag) is False
+
+
+def test_core_tag_version_mismatch_is_rejected() -> None:
+    # A well-formed vX.Y.Z tag naming any other version must fail closed
+    # rather than publish whatever version the tagged commit declares.
+    major, minor, patch = (int(part) for part in _core_package_version().split("."))
+    for version in (
+        f"{major}.{minor}.{patch + 1}",
+        f"{major}.{minor + 1}.0",
+        f"{major + 1}.0.0",
+        "1.8.1",
+    ):
+        assert _core_eligible(f"v{version}") is False, version
+
+
+def test_core_tag_gate_reads_the_tagged_commit() -> None:
+    """The binding compares against pyproject.toml, so the gate job must
+    check out the commit the release tag targets before the check runs."""
+    steps = _load(CORE_RELEASE_YML)["jobs"]["check-core-tag"]["steps"]
+    check_index = next(i for i, step in enumerate(steps) if step.get("id") == "check")
+    assert any(
+        str(step.get("uses", "")).startswith("actions/checkout@")
+        for step in steps[:check_index]
+    )
+
+
+def test_core_release_test_job_installs_what_the_suite_needs() -> None:
+    """The publish job needs the test job, and the suite builds the textbook:
+    it needs the dev extra (mistune) and the Graphviz `dot` binary, as ci.yml
+    installs them. A bare `pip install .` fails the job and blocks publish."""
+    workflow = _load(CORE_RELEASE_YML)
+    assert "test" in workflow["jobs"]["publish"]["needs"]
+    runs = "\n".join(step.get("run", "") for step in workflow["jobs"]["test"]["steps"])
+    assert 'pip install ".[dev]"' in runs
+    assert "apt-get install -y graphviz" in runs
 
 
 def test_matching_adapters_tag_is_adapter_eligible_and_core_ineligible() -> None:
