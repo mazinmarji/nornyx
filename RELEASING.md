@@ -46,7 +46,9 @@ automatically (see [`.github/workflows/release.yml`](.github/workflows/release.y
 
 5. The **release** workflow runs: it tests, builds, and publishes to PyPI. If the
    `pypi` GitHub Environment has a required reviewer, approve the run in the repo's
-   **Actions** tab. Watch it with:
+   **Actions** tab, but only after confirming that the tag gate step ("… is
+   not a prerelease and is on main") passed in that run (see
+   [Release provenance](#release-provenance)). Watch it with:
    ```bash
    gh run watch -R mazinmarji/nornyx
    ```
@@ -95,10 +97,19 @@ annotation:
   create a new release for the same tag without "Set as a pre-release".
 - **`main` does not contain the tagged commit.** The gate checks out full
   history and requires the tagged commit to be an ancestor of `main` as
-  fetched when the gate runs. A squash-merged pull request lands as a new
-  commit, so a tag on the pull request's own branch never qualifies. Delete
-  the release and its tag, tag a commit on `main`, and create the release
-  again.
+  fetched when the gate runs. A commit on a pull request's branch qualifies
+  only once a merge commit brings it into `main`; squash and rebase merges
+  create new commits, so after those it never qualifies. Delete the release
+  and its tag, tag a commit on `main`, and create the release again.
+
+These checks live in the workflow files, and GitHub runs a release with the
+workflow files of the commit the tag targets. They protect only tags on
+commits that include them: a tag on an older commit, or on a branch whose
+workflows differ, runs that commit's own gate. Tag a commit on `main` that
+includes them, and in the run confirm that the gate step ("… is not a
+prerelease and is on main") ran and passed. A deployment approval on the
+publishing environment is the control that does not depend on the tagged
+commit; where one is configured, give it only after that confirmation.
 
 After publishing, confirm what actually reached PyPI:
 

@@ -8,9 +8,10 @@ name: adapters-release
 # commit the tag targets — a tag/version mismatch (e.g. tagging
 # adapters-v0.2.1 while the package still declares 0.2.0) fails closed rather
 # than publishing. A release marked as a prerelease publishes nothing, and
-# neither does a tag on a commit that main does not contain. Manual dispatch runs the test job without deploying to
-# PyPI and cannot satisfy the binding check (there is no release tag to
-# evaluate). This workflow never creates, moves, or repairs tags.
+# neither does a tag on a commit that main does not contain. Manual dispatch
+# runs the test job without deploying to PyPI and cannot satisfy the binding
+# check (there is no release tag to evaluate). This workflow never creates,
+# moves, or repairs tags.
 #
 # Requires its own one-time PyPI trusted-publisher registration for the
 # `nornyx-agentic-adapters` project (repo mazinmarji/nornyx, workflow
@@ -93,7 +94,9 @@ jobs:
               # An adapters-vX.Y.Z upload is a final release on PyPI and cannot
               # be replaced, so a GitHub prerelease never publishes.
               echo "::error::release ${tag} is marked as a prerelease; prereleases never publish"
-            elif ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            elif ! main_sha="$(git show-ref --verify --hash refs/remotes/origin/main)" || ! git merge-base --is-ancestor HEAD "$main_sha"; then
+              # main is resolved by its full ref name only, so no tag or branch
+              # named like it can stand in for it; a missing main refuses.
               echo "::error::release tag ${tag} targets a commit that main does not contain"
             else
               eligible=true

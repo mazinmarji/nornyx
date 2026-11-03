@@ -81,8 +81,10 @@ Four properties of the current pipeline, each verifiable from the repository:
    well-formed tag on a commit that declares a different version publishes
    nothing, and the publish job uploads only the sdist and wheel for that
    version. A release marked as a prerelease publishes nothing, and `main`
-   must contain the tagged commit, so a tag on an unmerged branch publishes
-   nothing either.
+   must contain the tagged commit. GitHub runs a release with the workflow
+   files of the tagged commit, so these checks apply to tags on commits that
+   include them; a tag on an older commit, or on a branch whose workflows
+   differ, runs that commit's own gate.
 3. **CI builds the artifact, not a human.** `RELEASING.md` forbids
    `twine upload` by hand, so the published artifact corresponds to the tagged
    source.

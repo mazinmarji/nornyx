@@ -77,7 +77,9 @@ jobs:
               # A vX.Y.Z upload is a final release on PyPI and cannot be
               # replaced, so a GitHub prerelease never publishes.
               echo "::error::release ${tag} is marked as a prerelease; prereleases never publish"
-            elif ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            elif ! main_sha="$(git show-ref --verify --hash refs/remotes/origin/main)" || ! git merge-base --is-ancestor HEAD "$main_sha"; then
+              # main is resolved by its full ref name only, so no tag or branch
+              # named like it can stand in for it; a missing main refuses.
               echo "::error::release tag ${tag} targets a commit that main does not contain"
             else
               eligible=true

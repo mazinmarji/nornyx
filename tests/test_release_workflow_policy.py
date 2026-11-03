@@ -7,7 +7,8 @@ tag through the ``TAG_NAME`` environment variable exactly as each step's
 inject shell code. The release's prerelease flag arrives the same way, in
 ``PRERELEASE``, and each script runs in a throwaway git repository whose
 detached HEAD is the tagged commit and whose ``refs/remotes/origin/main`` is
-placed per test, as the gate job's full-history checkout lays them out.
+placed per test, built the way the gate job's full-history checkout is,
+with decoy refs spelled like main.
 This proves the real gate behavior rather than a Python
 model of it that could silently drift from the YAML. Static checks
 separately prove `workflow_dispatch` cannot reach either publish job, since
@@ -16,7 +17,6 @@ that gate is a job-level `if:` expression with no shell script to execute.
 
 from __future__ import annotations
 
-import atexit
 import functools
 import os
 import re
@@ -71,62 +71,105 @@ def _step_script(workflow: dict[str, Any], job_name: str, step_id: str) -> str:
 
 ADAPTER_PYPROJECT = Path("adapters") / "nornyx-agentic-adapters" / "pyproject.toml"
 
-# Where the tagged commit sits relative to `main` in the fixture repository.
+# Where the tagged commit sits relative to `main` in the fixture origin.
 ON_MAIN_TIP = "main-tip"
 ON_MAIN_BEHIND_TIP = "main-behind-tip"
 OFF_MAIN = "off-main"
 NO_MAIN_REF = "no-main-ref"
 
+# Refs a careless gate could mistake for main: tags and branches spelled like
+# it. Every fixture origin has them, all pointing at the tagged commit.
+DECOY_TAGS = ("main", "origin/main", "refs/remotes/origin/main")
+DECOY_BRANCHES = ("origin/main", "remotes/origin/main")
+
+# What actions/checkout@v4 fetches with `fetch-depth: 0`, as the release
+# workflow's own test job logs it, before checking out the release tag.
+CHECKOUT_REFSPECS = ("+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/tags/*")
+
+_FIXTURE_ROOT: Path | None = None
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _gate_fixture_root(tmp_path_factory: pytest.TempPathFactory) -> Any:
+    """pytest owns the fixture directory and its cleanup, including git's
+    read-only object files."""
+    global _FIXTURE_ROOT
+    _FIXTURE_ROOT = tmp_path_factory.mktemp("release-gate")
+    (_FIXTURE_ROOT / "empty.gitconfig").write_text("", encoding="utf-8")
+    _fixture_repo.cache_clear()
+    yield
+    _fixture_repo.cache_clear()
+
+
+def _git_env() -> dict[str, str]:
+    """The caller's environment without its git settings: no GIT_* variables
+    (a GIT_DIR would redirect every command) and no system or global config
+    (hooks, signing, default branch, line endings)."""
+    assert _FIXTURE_ROOT is not None
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    env["GIT_CONFIG_GLOBAL"] = str(_FIXTURE_ROOT / "empty.gitconfig")
+    return env
+
 
 def _git(repo: Path, *args: str) -> str:
     result = subprocess.run(
-        [
-            "git", "-c", "user.name=release-gate-test", "-c", "user.email=gate@example.invalid",
-            "-c", "commit.gpgsign=false", *args,
-        ],
-        cwd=repo, capture_output=True, text=True, check=True,
+        ["git", "-c", "user.name=release-gate-test", "-c", "user.email=gate@example.invalid", *args],
+        cwd=repo, env=_git_env(), capture_output=True, text=True, check=True,
     )
     return result.stdout.strip()
 
 
-_FIXTURE_ROOT = Path(tempfile.mkdtemp(prefix="release-gate-"))
-atexit.register(shutil.rmtree, _FIXTURE_ROOT, ignore_errors=True)
-
-
 @functools.lru_cache(maxsize=None)
 def _fixture_repo(placement: str) -> Path:
-    """A throwaway git repository shaped like the gate job's checkout: HEAD is
-    the tagged commit (detached), carrying the real core and adapter
-    pyproject.toml files, and `refs/remotes/origin/main` is wherever
-    `placement` puts main. The gates are tested against this, not against
-    whatever this checkout's own branches happen to be. The gate scripts only
-    read the repository, so one fixture per placement is shared."""
-    repo = _FIXTURE_ROOT / placement
-    (repo / ADAPTER_PYPROJECT.parent).mkdir(parents=True)
-    shutil.copyfile(ROOT / "pyproject.toml", repo / "pyproject.toml")
-    shutil.copyfile(ROOT / ADAPTER_PYPROJECT, repo / ADAPTER_PYPROJECT)
-    _git(repo, "init", "-q")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", "tagged")
-    tagged = _git(repo, "rev-parse", "HEAD")
-    if placement == ON_MAIN_TIP:
-        _git(repo, "update-ref", "refs/remotes/origin/main", tagged)
-    elif placement == ON_MAIN_BEHIND_TIP:
-        _git(repo, "commit", "-q", "--allow-empty", "-m", "later on main")
-        _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
-    elif placement == OFF_MAIN:
+    """The gate job's checkout, built the way actions/checkout builds it: an
+    origin repository holding `main`, the tagged commit (on `main`, or on an
+    unmerged `feature` branch), both release tags and the decoy refs; then a
+    fresh repository that fetches every branch and tag from it and checks out
+    the release tag, leaving a detached HEAD at the tagged commit and no local
+    branches. The gate scripts only read the checkout, so one per placement
+    is shared; each build starts in a new directory."""
+    assert _FIXTURE_ROOT is not None
+    work = Path(tempfile.mkdtemp(prefix=f"{placement}-", dir=_FIXTURE_ROOT))
+    src, checkout = work / "src", work / "checkout"
+    (src / ADAPTER_PYPROJECT.parent).mkdir(parents=True)
+    shutil.copyfile(ROOT / "pyproject.toml", src / "pyproject.toml")
+    shutil.copyfile(ROOT / ADAPTER_PYPROJECT, src / ADAPTER_PYPROJECT)
+    _git(src, "init", "-q", "-b", "main")
+    _git(src, "add", "-A")
+    _git(src, "commit", "-q", "-m", "base")
+    if placement in (ON_MAIN_TIP, ON_MAIN_BEHIND_TIP):
+        tagged = _git(src, "rev-parse", "HEAD")
+        if placement == ON_MAIN_BEHIND_TIP:
+            _git(src, "commit", "-q", "--allow-empty", "-m", "later on main")
+    elif placement in (OFF_MAIN, NO_MAIN_REF):
         # main and the tagged commit share a parent, but main does not
         # contain the tagged commit: a tag on an unmerged branch.
-        base = tagged
-        _git(repo, "commit", "-q", "--allow-empty", "-m", "unmerged branch commit")
-        tagged = _git(repo, "rev-parse", "HEAD")
-        _git(repo, "checkout", "-q", "--detach", base)
-        _git(repo, "commit", "-q", "--allow-empty", "-m", "main moves on")
-        _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
-    elif placement != NO_MAIN_REF:
+        _git(src, "checkout", "-q", "-b", "feature")
+        _git(src, "commit", "-q", "--allow-empty", "-m", "unmerged branch commit")
+        tagged = _git(src, "rev-parse", "HEAD")
+        _git(src, "checkout", "-q", "main")
+        _git(src, "commit", "-q", "--allow-empty", "-m", "main moves on")
+        if placement == NO_MAIN_REF:
+            _git(src, "checkout", "-q", "feature")
+            _git(src, "branch", "-q", "-D", "main")
+    else:
         raise AssertionError(placement)
-    _git(repo, "checkout", "-q", "--detach", tagged)
-    return repo
+    release_tag = f"v{_core_package_version()}"
+    for tag in (release_tag, f"adapters-v{_adapter_package_version()}", *DECOY_TAGS):
+        _git(src, "tag", tag, tagged)
+    for branch in DECOY_BRANCHES:
+        _git(src, "branch", branch, tagged)
+    _git(work, "clone", "-q", "--bare", "src", "origin.git")
+
+    checkout.mkdir()
+    _git(checkout, "init", "-q")
+    _git(checkout, "remote", "add", "origin", (work / "origin.git").as_posix())
+    _git(checkout, "fetch", "-q", "--prune", "--no-recurse-submodules", "origin", *CHECKOUT_REFSPECS)
+    _git(checkout, "checkout", "-q", "--force", f"refs/tags/{release_tag}")
+    assert _git(checkout, "rev-parse", "HEAD") == tagged
+    assert _git(checkout, "for-each-ref", "refs/heads") == ""
+    return checkout
 
 
 def _eligible_for_tag(
@@ -141,7 +184,7 @@ def _eligible_for_tag(
     with tempfile.TemporaryDirectory() as tmp:
         output_path = Path(tmp) / "github_output.txt"
         output_path.write_text("", encoding="utf-8")
-        env = dict(os.environ)
+        env = _git_env()
         if os.name == "nt":
             bash_bin = str(Path(_BASH).resolve().parent)
             env["PATH"] = bash_bin + os.pathsep + env.get("PATH", "")
@@ -215,8 +258,8 @@ def test_only_a_release_explicitly_not_marked_prerelease_publishes(prerelease: s
     adapters-vX.Y.Z) would otherwise publish a final release. The gate
     accepts only the exact value `false` and fails closed on anything else,
     including a missing value."""
+    # The positive case, prerelease=false, is test_a_tag_on_main_is_eligible.
     for gate, tag in _matching_tags():
-        assert gate(tag, prerelease="false") is True, tag
         assert gate(tag, prerelease=prerelease) is False, (tag, prerelease)
 
 
@@ -230,8 +273,10 @@ def test_a_tag_on_main_is_eligible(placement: str) -> None:
 @pytest.mark.parametrize("placement", [OFF_MAIN, NO_MAIN_REF])
 def test_a_tag_not_on_main_publishes_nothing(placement: str) -> None:
     """The version binding alone would publish a correctly versioned commit
-    from an unmerged branch. The tagged commit must be contained in main;
-    if main cannot be resolved the gate fails closed."""
+    from an unmerged branch. The tagged commit must be contained in main,
+    resolved by its full ref name: the decoy tags and branches spelled like
+    main all point at the tagged commit, and with no main at all the gate
+    fails closed."""
     for gate, tag in _matching_tags():
         assert gate(tag, placement=placement) is False, (tag, placement)
 
@@ -255,6 +300,14 @@ def test_gate_reads_main_and_the_prerelease_flag_from_the_release(
     assert check["env"]["PRERELEASE"] == "${{ github.event.release.prerelease }}"
     assert check["env"]["TAG_NAME"] == "${{ github.event.release.tag_name }}"
     assert not (set(check) & {"if", "continue-on-error", "shell"}), check
+
+
+@pytest.mark.parametrize("workflow_path", [CORE_RELEASE_YML, ADAPTERS_RELEASE_YML])
+def test_release_workflows_run_only_on_published_releases_and_dispatch(workflow_path: Path) -> None:
+    """The gates are reviewed against the `published` payload; another release
+    activity (`created`, `edited`, `released`) would reach them with a
+    different one. PyYAML reads the bare `on` key as the boolean True."""
+    assert _load(workflow_path)[True] == {"release": {"types": ["published"]}, "workflow_dispatch": None}
 
 
 def test_core_vXYZ_tag_is_core_eligible_and_adapter_ineligible() -> None:
