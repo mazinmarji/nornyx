@@ -6,7 +6,7 @@ package versions independently of the `nornyx` core package — see
 
 ## [Unreleased]
 
-## [0.3.1] - 2026-11-03
+## [0.3.1] - 2026-11-04
 
 ### Fixed
 
