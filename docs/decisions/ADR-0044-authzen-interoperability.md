@@ -207,6 +207,12 @@ where fit is strong and documenting gaps where it is not.
   operational availability are deliberately outside this implementation.
 - ADR-0039's curated `nornyx.agentic` facade remains frozen; AuthZEN is imported
   explicitly from the public `nornyx.agentic.authzen` submodule.
+- (2026-11-02) From SPI 1.3 the `nornyx.agentic.authzen` module is part of the
+  supported `nornyx.agentic` SPI (ADR-0039), imported explicitly; the facade is
+  unchanged. A breaking change to the mapping mints a new identifier rather than
+  changing what `nornyx.authzen.capability.v1` means; adding a new identifier
+  alongside `v1` is an additive SPI change, and ceasing to emit or accept `v1`
+  is a breaking SPI change.
 
 ## Acceptance evidence
 

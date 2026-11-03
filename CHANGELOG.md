@@ -118,6 +118,11 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Changed
 
+- `SPI_VERSION` advances from 1.2 to 1.3 for the additive
+  `nornyx.agentic.authzen` capability (ADR-0044), which is now part of the
+  supported SPI as an explicit submodule import with a pinned `__all__`. The
+  frozen `nornyx.agentic` facade is unchanged. No package, language/schema, or
+  runtime-events version changes.
 - `validate_runtime_events` (and `nornyx agentic-network evidence-validate`)
   now reports `AN_EVT_PRODUCER_MISMATCH` and fails when an event's `producer`
   differs from the events file's `producer`, in runtime-events schema 1.0 and
@@ -288,10 +293,11 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ### Distribution boundaries
 
-- Runtime behavior changes only in the unpackaged repository compatibility
-  tree. No core or adapter runtime code, package version, runtime-events schema,
-  SPI version, occurrence/replay semantics, or core Authorizer policy behavior
-  changes. Because the adapter package README changes wheel metadata, the actual
+- For the M2-D compatibility shim: runtime behavior changes only in the
+  unpackaged repository compatibility tree; the shim changes no core or adapter
+  runtime code, package version, runtime-events schema, SPI version,
+  occurrence/replay semantics, or core Authorizer policy behavior. Because the
+  adapter package README changes wheel metadata, the actual
   diff is release classification C; any later adapter publication requires
   separate authorization.
 
