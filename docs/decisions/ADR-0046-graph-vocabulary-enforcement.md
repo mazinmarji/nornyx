@@ -1,6 +1,6 @@
 # ADR-0046 — Graph Vocabulary Enforcement: the Checker Checks the Boundary the Docs Describe
 
-- Status: Accepted (merged by the owner in PR #105 for issue #104; this ADR named the merge as acceptance). Revision 2 below takes effect when its PR is merged. Checker correctness only — no language, schema, or runtime change.
+- Status: Accepted (merged by the owner in PR #105 for issue #104; this ADR named the merge as acceptance). Revision 2 below took effect with PR #114. Checker correctness only — no language, schema, or runtime change.
 - Date: 2026-09-17
 - Decision owner: human repository owner
 - Relates to: ADR-0040 (assurance tiers and claim boundaries); `docs/42_NORNYX_GRAPH_VALIDATION_v0_5.md`; `docs/50_NORNYX_GRAPH_DEMO.md`; `docs/63_NORNYX_GRAPH_DEMO_EXPANDED.md`; issue #104
@@ -67,9 +67,9 @@ The first implementation of this decision was reviewed independently before any 
 
 Non-blocking findings recorded by the same review and left as they are, deliberately: `profile` / `project` / `contract` ref resolution inherits the existing `UNKNOWN_GRAPH_REF_REFERENCE` error severity (a `contract` node naming a contract that does not exist is the same condition class the code already reports for fourteen kinds); a warning-first variant remains available if a real contract turns out to rely on a mismatched `profile` ref. *Superseded by Revision 2.*
 
-## Revision 2 — compatibility with Nornyx 1.11.0 (before release)
+## Revision 2 — compatibility with Nornyx 1.11.0 (before the 1.12.0 release)
 
-A read-only release-compatibility review of the unreleased tree found that two conditions this ADR left at error severity rejected contracts that Nornyx 1.11.0 checked, locked and loaded. Both conditions were errors in the checker itself, so every caller that acts on errors refused such a contract: `load_authorizer` raised `CONTRACT_INVALID`, the agentic-network commands and `nornyx check` failed, and evidence bound to the contract could no longer be re-validated. B3's composed vocabulary extended the pair case to project-supplied packs on the verdict paths.
+A read-only release-compatibility review of the tree before 1.12.0 found that two conditions this ADR left at error severity rejected contracts that Nornyx 1.11.0 checked, locked and loaded. Both conditions were errors in the checker itself, so every caller that acts on errors refused such a contract: `load_authorizer` raised `CONTRACT_INVALID`, the agentic-network commands and `nornyx check` failed, and evidence bound to the contract could no longer be re-validated. B3's composed vocabulary extended the pair case to project-supplied packs on the verdict paths.
 
 - **A relation only the active profile declares, used with an undeclared pair.** 1.11.0 never read profile constraints and reported such an edge as `UNKNOWN_GRAPH_RELATION` (warning), and `docs/42_NORNYX_GRAPH_VALIDATION_v0_5.md` said custom relations "are allowed but produce warnings". It is now `UNDECLARED_GRAPH_RELATION_PAIR` (warning). A **core** relation used with a pair neither the core rule nor a declared pair allows is still `INVALID_GRAPH_RELATION_PAIR` (error), as in 1.11.0.
 - **An unresolved `profile`, `project` or `contract` node ref.** 1.11.0 treated those refs as free text. It is now `UNRESOLVED_GRAPH_NODE_REF` (warning); the fourteen kinds 1.11.0 already resolved keep `UNKNOWN_GRAPH_REF_REFERENCE` (error). This is the warning-first variant the review note above left available.

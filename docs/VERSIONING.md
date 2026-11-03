@@ -12,7 +12,7 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
 
 | Axis | Current | Bumped when… | Source of truth |
 | --- | --- | --- | --- |
-| **Package (distribution)** | `1.11.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
+| **Package (distribution)** | `1.12.0` | any release of the Python package (SemVer: minor for backward-compatible features, patch for fixes) | `pyproject.toml` `version`, `nornyx/__init__.py` `__version__`, `manifest.json` `version` — **all three must match** |
 | **Agentic integration SPI** | `1.3` | the supported in-process `nornyx.agentic` integration contract changes; additive capabilities advance the minor and breaking changes advance the major. The contract covers the top-level facade `nornyx.agentic.__all__` and the explicitly imported submodules listed here: currently only `nornyx.agentic.authzen` (from SPI 1.3), whose supported names are its `__all__`; `nornyx.agentic.authz` is supported only through the facade re-exports. An additive public capability in a listed submodule advances the minor, while the facade `nornyx.agentic.__all__` remains frozen and does not re-export it | `nornyx.agentic.SPI_VERSION` |
 | **Language / schema** | `1.0` | the `.nyx` contract language or its schema targets change in a way authors must know about | `manifest.json` `language_version`, `nornyx.cli schema --version` |
 | **`agentic_network_governance` module** | `0.2.0` | the composed agentic-network governance module changes its catalog surface (bound by a `migration:` marker) | `nornyx/profiles_data/module_agentic_network_governance.yaml` `version` |
@@ -66,10 +66,10 @@ every existing `.nyx` contract to migrate, and it lets the language evolve on it
    implementation-only change while the package version remained 1.10.0;
    Nornyx 1.11.0 is the release PR that advances all seven synchronized
    locations for that capability. SPI 1.3, for the additive
-   `nornyx.agentic.authzen` capability, follows the same path: it is recorded
-   under Unreleased while the package version remains 1.11.0, and the release
-   PR that carries it advances the seven locations. Tagging and publication
-   remain separate authorized actions.
+   `nornyx.agentic.authzen` capability, followed the same path: it was recorded
+   under Unreleased while the package version remained 1.11.0, and Nornyx
+   1.12.0 is the release PR that advances the seven locations. Tagging and
+   publication remain separate authorized actions.
 7. **Stricter validation on an unchanged schema.** Compatibility is judged against the
    schemas, ADRs and documentation **published with the last release**; text added since
    cannot make earlier input unsupported. A change is *stricter* when a public entry point —

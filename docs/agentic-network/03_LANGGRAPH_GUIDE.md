@@ -7,7 +7,7 @@ pip install "nornyx-agentic-adapters[langgraph]"
 ```
 
 The compatibility boundary is Nornyx core `>=1.10,<2`, agentic SPI major 1
-(SPI 1.2 in Nornyx 1.11.0; SPI 1.3 on unreleased `main`), and LangGraph
+(SPI 1.3 from Nornyx 1.12.0; SPI 1.2 in Nornyx 1.11.0), and LangGraph
 `==1.2.2`.
 
 ## Identity and occurrence mapping

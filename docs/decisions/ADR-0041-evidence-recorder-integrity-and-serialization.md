@@ -246,12 +246,12 @@ and fixed before independent audit:
    `self._sequences`/`self._events` only after every build in the batch has
    succeeded; `_stamp` was fixed the same way for its single event.
 
-## Revision note (evidence-integrity follow-ups, unreleased)
+## Revision note (evidence-integrity follow-ups, Nornyx 1.12.0)
 
 After 1.11.0, five merged pull requests changed the recorder, the validator,
-and their documentation and tests. None is released yet; for #107 to #110 the
-`[Unreleased]` entries in the CHANGELOG are the authoritative description of
-each change, and #111 is test-only and has no entry.
+and their documentation and tests. All five ship in Nornyx 1.12.0; for #107
+to #110 the `[1.12.0]` entries in the CHANGELOG are the authoritative
+description of each change, and #111 is test-only and has no entry.
 
 - PR #107: `record_decision` and `record_observation` raise `ValueError`,
   before any mutation, on an explicit occurrence-mode recorder.
@@ -294,7 +294,7 @@ docstring; `event_type` and `mission_id` are call arguments, not fields, and
 `network_id` comes from the loaded contract). This ADR's context already
 treats `**fields` and hand-built intents as untrusted input.
 `docs/VERSIONING.md` rule 7 records the case as a narrow, named exception, and
-the CHANGELOG `[Unreleased]` #108 entry gives the rationale and the migration:
+the CHANGELOG `[1.12.0]` #108 entry gives the rationale and the migration:
 remove the argument.
 
 **Known exception to section 6.** `stream()` takes its producer and event

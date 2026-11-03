@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nornyx"
-version = "1.11.0"
+version = "1.12.0"
 description = "Vendor-neutral governance contract language for deterministic controls, authorization semantics, and revision-bound decision/evidence records in AI software delivery."
 readme = "README.md"
 requires-python = ">=3.10"
