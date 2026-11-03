@@ -1,0 +1,211 @@
+nornyx: "0.2"
+project:
+  name: NornyxGraphDemo
+  category: generalized_agentic_contract_language
+  purpose: "Show a static graph contract for governed AI/software delivery."
+
+constitution:
+  principles:
+    - graph_is_contract_not_runtime
+    - human_approval_gates_high_impact_changes
+    - evidence_required_for_agentic_work
+    - no_live_connector_execution
+
+intents:
+  - name: GovernedDeliveryIntent
+    goal: "Represent governed AI/software delivery as a static graph contract."
+
+contexts:
+  - name: RepoContext
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "examples/**/*.nyx"
+    exclude:
+      - ".venv/**"
+      - "generated/**"
+      - "**/.env"
+      - "secrets/**"
+
+skills:
+  - name: PatchPlanning
+    purpose: "Plan bounded, evidence-backed changes from a declared graph contract."
+    input: [GraphContract, GoalPacket]
+    output: [PatchPlan, EvidencePack]
+  - name: EvidenceReview
+    purpose: "Review graph coverage for policy, eval, approval, evidence, and budget constraints."
+    input: [GraphContract, EvidencePack]
+    output: [ReviewFinding]
+
+policies:
+  - name: GraphContractOnlyPolicy
+    rules:
+      - "deny live_connector_execution"
+      - "deny production_deployment"
+      - "deny automatic_approval"
+      - "deny self_modification"
+      - "require human_approval_before_release"
+      - "require evidence_for_changes"
+      - "require budget_limits"
+
+agents:
+  - name: Planner
+    role: "Plan bounded graph-backed changes."
+    skills: [PatchPlanning]
+    policy: GraphContractOnlyPolicy
+  - name: Reviewer
+    role: "Review policy, eval, evidence, approval, and budget graph coverage."
+    skills: [EvidenceReview]
+    policy: GraphContractOnlyPolicy
+
+harnesses:
+  - name: StaticGraphReviewHarness
+    context: RepoContext
+    flow:
+      - agent: Planner
+        action: propose_graph_contract
+      - eval: GraphContractEval
+        action: verify_static_contract
+      - evidence: GraphDemoEvidence
+        action: collect
+      - approval: ReleaseOwnerApproval
+        action: approve_before_release
+    repair:
+      max_attempts: 2
+      stop_on_security_ambiguity: true
+    gates:
+      - graph.static_only
+      - policy.pass
+      - eval.pass
+      - evidence.present
+      - approval.before_release
+
+evals:
+  - name: GraphContractEval
+    metrics:
+      - graph_nodes_are_declared
+      - graph_edges_use_known_relations
+      - approval_budget_evidence_are_covered
+      - no_runtime_execution_claim
+
+approvals:
+  - name: ReleaseOwnerApproval
+    required_for:
+      - public_release
+      - graph_contract_promotion
+
+budgets:
+  - name: GraphDemoBudget
+    limits:
+      max_tokens: 20000
+      max_tool_calls: 10
+      max_runtime_minutes: 10
+
+evidence:
+  required:
+    - GraphDemoEvidence
+    - graph_contract_report.json
+    - release_notes_review.md
+
+graph:
+  nodes:
+    - id: context.repo
+      kind: context
+      ref: RepoContext
+    - id: policy.contract_only
+      kind: policy
+      ref: GraphContractOnlyPolicy
+    - id: agent.planner
+      kind: agent
+      ref: Planner
+    - id: agent.reviewer
+      kind: agent
+      ref: Reviewer
+    - id: eval.graph_contract
+      kind: eval
+      ref: GraphContractEval
+    - id: approval.release_owner
+      kind: approval
+      ref: ReleaseOwnerApproval
+    - id: budget.graph_demo
+      kind: budget
+      ref: GraphDemoBudget
+    - id: evidence.graph_demo
+      kind: evidence
+      ref: GraphDemoEvidence
+    - id: goal.static_graph_demo
+      kind: goal
+      ref: GOAL-049
+  edges:
+    - from: context.repo
+      to: agent.planner
+      relation: authorizes_context_for
+    - from: context.repo
+      to: agent.reviewer
+      relation: authorizes_context_for
+    - from: policy.contract_only
+      to: agent.planner
+      relation: governs
+    - from: policy.contract_only
+      to: goal.static_graph_demo
+      relation: governs
+    - from: eval.graph_contract
+      to: goal.static_graph_demo
+      relation: validates
+    - from: approval.release_owner
+      to: goal.static_graph_demo
+      relation: gates
+    - from: budget.graph_demo
+      to: goal.static_graph_demo
+      relation: bounds
+    - from: goal.static_graph_demo
+      to: evidence.graph_demo
+      relation: requires_evidence
+    - from: agent.planner
+      to: evidence.graph_demo
+      relation: must_produce
+
+contracts:
+  - name: StaticGraphDemoContract
+    nodes:
+      - context.repo
+      - policy.contract_only
+      - agent.planner
+      - agent.reviewer
+      - eval.graph_contract
+      - approval.release_owner
+      - budget.graph_demo
+      - evidence.graph_demo
+      - goal.static_graph_demo
+    approval: ReleaseOwnerApproval
+    budget: GraphDemoBudget
+
+goals:
+  - id: GOAL-049
+    phase: v1.0.1
+    title: Static Nornyx Graph Demo
+    goal: "Provide a checkable static graph example for governed AI/software delivery."
+    scope:
+      - examples/nornyx_graph_demo.nyx
+      - docs/50_NORNYX_GRAPH_DEMO.md
+      - tests/test_parser_checker.py
+      - docs/pmo/status/current_status.json
+    non_goals:
+      - runtime_execution
+      - live_connector_execution
+      - production_deployment
+      - automatic_approval
+      - GOAL-100_promotion
+      - general_purpose_programming_features
+    validation:
+      - "python -m nornyx.cli check examples/nornyx_graph_demo.nyx"
+      - "python -m pytest -q"
+      - "python -m nornyx.cli release-check --approved"
+      - "python scripts/release/check_stable_language.py --approved"
+      - "python scripts/dev/audit_pmo_status.py"
+    evidence: "docs/qa/evidence/GOAL-049/"
+    approval: "required before claiming runtime behavior or public release changes"
+    stop_rules:
+      - stop_if_demo_implies_runtime_execution
+      - stop_if_live_connectors_are_enabled
+      - stop_if_GOAL-100_is_unlocked

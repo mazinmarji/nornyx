@@ -39,10 +39,12 @@ skills:
 
 policies:
   - name: GraphContractOnlyPolicy
+    # No automatic approval: stated by the human_approval_before_release
+    # requirement, the ReleaseOwnerApproval step and GOAL-049's non_goals. It
+    # is not a deny rule because the policy matcher does not evaluate that name.
     rules:
       - "deny live_connector_execution"
       - "deny production_deployment"
-      - "deny automatic_approval"
       - "deny self_modification"
       - "require human_approval_before_release"
       - "require evidence_for_changes"

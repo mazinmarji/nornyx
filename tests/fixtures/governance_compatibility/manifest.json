@@ -68,15 +68,15 @@
       },
       {
         "path": "examples/nornyx_distinct_language_showcase.nyx",
-        "sha256": "97a4ccc283d80b860ffe19c9430f6d54cdc1713808bf0eadcb918b1c2efc8cfa"
+        "sha256": "0079f7913b8529b1f97fad986df4ee429d5d17a12fceb09006f6cafca501e6fc"
       },
       {
         "path": "examples/nornyx_graph_demo.nyx",
-        "sha256": "9d3e25998c4510a4bd1e7e1cf055152c760abf2f9be427ab528b8609e2b27293"
+        "sha256": "4d0f320b11bfb30bd802b8f0e647bf58de4dce80e8748e3bd2efe1b7a3fee8b7"
       },
       {
         "path": "examples/nornyx_graph_demo_expanded.nyx",
-        "sha256": "531814612702dfecc5332a373f81476629e14affee7471e948960a5044833829"
+        "sha256": "05066ee9d0ccea13df751b508c399cbeab276cecfff7eeddd8837a940585498f"
       },
       {
         "path": "examples/nornyx_roadmap_goals.nyx",
@@ -84,7 +84,7 @@
       },
       {
         "path": "examples/nornyx_v04_adapter_contracts.nyx",
-        "sha256": "6fe50fab20d9aa850fa62b31928800b35f582b3fab3246ff03da3ddbf95533c6"
+        "sha256": "cb23a45b187236b3ec27830ad6bcd3fe9d806bced51f68fe8eb31c777b4c31f8"
       },
       {
         "path": "examples/self_healing.nyx",
@@ -381,6 +381,78 @@
       "old_hash": "sha256:db95637371e990887e6d906e089e2a659a9f39c7c192a1561d3100af8da346a9",
       "new_hash": "sha256:c2bd107594fcc3397fd5cb1455821905ae364996c4eee95f4221e32795e68a17",
       "proof_hash": "sha256:8a876d9c62eae418e3eadd90f3db16c53290429906c95f231f747882bfeab25f"
+    },
+    {
+      "id": "distinct-language-showcase-strict-policy-names-v1",
+      "target": "nyx_examples:examples/nornyx_distinct_language_showcase.nyx",
+      "sequence": 1,
+      "surface": "language showcase example policy deny names",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_lf_text",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/distinct-language-showcase-strict-policy-names.before.nyx",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/distinct-language-showcase-strict-policy-names.after.nyx",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/distinct-language-showcase-strict-policy-names-v1.diff.json",
+      "reason": "Remove policies.deny names the policy matcher never evaluates (`breaking_core_without_rfc`, `vague_ai_native_claims`) so the example passes `nornyx check --strict`; the intent stays as a comment beside the policy, and no policy-runtime verdict or check exit code changes.",
+      "approval": "Example change to keep shipped examples clean under `nornyx check --strict`, requested by the human repository owner on 2026-11-02; this records compatibility evidence and does not grant merge, release, runtime, autonomous, or governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:distinct-language-showcase-strict-policy-names-v1",
+      "old_hash": "sha256:97a4ccc283d80b860ffe19c9430f6d54cdc1713808bf0eadcb918b1c2efc8cfa",
+      "new_hash": "sha256:0079f7913b8529b1f97fad986df4ee429d5d17a12fceb09006f6cafca501e6fc",
+      "proof_hash": "sha256:3e90d1364c2c70a78174d5337d177d223ab45e2e3ac71aeaf499e68f7e22bef8"
+    },
+    {
+      "id": "graph-demo-strict-policy-names-v1",
+      "target": "nyx_examples:examples/nornyx_graph_demo.nyx",
+      "sequence": 1,
+      "surface": "static graph demo example policy deny names",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_lf_text",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/graph-demo-strict-policy-names.before.nyx",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/graph-demo-strict-policy-names.after.nyx",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/graph-demo-strict-policy-names-v1.diff.json",
+      "reason": "Remove policies.deny names the policy matcher never evaluates (`automatic_approval`) so the example passes `nornyx check --strict`; the intent stays as a comment beside the policy, and no policy-runtime verdict or check exit code changes.",
+      "approval": "Example change to keep shipped examples clean under `nornyx check --strict`, requested by the human repository owner on 2026-11-02; this records compatibility evidence and does not grant merge, release, runtime, autonomous, or governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:graph-demo-strict-policy-names-v1",
+      "old_hash": "sha256:9d3e25998c4510a4bd1e7e1cf055152c760abf2f9be427ab528b8609e2b27293",
+      "new_hash": "sha256:4d0f320b11bfb30bd802b8f0e647bf58de4dce80e8748e3bd2efe1b7a3fee8b7",
+      "proof_hash": "sha256:ceb6e428a38131ec3c7f4c5ecf72325751f0c6bbfc58cf35cab6fc6e7d822e50"
+    },
+    {
+      "id": "graph-demo-expanded-strict-policy-names-v1",
+      "target": "nyx_examples:examples/nornyx_graph_demo_expanded.nyx",
+      "sequence": 1,
+      "surface": "expanded graph demo example policy deny names",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_lf_text",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/graph-demo-expanded-strict-policy-names.before.nyx",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/graph-demo-expanded-strict-policy-names.after.nyx",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/graph-demo-expanded-strict-policy-names-v1.diff.json",
+      "reason": "Remove policies.deny names the policy matcher never evaluates (`graph_execution`, `tool_execution`, `model_calls`, `automatic_approval`) so the example passes `nornyx check --strict`; the intent stays as a comment beside the policy, and no policy-runtime verdict or check exit code changes.",
+      "approval": "Example change to keep shipped examples clean under `nornyx check --strict`, requested by the human repository owner on 2026-11-02; this records compatibility evidence and does not grant merge, release, runtime, autonomous, or governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:graph-demo-expanded-strict-policy-names-v1",
+      "old_hash": "sha256:531814612702dfecc5332a373f81476629e14affee7471e948960a5044833829",
+      "new_hash": "sha256:05066ee9d0ccea13df751b508c399cbeab276cecfff7eeddd8837a940585498f",
+      "proof_hash": "sha256:bdf4ef4aafb14e2234fa84275203479794cb41065d9b22fdea1a3f921f5ce412"
+    },
+    {
+      "id": "v04-adapter-contracts-strict-policy-names-v1",
+      "target": "nyx_examples:examples/nornyx_v04_adapter_contracts.nyx",
+      "sequence": 1,
+      "surface": "v0.4 adapter contracts example policy deny names",
+      "classification": "intentional_migration_requiring_approval",
+      "artifact_kind": "canonical_lf_text",
+      "before_artifact": "tests/fixtures/governance_compatibility/migrations/v04-adapter-contracts-strict-policy-names.before.nyx",
+      "after_artifact": "tests/fixtures/governance_compatibility/migrations/v04-adapter-contracts-strict-policy-names.after.nyx",
+      "expected_diff_artifact": "tests/fixtures/governance_compatibility/migrations/v04-adapter-contracts-strict-policy-names-v1.diff.json",
+      "reason": "Remove policies.deny names the policy matcher never evaluates (`credential_loading`, `automatic_approval`) so the example passes `nornyx check --strict`; the intent stays as a comment beside the policy, and no policy-runtime verdict or check exit code changes.",
+      "approval": "Example change to keep shipped examples clean under `nornyx check --strict`, requested by the human repository owner on 2026-11-02; this records compatibility evidence and does not grant merge, release, runtime, autonomous, or governance approval.",
+      "changelog": "CHANGELOG.md",
+      "changelog_marker": "migration:v04-adapter-contracts-strict-policy-names-v1",
+      "old_hash": "sha256:6fe50fab20d9aa850fa62b31928800b35f582b3fab3246ff03da3ddbf95533c6",
+      "new_hash": "sha256:cb23a45b187236b3ec27830ad6bcd3fe9d806bced51f68fe8eb31c777b4c31f8",
+      "proof_hash": "sha256:5a5b004f2500e1240a434a1fe1fc8118942287081e802a7f15183455d4132468"
     }
   ]
 }

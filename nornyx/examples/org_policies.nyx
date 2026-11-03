@@ -8,9 +8,11 @@ project:
 # so there is nothing to drift. See governed_service.nyx.
 policies:
   - name: SafeDeliveryPolicy
+    # Guidance, not a rule: keep evaluations deterministic. No deny rule name
+    # the policy matcher evaluates expresses this, so it is not encoded as one
+    # (`nornyx check` warns UNKNOWN_POLICY_RULE on deny names it never reads).
     rules:
       - deny secrets_to_llm
       - require tests_if_code_changed
-      - deny nondeterministic_evaluation
       - require evidence_if_harness_completed
       - require human_approval_before_merge
