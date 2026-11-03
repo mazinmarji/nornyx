@@ -5,9 +5,9 @@ These tests execute the ACTUAL bash logic embedded in the release workflows
 tag through the ``TAG_NAME`` environment variable exactly as each step's
 ``env:`` does. The tag never reaches the script as text, so a tag name cannot
 inject shell code. This proves the real gate behavior rather than a Python
-model of it that could silently drift from the YAML. Static checks separately prove `workflow_dispatch` cannot reach either
-publish job, since that gate is a job-level `if:` expression with no shell
-script to execute.
+model of it that could silently drift from the YAML. Static checks
+separately prove `workflow_dispatch` cannot reach either publish job, since
+that gate is a job-level `if:` expression with no shell script to execute.
 """
 
 from __future__ import annotations
@@ -193,8 +193,10 @@ def _publish_artifact_check(workflow_path: Path) -> dict[str, Any]:
     ]
     assert len(checks) == 1 and len(upload) == 1
     assert checks[0] < upload[0]
-    assert "if" not in steps[checks[0]]
-    return steps[checks[0]]
+    step = steps[checks[0]]
+    # Nothing may skip the check, swallow its failure, or change its shell.
+    assert not (set(step) & {"if", "continue-on-error", "shell"}), step
+    return step
 
 
 def _artifact_check_passes(step: dict[str, Any], tag: str, files: list[str]) -> bool:

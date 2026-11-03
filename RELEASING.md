@@ -76,10 +76,11 @@ removing either fails CI rather than quietly weakening the next release.
 
 Both workflows also bind the release tag to the package version at the tagged
 commit: `vX.Y.Z` must equal the root `pyproject.toml` version, and
-`adapters-vX.Y.Z` the adapter package's, and the publish job uploads only the
+`adapters-vX.Y.Z` the adapter package's. The publish job also uploads only the
 sdist and wheel for that version. A mismatched tag publishes nothing
-(`tests/test_release_workflow_policy.py`); the run ends with an error
-annotation and the GitHub Release stays published with nothing on PyPI.
+(`tests/test_release_workflow_policy.py`): the gate step records an error
+annotation, the `publish` job is skipped, and the GitHub Release stays
+published with nothing on PyPI.
 Re-running reuses the same commit, so it cannot fix a mismatch: delete the
 release and its tag, fix the version, and create the release again. The gate
 does not check which branch the tagged commit is on; tag a commit on `main`.

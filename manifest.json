@@ -59,13 +59,13 @@
       "platform": "windows-short-path"
     },
     "test_summary": {
-      "collected_items": 2370,
+      "collected_items": 2380,
       "module_level_import_skips": 3,
-      "passed": 2365,
+      "passed": 2375,
       "skipped": 8,
-      "total_outcomes": 2373
+      "total_outcomes": 2383
     },
-    "test_result": "Canonical local release environment (CPython 3.13.15, pip install -e .[dev], no optional framework extras, short-path Windows clone at the release head): 2365 passed, 8 skipped, 2373 total outcomes (2370 collected items plus 3 module-level crewai skips reported outside collection); focused release-consistency checks (documentation, governance-compatibility, governance-extension, manifest-metadata) passed; validates the nornyx.agentic.authzen capability under agentic SPI 1.3, the graph-vocabulary checks, the UNKNOWN_POLICY_RULE warning and check --strict, and the stricter EvidenceRecorder and runtime-events validation, with runtime-events schema 1.1 and language/schema 1.0 unchanged; core build and installed-wheel verification passed outside the source tree. The passed/skipped split is environment-dependent: installing optional framework extras (CrewAI, LangGraph, adapters) unskips those modules and changes both the split and the total.",
+    "test_result": "Canonical local release environment (CPython 3.13.15, pip install -e .[dev], no optional framework extras, short-path Windows clone at the release head): 2375 passed, 8 skipped, 2383 total outcomes (2380 collected items plus 3 module-level crewai skips reported outside collection); focused release-consistency checks (documentation, governance-compatibility, governance-extension, manifest-metadata) passed; validates the nornyx.agentic.authzen capability under agentic SPI 1.3, the graph-vocabulary checks, the UNKNOWN_POLICY_RULE warning and check --strict, and the stricter EvidenceRecorder and runtime-events validation, with runtime-events schema 1.1 and language/schema 1.0 unchanged; core build and installed-wheel verification passed outside the source tree. The passed/skipped split is environment-dependent: installing optional framework extras (CrewAI, LangGraph, adapters) unskips those modules and changes both the split and the total.",
     "release_check": {
       "command": "python -m nornyx.cli release-check --approved",
       "blocked": 0,

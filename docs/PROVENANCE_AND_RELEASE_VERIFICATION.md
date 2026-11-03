@@ -73,8 +73,8 @@ Four properties of the current pipeline, each verifiable from the repository:
 1. **Trusted Publishing (OIDC), no stored token.** PyPI verifies the OIDC
    identity of the publishing workflow. There is no API token anywhere to
    leak. See [`../.github/workflows/release.yml`](../.github/workflows/release.yml).
-2. **A positive tag gate, bound to the package version.** Publishing fires only when a GitHub Release is
-   published *and* its tag matches `^v[0-9]+\.[0-9]+\.[0-9]+$` exactly. Any
+2. **A positive tag gate, bound to the package version.** Publishing fires
+   only when a GitHub Release is published *and* its tag matches `^v[0-9]+\.[0-9]+\.[0-9]+$` exactly. Any
    other tag shape — an adapter tag, a prerelease suffix, an unrelated tag — is
    excluded rather than merely "not matched". The tag's `X.Y.Z` must also
    equal the `pyproject.toml` version at the commit the tag targets, so a
