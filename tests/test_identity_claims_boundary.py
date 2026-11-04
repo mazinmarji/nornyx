@@ -316,12 +316,20 @@ def test_attestation_check_instructions_use_the_integrity_api(path: Path) -> Non
     assert "pypi-attestations verify pypi" in lowered
     assert "no provenance available for" in lowered
     assert "any other 404" in lowered
+    assert "404 means no attestation" not in lowered, (
+        "a bare 404 does not mean absent; it may be a wrong file name"
+    )
 
 
 @pytest.mark.parametrize("path", PRIMARY_CLAIM_SURFACES, ids=_rel)
 def test_no_attestation_check_reads_the_json_api(path: Path) -> None:
     """The JSON API has no provenance field, so a check built on it reports
-    every file as unattested. That is how the superseded status arose."""
+    every file as unattested. That is how the superseded status arose.
+
+    The guard is deliberately broad: it also flags prose that names the JSON
+    API by its full ``pypi.org`` URL near the word "provenance". Describe that
+    API by its path (``/pypi/<project>/<version>/json``) instead.
+    """
     flat = _flat(path)
     assert not re.search(r"pypi\.org/pypi/\S+/json\S*.{0,200}?provenance", flat), (
         f"{_rel(path)} reads attestation status from the JSON API"

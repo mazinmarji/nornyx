@@ -267,7 +267,8 @@ nornyx agentic-network evidence-validate examples/agentic_network_support/suppor
 ```
 
 The example's approval and evidence records carry fixed July 2026 dates (its
-agent identities, memberships and delegations expire on 2026-12-01), so every
+agent identities, memberships, delegations and handoffs expire on
+2026-12-01), so every
 command above evaluates them at `--as-of 2026-07-17T00:00:00Z`.
 Without `--as-of`, `nornyx check` evaluates them at the current time and
 fails with expiry diagnostics such as `AN_APPROVAL_EXPIRED`: the expiry checks

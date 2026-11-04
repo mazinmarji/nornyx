@@ -258,8 +258,9 @@ classifies the stricter behavior.
   API, which has no provenance field. Both were wrong: every published
   `nornyx` file from 1.1.9 through 1.12.0 carries a PEP 740 attestation from
   `release.yml` that verifies (checked through PyPI's Integrity API and
-  `pypi-attestations verify pypi` on 2026-11-04). What changed in 1.12.0 is that the setting is declared rather
-  than inherited from the action's default. See `[Unreleased]`.
+  `pypi-attestations verify pypi` on 2026-11-04). What changed in 1.12.0 is
+  that the setting is declared rather than inherited from the action's
+  default. See `[Unreleased]`.
 - Release workflows: the core release test job installs the `dev` extra and
   Graphviz, as CI does. Without them `tests/test_book_build.py` (which needs
   `mistune` and `dot`) failed, and the publish job, which depends on the test
