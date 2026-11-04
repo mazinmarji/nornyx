@@ -6,6 +6,32 @@ distribution version is independent of the Nornyx **language/schema** version
 
 ## [Unreleased]
 
+### Documentation
+
+- Correct the provenance record. `docs/PROVENANCE_AND_RELEASE_VERIFICATION.md`
+  §5 and `RELEASING.md` said published distributions carried no PEP 740
+  attestation, based on the PyPI JSON API, which has no provenance field.
+  Verified on 2026-11-04 through PyPI's Integrity API and `pypi-attestations
+  verify pypi`: every published file of `nornyx` 1.1.9 through 1.12.0 and of
+  `nornyx-agentic-adapters` 0.2.0 through 0.3.1 carries an attestation from
+  the expected workflow and environment, and each verifies. Both documents now
+  check attestations that way, §5 states the verified status and keeps the
+  earlier statement as a dated correction, and the `[1.12.0]` entry below
+  carries the same correction. The test that pinned the superseded wording now
+  pins the verified status, its date and method, and the correction, and a
+  new test fails if either document reads attestation status from the JSON
+  API.
+- The agentic-network support example's approvals and evidence carry fixed
+  July 2026 dates, so `nornyx check` on it fails at the current time with
+  expiry diagnostics, as it should. The README and the tutorial now run that
+  check at the example's fixed instant, `--as-of 2026-07-17T00:00:00Z`, like
+  their other commands, and say why. The example contracts and their
+  evidence are unchanged.
+- ADR-0039 and the PMO current-status file record the publication of Nornyx
+  1.12.0 (SPI 1.3) and `nornyx-agentic-adapters` 0.3.1 on 2026-11-04.
+
+No runtime, schema, or package-version change.
+
 ## [1.12.0] - 2026-11-04
 
 ### Compatibility and migration
@@ -221,9 +247,15 @@ classifies the stricter behavior.
   inheriting it. The action reference tracks a moving branch, so PEP 740
   attestation is now a stated property of this workflow. `RELEASING.md` gains a
   release-provenance section with the command to confirm what actually reached
-  PyPI. This changes no credential, environment, or publishing authority, and
-  makes no claim about already-published artifacts: distributions up to and
-  including 1.11.0 report `provenance: null`.
+  PyPI. This changes no credential, environment, or publishing authority.
+  *Correction (2026-11-04):* this entry first ended "and makes no claim about
+  already-published artifacts: distributions up to and including 1.11.0
+  report `provenance: null`", and the section's command read the PyPI JSON
+  API, which has no provenance field. Both were wrong: every published
+  `nornyx` file from 1.1.9 onward carries a PEP 740 attestation from
+  `release.yml` that verifies (checked through PyPI's Integrity API on
+  2026-11-04). What changed in 1.12.0 is that the setting is declared rather
+  than inherited from the action's default. See `[Unreleased]`.
 - Release workflows: the core release test job installs the `dev` extra and
   Graphviz, as CI does. Without them `tests/test_book_build.py` (which needs
   `mistune` and `dot`) failed, and the publish job, which depends on the test

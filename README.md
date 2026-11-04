@@ -258,13 +258,20 @@ artifacts, binds them in a content-addressed lock, and validates supplied
 runtime-event evidence against that exact revision:
 
 ```bash
-nornyx check examples/agentic_network_support/support_network.nyx
+nornyx check examples/agentic_network_support/support_network.nyx --as-of 2026-07-17T00:00:00Z
 nornyx agentic-network generate examples/agentic_network_support/support_network.nyx --out generated/agentic_network --as-of 2026-07-17T00:00:00Z
 nornyx agentic-network lock examples/agentic_network_support/support_network.nyx --artifacts generated/agentic_network --as-of 2026-07-17T00:00:00Z
 nornyx agentic-network lock-check examples/agentic_network_support/support_network.nyx --artifacts generated/agentic_network --as-of 2026-07-17T00:00:00Z
 python examples/agentic_network_support/run_demo.py --out demo_out
 nornyx agentic-network evidence-validate examples/agentic_network_support/support_network.nyx --events demo_out/langgraph_events.json --lock demo_out/nornyx.agentic_network.lock --as-of 2026-07-17T00:00:00Z --strict
 ```
+
+The example's approvals, evidence, and agent identities carry fixed July 2026
+dates, so every command above evaluates them at `--as-of 2026-07-17T00:00:00Z`.
+Without `--as-of`, `nornyx check` evaluates them at the current time and
+fails with expiry diagnostics such as `AN_APPROVAL_EXPIRED`: the expiry checks
+working as intended. The dates are deliberately not refreshed, because the
+example's evidence is a fixed demonstration record bound by content hashes.
 
 The same contract governs the legacy offline reference adapters and the
 separately distributed `nornyx-agentic-adapters` package. Runtime-events 1.1

@@ -112,16 +112,24 @@ registered for its environment (`pypi`, `pypi-adapters`), so a workflow that
 drops the environment cannot publish; where that environment requires a
 reviewer, approve the deployment only after that confirmation.
 
-After publishing, confirm what actually reached PyPI:
+After publishing, confirm what actually reached PyPI, for each of the two
+files (`nornyx-X.Y.Z-py3-none-any.whl` and `nornyx-X.Y.Z.tar.gz`; for the
+adapters, `nornyx_agentic_adapters-X.Y.Z-py3-none-any.whl` and
+`nornyx_agentic_adapters-X.Y.Z.tar.gz` under `nornyx-agentic-adapters`):
 
 ```bash
-curl -s https://pypi.org/pypi/nornyx/X.Y.Z/json | python -c "import json,sys; [print(f['filename'], f.get('provenance')) for f in json.load(sys.stdin)['urls']]"
+curl -s -H "Accept: application/vnd.pypi.integrity.v1+json" https://pypi.org/integrity/nornyx/X.Y.Z/nornyx-X.Y.Z-py3-none-any.whl/provenance
+pypi-attestations verify pypi --repository https://github.com/mazinmarji/nornyx pypi:nornyx-X.Y.Z-py3-none-any.whl
 ```
 
-A `provenance` URL means an attestation was published for that file; `None`
-means none was. Record the actual result — releases up to and including 1.11.0
-report `None`. The full consumer-side verification path, and what absence of
-provenance does and does not mean, are in
+The first shows the publisher (expect `release.yml` with environment `pypi`,
+or `adapters-release.yml` with `pypi-adapters`); HTTP 404 means no
+attestation was published. The second checks that the attestation verifies.
+Record the actual result. The PyPI JSON API (`/pypi/<project>/<version>/json`)
+has no provenance field, so it cannot show attestations; until 2026-11-04 this
+section used it and recorded that releases up to 1.11.0 had none, which was
+wrong. The full consumer-side verification path, the verified status of every
+published file, and what absence of provenance does and does not mean, are in
 [`docs/PROVENANCE_AND_RELEASE_VERIFICATION.md`](docs/PROVENANCE_AND_RELEASE_VERIFICATION.md).
 
 ## Rules that bite

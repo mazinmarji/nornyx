@@ -263,17 +263,36 @@ def test_provenance_absence_is_distinguished_from_provenance_failure() -> None:
     assert "stripping provenance is permitted" in lowered
 
 
-def test_provenance_doc_does_not_overclaim_published_attestations() -> None:
-    """Guards against optimistic drift.
+def test_provenance_status_names_its_verification_and_records_the_correction() -> None:
+    """Guards against drift in either direction.
 
-    Verified against the PyPI JSON API on 2026-09-01: both files of
-    ``nornyx==1.11.0`` report ``provenance: null``. If a future release does
-    publish attestations, this statement should be updated with evidence — not
-    quietly deleted.
+    Until 2026-11-04 the status said published distributions carried no PEP
+    740 attestation, read from the PyPI JSON API, which has no provenance
+    field. Verified on 2026-11-04 through the Integrity API and
+    ``pypi-attestations verify``: every published file carries one that
+    verifies. The status must keep naming how and when it was verified and
+    stay bounded to what was checked, and the earlier claim must stay recorded
+    as corrected rather than quietly deleted.
     """
     lowered = _flat(PROVENANCE_DOC)
-    assert "currently carry no pep 740 attestation" in lowered
-    assert "no claim is made here about artifacts already published" in lowered
+    assert "verified on 2026-11-04 through the pypi integrity api" in lowered
+    assert "a later release is not covered by this statement" in lowered
+    assert "correction (2026-11-04)" in lowered
+    assert "currently carry no pep 740 attestation" not in lowered, (
+        "the superseded status must not be restated as current"
+    )
+
+
+@pytest.mark.parametrize("path", [PROVENANCE_DOC, ROOT / "RELEASING.md"], ids=_rel)
+def test_attestation_checks_use_the_integrity_api_not_the_json_api(path: Path) -> None:
+    """The JSON API has no provenance field, so a check built on it reports
+    every file as unattested. That is how the superseded status arose."""
+    text = _read(path)
+    assert "application/vnd.pypi.integrity.v1+json" in text
+    assert "pypi-attestations verify pypi" in text
+    assert not re.search(r"pypi\.org/pypi/\S*/json[^\n]*provenance", text), (
+        f"{_rel(path)} reads attestation status from the JSON API"
+    )
 
 
 def test_release_workflow_declares_attestations_explicitly() -> None:

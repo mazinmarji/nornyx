@@ -17,7 +17,7 @@ def test_pmo_status_current_fields_match_latest_rollover() -> None:
     # numbered-goal ledger tail move together with the status file.
     data = load_status()
 
-    assert data["updated_at"] == "2026-08-14"
+    assert data["updated_at"] == "2026-11-04"
     assert (
         data["summary"]["pmo_readability"]["latest_completed_goal"]
         == "GOAL-063 Nornyx Graph Demo Expansion"
