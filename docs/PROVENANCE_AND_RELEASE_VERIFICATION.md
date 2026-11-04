@@ -112,18 +112,37 @@ SHA-256. The repository ships a worked parser for exactly this in
 which distinguishes wheel from sdist, checks the serving host, and treats a
 missing entry as a provenance *failure* rather than as success.
 
-### Step 2 — Whether a PyPI attestation exists
+### Step 2 — Whether a PyPI attestation exists, and whether it verifies
 
-PyPI exposes PEP 740 attestations through its JSON API. Ask it, rather than
-assuming:
+PyPI serves PEP 740 attestations through its Integrity API, one provenance
+object per file. Ask it, rather than assuming:
 
 ```bash
-curl -s https://pypi.org/pypi/nornyx/1.11.0/json | python -c "import json,sys; [print(f['filename'], f.get('provenance')) for f in json.load(sys.stdin)['urls']]"
+curl -s -w '\nHTTP %{http_code}\n' -H "Accept: application/vnd.pypi.integrity.v1+json" https://pypi.org/integrity/nornyx/1.12.0/nornyx-1.12.0-py3-none-any.whl/provenance
 ```
 
-A `provenance` URL means an attestation is published for that file. `None`
-means no attestation is published — see [§5](#5-current-status-stated-plainly),
-which is the honest current state and not a verification failure.
+HTTP 200 returns a provenance object that names the publisher (repository,
+workflow, and the environment PyPI recorded) and carries the attestation
+bundles. HTTP 404 with the JSON body
+`{"message":"No provenance available for <file>"}` means the file exists and
+no attestation was published for it: **absent** in [§6](#6-what-absence-of-provenance-means--and-does-not),
+not a verification failure. Any other 404, such as an HTML page, means the
+version or file name is wrong; correct it rather than recording absence. The
+PyPI JSON API (`/pypi/<project>/<version>/json`) has no provenance field at
+all, so it cannot answer this question either way.
+
+That an attestation exists does not show that it verifies. PyPA's
+`pypi-attestations` tool (`pip install pypi-attestations`) downloads the file
+and checks its attestations against the Sigstore trust root, the publishing
+repository and its workflow:
+
+```bash
+pypi-attestations verify pypi --repository https://github.com/mazinmarji/nornyx pypi:nornyx-1.12.0-py3-none-any.whl
+```
+
+`OK` is **verified**. Once network and certificate-store problems are ruled
+out, an error for a file that has a provenance object is **failed**, never
+**absent**.
 
 ### Step 3 — Tag, commit, and source
 
@@ -133,17 +152,39 @@ git rev-parse v1.11.0^{commit}
 ```
 
 The tag resolves to an immutable commit SHA, which is the source the release
-workflow built from.
+workflow built from. The one exception among published releases, 1.1.9, is
+recorded in §5.
 
 ## 5. Current status, stated plainly
 
-Verified on 2026-09-01 against the PyPI JSON API:
+Verified on 2026-11-04 through the PyPI Integrity API and
+`pypi-attestations verify pypi`, file by file, as in [§4 Step 2](#step-2--whether-a-pypi-attestation-exists-and-whether-it-verifies):
 
-- **Published nornyx distributions currently carry no PEP 740 attestation.**
-  Both files of `nornyx==1.11.0` report `provenance: null`. Trusted Publishing
-  is in use and the publish step now declares `attestations: true` explicitly,
-  so attestation is an intended property of *future* releases — but no claim is
-  made here about artifacts already published, and none should be.
+- **Every published distribution carries a PEP 740 attestation that
+  verifies.** Both files of every `nornyx` release from 1.1.9 through 1.12.0
+  (30 files) carry an attestation signed for this repository's `release.yml`,
+  which PyPI records as published from the `pypi` environment, and both files
+  of every `nornyx-agentic-adapters` release from 0.2.0 through 0.3.1 (6
+  files) one signed for `adapters-release.yml`, recorded from
+  `pypi-adapters`. Each verifies. The environment comes from PyPI's publisher
+  record, not from the signed certificate. Releases before `nornyx` 1.12.0 and
+  `nornyx-agentic-adapters` 0.3.1 received their attestations from the publish
+  action's default; from those releases both workflows declare
+  `attestations: true` explicitly, so attestation no longer depends on a
+  default the project does not control. A later release is not covered by
+  this statement until it is verified the same way.
+- **1.1.9 was not built from its tag.** Its signing certificates record a
+  manual (`workflow_dispatch`) run of `release.yml` on `main` at `8fcdf0c`,
+  the commit that added that workflow, not tag `v1.1.9` (`c864429`). Every
+  other published file's certificate names its release tag.
+- *Correction (2026-11-04).* Until this date this section said that published
+  nornyx distributions carried no PEP 740 attestation and that both files of
+  `nornyx==1.11.0` reported `provenance: null`, verified on 2026-09-01 against
+  the PyPI JSON API. That was wrong. The JSON API has no provenance field, so
+  the command used then reported nothing for every file, attested or not.
+  PyPI accepts attestations only with the upload, so the files published
+  before 2026-09-01 carried them then as well. The method in Step 2 replaces
+  that command.
 - **Git tags are not currently signed**, so `git verify-tag` will report no
   signature. Tag signing is a maintainer-key decision, not a repository change.
 - **GitHub build attestations (`actions/attest-build-provenance`) are not

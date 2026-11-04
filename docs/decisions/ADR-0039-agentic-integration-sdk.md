@@ -3,7 +3,9 @@
 - Status: Accepted — M1 and M2-A through M2-D implemented; later roadmap
   milestones remain separately authorized
 - Date: 2026-07-20
-- Revised: 2026-11-02 (SPI 1.3: the `nornyx.agentic.authzen` submodule joins
+- Revised: 2026-11-04 (publication record: Nornyx 1.12.0 with SPI 1.3 and
+  `nornyx-agentic-adapters` 0.3.1 published; no decision change);
+  2026-11-02 (SPI 1.3: the `nornyx.agentic.authzen` submodule joins
   the supported SPI; facade unchanged);
   2026-07-31 (M2-D legacy compatibility shim and baseline closure);
   2026-07-31 (additive SPI 1.2 Authorizer construction-state access);
@@ -17,10 +19,12 @@
   - Implementation head: `8b3c8b2eee4d181b7a896097b7210644c8ff4ce0`
   - Merge commit: `c83a8a4897f1de8ab776885be52992bbf2280594`
   - Post-merge CI: run 29956041864 — success
-  - Package state: SPI **1.3** is carried by Nornyx **1.12.0** (see the
-    SPI 1.3 revision note); Nornyx **1.11.0** published SPI **1.2** and
-    Nornyx 1.10.0 published SPI 1.1; `nornyx-agentic-adapters` **0.2.0** and
-    **0.3.0** are also published and keep their `nornyx>=1.10,<2` floor.
+  - Package state: Nornyx **1.12.0** published SPI **1.3** on 2026-11-04
+    (tag `v1.12.0` at `542756d`; see the SPI 1.3 revision note); Nornyx
+    **1.11.0** published SPI **1.2** and Nornyx 1.10.0 published SPI 1.1;
+    `nornyx-agentic-adapters` **0.2.0**, **0.3.0** and **0.3.1** (2026-11-04,
+    tag `adapters-v0.3.1` at `542756d`) are also published and keep their
+    `nornyx>=1.10,<2` floor.
     M2-D changes runtime
     behavior only in the unpackaged repository compatibility tree, which now
     consumes the public `Authorizer.state` and therefore requires Nornyx
@@ -600,8 +604,10 @@ The `nornyx.agentic` authorization engine does **not**:
 | External pilot consumption | Complete (M5-A-1) |
 | Nornyx 1.10.0 publication | Complete |
 | Nornyx 1.11.0 publication (SPI 1.2 `Authorizer.state`) | Complete |
+| Nornyx 1.12.0 publication (SPI 1.3 `nornyx.agentic.authzen`) | Complete (2026-11-04) |
 | `nornyx-agentic-adapters` 0.2.0 publication | Complete |
 | `nornyx-agentic-adapters` 0.3.0 publication | Complete |
+| `nornyx-agentic-adapters` 0.3.1 publication | Complete (2026-11-04) |
 
 **External pilot consumption is executed as M5-A-1**, not as an independent
 ADR-0039 work item. `examples/external_adoption_pilot` installs the published
@@ -622,7 +628,7 @@ first-party CI can supply.
 
 The M1 core landed via PR #44 (merge `c83a8a4`). M2-A, M2-B, and M2-C ship in
 published adapter 0.2.0, whose declared floor remains `nornyx>=1.10,<2`;
-Nornyx 1.11.0 published SPI 1.2, and Nornyx 1.12.0 carries SPI 1.3. M2-D
+Nornyx 1.11.0 published SPI 1.2, and Nornyx 1.12.0 published SPI 1.3. M2-D
 closes the repository
 compatibility baseline without entering either distribution's runtime code: the
 unpackaged shim consumes the public `Authorizer.state` and so requires Nornyx

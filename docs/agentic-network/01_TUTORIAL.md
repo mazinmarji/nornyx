@@ -7,12 +7,25 @@ example lives in `examples/agentic_network_support/` and its contract is
 ## 1. Validate the contract
 
 ```text
-nornyx check examples/agentic_network_support/support_network.nyx
+nornyx check examples/agentic_network_support/support_network.nyx --as-of 2026-07-17T00:00:00Z
 ```
 
 This runs the stable checks plus the composed `agentic_network` governance:
 schema-closed blocks, `agentic_network_foundation.v1`, and
 `agentic_network_delegation.v1`.
+
+The example's approval and evidence records carry fixed July 2026 dates (its
+agent identities, memberships, delegations and handoffs expire on
+2026-12-01), so this
+tutorial evaluates them at one fixed instant, `--as-of 2026-07-17T00:00:00Z`.
+Run without `--as-of`, `nornyx check` uses the current time and fails with
+expiry diagnostics such as `AN_APPROVAL_EXPIRED`, which is the expiry
+machinery working, not a broken example. The same holds for
+`examples/agentic_network.nyx`, whose approval and evidence expired on
+2026-07-24 and whose identities and memberships expired on 2026-08-01. The
+dates are deliberately not refreshed: the evidence records are fixed
+demonstration data bound by content hashes, and a real contract's approvals
+and evidence must be renewed by their authorities, not by editing dates.
 
 ## 2. Inspect the effective governance
 

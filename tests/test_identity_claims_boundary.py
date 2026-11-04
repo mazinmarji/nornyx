@@ -263,17 +263,77 @@ def test_provenance_absence_is_distinguished_from_provenance_failure() -> None:
     assert "stripping provenance is permitted" in lowered
 
 
-def test_provenance_doc_does_not_overclaim_published_attestations() -> None:
-    """Guards against optimistic drift.
+def test_provenance_status_names_its_verification_and_records_the_correction() -> None:
+    """Guards against drift in either direction.
 
-    Verified against the PyPI JSON API on 2026-09-01: both files of
-    ``nornyx==1.11.0`` report ``provenance: null``. If a future release does
-    publish attestations, this statement should be updated with evidence — not
-    quietly deleted.
+    Until 2026-11-04 the status said published distributions carried no PEP
+    740 attestation, read from the PyPI JSON API, which has no provenance
+    field. Verified on 2026-11-04 through the Integrity API and
+    ``pypi-attestations verify``: every published file carries one that
+    verifies. The status must keep naming how and when it was verified and
+    stay bounded to what was checked, and the earlier claim must stay recorded
+    as corrected rather than quietly deleted.
     """
     lowered = _flat(PROVENANCE_DOC)
-    assert "currently carry no pep 740 attestation" in lowered
-    assert "no claim is made here about artifacts already published" in lowered
+    # The status: when and how it was verified, and exactly what it covers.
+    for phrase in (
+        "verified on 2026-11-04 through the pypi integrity api",
+        "`pypi-attestations verify pypi`",
+        "from 1.1.9 through 1.12.0",
+        "from 0.2.0 through 0.3.1",
+        "a later release is not covered by this statement",
+        "1.1.9 was not built from its tag",
+    ):
+        assert phrase in lowered, phrase
+    # The correction: what was said, on what basis, and that it was wrong.
+    for phrase in (
+        "correction (2026-11-04)",
+        "carried no pep 740 attestation",
+        "reported `provenance: null`, verified on 2026-09-01 against the pypi json api",
+        "that was wrong",
+    ):
+        assert phrase in lowered, phrase
+    assert "currently carry no pep 740 attestation" not in lowered, (
+        "the superseded status must not be restated as current"
+    )
+    releasing = _flat(ROOT / "RELEASING.md")
+    assert "until 2026-11-04 this section used it" in releasing
+    changelog = _flat(ROOT / "CHANGELOG.md")
+    assert (
+        "*correction (2026-11-04):* this entry first ended \"and makes no claim "
+        "about already-published artifacts: distributions up to and including "
+        "1.11.0 report `provenance: null`\""
+    ) in changelog
+
+
+@pytest.mark.parametrize("path", [PROVENANCE_DOC, ROOT / "RELEASING.md"], ids=_rel)
+def test_attestation_check_instructions_use_the_integrity_api(path: Path) -> None:
+    """Both documents must check existence and verification, and must tell an
+    absent attestation from a mistyped file name: PyPI answers both with a
+    404, and only the JSON body distinguishes them."""
+    lowered = _flat(path)
+    assert "application/vnd.pypi.integrity.v1+json" in lowered
+    assert "pypi-attestations verify pypi" in lowered
+    assert "no provenance available for" in lowered
+    assert "any other 404" in lowered
+    assert "404 means no attestation" not in lowered, (
+        "a bare 404 does not mean absent; it may be a wrong file name"
+    )
+
+
+@pytest.mark.parametrize("path", PRIMARY_CLAIM_SURFACES, ids=_rel)
+def test_no_attestation_check_reads_the_json_api(path: Path) -> None:
+    """The JSON API has no provenance field, so a check built on it reports
+    every file as unattested. That is how the superseded status arose.
+
+    The guard is deliberately broad: it also flags prose that names the JSON
+    API by its full ``pypi.org`` URL near the word "provenance". Describe that
+    API by its path (``/pypi/<project>/<version>/json``) instead.
+    """
+    flat = _flat(path)
+    assert not re.search(r"pypi\.org/pypi/\S+/json\S*.{0,200}?provenance", flat), (
+        f"{_rel(path)} reads attestation status from the JSON API"
+    )
 
 
 def test_release_workflow_declares_attestations_explicitly() -> None:
