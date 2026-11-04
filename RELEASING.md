@@ -118,13 +118,15 @@ adapters, `nornyx_agentic_adapters-X.Y.Z-py3-none-any.whl` and
 `nornyx_agentic_adapters-X.Y.Z.tar.gz` under `nornyx-agentic-adapters`):
 
 ```bash
-curl -s -H "Accept: application/vnd.pypi.integrity.v1+json" https://pypi.org/integrity/nornyx/X.Y.Z/nornyx-X.Y.Z-py3-none-any.whl/provenance
+curl -s -w '\nHTTP %{http_code}\n' -H "Accept: application/vnd.pypi.integrity.v1+json" https://pypi.org/integrity/nornyx/X.Y.Z/nornyx-X.Y.Z-py3-none-any.whl/provenance
 pypi-attestations verify pypi --repository https://github.com/mazinmarji/nornyx pypi:nornyx-X.Y.Z-py3-none-any.whl
 ```
 
 The first shows the publisher (expect `release.yml` with environment `pypi`,
-or `adapters-release.yml` with `pypi-adapters`); HTTP 404 means no
-attestation was published. The second checks that the attestation verifies.
+or `adapters-release.yml` with `pypi-adapters`). HTTP 404 with the body
+`{"message":"No provenance available for <file>"}` means no attestation was
+published; any other 404 means the version or file name is wrong. The second
+(`pip install pypi-attestations`) checks that the attestation verifies.
 Record the actual result. The PyPI JSON API (`/pypi/<project>/<version>/json`)
 has no provenance field, so it cannot show attestations; until 2026-11-04 this
 section used it and recorded that releases up to 1.11.0 had none, which was

@@ -17,7 +17,7 @@ def test_v101_hygiene_loop_is_closed() -> None:
     summary = data["summary"]
 
     assert summary["pmo_readability"]["current_focus"] == (
-        "post-v1.0 reweighted roadmap (M3-M9); Nornyx 1.11.0 published"
+        "post-v1.0 reweighted roadmap (M3-M9); Nornyx 1.12.0 and nornyx-agentic-adapters 0.3.1 published"
     )
     assert "v1.0.1 hygiene is closed" in summary["roadmap_model"]["v1.0"]
     assert "Next v1.0.1 hygiene follow-up" not in summary["next_recommended_goal"]

@@ -266,8 +266,9 @@ python examples/agentic_network_support/run_demo.py --out demo_out
 nornyx agentic-network evidence-validate examples/agentic_network_support/support_network.nyx --events demo_out/langgraph_events.json --lock demo_out/nornyx.agentic_network.lock --as-of 2026-07-17T00:00:00Z --strict
 ```
 
-The example's approvals, evidence, and agent identities carry fixed July 2026
-dates, so every command above evaluates them at `--as-of 2026-07-17T00:00:00Z`.
+The example's approval and evidence records carry fixed July 2026 dates (its
+agent identities, memberships and delegations expire on 2026-12-01), so every
+command above evaluates them at `--as-of 2026-07-17T00:00:00Z`.
 Without `--as-of`, `nornyx check` evaluates them at the current time and
 fails with expiry diagnostics such as `AN_APPROVAL_EXPIRED`: the expiry checks
 working as intended. The dates are deliberately not refreshed, because the

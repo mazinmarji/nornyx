@@ -15,20 +15,24 @@ distribution version is independent of the Nornyx **language/schema** version
   verify pypi`: every published file of `nornyx` 1.1.9 through 1.12.0 and of
   `nornyx-agentic-adapters` 0.2.0 through 0.3.1 carries an attestation from
   the expected workflow and environment, and each verifies. Both documents now
-  check attestations that way, §5 states the verified status and keeps the
-  earlier statement as a dated correction, and the `[1.12.0]` entry below
-  carries the same correction. The test that pinned the superseded wording now
-  pins the verified status, its date and method, and the correction, and a
-  new test fails if either document reads attestation status from the JSON
-  API.
-- The agentic-network support example's approvals and evidence carry fixed
-  July 2026 dates, so `nornyx check` on it fails at the current time with
-  expiry diagnostics, as it should. The README and the tutorial now run that
-  check at the example's fixed instant, `--as-of 2026-07-17T00:00:00Z`, like
-  their other commands, and say why. The example contracts and their
+  check attestations that way and tell an absent attestation from a wrong file
+  name, §5 states the verified status, records that 1.1.9 was published from
+  `main` rather than its tag, and keeps the earlier statement as a dated
+  correction, and the `[1.12.0]` entry below carries the same correction. The
+  test that pinned the superseded wording now pins the verified status, its
+  date, method and version ranges, and the corrections, and a new test fails
+  if a current-voice document reads attestation status from the JSON API.
+- The agentic-network support example's approval and evidence records carry
+  fixed July 2026 dates, so `nornyx check` on it fails at the current time
+  with expiry diagnostics, as it should. The README and the tutorial now run
+  that check at the example's fixed instant, `--as-of 2026-07-17T00:00:00Z`,
+  like their other commands, and say why. The example contracts and their
   evidence are unchanged.
 - ADR-0039 and the PMO current-status file record the publication of Nornyx
   1.12.0 (SPI 1.3) and `nornyx-agentic-adapters` 0.3.1 on 2026-11-04.
+  `manifest.json` is unchanged: its `current_validation` is the 1.12.0
+  release-candidate record of 2026-11-03, when 1.11.0 was the latest
+  published package, and stays as point-in-time evidence.
 
 No runtime, schema, or package-version change.
 
@@ -252,9 +256,9 @@ classifies the stricter behavior.
   already-published artifacts: distributions up to and including 1.11.0
   report `provenance: null`", and the section's command read the PyPI JSON
   API, which has no provenance field. Both were wrong: every published
-  `nornyx` file from 1.1.9 onward carries a PEP 740 attestation from
-  `release.yml` that verifies (checked through PyPI's Integrity API on
-  2026-11-04). What changed in 1.12.0 is that the setting is declared rather
+  `nornyx` file from 1.1.9 through 1.12.0 carries a PEP 740 attestation from
+  `release.yml` that verifies (checked through PyPI's Integrity API and
+  `pypi-attestations verify pypi` on 2026-11-04). What changed in 1.12.0 is that the setting is declared rather
   than inherited from the action's default. See `[Unreleased]`.
 - Release workflows: the core release test job installs the `dev` extra and
   Graphviz, as CI does. Without them `tests/test_book_build.py` (which needs
